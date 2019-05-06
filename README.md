@@ -207,7 +207,7 @@ print(holmes_extractor.__file__)
 ##### 1.2.3 Installing the spaCy models
 
 The spaCy library that Holmes builds upon requires
-[language-specific models](https://spacy.io/usage/    models) that have to be downloaded
+[language-specific models](https://spacy.io/usage/models) that have to be downloaded
 separately before Holmes can be used. The following models are for English without
 coreference resolution, English with coreference resolution, and German respectively:
 
@@ -1192,8 +1192,7 @@ according to what each new document is about. As explained [here](#ontology-base
 used both to enrichen the comparison of the content of the various documents and to capture implication
 relationships between classification labels.
 
-A classifier makes use of a neural network (a [multilayer perceptron]
-(https://machinelearningcatalogue.com/algorithm/alg_perceptron.html)) whose topology can either
+A classifier makes use of a neural network (a [multilayer perceptron](https://machinelearningcatalogue.com/algorithm/alg_perceptron.html)) whose topology can either
 be determined automatically by Holmes or [specified explicitly by the user](#supervised-topic-training-basis).
 With a large number of training documents, the automatically determined topology can easily exhaust the memory
 available on a typical machine; if there is no opportunity to scale up the memory, this problem can be
@@ -1921,8 +1920,7 @@ with sufficient memory resources.
 <a id="incorporation-into-the-spacy-multithreading-architecture"></a>
 ##### 8.3.1 Incorporation into the spaCy multithreading architecture
 
-SpaCy defines an [architecture for multithreading]
-(https://spacy.io/usage/processing-pipelines#section-multithreading) for situations in which
+SpaCy defines an [architecture for multithreading](https://spacy.io/usage/processing-pipelines#section-multithreading) for situations in which
 large numbers of documents are to be parsed at once. At present, Holmes does not support
 this architecture. For the time being, a workaround is to perform the spaCy parsing separately
 and submit the spaCy documents to the `SemanticAnalyzer` class directly via the `holmes_parse()` function
