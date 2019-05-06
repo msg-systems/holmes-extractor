@@ -1,0 +1,271 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#"
+     xml:base="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:xml="http://www.w3.org/XML/1998/namespace"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#">
+    <owl:Ontology rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Abschluss -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Abschluss">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#abschließen"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Ausfallversicherung -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Ausfallversicherung">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Kreditausfallversicherung"/>
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Kreditversicherung"/>
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Versicherung"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Geschäftspartner -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Geschäftspartner">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Partner"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Jahr -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Jahr">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Zeitraum"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Krankenversicherung -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Krankenversicherung">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Krankenversicherungen"/>
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Krankenvollversicherung"/>
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#PKV"/>
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Versicherung"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Krankenversicherungen -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Krankenversicherungen">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Versicherung"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Krankenvollversicherung -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Krankenvollversicherung">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Versicherung"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Kreditausfallversicherung -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Kreditausfallversicherung">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Versicherung"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Kreditversicherung -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Kreditversicherung">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Versicherung"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Monat -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Monat">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Zeitraum"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Notwendigkeit -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Notwendigkeit">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#benötigen"/>
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#brauche"/>
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#brauchen"/>
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#gebraucht"/>
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#mögen"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#PKV -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#PKV">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Versicherung"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Partner -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Partner"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Versicherung -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Versicherung">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Vertrag"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Vertrag -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Vertrag"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Vorauszahlung -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Vorauszahlung">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#frühzeitige_Zahlung"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Woche -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Woche">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Zeitraum"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Zeitraum -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Zeitraum"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#abschließen -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#abschließen"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#anfangen -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#anfangen">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#losgehen"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#benötigen -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#benötigen"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#brauche -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#brauche"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#brauchen -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#brauchen"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#frühzeitige_Zahlung -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#frühzeitige_Zahlung">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#vorausgezahlt"/>
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#vorauszahlen"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#gebraucht -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#gebraucht"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#losgehen -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#losgehen"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#mögen -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#mögen"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#vorausgezahlt -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#vorausgezahlt"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#vorauszahlen -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#vorauszahlen"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Individuals
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#ABC_Versicherungen -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#ABC_Versicherungen">
+        <rdf:type rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Krankenversicherung"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#XTQ -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#XTQ">
+        <rdf:type rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/versicherungsbeispiel#Krankenversicherung"/>
+    </owl:NamedIndividual>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 4.5.7.2018-12-02T02:23:35Z) https://github.com/owlcs/owlapi -->
+

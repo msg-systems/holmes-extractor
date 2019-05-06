@@ -1,0 +1,247 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#"
+     xml:base="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:xml="http://www.w3.org/XML/1998/namespace"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#">
+    <owl:Ontology rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#begin -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#begin">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#start"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#business_partner -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#business_partner">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#partner"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#close -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#close">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#take_out"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#closing -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#closing">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#take_out"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#contract -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#contract">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#insurance"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#credit_insurance -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#credit_insurance">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#payment_insurance"/>
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#insurance"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#downpayment -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#downpayment">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#insurance_payment"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#early_payment -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#early_payment">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#prepay"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#health_insurance -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#health_insurance">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#medical_insurance"/>
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#insurance"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#insurance -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#insurance"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#insurance_payment -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#insurance_payment"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#medical_insurance -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#medical_insurance">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#insurance"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#month -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#month">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#period"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#need -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#need">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#want"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#partner -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#partner"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#payment_insurance -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#payment_insurance">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#insurance"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#period -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#period"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#prepay -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#prepay">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#prepayment"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#prepayment -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#prepayment"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#require -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#require">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#want"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#requirement -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#requirement">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#want"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#start -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#start"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#take_out -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#take_out"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#want -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#want"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#week -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#week">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#period"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#year -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#year">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#period"/>
+    </owl:Class>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Individuals
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#ABC_Insurance -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#ABC_Insurance">
+        <rdf:type rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#health_insurance"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#XTQ -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#XTQ">
+        <rdf:type rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/insuranceexample#health_insurance"/>
+    </owl:NamedIndividual>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 4.5.7.2018-12-02T02:23:35Z) https://github.com/owlcs/owlapi -->
+
