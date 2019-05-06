@@ -8,7 +8,7 @@ use cases involving information extraction from English and German texts. See
 
 setup(
     name='holmes-extractor',
-    version='2.0',
+    version='2.0.1',
     description='Information extraction from English and German texts based on predicate logic',
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -39,5 +39,5 @@ setup(
     packages=find_packages(),
     # versions of spaCy > 2.0.12 do not currently work with neuralcoref
     install_requires=['spacy==2.0.12','neuralcoref==3.1','numpy','scipy','sklearn','bs4',
-        'rdflib','jsonpickle']
+        'rdflib','jsonpickle','msgpack-numpy<0.4.4.0']
 )
