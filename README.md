@@ -191,7 +191,7 @@ of `neuralcoref`, and updating Holmes to work with the latest versions of both l
 If you wish to experiment with changing the source code, you can
 override the installed code by starting Python (type `python3` (Linux) or `python`
 (Windows)) in the parent directory of the directory where your altered `holmes_extractor`
-module code is. If you have checked Holmes out of Git, this will be the `holmes` directory.
+module code is. If you have checked Holmes out of Git, this will be the `holmes-extractor` directory.
 
 If you wish to uninstall Holmes again, this is achieved by deleting the installed
 file(s) directly from the file system. These can be found by issuing the
