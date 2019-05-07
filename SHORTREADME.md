@@ -46,4 +46,4 @@ cases can be put to use out of the box without any training and that the supervi
 typically requires relatively little training data, which is a great advantage because pre-labelled training data is
 not available for many real-world problems.
 
-For more information, please see the [main documentation on Github](https://github.com/msg-systems/holmes-extractor)
+For more information, please see the [main documentation on Github](https://github.com/msg-systems/holmes-extractor).
