@@ -439,3 +439,7 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
         matches = self._get_matches(common_holmes_manager,
                 "The office and the office that you ate your roll at were new")
         self.assertEqual(len(matches), 2)
+
+    def test_no_loop(self):
+        matches = self._get_matches(common_holmes_manager,
+                "The thought of having to read a boring book of 400 pages in English.")

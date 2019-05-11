@@ -1046,16 +1046,17 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
             # check that governed verb does not already have a dependency with the same label
             if len([target_token_dependency for target_token_dependency in token._.holmes.children
                     if target_token_dependency.label == new_dependency_label]) == 0:
-                working_token = token
                 # Go back in the sentence to find the first subject phrase
+                counter = token.i
                 while True:
-                    working_token = working_token.doc[working_token.i - 1]
-                    if working_token.i < token.sent.start:
+                    counter -= 1
+                    if counter < token.sent.start:
                         return
-                    if working_token.dep_ in ('nsubj', 'nsubjpass'):
+                    if token.doc[counter].dep_ in ('nsubj', 'nsubjpass'):
                         break
                 # From the subject phrase loop up through the syntactic parents
                 # to find the governing verb
+                working_token = token.doc[counter]
                 while True:
                     if working_token.tag_.startswith('NN') or \
                             self.is_involved_in_coreference(working_token):
