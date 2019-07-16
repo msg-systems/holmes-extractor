@@ -443,3 +443,22 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
     def test_no_loop(self):
         matches = self._get_matches(common_holmes_manager,
                 "The thought of having to read a boring book of 400 pages in English.")
+
+    def test_capital_entity_is_not_analysed_as_entity_search_phrase_token(self):
+        holmes_manager_with_variable_search_phrases.remove_all_search_phrases()
+        holmes_manager_with_variable_search_phrases.register_search_phrase("ENTITY")
+        matches = self._get_matches(holmes_manager_with_variable_search_phrases,
+                "Richard Hudson")
+        self.assertEqual(len(matches), 0)
+        matches = self._get_matches(holmes_manager_with_variable_search_phrases,
+                "We discussed an entity and a second ENTITY.")
+        self.assertEqual(len(matches), 2)
+
+    def test_entity_matching_with_underscore_in_entity_label(self):
+        holmes_manager_with_variable_search_phrases.remove_all_search_phrases()
+        holmes_manager_with_variable_search_phrases.register_search_phrase("ENTITYWORK_OF_ART")
+        holmes_manager_with_variable_search_phrases.register_search_phrase(
+                "Somebody buys an ENTITYWORK_OF_ART")
+        matches = self._get_matches(holmes_manager_with_variable_search_phrases,
+                "I bought a Picasso")
+        self.assertEqual(len(matches), 2)

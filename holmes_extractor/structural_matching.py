@@ -293,7 +293,8 @@ class StructuralMatcher:
         """
 
         def get_word_from_token(token):
-            if token.text[:6] == 'ENTITY':
+            if self._is_entity_search_phrase_token(token, False):
+                # False in order to get text rather than lemma
                 return token.text
                 # keep the text, because the lemma will be lowercase
             word = token._.holmes.lemma
@@ -756,15 +757,17 @@ class StructuralMatcher:
                 return True
         return False
 
-    def _is_entity_search_phrase_token(self, search_phrase_token, topic_match_phraselet):
-        if topic_match_phraselet:
+    def _is_entity_search_phrase_token(self, search_phrase_token,
+            examine_lemma_rather_than_text):
+        if examine_lemma_rather_than_text:
             word_to_check = search_phrase_token._.holmes.lemma
         else:
             word_to_check = search_phrase_token.text
-        return word_to_check[:6] == 'ENTITY'
+        return word_to_check[:6] == 'ENTITY' and len(word_to_check) > 6
 
-    def _is_entitynoun_search_phrase_token(self, search_phrase_token, topic_match_phraselet):
-        if topic_match_phraselet:
+    def _is_entitynoun_search_phrase_token(self, search_phrase_token,
+            examine_lemma_rather_than_text):
+        if examine_lemma_rather_than_text:
             word_to_check = search_phrase_token._.holmes.lemma
         else:
             word_to_check = search_phrase_token.text

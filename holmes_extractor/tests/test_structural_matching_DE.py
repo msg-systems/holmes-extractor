@@ -389,3 +389,13 @@ class GermanStructuralMatchingTest(unittest.TestCase):
                 """)
         matches = holmes_manager_with_variable_search_phrases.match()
         self.assertEqual(len(matches), 0)
+
+    def test_capital_entity_is_not_analysed_as_entity_search_phrase_token(self):
+        holmes_manager_with_variable_search_phrases.remove_all_search_phrases()
+        holmes_manager_with_variable_search_phrases.register_search_phrase("ENTITY")
+        matches = self._get_matches(holmes_manager_with_variable_search_phrases,
+                "Richard Hudson")
+        self.assertEqual(len(matches), 0)
+        matches = self._get_matches(holmes_manager_with_variable_search_phrases,
+                "Wir haben eine Entity und eine zweite ENTITY besprochen.")
+        self.assertEqual(len(matches), 2)
