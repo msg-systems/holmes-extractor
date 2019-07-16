@@ -12,11 +12,15 @@ holmes_manager.register_search_phrase("Ein Student geht aus", "excursion")
 holmes_manager.register_search_phrase("Der Abschluss einer Versicherung")
 holmes_manager.register_search_phrase("Die Kündigung von einer Versicherung")
 holmes_manager.register_search_phrase("Jemand schließt eine Versicherung ab")
+holmes_manager.register_search_phrase("Jemand findet eine Versicherung")
 holmes_manager.register_search_phrase("Wer war traurig?")
 holmes_manager.register_search_phrase("Das Fahrzeug hat einen Fehler")
 holmes_manager.register_search_phrase("Jemand braucht eine Versicherung für fünf Jahre")
 holmes_manager.register_search_phrase("Jemand braucht etwas für fünf Jahre")
 holmes_manager.register_search_phrase("Jemand braucht für fünf Jahre")
+holmes_manager.register_search_phrase("Ein Urlaub ist schwer zu buchen")
+holmes_manager.register_search_phrase("Ein Mann geht aus")
+holmes_manager.register_search_phrase("Ein Mann singt")
 holmes_manager_with_variable_search_phrases = holmes.Manager(model='de_core_news_sm')
 
 class GermanStructuralMatchingTest(unittest.TestCase):
@@ -399,3 +403,73 @@ class GermanStructuralMatchingTest(unittest.TestCase):
         matches = self._get_matches(holmes_manager_with_variable_search_phrases,
                 "Wir haben eine Entity und eine zweite ENTITY besprochen.")
         self.assertEqual(len(matches), 2)
+
+    def test_adjective_verb_phrase_as_search_phrase_matches_simple(self):
+        matches = self._get_matches(holmes_manager,
+                "Der Urlaub war sehr schwer zu buchen")
+        self.assertEqual(len(matches), 1)
+        self.assertFalse(matches[0].is_uncertain)
+
+    def test_adjective_verb_phrase_as_search_phrase_no_match_with_normal_phrase(self):
+        matches = self._get_matches(holmes_manager,
+                "Der Urlaub wurde gebucht")
+        self.assertEqual(len(matches), 0)
+
+    def test_adjective_verb_phrase_as_search_phrase_matches_compound(self):
+        matches = self._get_matches(holmes_manager,
+                "Der Urlaub und der Urlaub waren sehr schwer und schwer zu buchen und zu buchen")
+        self.assertEqual(len(matches), 8)
+        for match in matches:
+            self.assertFalse(match.is_uncertain)
+
+    def test_objective_adjective_verb_phrase_separate_zu_matches_normal_search_phrase_simple(self):
+        matches = self._get_matches(holmes_manager,
+                "Die Versicherung war sehr schwer zu finden")
+        self.assertEqual(len(matches), 1)
+        self.assertTrue(matches[0].is_uncertain)
+
+    def test_objective_adjective_verb_phrase_separate_zu_matches_normal_search_phrase_compound(self):
+        matches = self._get_matches(holmes_manager,
+                "Die Versicherung und die Versicherung waren sehr schwer und schwer zu finden und zu finden")
+        self.assertEqual(len(matches), 4)
+        for match in matches:
+            self.assertTrue(match.is_uncertain)
+
+    def test_objective_adjective_verb_phrase_integrated_zu_matches_normal_search_phrase_simple(self):
+        matches = self._get_matches(holmes_manager,
+                "Die Versicherung war sehr schwer abzuschließen")
+        self.assertEqual(len(matches), 1)
+        self.assertTrue(matches[0].is_uncertain)
+
+    def test_objective_adjective_verb_phrase_integrated_zu_matches_normal_search_phrase_compound(self):
+        matches = self._get_matches(holmes_manager,
+                "Die Versicherung und die Versicherung waren sehr schwer und schwer abzuschließen und abzuschließen")
+        self.assertEqual(len(matches), 4)
+        for match in matches:
+            self.assertTrue(match.is_uncertain)
+
+    def test_subjective_adjective_verb_phrase_separate_zu_matches_normal_search_phrase_simple(self):
+        matches = self._get_matches(holmes_manager,
+                "Der Mann war sehr froh zu singen")
+        self.assertEqual(len(matches), 1)
+        self.assertTrue(matches[0].is_uncertain)
+
+    def test_subjective_adjective_verb_phrase_separate_zu_matches_normal_search_phrase_compound(self):
+        matches = self._get_matches(holmes_manager,
+                "Der Mann und der Mann waren sehr froh zu singen und zu singen")
+        self.assertEqual(len(matches), 4)
+        for match in matches:
+            self.assertTrue(match.is_uncertain)
+
+    def test_subjective_adjective_verb_phrase_integrated_zu_matches_normal_search_phrase_simple(self):
+        matches = self._get_matches(holmes_manager,
+                "Der Mann war sehr froh auszugehen")
+        self.assertEqual(len(matches), 1)
+        self.assertTrue(matches[0].is_uncertain)
+
+    def test_subjective_adjective_verb_phrase_integrated_zu_matches_normal_search_phrase_compound(self):
+        matches = self._get_matches(holmes_manager,
+                "Der Mann und der Mann waren sehr froh auszugehen")
+        self.assertEqual(len(matches), 2)
+        for match in matches:
+            self.assertTrue(match.is_uncertain)

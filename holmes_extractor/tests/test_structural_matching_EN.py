@@ -20,6 +20,9 @@ common_holmes_manager.register_search_phrase("Somebody gives a file to an employ
 common_holmes_manager.register_search_phrase("Somebody gives a boss a file")
 common_holmes_manager.register_search_phrase("Serendipity")
 common_holmes_manager.register_search_phrase("Somebody eats at an office")
+common_holmes_manager.register_search_phrase("A holiday is hard to book")
+common_holmes_manager.register_search_phrase("A man sings")
+common_holmes_manager.register_search_phrase("Somebody finds insurance")
 holmes_manager_with_variable_search_phrases = holmes.Manager(model='en_core_web_lg',
         ontology=ontology)
 holmes_manager_with_embeddings = holmes.Manager(model='en_core_web_lg',
@@ -462,3 +465,47 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
         matches = self._get_matches(holmes_manager_with_variable_search_phrases,
                 "I bought a Picasso")
         self.assertEqual(len(matches), 2)
+
+    def test_adjective_verb_phrase_as_search_phrase_matches_simple(self):
+        matches = self._get_matches(common_holmes_manager,
+                "The holiday was very hard to book")
+        self.assertEqual(len(matches), 1)
+        self.assertFalse(matches[0].is_uncertain)
+
+    def test_adjective_verb_phrase_as_search_phrase_no_match_with_normal_phrase(self):
+        matches = self._get_matches(common_holmes_manager,
+                "The holiday was booked")
+        self.assertEqual(len(matches), 0)
+
+    def test_adjective_verb_phrase_as_search_phrase_matches_compound(self):
+        matches = self._get_matches(common_holmes_manager,
+                "The holiday and the holiday were very hard and hard to book and to book")
+        self.assertEqual(len(matches), 8)
+        for match in matches:
+            self.assertFalse(match.is_uncertain)
+
+    def test_objective_adjective_verb_phrase_matches_normal_search_phrase_simple(self):
+        matches = self._get_matches(common_holmes_manager,
+                "The insurance was very hard to find")
+        self.assertEqual(len(matches), 1)
+        self.assertTrue(matches[0].is_uncertain)
+
+    def test_objective_adjective_verb_phrase_matches_normal_search_phrase_compound(self):
+        matches = self._get_matches(common_holmes_manager,
+                "The insurance and the insurance were very hard and hard to find and to find")
+        self.assertEqual(len(matches), 4)
+        for match in matches:
+            self.assertTrue(match.is_uncertain)
+
+    def test_subjective_adjective_verb_phrase_matches_normal_search_phrase_simple(self):
+        matches = self._get_matches(common_holmes_manager,
+                "The man was very glad to sing")
+        self.assertEqual(len(matches), 1)
+        self.assertTrue(matches[0].is_uncertain)
+
+    def test_subjective_adjective_verb_phrase_matches_normal_search_phrase_compound(self):
+        matches = self._get_matches(common_holmes_manager,
+                "The man and the man were very glad and glad to sing and to sing")
+        self.assertEqual(len(matches), 4)
+        for match in matches:
+            self.assertTrue(match.is_uncertain)

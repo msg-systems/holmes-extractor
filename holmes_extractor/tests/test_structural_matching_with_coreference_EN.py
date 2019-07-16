@@ -17,6 +17,9 @@ coref_holmes_manager.register_search_phrase("A dog who chases rats chases mice")
 coref_holmes_manager.register_search_phrase("A tired dog")
 coref_holmes_manager.register_search_phrase("A panther chases a panther")
 coref_holmes_manager.register_search_phrase("A leopard chases a leopard")
+coref_holmes_manager.register_search_phrase("A holiday is hard to find")
+coref_holmes_manager.register_search_phrase("A man sings")
+coref_holmes_manager.register_search_phrase("Somebody finds a policy")
 no_coref_holmes_manager = holmes.Manager(model='en_coref_lg', ontology=ontology,
         perform_coreference_resolution=False)
 no_coref_holmes_manager.register_search_phrase("A dog chases a cat")
@@ -706,3 +709,61 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         self.assertFalse(matches[0].word_matches[0].involves_coreference)
         self.assertFalse(matches[0].word_matches[0].involves_coreference)
         self.assertFalse(matches[0].word_matches[0].involves_coreference)
+
+    def test_adjective_verb_phrase_as_search_phrase_matches_simple(self):
+        coref_holmes_manager.remove_all_documents()
+        coref_holmes_manager.parse_and_register_document(
+                """We discussed holidays. They were very hard to find.""")
+        matches = coref_holmes_manager.match()
+        self.assertEqual(len(matches), 1)
+        self.assertFalse(matches[0].is_uncertain)
+
+    def test_adjective_verb_phrase_as_search_phrase_no_match_with_normal_phrase(self):
+        coref_holmes_manager.remove_all_documents()
+        coref_holmes_manager.parse_and_register_document(
+                """We discussed a holiday. It was found""")
+        matches = coref_holmes_manager.match()
+        self.assertEqual(len(matches), 0)
+
+    def test_adjective_verb_phrase_as_search_phrase_matches_compound(self):
+        coref_holmes_manager.remove_all_documents()
+        coref_holmes_manager.parse_and_register_document(
+                """We discussed holidays. They and the holiday were very hard and hard to find and to find""")
+        matches = coref_holmes_manager.match()
+        self.assertEqual(len(matches), 8)
+        for match in matches:
+            self.assertFalse(match.is_uncertain)
+
+    def test_objective_adjective_verb_phrase_matches_normal_search_phrase_simple(self):
+        coref_holmes_manager.remove_all_documents()
+        coref_holmes_manager.parse_and_register_document(
+                """We discussed policies. They was very hard to find""")
+        matches = coref_holmes_manager.match()
+        self.assertEqual(len(matches), 1)
+        self.assertTrue(matches[0].is_uncertain)
+
+    def test_objective_adjective_verb_phrase_matches_normal_search_phrase_compound(self):
+        coref_holmes_manager.remove_all_documents()
+        coref_holmes_manager.parse_and_register_document(
+                """We discussed policies. They and the other policy were very hard to find and to find""")
+        matches = coref_holmes_manager.match()
+        self.assertEqual(len(matches), 4)
+        for match in matches:
+            self.assertTrue(match.is_uncertain)
+
+    def test_subjective_adjective_verb_phrase_matches_normal_search_phrase_simple(self):
+        coref_holmes_manager.remove_all_documents()
+        coref_holmes_manager.parse_and_register_document(
+                """We saw the man. He was very glad to sing""")
+        matches = coref_holmes_manager.match()
+        self.assertEqual(len(matches), 1)
+        self.assertTrue(matches[0].is_uncertain)
+
+    def test_subjective_adjective_verb_phrase_matches_normal_search_phrase_compound(self):
+        coref_holmes_manager.remove_all_documents()
+        coref_holmes_manager.parse_and_register_document(
+                """We saw the man. He and the other man were very glad and glad to sing and to sing""")
+        matches = coref_holmes_manager.match()
+        self.assertEqual(len(matches), 4)
+        for match in matches:
+            self.assertTrue(match.is_uncertain)

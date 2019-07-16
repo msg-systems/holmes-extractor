@@ -666,3 +666,27 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(analyzer.token_and_coreference_chain_indexes(doc[26]), [13,18,22,26,30,34])
         self.assertEqual(analyzer.token_and_coreference_chain_indexes(doc[30]), [18,22,26,30,34])
         self.assertEqual(analyzer.token_and_coreference_chain_indexes(doc[34]), [22,26,30,34])
+
+    def test_adjective_verb_clause_subjective_simple(self):
+        doc = analyzer.parse("Richard was glad to understand.")
+        self.assertEqual(doc[4]._.holmes.string_representation_of_children(),
+                '0:arg(U); 3:aux')
+
+    def test_adjective_verb_clause_subjective_compound(self):
+        doc = analyzer.parse("Richard and Thomas were glad and happy to understand and to comprehend.")
+        self.assertEqual(doc[8]._.holmes.string_representation_of_children(),
+                '0:arg(U); 2:arg(U); 7:aux; 9:cc; 11:conj')
+        self.assertEqual(doc[11]._.holmes.string_representation_of_children(),
+                '0:arg(U); 2:arg(U); 10:aux')
+
+    def test_adjective_verb_clause_objective_simple(self):
+        doc = analyzer.parse("Richard was hard to reach.")
+        self.assertEqual(doc[4]._.holmes.string_representation_of_children(),
+                '0:arg(U); 3:aux')
+
+    def test_adjective_verb_clause_objective_compound(self):
+        doc = analyzer.parse("Richard and Thomas were hard and difficult to reach and to call.")
+        self.assertEqual(doc[8]._.holmes.string_representation_of_children(),
+                '0:arg(U); 2:arg(U); 7:aux; 9:cc; 11:conj')
+        self.assertEqual(doc[11]._.holmes.string_representation_of_children(),
+                '0:arg(U); 2:arg(U); 10:aux')

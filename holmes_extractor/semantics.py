@@ -493,7 +493,8 @@ class SemanticAnalyzer(ABC):
                         dependency.child_index:
                     righthand_sibling_token._.holmes.children.append(SemanticDependency(
                         righthand_sibling, dependency.child_index, dependency.label,
-                        self._mark_child_dependencies_copied_to_siblings_as_uncertain))
+                        self._mark_child_dependencies_copied_to_siblings_as_uncertain
+                        or dependency.is_uncertain))
 
     def _normalize_predicative_adjectives(self, token):
         """Change phrases like *the town is old* and *the man is poor* so their
@@ -685,18 +686,20 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
     # as occurring within documents being searched. This is the main source of the asymmetry
     # in matching from search phrases to documents versus from documents to search phrases.
     _matching_dep_dict = {
-            'nsubj': ['csubj', 'poss', 'pobjb', 'advmodsubj'],
+            'nsubj': ['csubj', 'poss', 'pobjb', 'advmodsubj', 'arg'],
             'acomp': ['amod', 'advmod', 'npmod'],
             'amod': ['acomp', 'advmod', 'npmod'],
             'advmod': ['acomp', 'amod', 'npmod'],
             'dative': ['pobjt', 'relant', 'nsubjpass'],
             'pobjt': ['dative', 'relant'],
-            'nsubjpass': ['dobj', 'pobjo', 'poss', 'relant', 'csubjpass', 'compound', 'advmodobj'],
-             'dobj': ['pobjo', 'poss', 'relant', 'nsubjpass', 'csubjpass', 'compound','advmodobj'],
+            'nsubjpass': ['dobj', 'pobjo', 'poss', 'relant', 'csubjpass', 'compound',
+                    'advmodobj', 'arg'],
+             'dobj': ['pobjo', 'poss', 'relant', 'nsubjpass', 'csubjpass',
+                    'compound','advmodobj', 'arg'],
              'nmod': ['appos', 'compound', 'nummod'],
              'poss': ['pobjo'],
              'pobjo': ['poss'],
-             'pobjb': ['nsubj', 'csubj', 'poss', 'advmodsubj'],
+             'pobjb': ['nsubj', 'csubj', 'poss', 'advmodsubj', 'arg'],
              'prep': ['prepposs']
              }
 
@@ -1075,6 +1078,18 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                     else:
                         return
 
+        # handle phrases like 'he is easy to find', 'he is ready to go'
+        # There is no way of knowing from the syntax whether the noun is a semantic
+        # subject or object of the verb, so the new dependency label 'arg' is added.
+        if token.tag_.startswith('NN') or self.is_involved_in_coreference(token):
+            for adjective_dep in (dep for dep in token._.holmes.children if
+                    dep.label == self._modifier_dep and dep.child_token(token.doc).pos_ == 'ADJ'):
+                adj_token = adjective_dep.child_token(token.doc)
+                for verb_dep in (dep for dep in adj_token._.holmes.children if
+                        dep.label == 'xcomp' and dep.child_token(token.doc).pos_ == 'VERB'):
+                    verb_token = verb_dep.child_token(token.doc)
+                    verb_token._.holmes.children.append(SemanticDependency(
+                            verb_token.i, token.i, 'arg', True))
 
 class GermanSemanticAnalyzer(SemanticAnalyzer):
 
@@ -1117,10 +1132,10 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
     _or_lemma = 'oder'
 
     _matching_dep_dict = {
-            'sb': ['nk', 'ag', 'mnr'],
+            'sb': ['nk', 'ag', 'mnr', 'arg'],
             'ag': ['nk', 'mnr'],
             'da': ['nk', 'og', 'op'],
-            'oa': ['nk', 'og', 'op', 'ag', 'mnr'],
+            'oa': ['nk', 'og', 'op', 'ag', 'mnr', 'arg'],
             'og': ['oa', 'da', 'nk', 'op'],
             'nk': ['ag'],
             'mo': ['moposs', 'op'],
@@ -1187,14 +1202,25 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                 processed_auxiliary_indexes.append(token.i)
                 if token.pos_ == 'AUX' or token.tag_.startswith('VM'):
                     for dependency in (dependency for dependency in token._.holmes.children
-                    if token.doc[dependency.child_index].pos_ in ('VERB', 'AUX') and
-                    token.doc[dependency.child_index].dep_ in ('oc', 'pd')):
+                            if token.doc[dependency.child_index].pos_ in ('VERB', 'AUX') and
+                            token.doc[dependency.child_index].dep_ in ('oc', 'pd')):
                         child = token.doc[dependency.child_index]
                         self._move_information_between_tokens(token, child)
                         # VM indicates a modal verb, which has to be marked as uncertain
                         if token.tag_.startswith('VM') or dependency.is_uncertain:
                             for child_dependency in child._.holmes.children:
                                 child_dependency.is_uncertain = True
+                        # 'er ist froh zu kommen' / 'er ist schwer zu erreichen'
+                        # set dependency label to 'arg' because semantic role could be either
+                        # subject or object
+                        if token._.holmes.lemma == 'sein' and (len([child_dependency for
+                                child_dependency in child._.holmes.children if
+                                child_dependency.label == 'pm' and child_dependency.child_token(
+                                token.doc).tag_ == 'PTKZU']) > 0 or child.tag_ == 'VVIZU'):
+                            for new_dependency in (new_dependency for new_dependency in
+                                    child._.holmes.children if new_dependency.label == 'sb'):
+                                new_dependency.label = 'arg'
+                                new_dependency.is_uncertain = True
                         # passive construction
                         if (token._.holmes.lemma == 'werden' and child.tag_ not in ('VVINF',
                                 'VAINF', 'VAFIN', 'VAINF')):
@@ -1390,8 +1416,8 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
 
         # 'er war froh, etwas zu tun'
         for dependency in (dependency for dependency in token._.holmes.children
-                if dependency.label == 'nk' and token.pos_ == 'NOUN' and token.dep_ == 'sb' and
-                dependency.child_token(token.doc).pos_ == 'ADJ'):
+                if dependency.label == 'nk' and token.pos_ in ('NOUN', 'PROPN')
+                and token.dep_ == 'sb' and dependency.child_token(token.doc).pos_ == 'ADJ'):
             child_token = dependency.child_token(token.doc)
             for child_dependency in (child_dependency for child_dependency in
                     child_token._.holmes.children if child_dependency.label in ('oc', 're') and
@@ -1402,4 +1428,4 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                         if target_token.i != dependency.parent_index):
                     # these dependencies are always uncertain
                     target_token._.holmes.children.append(SemanticDependency(
-                        target_token.i, dependency.parent_index, target_dependency, True))
+                            target_token.i, dependency.parent_index, target_dependency, True))

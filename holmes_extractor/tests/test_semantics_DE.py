@@ -462,3 +462,56 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[1]._.holmes.lemma, 'interessant')
         self.assertEqual(doc[4].lemma_, 'gesunden')
         self.assertEqual(doc[4]._.holmes.lemma, 'gesund')
+
+    def test_adjective_complement_proper_name(self):
+        doc = analyzer.parse("Richard war froh, es zu verstehen.")
+        self.assertEqual(doc[6]._.holmes.string_representation_of_children(),
+                '0:sb(U); 4:oa; 5:pm')
+
+    def test_adjective_verb_clause_with_zu_subjective_zu_separate_simple(self):
+        doc = analyzer.parse("Richard war froh zu verstehen.")
+        self.assertEqual(doc[4]._.holmes.string_representation_of_children(),
+                '0:arg(U); 2:mo; 3:pm')
+
+    def test_adjective_verb_clause_with_zu_subjective_zu_separate_compound(self):
+        doc = analyzer.parse("Richard und Thomas waren froh und erleichtert zu verstehen und zu begreifen.")
+        self.assertEqual(doc[8]._.holmes.string_representation_of_children(),
+                '0:arg(U); 2:arg(U); 4:mo; 6:mo; 7:pm; 9:cd')
+        self.assertEqual(doc[11]._.holmes.string_representation_of_children(),
+                '0:arg(U); 2:arg(U); 4:mo; 6:mo; 10:pm')
+
+    def test_adjective_verb_clause_with_zu_objective_zu_separate_simple(self):
+        doc = analyzer.parse("Richard war schwer zu erreichen.")
+        self.assertEqual(doc[4]._.holmes.string_representation_of_children(),
+                '0:arg(U); 2:mo; 3:pm')
+
+    def test_adjective_verb_clause_with_zu_objective_zu_separate_compound(self):
+        doc = analyzer.parse("Richard und Thomas war schwer und schwierig zu erreichen und zu bekommen.")
+        self.assertEqual(doc[8]._.holmes.string_representation_of_children(),
+                '0:arg(U); 2:arg(U); 4:mo; 6:mo; 7:pm; 9:cd')
+        self.assertEqual(doc[11]._.holmes.string_representation_of_children(),
+                '0:arg(U); 2:arg(U); 4:mo; 6:mo; 10:pm')
+
+    def test_adjective_verb_clause_with_zu_subjective_zu_integrated_simple(self):
+        doc = analyzer.parse("Richard war froh hineinzugehen.")
+        self.assertEqual(doc[3]._.holmes.string_representation_of_children(),
+                '0:arg(U); 2:mo')
+
+    def test_adjective_verb_clause_with_zu_subjective_zu_integrated_compound(self):
+        doc = analyzer.parse("Richard und Thomas waren froh hineinzugehen und hinzugehen.")
+        self.assertEqual(doc[5]._.holmes.string_representation_of_children(),
+                '0:arg(U); 2:arg(U); 4:mo; 6:cd')
+        self.assertEqual(doc[7]._.holmes.string_representation_of_children(),
+                '0:arg(U); 2:arg(U); 4:mo')
+
+    def test_adjective_verb_clause_with_zu_objective_zu_integrated_simple(self):
+        doc = analyzer.parse("Richard war leicht einzubinden.")
+        self.assertEqual(doc[3]._.holmes.string_representation_of_children(),
+                '0:arg(U); 2:mo')
+
+    def test_adjective_verb_clause_with_zu_objective_zu_integrated_compound(self):
+        doc = analyzer.parse("Richard und Thomas waren leicht einzubinden und aufzugleisen.")
+        self.assertEqual(doc[5]._.holmes.string_representation_of_children(),
+                '0:arg(U); 2:arg(U); 4:mo; 6:cd')
+        self.assertEqual(doc[7]._.holmes.string_representation_of_children(),
+                '0:arg(U); 2:arg(U); 4:mo')
