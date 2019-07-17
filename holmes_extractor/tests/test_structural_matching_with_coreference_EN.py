@@ -728,9 +728,9 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
     def test_adjective_verb_phrase_as_search_phrase_matches_compound(self):
         coref_holmes_manager.remove_all_documents()
         coref_holmes_manager.parse_and_register_document(
-                """We discussed holidays. They and the holiday were very hard and hard to find and to find""")
+                """We discussed holidays. They were very hard to find and to find""")
         matches = coref_holmes_manager.match()
-        self.assertEqual(len(matches), 8)
+        self.assertEqual(len(matches), 2)
         for match in matches:
             self.assertFalse(match.is_uncertain)
 

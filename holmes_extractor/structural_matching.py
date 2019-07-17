@@ -619,14 +619,21 @@ class StructuralMatcher:
                         for document_dependency_child_index in (working_index for working_index in
                                 children if working_index not in
                                 search_phrase_and_document_visited_table[dependency.child_index]):
+                            this_document_token = document_token.doc[
+                                    document_dependency_child_index]
+                            # otherwise where matching starts with a noun and there is a dependency
+                            # pointing back to the noun, matching will be attempted against the
+                            # pronoun only and will then fail.
+                            if this_document_token.pos_ == 'PRON' and self.semantic_analyzer.is_involved_in_coreference(
+                                    this_document_token):
+                                continue
                             at_least_one_document_dependency_tried = True
                             if self._match_recursively(
                                     search_phrase=search_phrase,
                                     search_phrase_token=dependency.child_token(
                                             search_phrase_token.doc),
                                     document=document,
-                                    document_token=document_token.doc[
-                                            document_dependency_child_index],
+                                    document_token=this_document_token,
                                     search_phrase_tokens_to_word_matches=
                                             search_phrase_tokens_to_word_matches,
                                     search_phrase_and_document_visited_table=
