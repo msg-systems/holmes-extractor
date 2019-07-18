@@ -1426,7 +1426,7 @@ number_of_results -- the number of topic match objects to return.
 
 ``` {.python}
 Manager.get_supervised_topic_training_basis(self, *, classification_ontology=None,
-  overlap_memory_size=10, oneshot=True, verbose=True)
+  overlap_memory_size=10, oneshot=True, match_all_words=False, verbose=True)
 
 Returns an object that is used to train and generate a model for the
 supervised document classification use case.
@@ -1440,6 +1440,8 @@ overlap_memory_size -- how many non-word phraselet matches to the left should be
 oneshot -- whether the same word or relationship matched multiple times within a
     single document should be counted once only (value 'True') or multiple times
     (value 'False')
+match_all_words -- whether all single words should be taken into account
+          (value 'True') or only single words with noun tags (value 'False')          
 verbose -- if 'True', information about training progress is outputted to the console.
 ```
 
@@ -1877,11 +1879,14 @@ The supervised document classification use case relies on the same phraselets as
 1. All phraselets are extracted from all training documents and registered with a structural matcher.
 2. Each training document is then matched against the totality of extracted phraselets and the number of times
 each phraselet is matched within training documents with each classification label is recorded. Whether multiple
-occurrences within a single document are taken into account depends on the value of `oneshot`. Wherever two
-phraselet matches overlap, a combined match is recorded. Combined matches are treated in the same way as
-other phraselet matches in further processing. This means that effectively the algorithm picks up one-word, two-word
-normal three-word semantic combinations. See [here](#improve-performance-of-supervised-document-classification-training)
-for a discussion of the performance of this step.
+occurrences within a single document are taken into account depends on the value of `oneshot`; whether
+single-word phraselets are generated for all matchable words or only for those matchable words whose
+part-of-speech tags match the single-word phraselet template specification depends on the value
+of `match_all_words`. Wherever two phraselet matches overlap, a combined match is recorded. Combined matches are
+treated in the same way as other phraselet matches in further processing. This means that effectively the
+algorithm picks up one-word, two-word and three-word semantic combinations.
+See [here](#improve-performance-of-supervised-document-classification-training) for a discussion of the
+performance of this step.
 3. The results for each phraselet are examined and phraselets are removed from the model that do not play a
 statistically significant role in predicting classifications. Phraselets are removed that did not match within
 the documents of any classification a minimum number of times ('minimum_occurrences'; default: 4) or where the

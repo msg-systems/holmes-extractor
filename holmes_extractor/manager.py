@@ -267,7 +267,7 @@ class Manager:
             # if the user registered search phrases additional to the generated phraselets
 
     def get_supervised_topic_training_basis(self, *, classification_ontology=None,
-            overlap_memory_size=10, oneshot=True, verbose=True):
+            overlap_memory_size=10, oneshot=True, match_all_words=False, verbose=True):
         """ Returns an object that is used to train and generate a document model.
 
             Parameters:
@@ -278,12 +278,15 @@ class Manager:
                 checked for words in common with a current match.
             oneshot -- whether the same word or relationship matched multiple times should be
                 counted once only (value 'True') or multiple times (value 'False')
+            match_all_words -- whether all single words should be taken into account
+                (value 'True') or only single words with noun tags (value 'False')
             verbose -- if 'True', information about training progres is outputted to the console.
         """
         return SupervisedTopicTrainingBasis(
                 structural_matcher=self._new_supervised_topic_structural_matcher(verbose),
                 classification_ontology=classification_ontology,
-                overlap_memory_size=overlap_memory_size, oneshot=oneshot, verbose=verbose)
+                overlap_memory_size=overlap_memory_size, oneshot=oneshot,
+                match_all_words=match_all_words, verbose=verbose)
 
     def deserialize_supervised_topic_classifier(self, serialized_model):
         """ Returns a document classifier that will use a pre-trained model.

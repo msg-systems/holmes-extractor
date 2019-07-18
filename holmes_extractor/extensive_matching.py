@@ -352,7 +352,7 @@ class SupervisedTopicTrainingBasis:
         'SupervisedTopicModelTrainer' objects can be derived.
     """
     def __init__(self, *, structural_matcher, classification_ontology, overlap_memory_size,
-            oneshot, verbose):
+            oneshot, match_all_words, verbose):
         """ Parameters:
 
             structural_matcher -- the structural matcher to use.
@@ -362,12 +362,15 @@ class SupervisedTopicTrainingBasis:
                 checked for words in common with a current match.
             oneshot -- whether the same word or relationship matched multiple times should be
                 counted once only (value 'True') or multiple times (value 'False')
-            verbose -- if 'True', information about training progres is outputted to the console.
+            match_all_words -- whether all single words should be taken into account
+                (value 'True') or only single words with noun tags (value 'False')
+            verbose -- if 'True', information about training progress is outputted to the console.
         """
         self.semantic_analyzer = structural_matcher.semantic_analyzer
         self.structural_matcher = structural_matcher
         self.classification_ontology = classification_ontology
         self._utils = SupervisedTopicTrainingUtils(overlap_memory_size, oneshot)
+        self._match_all_words = match_all_words
         self.verbose = verbose
 
         self.training_documents = {}
@@ -412,7 +415,7 @@ class SupervisedTopicTrainingBasis:
         self.serialized_phraselets.extend(
                 self.structural_matcher.register_phraselets(doc,
                 replace_with_hypernym_ancestors=True,
-                match_all_words=False,
+                match_all_words=self._match_all_words,
                 returning_serialized_phraselets = True))
         self.structural_matcher.register_document(doc, label)
         self.training_documents_labels_to_classifications_dict[label] = classification

@@ -226,6 +226,56 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
         self.assertEqual(stc2.parse_and_classify("Your dog appears to be on a lead."),
                 ['animal', 'dog', 'hound'])
 
+    def test_whole_scenario_with_classification_ontology_and_match_all_words(self):
+        sttb = holmes_manager.get_supervised_topic_training_basis(classification_ontology=ontology,
+                match_all_words=True, oneshot=False)
+        sttb.parse_and_register_training_document("A puppy", 'puppy', 'd0')
+        sttb.parse_and_register_training_document("A pussy", 'cat', 'd1')
+        sttb.parse_and_register_training_document("A dog on a lead", 'dog', 'd2')
+        sttb.parse_and_register_training_document("Mimi Momo", 'Mimi Momo', 'd3')
+        sttb.parse_and_register_training_document("An animal", 'animal', 'd4')
+        sttb.parse_and_register_training_document("A computer", 'computers', 'd5')
+        sttb.parse_and_register_training_document("A robot", 'computers', 'd6')
+        sttb.register_additional_classification_label('parrot')
+        sttb.register_additional_classification_label('hound')
+        sttb.prepare()
+        self.assertEqual({'Mimi Momo': ['animal', 'cat'], 'dog': ['animal', 'hound'],
+                'puppy': ['animal', 'dog', 'hound'], 'cat': ['animal'], 'hound':
+                ['animal', 'dog']},
+                sttb.classification_implication_dict)
+        self.assertEqual(['Mimi Momo', 'animal', 'cat', 'computers', 'dog', 'hound', 'puppy'],
+                sttb.classifications)
+        trainer = sttb.train(minimum_occurrences=0, cv_threshold=0, mlp_max_iter=10000)
+        self.assertEqual(['word: animal', 'word: computer', 'word: lead', 'word: on',
+                'word: robot'],
+                list(trainer._sorted_label_dict.keys()))
+        self.assertEqual([[1.0, 0.0, 0.0, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0],
+                [1.0, 0.0, 1.0, 1.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 1.0]], trainer._input_matrix.toarray().tolist())
+        self.assertEqual([[0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0], [0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0], [1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0], [0.0,
+                1.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0,
+                1.0, 0.0, 0.0, 0.0]], trainer._output_matrix.toarray().tolist())
+        self.assertEqual([5,5,6], trainer._hidden_layer_sizes)
+        stc = trainer.classifier()
+        self.assertEqual(stc.parse_and_classify("You are a robot."), ['computers'])
+        self.assertEqual(stc.parse_and_classify("You are a cat."), ['animal'])
+        self.assertEqual(stc.parse_and_classify("My name is Charles and I like sewing."), [])
+        self.assertEqual(stc.parse_and_classify("Your dog appears to be on a lead."),
+                ['animal', 'dog', 'hound'])
+        serialized_supervised_topic_classifier_model = stc.serialize_model()
+        stc2 = no_ontology_holmes_manager.deserialize_supervised_topic_classifier(
+                serialized_supervised_topic_classifier_model)
+        self.assertEqual(['word: animal', 'word: computer', 'word: lead', 'word: on',
+                'word: robot'],
+                list(stc2._model.sorted_label_dict.keys()))
+        self.assertEqual(stc2.parse_and_classify("You are a robot."), ['computers'])
+        self.assertEqual(stc2.parse_and_classify("You are a cat."), ['animal'])
+        self.assertEqual(stc2.parse_and_classify("My name is Charles and I like sewing."), [])
+        self.assertEqual(stc2.parse_and_classify("Your dog appears to be on a lead."),
+                ['animal', 'dog', 'hound'])
+
     def test_filtering(self):
         sttb = holmes_manager.get_supervised_topic_training_basis()
         sttb.parse_and_register_training_document("A dog chases a cat", 'animals')
