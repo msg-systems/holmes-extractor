@@ -5,12 +5,13 @@ from holmes_extractor.tests.testing_utils import HolmesInstanceManager
 
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join((script_directory,'test_ontology.owl')))
-ontology_holmes_manager = HolmesInstanceManager(ontology).en_core_web_lg_ontology
+ontology_holmes_manager = HolmesInstanceManager(ontology).en_core_web_lg_nocoref_ontology
 symmetric_ontology = holmes.Ontology(os.sep.join((script_directory,'test_ontology.owl')),
         symmetric_matching = True)
-symmetric_ontology_holmes_manager = holmes.Manager(model='en_core_web_lg',
-        ontology=symmetric_ontology)
-no_ontology_coref_holmes_manager = holmes.Manager(model='en_coref_lg')
+symmetric_ontology_nocoref_holmes_manager = holmes.Manager(model='en_core_web_lg',
+        ontology=symmetric_ontology, perform_coreference_resolution=False)
+no_ontology_coref_holmes_manager = holmes.Manager(model='en_core_web_lg',
+        perform_coreference_resolution=False)
 
 class EnglishPhraseletProductionTest(unittest.TestCase):
 
@@ -120,49 +121,49 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                 ['predicate-patient: see-rainbows', 'word: rainbows'], False)
 
     def test_class_entry_in_ontology_symmetric_ontology(self):
-        self._check_equals(symmetric_ontology_holmes_manager, "A dog progresses",
+        self._check_equals(symmetric_ontology_nocoref_holmes_manager, "A dog progresses",
                 ['predicate-actor: progress-animal', 'word: animal'])
 
     def test_multiword_class_entry_in_ontology_symmetric_ontology(self):
-        self._check_equals(symmetric_ontology_holmes_manager, "A big cat creature",
+        self._check_equals(symmetric_ontology_nocoref_holmes_manager, "A big cat creature",
                 ['governor-adjective: animal-big', 'word: animal'])
 
     def test_individual_entry_in_ontology_symmetric_ontology(self):
-        self._check_equals(symmetric_ontology_holmes_manager, "Fido progresses",
+        self._check_equals(symmetric_ontology_nocoref_holmes_manager, "Fido progresses",
                 ['predicate-actor: progress-animal', 'word: animal'])
 
     def test_multiword_individual_entry_in_ontology_symmetric_ontology(self):
-        self._check_equals(symmetric_ontology_holmes_manager, "Mimi Momo progresses",
+        self._check_equals(symmetric_ontology_nocoref_holmes_manager, "Mimi Momo progresses",
                 ['predicate-actor: progress-animal', 'word: animal'])
 
     def test_class_entry_in_ontology_no_hypernym_replacement_symmetric_ontology(self):
-        self._check_equals(symmetric_ontology_holmes_manager, "A dog progresses",
+        self._check_equals(symmetric_ontology_nocoref_holmes_manager, "A dog progresses",
                 ['predicate-actor: progress-dog', 'word: dog'], False)
 
     def test_multiword_class_entry_in_ontology_no_hypernym_replacement_symmetric_ontology(self):
-        self._check_equals(symmetric_ontology_holmes_manager, "A big cat creature",
+        self._check_equals(symmetric_ontology_nocoref_holmes_manager, "A big cat creature",
                 ['governor-adjective: cat creature-big', 'word: cat creature'], False)
 
     def test_individual_entry_in_ontology_no_hypernym_replacement_symmetric_ontology(self):
-        self._check_equals(symmetric_ontology_holmes_manager, "Fido progresses",
+        self._check_equals(symmetric_ontology_nocoref_holmes_manager, "Fido progresses",
                 ['predicate-actor: progress-fido', 'word: fido'], False)
 
     def test_multiword_individual_entry_in_ontology_no_hypernym_replacement_symm_ontology(self):
-        self._check_equals(symmetric_ontology_holmes_manager, "Mimi Momo progresses",
+        self._check_equals(symmetric_ontology_nocoref_holmes_manager, "Mimi Momo progresses",
                 ['predicate-actor: progress-mimi momo', 'word: mimi momo'], False)
 
     def test_multiword_not_in_ontology_symmetric_ontology(self):
-        self._check_equals(symmetric_ontology_holmes_manager, "Information extraction progresses",
+        self._check_equals(symmetric_ontology_nocoref_holmes_manager, "Information extraction progresses",
                 ['predicate-actor: progress-extraction', 'noun-noun: extraction-information',
                         'word: information', 'word: extraction'])
 
     def test_text_in_ontology_lemma_not_in_ontology_symmetric_ontology(self):
-        self._check_equals(symmetric_ontology_holmes_manager,
+        self._check_equals(symmetric_ontology_nocoref_holmes_manager,
                 "He saw rainbows",
                 ['predicate-patient: see-arc', 'word: arc'])
 
     def test_text_in_ontology_lemma_not_in_ontology_no_hypernym_replacement_symm_ontology(self):
-        self._check_equals(symmetric_ontology_holmes_manager,
+        self._check_equals(symmetric_ontology_nocoref_holmes_manager,
                 "He saw rainbows",
                 ['predicate-patient: see-rainbows', 'word: rainbows'], False)
 

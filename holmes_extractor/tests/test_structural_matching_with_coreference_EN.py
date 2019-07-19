@@ -5,7 +5,7 @@ from holmes_extractor.tests.testing_utils import HolmesInstanceManager
 
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join((script_directory,'test_ontology.owl')))
-coref_holmes_manager = HolmesInstanceManager(ontology).en_coref_lg_ontology
+coref_holmes_manager = HolmesInstanceManager(ontology).en_core_web_lg_coref_ontology
 coref_holmes_manager.register_search_phrase("A dog chases a cat")
 coref_holmes_manager.register_search_phrase("A big horse chases a cat")
 coref_holmes_manager.register_search_phrase("A tiger chases a little cat")
@@ -20,10 +20,10 @@ coref_holmes_manager.register_search_phrase("A leopard chases a leopard")
 coref_holmes_manager.register_search_phrase("A holiday is hard to find")
 coref_holmes_manager.register_search_phrase("A man sings")
 coref_holmes_manager.register_search_phrase("Somebody finds a policy")
-no_coref_holmes_manager = holmes.Manager(model='en_coref_lg', ontology=ontology,
+no_coref_holmes_manager = holmes.Manager(model='en_core_web_lg', ontology=ontology,
         perform_coreference_resolution=False)
 no_coref_holmes_manager.register_search_phrase("A dog chases a cat")
-embeddings_coref_holmes_manager = holmes.Manager(model='en_coref_lg',
+embeddings_coref_holmes_manager = holmes.Manager(model='en_core_web_lg',
         overall_similarity_threshold=0.85)
 embeddings_coref_holmes_manager.register_search_phrase('A man loves a woman')
 

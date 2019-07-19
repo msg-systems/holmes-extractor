@@ -28,7 +28,7 @@ class Manager:
             embedding_based_matching_on_root_words=False, ontology=None,
             perform_coreference_resolution=None, debug=False):
         self.semantic_analyzer = SemanticAnalyzerFactory().semantic_analyzer(model=model,
-                debug=debug)
+                perform_coreference_resolution=perform_coreference_resolution, debug=debug)
         if perform_coreference_resolution == None:
             perform_coreference_resolution = \
                     self.semantic_analyzer.model_supports_coreference_resolution()
@@ -91,7 +91,7 @@ class Manager:
             which is intended for use cases where single documents (user entries) are
             matched to predefined search phrases.
         """
-        if self.semantic_analyzer.model_supports_coreference_resolution():
+        if self.perform_coreference_resolution:
             raise SerializationNotSupportedError(self.semantic_analyzer.model)
         doc = self.semantic_analyzer.from_serialized_string(document)
         self.semantic_analyzer.debug_structures(doc) # only has effect when debug=True
@@ -121,7 +121,7 @@ class Manager:
         label -- the label of the document to be serialized.
         """
 
-        if self.semantic_analyzer.model_supports_coreference_resolution():
+        if self.perform_coreference_resolution:
             raise SerializationNotSupportedError(self.semantic_analyzer.model)
         doc = self.structural_matcher.get_document(label)
         if doc != None:

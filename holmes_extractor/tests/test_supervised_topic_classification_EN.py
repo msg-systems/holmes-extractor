@@ -6,9 +6,9 @@ from holmes_extractor.tests.testing_utils import HolmesInstanceManager
 
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join((script_directory,'test_ontology.owl')))
-holmes_manager = HolmesInstanceManager(ontology).en_coref_lg_ontology
-no_ontology_holmes_manager = HolmesInstanceManager(ontology).en_coref_lg
-no_coref_holmes_manager = HolmesInstanceManager(ontology).en_core_web_lg_ontology
+holmes_manager = HolmesInstanceManager(ontology).en_core_web_lg_coref_ontology
+no_ontology_holmes_manager = HolmesInstanceManager(ontology).en_core_web_lg_coref
+no_coref_holmes_manager = HolmesInstanceManager(ontology).en_core_web_lg_nocoref_ontology
 
 class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
 

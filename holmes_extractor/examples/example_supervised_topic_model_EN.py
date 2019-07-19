@@ -65,7 +65,7 @@ def train_model(working_directory, zip_filename):
         f.write(classifier.serialize_model())
     evaluate_classifier(working_directory, zip_filename, classifier)
 
-holmes_manager = holmes.Manager('en_coref_lg')
+holmes_manager = holmes.Manager('en_core_web_lg')
 
 if os.path.exists(working_directory):
     if not os.path.isdir(working_directory):

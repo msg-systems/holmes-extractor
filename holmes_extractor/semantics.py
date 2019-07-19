@@ -1,4 +1,5 @@
 import spacy
+import neuralcoref
 from .errors import WrongModelDeserializationError, DocumentTooBigError
 from spacy.tokens import Token, Doc
 from abc import ABC, abstractmethod
@@ -177,12 +178,14 @@ class SemanticAnalyzerFactory():
         if additional *SemanticAnalyzer* implementations are added for new languages.
     """
 
-    def semantic_analyzer(self, *, model, debug=False):
+    def semantic_analyzer(self, *, model, perform_coreference_resolution, debug=False):
         language = model[0:2]
         if language == 'en':
-            return EnglishSemanticAnalyzer(model=model, debug=debug)
+            return EnglishSemanticAnalyzer(model=model,
+                    perform_coreference_resolution=perform_coreference_resolution, debug=debug)
         elif language == 'de':
-            return GermanSemanticAnalyzer(model=model, debug=debug)
+            return GermanSemanticAnalyzer(model=model,
+                    perform_coreference_resolution=perform_coreference_resolution, debug=debug)
         else:
             raise ValueError(
                 ' '.join(['No semantic analyzer for model', language]))
@@ -197,14 +200,22 @@ class SemanticAnalyzer(ABC):
         implementation where they can be illustrated with direct examples.
     """
 
-    def __init__(self, *, model, debug):
+    def __init__(self, *, model, perform_coreference_resolution, debug):
         """Args:
 
         model -- the name of the spaCy model
+        perform_coreference_resolution -- *True* if neuralcoref should be added to the pipe,
+                *None* if neuralcoref should be added to the pipe if coreference resolution is
+                available for the model
         debug -- *True* if the object should print a representation of each parsed document
         """
         self.nlp = spacy.load(model)
+        if perform_coreference_resolution == None and self.model_supports_coreference_resolution():
+            perform_coreference_resolution = True
+        if perform_coreference_resolution:
+            neuralcoref.add_to_pipe(self.nlp)
         self.model = model
+        self.perform_coreference_resolution = perform_coreference_resolution
         self.debug = debug
 
     Token.set_extension('holmes', default='')
@@ -260,7 +271,7 @@ class SemanticAnalyzer(ABC):
         return self.nlp.meta['vectors']['vectors'] > 0
 
     def model_supports_coreference_resolution(self):
-        return self.nlp.has_pipe('neuralcoref')
+        return self._model_supports_coreference_resolution
 
     def dependency_labels_match(self, *, search_phrase_dependency_label, document_dependency_label):
         """Determines whether a dependency label in a search phrase matches a dependency label in
@@ -324,7 +335,7 @@ class SemanticAnalyzer(ABC):
                 return return_string
 
     def is_involved_in_coreference(self, token):
-        if self.model_supports_coreference_resolution() and token.doc._.has_coref:
+        if self.perform_coreference_resolution and token.doc._.has_coref:
             for cluster in token._.coref_clusters:
                 for mention in cluster.mentions:
                     if mention.root.i == token.i or token.i in \
@@ -406,6 +417,8 @@ class SemanticAnalyzer(ABC):
     _mark_child_dependencies_copied_to_siblings_as_uncertain = NotImplemented
 
     _maximum_mentions_in_coreference_chain = NotImplemented
+
+    _model_supports_coreference_resolution = NotImplemented
 
     phraselet_templates = NotImplemented
 
@@ -711,6 +724,9 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
     # Coreference chains are only processed up to this number of mentions away from the currently
     # matched document location
     _maximum_mentions_in_coreference_chain = 3
+
+    # Presently depends purely on the language
+    _model_supports_coreference_resolution = True
 
     # The templates used to generate topic matching phraselets.
     phraselet_templates = [
@@ -1147,6 +1163,9 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
     # Never used at the time of writing
     _maximum_mentions_in_coreference_chain = 3
 
+    # Presently depends purely on the language
+    _model_supports_coreference_resolution = False
+
     phraselet_templates = [
         PhraseletTemplate("verb-nom", "Eine Sache tut", 2, 1,
                 ['sb'],
@@ -1236,7 +1255,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                                 #it as non-matchable
                                 for grandchild_dependency in child_or_sib._.holmes.children:
                                     grandchild = token.doc[grandchild_dependency.child_index]
-                                    if (grandchild_dependency.label == 'sbp' and
+                                    if (grandchild_dependency.label in ('sbp','op') and
                                             grandchild._.holmes.lemma in ('von', 'vom')) or \
                                             (grandchild_dependency.label == 'mo' and
                                             grandchild._.holmes.lemma == 'durch'):

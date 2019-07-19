@@ -5,7 +5,7 @@ from holmes_extractor.tests.testing_utils import HolmesInstanceManager
 
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join((script_directory,'test_ontology.owl')))
-holmes_manager = HolmesInstanceManager(ontology).en_core_web_lg
+holmes_manager = HolmesInstanceManager(ontology).en_core_web_lg_nocoref
 
 class MatchingModesTest(unittest.TestCase):
 

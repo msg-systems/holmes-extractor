@@ -1,7 +1,8 @@
 import unittest
 from holmes_extractor.semantics import SemanticAnalyzerFactory
 
-analyzer = SemanticAnalyzerFactory().semantic_analyzer(model='en_coref_lg', debug=False)
+analyzer = SemanticAnalyzerFactory().semantic_analyzer(model='en_core_web_lg', debug=False,
+        perform_coreference_resolution=True)
 
 class EnglishSemanticAnalyzerTest(unittest.TestCase):
 
@@ -120,10 +121,10 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[3]._.holmes.string_representation_of_children(), '1:nsubjpass; 2:auxpass')
 
     def test_used_to_positive(self):
-        doc = analyzer.parse("The dog used to chase the cat")
-        self.assertEqual(doc[2]._.holmes.string_representation_of_children(), '-5:None')
-        self.assertEqual(doc[4]._.holmes.string_representation_of_children(),
-                '1:nsubj; 3:aux; 6:dobj')
+        doc = analyzer.parse("The dog always used to chase the cat")
+        self.assertEqual(doc[3]._.holmes.string_representation_of_children(), '-6:None')
+        self.assertEqual(doc[5]._.holmes.string_representation_of_children(),
+                '1:nsubj; 2:advmod; 4:aux; 7:dobj')
 
     def test_used_to_negative_1(self):
         doc = analyzer.parse("The dog was used to chase the cat")
@@ -181,10 +182,10 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         doc = analyzer.parse(
                 "The mouse ordered the dog and the cat to be chased by the cat and the tiger")
         self.assertEqual(doc[10]._.holmes.string_representation_of_children(),
-                '4:nsubjpass(U); 7:nsubjpass(U); 8:aux; 9:auxpass; 11:agent; 13:pobjb; 16:pobjb')
+                '4:nsubjpass; 7:nsubjpass; 8:aux; 9:auxpass; 11:agent; 13:pobjb; 16:pobjb')
 
     def test_complementizing_clause_atypical_conjunction(self):
-        doc = analyzer.parse("I had spent three years thinking and that I knew")
+        doc = analyzer.parse("I had spent three years ruminating and that I knew")
         self.assertEqual(doc[5]._.holmes.string_representation_of_children(),
                 '4:nsubj(U)')
 
@@ -254,11 +255,6 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         doc = analyzer.parse("The cat the dog chased was tired")
         self.assertEqual(doc[4]._.holmes.string_representation_of_children(), '1:relant; 3:nsubj')
 
-    def test_relant_many_antecedents(self):
-        doc = analyzer.parse("The cat and the mouse the dog and the tiger chased were tired")
-        self.assertEqual(doc[10]._.holmes.string_representation_of_children(),
-                '1:relant(U); 4:relant; 6:nsubj; 9:nsubj')
-
     def test_relant_many_antecedents_and_predicate_conjunction(self):
         doc = analyzer.parse("The cat and the mouse the dog chased and pursued were tired")
         self.assertEqual(doc[7]._.holmes.string_representation_of_children(),
@@ -267,7 +263,7 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
                 '1:relant(U); 4:relant; 6:nsubj(U)')
 
     def test_relant_multiple_predicate_conjunction(self):
-        doc = analyzer.parse("The cat the dog pursued, chased and caught was dead")
+        doc = analyzer.parse("The cat the dog pursued, caught and chased was dead")
         self.assertEqual(doc[4]._.holmes.string_representation_of_children(),
                 '1:relant; 3:nsubj; 6:conj')
         self.assertEqual(doc[6]._.holmes.string_representation_of_children(),
@@ -429,13 +425,13 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
     def test_dative_prepositional_phrase(self):
         doc = analyzer.parse("He gave it to the employee")
         self.assertEqual(doc[1]._.holmes.string_representation_of_children(),
-                '0:nsubj; 2:dobj; 3:dative; 5:dative')
+                '0:nsubj; 2:dobj; 3:prep; 5:pobjt')
         self.assertFalse(doc[3]._.holmes.is_matchable)
 
     def test_dative_prepositional_phrase_with_conjunction(self):
         doc = analyzer.parse("He gave it to the employee and the boss")
         self.assertEqual(doc[1]._.holmes.string_representation_of_children(),
-                '0:nsubj; 2:dobj; 3:dative; 5:dative; 8:dative')
+                '0:nsubj; 2:dobj; 3:prep; 5:pobjt; 8:pobjt')
         self.assertFalse(doc[3]._.holmes.is_matchable)
 
     def test_simple_participle_phrase(self):
@@ -566,16 +562,16 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
     def test_verb_prepositional_complement_with_conjunction_of_dependent_verb(self):
         doc = analyzer.parse("The cat and the mouse kept on singing and shouting")
         self.assertEqual(doc[7]._.holmes.string_representation_of_children(),
-                '1:nsubj(U); 4:nsubj(U); 8:cc; 9:conj')
-        self.assertEqual(doc[9]._.holmes.string_representation_of_children(),
                 '1:nsubj(U); 4:nsubj(U)')
+        self.assertEqual(doc[9]._.holmes.string_representation_of_children(),
+                '1:nsubj(U); 4:nsubj(U); 6:prt(U); 7:xcomp(U)')
 
     def test_verb_p_c_with_conjunction_of_dependent_verb_and_coreferring_pronoun(self):
         doc = analyzer.parse("I saw a cat. It kept on singing and shouting")
         self.assertEqual(doc[8]._.holmes.string_representation_of_children(),
-                '5:nsubj(U); 9:cc; 10:conj')
-        self.assertEqual(doc[10]._.holmes.string_representation_of_children(),
                 '5:nsubj(U)')
+        self.assertEqual(doc[10]._.holmes.string_representation_of_children(),
+                '5:nsubj(U); 7:prt(U); 8:xcomp(U)')
 
     def test_verb_p_c_with_conjunction_of_dependent_verb_and_non_coreferring_pronoun(self):
         doc = analyzer.parse("It kept on singing and shouting")
