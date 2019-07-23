@@ -752,16 +752,17 @@ class StructuralMatcher:
                         return True
 
         if search_phrase_token.i in search_phrase.matchable_non_entity_tokens_to_lexemes.keys():
-            similarity_measure = search_phrase.matchable_non_entity_tokens_to_lexemes[
-                    search_phrase_token.i].similarity(document_token)
-            if similarity_measure > search_phrase.single_token_similarity_threshold:
-                if not search_phrase.topic_match_phraselet:
-                    search_phrase_word_to_use = search_phrase_token.lemma_
-                else:
-                    search_phrase_word_to_use = search_phrase_token._.holmes.lemma
-                handle_match(search_phrase_word_to_use, document_token.lemma_, 'embedding', 0,
-                        similarity_measure = similarity_measure)
-                return True
+            lexeme = search_phrase.matchable_non_entity_tokens_to_lexemes[search_phrase_token.i]
+            if lexeme.vector_norm > 0 and document_token.vector_norm > 0:
+                similarity_measure = lexeme.similarity(document_token)
+                if similarity_measure > search_phrase.single_token_similarity_threshold:
+                    if not search_phrase.topic_match_phraselet:
+                        search_phrase_word_to_use = search_phrase_token.lemma_
+                    else:
+                        search_phrase_word_to_use = search_phrase_token._.holmes.lemma
+                    handle_match(search_phrase_word_to_use, document_token.lemma_, 'embedding', 0,
+                            similarity_measure = similarity_measure)
+                    return True
         return False
 
     def _is_entity_search_phrase_token(self, search_phrase_token,
@@ -1121,14 +1122,14 @@ class StructuralMatcher:
                         for document_word in registered_document.words_to_token_indexes_dict.keys():
                             indexes_to_match = registered_document.words_to_token_indexes_dict[
                                     document_word]
-                            similarity_measure = \
-                                    search_phrase.matchable_non_entity_tokens_to_lexemes[
-                                    search_phrase.root_token.i].similarity(
-                                    doc[indexes_to_match[0]])
-                            if similarity_measure >= \
-                                    search_phrase.single_token_similarity_threshold:
-                                matched_indexes_set.update(indexes_to_match)
-                                working_indexes_to_match_for_cache_set.update(indexes_to_match)
+                            lexeme = search_phrase.matchable_non_entity_tokens_to_lexemes[
+                                    search_phrase.root_token.i]
+                            if lexeme.vector_norm > 0 and doc[indexes_to_match[0]].vector_norm > 0:
+                                similarity_measure = lexeme.similarity(doc[indexes_to_match[0]])
+                                if similarity_measure >= \
+                                        search_phrase.single_token_similarity_threshold:
+                                    matched_indexes_set.update(indexes_to_match)
+                                    working_indexes_to_match_for_cache_set.update(indexes_to_match)
                         root_lexeme_to_indexes_to_match_dict[root_token_lemma_to_use] = \
                                 working_indexes_to_match_for_cache_set
                 for index_to_match in sorted(matched_indexes_set):
