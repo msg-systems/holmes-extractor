@@ -1231,9 +1231,9 @@ relationships they contain, taking any structural matching ontology into account
 classification tasks, this is exactly what is required; but there are tasks (e.g. author attribution according
 to the frequency of grammatical constructions typical for each author) where it is not. For the right task,
 Holmes achieves impressive results. For the BBC Documents benchmark
-processed by the example script, Holmes predicts the correct classification 98.5% of the time; in 0.2% of the
+processed by the example script, Holmes predicts the correct classification 97.9% of the time; in 0.6% of the
 remaining cases it predicts two labels and the less probable of the two is the correct one. This is
-somewhat better than benchmarks available online (see [here](https://github.com/suraj-deshmukh/BBC-Dataset-News-Classification)
+slightly better than benchmarks available online (see [here](https://github.com/suraj-deshmukh/BBC-Dataset-News-Classification)
 and [here](https://cloud.google.com/blog/products/gcp/problem-solving-with-ml-automatic-document-classification))
 although the difference is probably too slight to be significant, especially given that the different
 training/test splits were used in each case. At the same time, however, the fact that zero and multiple
