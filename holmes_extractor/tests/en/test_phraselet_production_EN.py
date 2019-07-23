@@ -1,17 +1,17 @@
 import unittest
 import holmes_extractor as holmes
 import os
-from holmes_extractor.tests.testing_utils import HolmesInstanceManager
 
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join((script_directory,'test_ontology.owl')))
-ontology_holmes_manager = HolmesInstanceManager(ontology).en_core_web_lg_nocoref_ontology
+ontology_holmes_manager = holmes.Manager(model='en_core_web_lg',
+        perform_coreference_resolution=False, ontology=ontology)
 symmetric_ontology = holmes.Ontology(os.sep.join((script_directory,'test_ontology.owl')),
         symmetric_matching = True)
 symmetric_ontology_nocoref_holmes_manager = holmes.Manager(model='en_core_web_lg',
         ontology=symmetric_ontology, perform_coreference_resolution=False)
 no_ontology_coref_holmes_manager = holmes.Manager(model='en_core_web_lg',
-        perform_coreference_resolution=False)
+        perform_coreference_resolution=True)
 
 class EnglishPhraseletProductionTest(unittest.TestCase):
 
@@ -34,8 +34,9 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                 ['predicate-actor: grow-plant', 'word: plant'])
 
     def test_phrasal_verb_subject_no_entry_in_ontology(self):
-        self._check_equals(ontology_holmes_manager, "A plant grows up",
-                ['predicate-actor: grow up-plant', 'word: plant'])
+        self._check_equals(ontology_holmes_manager, "A plant grows up quickly",
+                ['governor-adjective: grow up-quickly', 'predicate-actor: grow up-plant',
+                        'word: plant'])
 
     def test_verb_direct_object_no_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "A plant is grown",

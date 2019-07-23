@@ -1,14 +1,10 @@
 import unittest
-import os
 import holmes_extractor as holmes
 from holmes_extractor.errors import *
-from holmes_extractor.tests.testing_utils import HolmesInstanceManager
 
-script_directory = os.path.dirname(os.path.realpath(__file__))
-ontology = holmes.Ontology(os.sep.join((script_directory,'test_ontology.owl')))
-nocoref_holmes_manager = HolmesInstanceManager(ontology).en_core_web_lg_nocoref
-german_holmes_manager = HolmesInstanceManager(ontology).de_core_news_sm
-coref_holmes_manager = HolmesInstanceManager(ontology).en_core_web_lg_coref
+nocoref_holmes_manager = holmes.Manager('en_core_web_lg', perform_coreference_resolution=False)
+coref_holmes_manager = holmes.Manager('en_core_web_lg', perform_coreference_resolution=True)
+german_holmes_manager = holmes.Manager('de_core_news_md')
 
 class ErrorsTest(unittest.TestCase):
 
@@ -23,7 +19,7 @@ class ErrorsTest(unittest.TestCase):
 
     def test_model_does_not_support_embeddings(self):
         with self.assertRaises(ValueError) as context:
-            holmes.Manager(model='de_core_news_sm', overall_similarity_threshold=0.85)
+            holmes.Manager(model='en_core_web_sm', overall_similarity_threshold=0.85)
 
     def test_language_not_supported(self):
         with self.assertRaises(ValueError) as context:
@@ -31,7 +27,7 @@ class ErrorsTest(unittest.TestCase):
 
     def test_coreference_resolution_not_supported_error(self):
         with self.assertRaises(ValueError) as context:
-            holmes.Manager(model='de_core_news_sm', perform_coreference_resolution=True)
+            holmes.Manager(model='de_core_news_md', perform_coreference_resolution=True)
 
     def test_search_phrase_contains_conjunction(self):
         with self.assertRaises(SearchPhraseContainsConjunctionError) as context:

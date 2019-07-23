@@ -1,9 +1,8 @@
 import unittest
 import holmes_extractor as holmes
 from holmes_extractor.extensive_matching import SupervisedTopicClassifier
-from holmes_extractor.tests.testing_utils import HolmesInstanceManager
 
-holmes_manager = holmes.Manager('de_core_news_sm')
+holmes_manager = holmes.Manager('de_core_news_md')
 
 class GermanSupervisedTopicClassificationTest(unittest.TestCase):
 

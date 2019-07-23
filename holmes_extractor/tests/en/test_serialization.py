@@ -1,11 +1,11 @@
 import unittest
 import os
 import holmes_extractor as holmes
-from holmes_extractor.tests.testing_utils import HolmesInstanceManager
 
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join((script_directory,'test_ontology.owl')))
-nocoref_holmes_manager = HolmesInstanceManager(ontology).en_core_web_lg_nocoref
+nocoref_holmes_manager = holmes.Manager('en_core_web_lg',
+        perform_coreference_resolution=False)
 nocoref_holmes_manager.register_search_phrase("A dog chases a cat")
 
 class SerializationTest(unittest.TestCase):

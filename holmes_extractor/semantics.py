@@ -622,6 +622,7 @@ class SemanticAnalyzer(ABC):
         from_token._.holmes.children = [SemanticDependency(from_token.i, 0 - (to_token.i + 1))]
         to_token._.holmes.righthand_siblings.extend(
             from_token._.holmes.righthand_siblings)
+        from_token._.holmes.righthand_siblings = []
         if from_token._.holmes.is_involved_in_or_conjunction:
             to_token._.holmes.is_involved_in_or_conjunction = True
         if from_token._.holmes.is_negated:
@@ -651,7 +652,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
 
     # The part of speech tags that can refer to the subject of a adjectival predicate
     # ("dog" in "The dog is tired")
-    _adjectival_predicate_subject_pos = ('NOUN', 'PROPN')
+    _adjectival_predicate_subject_pos = ('NOUN', 'PROPN', 'PRON')
 
     # Dependency labels that mark noun kernel elements that are not the head noun
     noun_kernel_dep = ('nmod', 'compound', 'appos', 'nummod')
@@ -659,10 +660,10 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
     # Dependency labels that can mark righthand siblings
     sibling_marker_deps = ('conj', 'appos')
 
-    # Dependency label that marks the subject of a adjectival predicate
+    # Dependency label that marks the subject of an adjectival predicate
     _adjectival_predicate_subject_dep = 'nsubj'
 
-    # Dependency label that marks the predicate of a adjectival predicate
+    # Dependency label that marks the predicate of an adjectival predicate
     _adjectival_predicate_predicate_dep = 'acomp'
 
     # Dependency label that marks a modifying adjective
@@ -1026,6 +1027,15 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                         SemanticDependency(token.i, child_dependency.child_index,
                         working_dependency_label))
 
+        # handle present active participles
+        if token.dep_ == 'acl' and token.tag_ == 'VBG':
+            lefthand_sibling = self._lefthand_sibling_recursively(token.head)
+            for antecedent in \
+                    lefthand_sibling._.holmes.loop_token_and_righthand_siblings(token.doc):
+                if token.i != antecedent.i:
+                    token._.holmes.children.append(
+                        SemanticDependency(token.i, antecedent.i, 'nsubj'))
+
         # handle past passive participles
         if token.dep_ == 'acl' and token.tag_ == 'VBN':
             lefthand_sibling = self._lefthand_sibling_recursively(token.head)
@@ -1255,10 +1265,10 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                                 #it as non-matchable
                                 for grandchild_dependency in child_or_sib._.holmes.children:
                                     grandchild = token.doc[grandchild_dependency.child_index]
-                                    if (grandchild_dependency.label in ('sbp','op') and
+                                    if (grandchild_dependency.label == 'sbp' and
                                             grandchild._.holmes.lemma in ('von', 'vom')) or \
                                             (grandchild_dependency.label == 'mo' and
-                                            grandchild._.holmes.lemma == 'durch'):
+                                            grandchild._.holmes.lemma in ('von', 'vom', 'durch')):
                                         grandchild._.holmes.is_matchable = False
                                         for great_grandchild_dependency in \
                                                 grandchild._.holmes.children:
@@ -1433,6 +1443,31 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                     target_token._.holmes.children.append(SemanticDependency(
                         target_token.i, other_dependency.child_index, target_dependency, True))
 
+        # 'Der Löwe bat den Hund, die Katze zu jagen' and similar structures
+        for dependency in (dependency for dependency in token._.holmes.children
+                if dependency.label == 'oc' and token.pos_ == 'NOUN' and
+                dependency.child_token(token.doc).pos_ in ('VERB', 'AUX')):
+            target_tokens, target_dependency = find_target_tokens_and_dependency_recursively(
+                    dependency.child_token(token.doc))
+            for target_token in target_tokens:
+                target_token._.holmes.children.append(SemanticDependency(
+                        target_token.i, token.i, target_dependency, True))
+
+        # 'er dachte darüber nach, es zu tun' and similar structures
+        for dependency in (dependency for dependency in token._.holmes.children
+                if dependency.label == 'op' and dependency.child_token(token.doc).tag_ == 'PROAV'):
+            child_token = dependency.child_token(token.doc)
+            for child_dependency in (child_dependency for child_dependency in
+                    child_token._.holmes.children if child_dependency.label == 're' and
+                    child_dependency.child_token(token.doc).pos_ in ('VERB', 'AUX')):
+                target_tokens, target_dependency = find_target_tokens_and_dependency_recursively(
+                        child_dependency.child_token(token.doc))
+                for other_dependency in (other_dependency for other_dependency
+                        in token._.holmes.children if other_dependency.label == 'sb'):
+                    for target_token in target_tokens:
+                        target_token._.holmes.children.append(SemanticDependency(
+                            target_token.i, other_dependency.child_index, target_dependency, True))
+
         # 'er war froh, etwas zu tun'
         for dependency in (dependency for dependency in token._.holmes.children
                 if dependency.label == 'nk' and token.pos_ in ('NOUN', 'PROPN')
@@ -1448,3 +1483,40 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                     # these dependencies are always uncertain
                     target_token._.holmes.children.append(SemanticDependency(
                             target_token.i, dependency.parent_index, target_dependency, True))
+
+        # sometimes two verb arguments are interpreted as both subjects or both objects,
+        # if this occurs reinterpret them
+
+        # find first 'sb' dependency for verb
+        dependencies = [dependency for dependency in token._.holmes.children
+                if token.pos_ == 'VERB' and dependency.label == 'sb' and not
+                dependency.is_uncertain]
+        if len(dependencies) > 0 and len([object_dependency for object_dependency
+                in dependencies if object_dependency.label == 'oa' and not
+                dependency.is_uncertain]) == 0:
+            dependencies.sort(key = lambda dependency: dependency.child_index)
+            first_real_subject = dependencies[0].child_token(token.doc)
+            for real_subject in \
+                    first_real_subject._.holmes.loop_token_and_righthand_siblings(token.doc):
+                for dependency in dependencies:
+                    if dependency.child_index == real_subject.i:
+                       dependencies.remove(dependency)
+            for dependency in (other_dependency for other_dependency in dependencies):
+                dependency.label = 'oa'
+
+        dependencies = [dependency for dependency in token._.holmes.children
+                if token.pos_ == 'VERB' and dependency.label == 'oa' and not
+                dependency.is_uncertain]
+        if len(dependencies) > 0 and len([object_dependency for object_dependency
+                in dependencies if object_dependency.label == 'sb' and not
+                dependency.is_uncertain]) == 0:
+            dependencies.sort(key = lambda dependency: dependency.child_index)
+            real_subjects = [dependency for dependency in
+                    dependencies[0].child_token(token.doc)._.holmes.\
+                    loop_token_and_righthand_siblings(token.doc)]
+            real_subject_indexes = (map(lambda real_subject: real_subject.i,
+                    real_subjects))
+            if len(dependencies) > len(real_subjects):
+                for dependency in (dependency for dependency in dependencies if
+                        dependency.child_index in real_subject_indexes):
+                    dependency.label = 'sb'

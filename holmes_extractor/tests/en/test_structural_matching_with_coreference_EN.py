@@ -1,11 +1,11 @@
 import unittest
 import holmes_extractor as holmes
 import os
-from holmes_extractor.tests.testing_utils import HolmesInstanceManager
 
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join((script_directory,'test_ontology.owl')))
-coref_holmes_manager = HolmesInstanceManager(ontology).en_core_web_lg_coref_ontology
+coref_holmes_manager = holmes.Manager(model='en_core_web_lg', ontology=ontology,
+        perform_coreference_resolution=True)
 coref_holmes_manager.register_search_phrase("A dog chases a cat")
 coref_holmes_manager.register_search_phrase("A big horse chases a cat")
 coref_holmes_manager.register_search_phrase("A tiger chases a little cat")
@@ -126,7 +126,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
     def test_simple_pronoun_coreference_same_sentence_conjunction_righthand_noun_not_match(self):
         coref_holmes_manager.remove_all_documents()
         coref_holmes_manager.parse_and_register_document(
-                "I talked to Peter, and he and a horse needed insurance.")
+                "I talked to Peter, and he and a horse need insurance.")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
         self._check_word_match(matches[0], 0, 3, 'Peter')
@@ -217,7 +217,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
     def test_simple_pronoun_coreference_diff_sentence_conjunction_righthand_noun_not_match(self):
         coref_holmes_manager.remove_all_documents()
         coref_holmes_manager.parse_and_register_document(
-                "I talked to Peter. He and a horse needed insurance.")
+                "I talked to Peter. He and a horse need insurance.")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
         self._check_word_match(matches[0], 0, 3, 'Peter')
@@ -254,7 +254,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
     def test_pronoun_coreferents_with_dependency_conjunction_same_sentence_left_matches(self):
         coref_holmes_manager.remove_all_documents()
         coref_holmes_manager.parse_and_register_document(
-                "I saw a big horse and a little horse and they were chasing a cat.")
+                "I saw a big horse and a little horse. They were chasing a cat.")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
         self._check_word_match(matches[0], 0, 3, 'big')
@@ -263,7 +263,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
     def test_pronoun_coreferents_with_dependency_conjunction_same_sentence_right_matches(self):
         coref_holmes_manager.remove_all_documents()
         coref_holmes_manager.parse_and_register_document(
-                "I saw a little horse and a big horse and they were chasing a cat.")
+                "I saw a little horse and a big horse. They were chasing a cat.")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
         self._check_word_match(matches[0], 0, 7, 'big')

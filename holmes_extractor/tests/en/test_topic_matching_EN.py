@@ -6,7 +6,7 @@ import os
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join((script_directory,'test_ontology.owl')))
 holmes_manager_coref = holmes.Manager(model='en_core_web_lg', ontology=ontology,
-        overall_similarity_threshold=0.85, perform_coreference_resolution=False)
+        overall_similarity_threshold=0.85, perform_coreference_resolution=True)
 holmes_manager_coref_embedding_on_root = holmes.Manager(model='en_core_web_lg', ontology=ontology,
         overall_similarity_threshold=0.72, embedding_based_matching_on_root_words=True)
 

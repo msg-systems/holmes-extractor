@@ -100,8 +100,12 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
     def test_threeway_conjunction_with_or(self):
         matches = self._get_matches(nocoref_holmes_manager,
                 "The dog, the dog or the dog chased a cat and another cat")
-        for text_match in matches:
-            self.assertTrue(text_match.is_uncertain)
+        self.assertFalse(matches[0].is_uncertain)
+        self.assertTrue (matches[1].is_uncertain)
+        self.assertTrue (matches[2].is_uncertain)
+        self.assertFalse(matches[3].is_uncertain)
+        self.assertTrue (matches[4].is_uncertain)
+        self.assertTrue (matches[5].is_uncertain)
 
     def test_generic_pronoun(self):
         matches = self._get_matches(nocoref_holmes_manager, "A sandwich was eaten")
@@ -111,7 +115,7 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
         matches = self._get_matches(nocoref_holmes_manager, "The dog will chase the cat")
         self.assertEqual(len(matches), 1)
         self.assertFalse(matches[0].is_uncertain)
-        matches = self._get_matches(nocoref_holmes_manager, "The dog used to chase the cat")
+        matches = self._get_matches(nocoref_holmes_manager, "The dog always used to chase the cat")
         self.assertEqual(len(matches), 1)
         self.assertFalse(matches[0].is_uncertain)
 
@@ -386,7 +390,7 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
 
     def test_original_search_phrase_root_not_matchable(self):
         matches = self._get_matches(nocoref_holmes_manager, "The man was very sad.")
-        self.assertEqual(len(matches), 1) # error if coherent matching not working properly
+        self.assertEqual(len(matches), 1)
 
     def test_entitynoun_as_root_node(self):
         holmes_manager_with_variable_search_phrases.remove_all_search_phrases()
@@ -481,7 +485,7 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
     def test_adjective_verb_phrase_as_search_phrase_matches_compound(self):
         matches = self._get_matches(nocoref_holmes_manager,
                 "The holiday and the holiday were very hard and hard to book and to book")
-        self.assertEqual(len(matches), 8)
+        self.assertEqual(len(matches), 4)
         for match in matches:
             self.assertFalse(match.is_uncertain)
 
@@ -494,7 +498,7 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
     def test_objective_adjective_verb_phrase_matches_normal_search_phrase_compound(self):
         matches = self._get_matches(nocoref_holmes_manager,
                 "The insurance and the insurance were very hard and hard to find and to find")
-        self.assertEqual(len(matches), 4)
+        self.assertEqual(len(matches), 2)
         for match in matches:
             self.assertTrue(match.is_uncertain)
 

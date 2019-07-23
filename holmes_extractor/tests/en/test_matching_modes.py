@@ -1,11 +1,7 @@
 import unittest
-import os
 import holmes_extractor as holmes
-from holmes_extractor.tests.testing_utils import HolmesInstanceManager
 
-script_directory = os.path.dirname(os.path.realpath(__file__))
-ontology = holmes.Ontology(os.sep.join((script_directory,'test_ontology.owl')))
-holmes_manager = HolmesInstanceManager(ontology).en_core_web_lg_nocoref
+holmes_manager = holmes.Manager('en_core_web_lg', perform_coreference_resolution=False)
 
 class MatchingModesTest(unittest.TestCase):
 
@@ -15,9 +11,9 @@ class MatchingModesTest(unittest.TestCase):
         holmes_manager.parse_and_register_document(document_text=
                 "All the time I am testing here, dogs keep on chasing cats.", label='pets')
         holmes_manager.parse_and_register_document(document_text=
-                "Everything I know suggests that lions enjoy eating wildebeest", label='safari')
+                "Everything I know suggests that lions enjoy eating gnu", label='safari')
         holmes_manager.register_search_phrase("A dog chases a cat", label="test")
-        holmes_manager.register_search_phrase("A lion eats a wildebeest", label="test")
+        holmes_manager.register_search_phrase("A lion eats a gnu", label="test")
         return
 
     def test_multiple(self):
@@ -53,7 +49,7 @@ class MatchingModesTest(unittest.TestCase):
     def test_match_documents_against(self):
         self._register_multiple_documents_and_search_phrases()
         self.assertEqual(len(holmes_manager.match_documents_against(
-                "A lion eats a wildebeest.")), 1)
+                "A lion eats a gnu.")), 1)
 
     def test_get_labels(self):
         self._register_multiple_documents_and_search_phrases()

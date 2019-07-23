@@ -1,8 +1,8 @@
 import unittest
 from holmes_extractor.semantics import SemanticAnalyzerFactory
 
-analyzer = SemanticAnalyzerFactory().semantic_analyzer(model='de_core_news_sm', debug=True,
-        perform_coreference_resolution=False)
+analyzer = SemanticAnalyzerFactory().semantic_analyzer(model='de_core_news_md',
+        perform_coreference_resolution=False, debug=False)
 
 class GermanSemanticAnalyzerTest(unittest.TestCase):
 
@@ -118,12 +118,12 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[2]._.holmes.string_representation_of_children(), '-6:None')
 
     def test_active_future(self):
-        doc = analyzer.parse("Die Katze wird den Hund jagen")
+        doc = analyzer.parse("Der Hund wird die Katze jagen")
         self.assertEqual(doc[5]._.holmes.string_representation_of_children(), '1:sb; 4:oa')
         self.assertEqual(doc[2]._.holmes.string_representation_of_children(), '-6:None')
 
     def test_active_future_perfect(self):
-        doc = analyzer.parse("Die Katze wird den Hund gejagt haben")
+        doc = analyzer.parse("Der Hund wird die Katze gejagt haben")
         self.assertEqual(doc[5]._.holmes.string_representation_of_children(), '1:sb; 4:oa')
         self.assertEqual(doc[2]._.holmes.string_representation_of_children(), '-7:None')
         self.assertEqual(doc[6]._.holmes.string_representation_of_children(), '-6:None')
@@ -166,7 +166,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
     def test_complex_tense_verb_conjunction_active(self):
         doc = analyzer.parse("Der Hund wird die Katze gejagt und gefressen haben")
         self.assertEqual(doc[5]._.holmes.string_representation_of_children(), '1:sb; 4:oa; 6:cd')
-        self.assertEqual(doc[7]._.holmes.string_representation_of_children(), '1:sb; 4:oa')
+        self.assertEqual(doc[7]._.holmes.string_representation_of_children(), '1:sb')
 
     def test_complex_tense_verb_conjunction_passive(self):
         doc = analyzer.parse("Die Katze wird vom Hund gejagt und gefressen werden")
@@ -179,7 +179,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[11]._.holmes.string_representation_of_children(),
                 '1:sb; 4:sb; 7:oa; 10:oa; 12:cd')
         self.assertEqual(doc[13]._.holmes.string_representation_of_children(),
-                '1:sb; 4:sb; 7:oa; 10:oa')
+                '7:oa; 10:oa')
 
     def test_conjunction_everywhere_passive(self):
         doc = analyzer.parse(
@@ -190,14 +190,14 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
                 '1:oa; 4:oa; 8:sb; 11:sb')
 
     def test_simple_modal_verb_active(self):
-        doc = analyzer.parse("Die Katze soll den Hund jagen")
+        doc = analyzer.parse("Der Hund soll die Katze jagen")
         self.assertEqual(doc[5]._.holmes.string_representation_of_children(), '1:sb(U); 4:oa(U)')
         self.assertEqual(doc[2]._.holmes.string_representation_of_children(), '-6:None')
 
     def test_simple_modal_verb_passive(self):
-        doc = analyzer.parse("Die Katze kann von dem Hund gejagt werden")
-        self.assertEqual(doc[6]._.holmes.string_representation_of_children(), '1:oa(U); 5:sb(U)')
-        self.assertEqual(doc[2]._.holmes.string_representation_of_children(), '-8:None')
+        doc = analyzer.parse("Die Katze kann vom Hund gejagt werden")
+        self.assertEqual(doc[5]._.holmes.string_representation_of_children(), '1:oa(U); 4:sb(U)')
+        self.assertEqual(doc[2]._.holmes.string_representation_of_children(), '-7:None')
 
     def test_negated_modal_verb(self):
         doc = analyzer.parse("Der Hund soll die Katze nicht jagen")
@@ -233,7 +233,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
     def test_relative_pronoun_conjunction_everywhere_active(self):
         doc = analyzer.parse(
-                "Die Katze, die Maus und der Bär, die den Hund und den Wolf gejagt und gefressen haben, waren müde")
+                "Der Hund, der Elefant und der Bär, die die Katze und die Maus gejagt und gefressen haben, waren müde")
         self.assertEqual(doc[15]._.holmes.string_representation_of_children(),
                 '1:sb(U); 4:sb(U); 7:sb; 11:oa; 14:oa; 16:cd')
         self.assertEqual(doc[17]._.holmes.string_representation_of_children(),
@@ -241,11 +241,11 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
     def test_relative_pronoun_conjunction_everywhere_passive(self):
         doc = analyzer.parse(
-                "Die Katze, die Maus und der Vogel, die von dem Bären, Löwen und Hund gejagt und gefressen worden sind, waren tot")
-        self.assertEqual(doc[17]._.holmes.string_representation_of_children(),
-                '1:oa(U); 4:oa(U); 7:oa; 12:sb; 14:sb; 16:sb; 18:cd')
-        self.assertEqual(doc[19]._.holmes.string_representation_of_children(),
-                '1:oa(U); 4:oa(U); 7:oa; 12:sb; 14:sb; 16:sb')
+                "Die Katze, die Maus und der Vogel, die vom Bären, Löwen und Hund gejagt und gefressen worden sind, waren tot")
+        self.assertEqual(doc[16]._.holmes.string_representation_of_children(),
+                '1:oa(U); 4:oa(U); 7:oa; 11:sb; 13:sb; 15:sb; 17:cd')
+        self.assertEqual(doc[18]._.holmes.string_representation_of_children(),
+                '1:oa(U); 4:oa(U); 7:oa; 11:sb; 13:sb; 15:sb')
 
     def test_separable_verb(self):
         doc = analyzer.parse("Er nimmt die Situation auf")
@@ -267,15 +267,15 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
     def test_von_phrase(self):
         doc = analyzer.parse("Der Abschluss von einer Versicherung")
-        self.assertEqual(doc[1]._.holmes.string_representation_of_children(), '2:pg; 4:nk')
+        self.assertEqual(doc[1]._.holmes.string_representation_of_children(), '2:mnr; 4:nk')
 
     def test_von_phrase_with_conjunction(self):
         doc = analyzer.parse(
                 "Der Abschluss und Aufrechterhaltung von einer Versicherung und einem Vertrag")
         self.assertEqual(doc[1]._.holmes.string_representation_of_children(),
-                '2:cd; 4:pg; 6:nk; 9:nk')
+                '2:cd; 4:mnr; 6:nk; 9:nk')
         self.assertEqual(doc[3]._.holmes.string_representation_of_children(),
-                '4:pg; 6:nk; 9:nk')
+                '4:mnr; 6:nk; 9:nk')
 
     def test_subjective_zu_clause_complement_simple_active(self):
         doc = analyzer.parse("Der Hund überlegte, eine Katze zu jagen")
@@ -342,6 +342,20 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[15]._.holmes.string_representation_of_children(),
                 '1:oa(U); 4:oa(U); 11:sb; 14:sb; 16:pm')
 
+    def test_verb_complement_with_conjunction_passive_second_pronominal_adverb(self):
+        doc = analyzer.parse(
+                "Die Katze und die Maus dachten darüber und darüber nach, von einem Hund und einem Löwen gejagt zu werden")
+        self.assertEqual(doc[17]._.holmes.string_representation_of_children(),
+                '1:oa(U); 4:oa(U); 13:sb; 16:sb; 18:pm')
+
+    def test_verb_complement_with_conjunction_passive_second_dependent_clause(self):
+        doc = analyzer.parse(
+                "Die Katze und die Maus dachten darüber nach, von einem Hund gejagt zu werden und von einem Löwen gejagt zu werden")
+        self.assertEqual(doc[12]._.holmes.string_representation_of_children(),
+                '1:oa(U); 4:oa(U); 11:sb; 13:pm; 15:cd')
+        self.assertEqual(doc[19]._.holmes.string_representation_of_children(),
+                '1:oa(U); 4:oa(U); 18:sb; 20:pm')
+
     def test_adjective_complement_simple_passive(self):
         doc = analyzer.parse("Die Katze war darüber froh, von einem Hund gejagt zu werden")
         self.assertEqual(doc[9]._.holmes.string_representation_of_children(),
@@ -359,9 +373,9 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
     def test_subjective_zu_clause_complement_with_conjunction_passive(self):
         doc = analyzer.parse(
-                "Die Katze und die Maus entschlossen sich, von dem Hund und Löwen gejagt zu werden")
-        self.assertEqual(doc[13]._.holmes.string_representation_of_children(),
-                '1:oa(U); 4:oa(U); 10:sb; 12:sb; 14:pm')
+                "Die Katze und die Maus entschlossen sich, vom Hund und Löwen gejagt zu werden")
+        self.assertEqual(doc[12]._.holmes.string_representation_of_children(),
+                '1:oa(U); 4:oa(U); 9:sb; 11:sb; 13:pm')
 
     def test_objective_zu_clause_complement_simple_passive(self):
         doc = analyzer.parse("Der Löwe bat die Katze, vom Hund gejagt zu werden")
@@ -379,20 +393,20 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
     def test_passive_governing_clause_zu_clause_complement_with_conjunction_passive(self):
         doc = analyzer.parse(
-                "Dem Bären und der Maus wurde vorgeschlagen, von einem Löwen und einem Hund gejagt zu werden")
-        self.assertEqual(doc[14]._.holmes.string_representation_of_children(),
-                '1:oa(U); 4:oa(U); 10:sb; 13:sb; 15:pm')
+                "Der Katze und der Maus wurde vorgeschlagen, von einem Löwen gejagt zu werden")
+        self.assertEqual(doc[11]._.holmes.string_representation_of_children(),
+                '1:oa(U); 4:oa(U); 10:sb; 12:pm')
 
     def test_um_zu_clause_complement_simple_passive(self):
-        doc = analyzer.parse("Der Löwe benutzte die Katze, um von dem Hund gejagt zu werden")
-        self.assertEqual(doc[10]._.holmes.string_representation_of_children(),
-                '1:oa(U); 6:cp; 9:sb; 11:pm')
+        doc = analyzer.parse("Der Löwe benutzte die Katze, um vom Hund gejagt zu werden")
+        self.assertEqual(doc[9]._.holmes.string_representation_of_children(),
+                '1:oa(U); 6:cp; 8:sb; 10:pm')
 
     def test_um_zu_clause_complement_with_conjunction_passive(self):
         doc = analyzer.parse(
-                "Der Elefant benutzte die Katze und die Maus, um von dem Hund und Löwen gejagt zu werden")
-        self.assertEqual(doc[15]._.holmes.string_representation_of_children(),
-                '1:oa(U); 9:cp; 12:sb; 14:sb; 16:pm')
+                "Der Elefant benutzte die Katze und die Maus, um vom Hund und Löwen gejagt zu werden")
+        self.assertEqual(doc[14]._.holmes.string_representation_of_children(),
+                '1:oa(U); 9:cp; 11:sb; 13:sb; 15:pm')
 
     def test_verb_complement_with_conjunction_of_dependent_verb(self):
         doc = analyzer.parse("Die Katze und die Maus haben entschieden, zu singen und zu schreien")
@@ -465,9 +479,9 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[4]._.holmes.lemma, 'gesund')
 
     def test_adjective_complement_proper_name(self):
-        doc = analyzer.parse("Richard war froh, die Lage zu verstehen.")
-        self.assertEqual(doc[7]._.holmes.string_representation_of_children(),
-                '0:sb(U); 5:oa; 6:pm')
+        doc = analyzer.parse("Richard war froh, es zu verstehen.")
+        self.assertEqual(doc[6]._.holmes.string_representation_of_children(),
+                '0:sb(U); 4:oa; 5:pm')
 
     def test_adjective_verb_clause_with_zu_subjective_zu_separate_simple(self):
         doc = analyzer.parse("Richard war froh zu verstehen.")
@@ -496,14 +510,14 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
     def test_adjective_verb_clause_with_zu_subjective_zu_integrated_simple(self):
         doc = analyzer.parse("Richard war froh hineinzugehen.")
         self.assertEqual(doc[3]._.holmes.string_representation_of_children(),
-                '0:arg(U); 2:mo')
+                '0:sb; 2:mo')
 
     def test_adjective_verb_clause_with_zu_subjective_zu_integrated_compound(self):
         doc = analyzer.parse("Richard und Thomas waren froh hineinzugehen und hinzugehen.")
         self.assertEqual(doc[5]._.holmes.string_representation_of_children(),
-                '0:arg(U); 2:arg(U); 4:mo; 6:cd')
+                '0:sb; 2:sb; 4:mo; 6:cd')
         self.assertEqual(doc[7]._.holmes.string_representation_of_children(),
-                '0:arg(U); 2:arg(U); 4:mo')
+                '0:sb; 2:sb; 4:mo')
 
     def test_adjective_verb_clause_with_zu_objective_zu_integrated_simple(self):
         doc = analyzer.parse("Richard war leicht einzubinden.")
@@ -516,3 +530,42 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
                 '0:arg(U); 2:arg(U); 4:mo; 6:cd')
         self.assertEqual(doc[7]._.holmes.string_representation_of_children(),
                 '0:arg(U); 2:arg(U); 4:mo')
+
+    def test_ungrammatical_two_nominatives(self):
+        doc = analyzer.parse("Der Hund jagt der Hund")
+        self.assertEqual(doc[2]._.holmes.string_representation_of_children(),
+                '1:sb; 4:oa')
+
+    def test_ungrammatical_two_nominatives_with_noun_phrase_conjunction(self):
+        doc = analyzer.parse("Der Hund und der Hund jagen der Hund und der Hund")
+        self.assertEqual(doc[5]._.holmes.string_representation_of_children(),
+                '1:sb; 4:sb; 7:oa; 10:oa')
+
+    def test_ungrammatical_two_nominatives_with_noun_phrase_and_verb_conjunction(self):
+        doc = analyzer.parse("Der Hund und der Hund jagen und fressen der Hund und der Hund")
+        self.assertEqual(doc[5]._.holmes.string_representation_of_children(),
+                '1:sb; 4:sb; 6:cd')
+        self.assertEqual(doc[7]._.holmes.string_representation_of_children(),
+                '1:sb; 4:sb; 9:oa; 12:oa')
+
+    def test_ungrammatical_two_accusatives(self):
+        doc = analyzer.parse("Den Hund jagt den Hund")
+        self.assertEqual(doc[2]._.holmes.string_representation_of_children(),
+                '1:sb; 4:oa')
+
+    def test_ungrammatical_two_accusatives_with_noun_phrase_conjunction(self):
+        doc = analyzer.parse("Den Hund und den Hund jagen den Hund und den Hund")
+        self.assertEqual(doc[5]._.holmes.string_representation_of_children(),
+                '1:sb; 4:sb; 7:oa; 10:oa')
+
+    def test_ungrammatical_two_accusatives_with_noun_phrase_and_verb_conjunction(self):
+        doc = analyzer.parse("Den Hund und den Hund jagen und fressen den Hund und den Hund")
+        self.assertEqual(doc[5]._.holmes.string_representation_of_children(),
+                '1:oa; 4:oa; 6:cd')
+        self.assertEqual(doc[7]._.holmes.string_representation_of_children(),
+                '9:oa; 12:oa')
+
+    def test_uncertain_subject_and_subject(self):
+        doc = analyzer.parse("Ich glaube, dass eine Pflanze wächst")
+        self.assertEqual(doc[6]._.holmes.string_representation_of_children(),
+                '0:sb(U); 3:cp; 5:sb')

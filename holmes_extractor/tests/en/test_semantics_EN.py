@@ -83,8 +83,8 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
 
     def test_predicative_adjective_with_non_coreferring_pronoun(self):
         doc = analyzer.parse("It was big")
-        self.assertEqual(doc[0]._.holmes.string_representation_of_children(), '')
-        self.assertEqual(doc[1]._.holmes.string_representation_of_children(), '0:nsubj; 2:acomp')
+        self.assertEqual(doc[0]._.holmes.string_representation_of_children(), '2:amod')
+        self.assertEqual(doc[1]._.holmes.string_representation_of_children(), '-1:None')
 
     def test_predicative_adjective_with_coreferring_pronoun(self):
         doc = analyzer.parse("I saw a dog. It was big")

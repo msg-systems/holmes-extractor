@@ -1,7 +1,7 @@
 import unittest
 import holmes_extractor as holmes
 
-holmes_manager = holmes.Manager(model='de_core_news_sm')
+holmes_manager = holmes.Manager(model='de_core_news_md')
 holmes_manager.register_search_phrase("Ein Hund jagt eine Katze")
 holmes_manager.register_search_phrase("Ein Hund jagt einen Bären")
 holmes_manager.register_search_phrase("Ein Hund frisst einen Knochen")
@@ -21,7 +21,10 @@ holmes_manager.register_search_phrase("Jemand braucht für fünf Jahre")
 holmes_manager.register_search_phrase("Ein Urlaub ist schwer zu buchen")
 holmes_manager.register_search_phrase("Ein Mann geht aus")
 holmes_manager.register_search_phrase("Ein Mann singt")
-holmes_manager_with_variable_search_phrases = holmes.Manager(model='de_core_news_sm')
+holmes_manager_with_variable_search_phrases = holmes.Manager(model='de_core_news_md')
+holmes_manager_with_embeddings = holmes.Manager(model='de_core_news_md',
+        overall_similarity_threshold=0.7, perform_coreference_resolution=False)
+holmes_manager_with_embeddings.register_search_phrase("Ein Mann sieht einen großen Hund")
 
 class GermanStructuralMatchingTest(unittest.TestCase):
 
@@ -37,8 +40,9 @@ class GermanStructuralMatchingTest(unittest.TestCase):
         self.assertFalse(matches[0].is_uncertain)
         self.assertEqual(matches[0].search_phrase_label, "Ein Hund jagt eine Katze")
 
-    def test_matching_within_large_sentence_with_negation(self):
-        matches = self._get_matches(holmes_manager, "Wir haben über Verschiedenes geredet. Obwohl es nie behauptet wurde, dass ein Hund jeweils eine Katze gejagt hätte, entsprach dies dennoch der Wahrheit. Dies war doch immer ein schwieriges Thema.")
+    def test_matching_with_negation_in_subordinate_clause(self):
+        matches = self._get_matches(holmes_manager,
+                "Es wurde nie behauptet, dass ein Hund eine Katze gejagt hatte.")
         self.assertEqual(len(matches), 1)
         self.assertTrue(matches[0].is_negated)
         self.assertFalse(matches[0].is_uncertain)
@@ -201,7 +205,7 @@ class GermanStructuralMatchingTest(unittest.TestCase):
     def test_von_phrase_matches_genitive_phrase_with_coordination(self):
         matches = self._get_matches(holmes_manager,
                 "Der Abschluss und der Abschluss von einer Versicherung und einer Versicherung")
-        self.assertEqual(len(matches), 4)
+        self.assertEqual(len(matches), 2)
         for text_match in matches:
             self.assertFalse(text_match.is_uncertain)
 
@@ -473,3 +477,8 @@ class GermanStructuralMatchingTest(unittest.TestCase):
         self.assertEqual(len(matches), 2)
         for match in matches:
             self.assertTrue(match.is_uncertain)
+
+    def test_german_embeddings(self):
+        matches = self._get_matches(holmes_manager_with_embeddings,
+                "Der Mann sah eine große Katze")
+        self.assertEqual(len(matches), 1)
