@@ -263,7 +263,9 @@ class TopicMatcher:
             if self.only_one_result_per_document:
                 existing_document_labels.append(score_sorted_match.document_label)
             counter += 1
-        return topic_matches
+        # If two matches have the same score, order them by length
+        return sorted(topic_matches, key=lambda topic_match: (0-topic_match.score,
+                topic_match.start_index - topic_match.end_index))
 
 class SupervisedTopicTrainingUtils:
 

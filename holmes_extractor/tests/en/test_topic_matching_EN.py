@@ -232,3 +232,31 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 "The dog chased the cat")
         self.assertEqual(topic_matches[0].start_index, 117)
         self.assertEqual(topic_matches[0].end_index, 120)
+
+    def test_result_ordering_by_match_length_different_documents(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.remove_all_search_phrases()
+        holmes_manager_coref.parse_and_register_document("""
+        A dog chased a cat.
+        A great deal of irrelevant text. A great deal of irrelevant text. A great deal of
+        irrelevant text. A great deal of irrelevant text. A great deal of irrelevant text.
+        A great deal of irrelevant text. A great deal of irrelevant text. A great deal of
+        irrelevant text. A great deal of irrelevant text. A great deal of irrelevant text.
+        A great deal of irrelevant text. A great deal of irrelevant text. A great deal of
+        irrelevant text. A great deal of irrelevant text. A great deal of irrelevant text.
+        A dog chased a cat. A cat
+        """)
+        topic_matches = holmes_manager_coref.topic_match_documents_against(
+                "The dog chased the cat")
+        self.assertEqual(topic_matches[0].end_index - topic_matches[0].start_index, 7)
+        self.assertEqual(topic_matches[1].end_index - topic_matches[1].start_index, 4)
+
+    def test_result_ordering_by_match_length_different_documents(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.remove_all_search_phrases()
+        holmes_manager_coref.parse_and_register_document("A dog chased a cat.",'1')
+        holmes_manager_coref.parse_and_register_document("A dog chased a cat. A cat.",'2')
+        topic_matches = holmes_manager_coref.topic_match_documents_against(
+                "The dog chased the cat")
+        self.assertEqual(topic_matches[0].end_index, 7)
+        self.assertEqual(topic_matches[1].end_index, 4)
