@@ -189,3 +189,22 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self.assertEqual(len(holmes_manager_coref.topic_match_documents_against("Peter")), 2)
         self.assertEqual(len(holmes_manager_coref.topic_match_documents_against("Peter",
                 only_one_result_per_document=True)), 1)
+
+    def test_match_cutoff(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.remove_all_search_phrases()
+        holmes_manager_coref.parse_and_register_document(
+                """
+                A cat.
+                A great deal of irrelevant text. A great deal of irrelevant text. A great deal of
+                irrelevant text. A great deal of irrelevant text. A great deal of irrelevant text.
+                A great deal of irrelevant text. A great deal of irrelevant text. A great deal of
+                irrelevant text. A great deal of irrelevant text. A great deal of irrelevant text.
+                A great deal of irrelevant text. A great deal of irrelevant text. A great deal of
+                irrelevant text. A great deal of irrelevant text. A great deal of irrelevant text.
+                The dog chased the cat.
+                """)
+        topic_matches = holmes_manager_coref.topic_match_documents_against(
+                "The dog chased the cat")
+        self.assertEqual(topic_matches[0].start_index, 117)
+        self.assertEqual(topic_matches[0].end_index, 120)

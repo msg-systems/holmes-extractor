@@ -198,13 +198,11 @@ class TopicMatcher:
                         position_sorted_structural_matches[
                         index_within_list]):
                     break
+                if score_sorted_match.index_within_document - position_sorted_structural_matches[
+                        index_within_list].index_within_document > self.sideways_match_extent:
+                    break
                 start_index = position_sorted_structural_matches[
                         index_within_list].index_within_document
-                if score_sorted_match.index_within_document - start_index > \
-                        self.sideways_match_extent:
-                    start_index = score_sorted_match.index_within_document - \
-                            self.sideways_match_extent
-                    break
                 index_within_list -= 1
             index_within_list = score_sorted_match.original_index_within_list + 1
             while index_within_list + 1 <= len(score_sorted_structural_matches) and \
@@ -216,13 +214,12 @@ class TopicMatcher:
                         position_sorted_structural_matches[
                         index_within_list]):
                     break
+                if position_sorted_structural_matches[
+                        index_within_list].index_within_document - \
+                        score_sorted_match.index_within_document > self.sideways_match_extent:
+                    break
                 end_index = position_sorted_structural_matches[
                         index_within_list].index_within_document
-                if end_index - score_sorted_match.index_within_document > \
-                        self.sideways_match_extent:
-                    end_index = score_sorted_match.index_within_document + \
-                            self.sideways_match_extent
-                    break
                 index_within_list += 1
             relevant_sentences = [sentence for sentence in
                     self.structural_matcher.get_document(score_sorted_match.document_label).sents
