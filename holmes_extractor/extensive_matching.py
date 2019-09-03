@@ -126,19 +126,22 @@ class TopicMatcher:
                 current_activation_score = current_activation_score * (1 - tailoff_quotient)
                 current_unconstrained_activation_score = current_unconstrained_activation_score * \
                         (1 - tailoff_quotient)
+            adjusted_relation_score = self.relation_score * float(match.overall_similarity_measure)
+            adjusted_single_word_score = self.single_word_score * \
+                    float(match.overall_similarity_measure)
             if not match.from_single_word_phraselet:
-                current_activation_score += self.relation_score
-                current_unconstrained_activation_score += self.relation_score
+                current_activation_score += adjusted_relation_score
+                current_unconstrained_activation_score += adjusted_relation_score
             elif last_search_phrase_label != match.search_phrase_label:
-                current_activation_score += self.single_word_score
-                current_unconstrained_activation_score += self.single_word_score
+                current_activation_score += adjusted_single_word_score
+                current_unconstrained_activation_score += adjusted_single_word_score
             else:
                 # If the same single word match occurs repeatedly, we do not allow the activation to
                 # increase further
-                current_activation_score = max(current_activation_score, self.single_word_score)
+                current_activation_score = max(current_activation_score, adjusted_single_word_score)
                 current_unconstrained_activation_score += \
                         max(current_unconstrained_activation_score,
-                        self.single_word_score)
+                        adjusted_single_word_score)
             if not match.from_single_word_phraselet:
                 for word_match in match.word_matches:
                     if word_match.document_token.i in previous_topic_matches:

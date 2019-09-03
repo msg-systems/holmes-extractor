@@ -76,6 +76,7 @@ class Match:
         self.document_label = document_label
         self.from_single_word_phraselet = from_single_word_phraselet
         self.index_within_document = None
+        self.overall_similarity_measure = '1.0'
 
     @property
     def involves_coreference(self):

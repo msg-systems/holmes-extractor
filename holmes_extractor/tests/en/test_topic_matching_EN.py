@@ -45,13 +45,13 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self._check_equals("I saw an animal", "Somebody chased a cat", 10)
 
     def test_embedding_matching_not_root(self):
-        self._check_equals("I saw a king", "Somebody saw a queen", 20)
+        self._check_equals("I saw a king", "Somebody saw a queen", 17)
 
     def test_embedding_matching_root(self):
-        self._check_equals("I saw a king", "Somebody saw a queen", 29, True)
+        self._check_equals("I saw a king", "Somebody saw a queen", 23, True)
 
     def test_embedding_matching_root_word_only(self):
-        self._check_equals("king", "queen", 10, True)
+        self._check_equals("king", "queen", 7, True)
 
     def test_matching_only_adjective(self):
         self._check_equals("nice", "nice", 10, False)
