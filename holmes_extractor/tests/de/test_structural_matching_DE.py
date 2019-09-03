@@ -25,6 +25,7 @@ holmes_manager_with_variable_search_phrases = holmes.Manager(model='de_core_news
 holmes_manager_with_embeddings = holmes.Manager(model='de_core_news_md',
         overall_similarity_threshold=0.7, perform_coreference_resolution=False)
 holmes_manager_with_embeddings.register_search_phrase("Ein Mann sieht einen großen Hund")
+holmes_manager_with_embeddings.register_search_phrase("Der Himmel ist grün")
 
 class GermanStructuralMatchingTest(unittest.TestCase):
 
@@ -481,4 +482,9 @@ class GermanStructuralMatchingTest(unittest.TestCase):
     def test_german_embeddings(self):
         matches = self._get_matches(holmes_manager_with_embeddings,
                 "Der Mann sah eine große Katze")
+        self.assertEqual(len(matches), 1)
+
+    def test_german_embeddings_inflected_adjective(self):
+        matches = self._get_matches(holmes_manager_with_embeddings,
+                "Ich wohne im blauen Himmel")
         self.assertEqual(len(matches), 1)

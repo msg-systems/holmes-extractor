@@ -754,7 +754,8 @@ class StructuralMatcher:
         if search_phrase_token.i in search_phrase.matchable_non_entity_tokens_to_lexemes.keys():
             lexeme = search_phrase.matchable_non_entity_tokens_to_lexemes[search_phrase_token.i]
             if lexeme.vector_norm > 0 and document_token.vector_norm > 0:
-                similarity_measure = lexeme.similarity(document_token)
+                similarity_measure = lexeme.similarity(
+                        self.semantic_analyzer.nlp.vocab[document_token.lemma_])
                 if similarity_measure > search_phrase.single_token_similarity_threshold:
                     if not search_phrase.topic_match_phraselet:
                         search_phrase_word_to_use = search_phrase_token.lemma_
@@ -1125,7 +1126,9 @@ class StructuralMatcher:
                             lexeme = search_phrase.matchable_non_entity_tokens_to_lexemes[
                                     search_phrase.root_token.i]
                             if lexeme.vector_norm > 0 and doc[indexes_to_match[0]].vector_norm > 0:
-                                similarity_measure = lexeme.similarity(doc[indexes_to_match[0]])
+                                similarity_measure = lexeme.similarity(
+                                        self.semantic_analyzer.nlp.vocab[doc[indexes_to_match[0]].
+                                        lemma_])
                                 if similarity_measure >= \
                                         search_phrase.single_token_similarity_threshold:
                                     matched_indexes_set.update(indexes_to_match)
