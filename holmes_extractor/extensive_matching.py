@@ -172,6 +172,27 @@ class TopicMatcher:
                     return True
             return False
 
+        def alter_start_and_end_indexes_for_match(start_index, end_index, match,
+                reference_match_index_within_document):
+            if match.index_within_document < start_index and \
+                    reference_match_index_within_document - match.index_within_document < \
+                    self.sideways_match_extent:
+                start_index = match.index_within_document
+            for word_match in match.word_matches:
+                if word_match.document_token.i < start_index and \
+                        reference_match_index_within_document - word_match.document_token.i \
+                        < self.sideways_match_extent:
+                    start_index = word_match.document_token.i
+            if match.index_within_document > end_index and match.index_within_document - \
+                    reference_match_index_within_document < self.sideways_match_extent:
+                end_index = match.index_within_document
+            for word_match in match.word_matches:
+                if word_match.document_token.i > end_index and \
+                        word_match.document_token.i - reference_match_index_within_document \
+                        < self.sideways_match_extent:
+                    end_index = word_match.document_token.i
+            return start_index, end_index
+
         if self.only_one_result_per_document:
             existing_document_labels = []
         topic_matches = []
@@ -185,7 +206,10 @@ class TopicMatcher:
             if self.only_one_result_per_document and score_sorted_match.document_label \
                     in existing_document_labels:
                 continue
-            start_index = end_index = score_sorted_match.index_within_document
+            start_index, end_index = alter_start_and_end_indexes_for_match(
+                    score_sorted_match.index_within_document,
+                    score_sorted_match.index_within_document,
+                    score_sorted_match, score_sorted_match.index_within_document)
             index_within_list = score_sorted_match.original_index_within_list - 1
             while index_within_list >= 0 and position_sorted_structural_matches[
                     index_within_list].document_label == score_sorted_match.document_label \
@@ -201,15 +225,18 @@ class TopicMatcher:
                 if score_sorted_match.index_within_document - position_sorted_structural_matches[
                         index_within_list].index_within_document > self.sideways_match_extent:
                     break
-                start_index = position_sorted_structural_matches[
-                        index_within_list].index_within_document
+                start_index, end_index = alter_start_and_end_indexes_for_match(
+                        start_index, end_index,
+                        position_sorted_structural_matches[index_within_list],
+                        score_sorted_match.index_within_document
+                )
                 index_within_list -= 1
             index_within_list = score_sorted_match.original_index_within_list + 1
             while index_within_list + 1 <= len(score_sorted_structural_matches) and \
                     position_sorted_structural_matches[index_within_list].document_label == \
                     score_sorted_match.document_label and \
                     position_sorted_structural_matches[index_within_list].topic_score > \
-                            self.single_word_score:
+                    self.single_word_score:
                 if match_contained_within_existing_topic_match(topic_matches,
                         position_sorted_structural_matches[
                         index_within_list]):
@@ -218,8 +245,11 @@ class TopicMatcher:
                         index_within_list].index_within_document - \
                         score_sorted_match.index_within_document > self.sideways_match_extent:
                     break
-                end_index = position_sorted_structural_matches[
-                        index_within_list].index_within_document
+                start_index, end_index = alter_start_and_end_indexes_for_match(
+                        start_index, end_index,
+                        position_sorted_structural_matches[index_within_list],
+                        score_sorted_match.index_within_document
+                )
                 index_within_list += 1
             relevant_sentences = [sentence for sentence in
                     self.structural_matcher.get_document(score_sorted_match.document_label).sents

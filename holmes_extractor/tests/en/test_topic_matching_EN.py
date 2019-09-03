@@ -77,6 +77,30 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self.assertEqual(topic_matches[0].relative_start_index, 3)
         self.assertEqual(topic_matches[0].relative_end_index, 4)
 
+    def test_indexes_with_preceding_non_matched_dependent(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.parse_and_register_document(
+                "I saw a big dog.")
+        topic_matches = holmes_manager_coref.topic_match_documents_against("A big dog")
+        self.assertEqual(topic_matches[0].sentences_start_index, 0)
+        self.assertEqual(topic_matches[0].sentences_end_index, 5)
+        self.assertEqual(topic_matches[0].start_index, 3)
+        self.assertEqual(topic_matches[0].end_index, 4)
+        self.assertEqual(topic_matches[0].relative_start_index, 3)
+        self.assertEqual(topic_matches[0].relative_end_index, 4)
+
+    def test_indexes_with_subsequent_non_matched_dependent(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.parse_and_register_document(
+                "The dog I saw was big.")
+        topic_matches = holmes_manager_coref.topic_match_documents_against("A big dog")
+        self.assertEqual(topic_matches[0].sentences_start_index, 0)
+        self.assertEqual(topic_matches[0].sentences_end_index, 6)
+        self.assertEqual(topic_matches[0].start_index, 1)
+        self.assertEqual(topic_matches[0].end_index, 5)
+        self.assertEqual(topic_matches[0].relative_start_index, 1)
+        self.assertEqual(topic_matches[0].relative_end_index, 5)
+
     def test_additional_phraselets(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.remove_all_search_phrases()
