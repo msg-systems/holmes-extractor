@@ -1856,6 +1856,9 @@ is determined for each word in each document.
   in which case the score is set to this number of points.
   - The activation score is increased by a configurable number of points ('relation_score': default: 30)
   at each word that is at the head of a match against a two-word phraselet.
+  - Where either type of phraselet match involves embedding-based matching, the resulting inexactitude is
+  captured by multiplying the activation score increase with the value of the
+  `Match.overall_similarity_measure` quotient that was returned for the phraselet match.
   - When the same word was involved in matches against more than one two-word phraselets, this
   implies that a structure involving three or more words has been matched. For each such overlap, the activation score
   as it stands after the increases for the individual matches is multiplied by a configurable factor
