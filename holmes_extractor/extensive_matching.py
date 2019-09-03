@@ -49,7 +49,7 @@ class TopicMatcher:
     def __init__(self, holmes, *, maximum_activation_distance, relation_score,
             single_word_score, overlapping_relation_multiplier,
             overlap_memory_size, maximum_activation_value, sideways_match_extent,
-            number_of_results):
+            only_one_result_per_document, number_of_results):
         self._holmes = holmes
         self._semantic_analyzer = holmes.semantic_analyzer
         self.structural_matcher = holmes.structural_matcher
@@ -61,6 +61,7 @@ class TopicMatcher:
         self.overlap_memory_size = overlap_memory_size
         self.maximum_activation_value = maximum_activation_value
         self.sideways_match_extent = sideways_match_extent
+        self.only_one_result_per_document = only_one_result_per_document
         self.number_of_results = number_of_results
 
     def topic_match_documents_against(self, text_to_match):
@@ -96,8 +97,6 @@ class TopicMatcher:
         # in the document structural matches were found
         score_sorted_structural_matches = self.perform_activation_scoring(
                 position_sorted_structural_matches)
-        # Resort the matches starting with the highest (most active) and
-        # create topic match objects with information about the surrounding sentences
         return self.get_topic_matches(score_sorted_structural_matches,
                 position_sorted_structural_matches)
 
@@ -173,6 +172,8 @@ class TopicMatcher:
                     return True
             return False
 
+        if self.only_one_result_per_document:
+            existing_document_labels = []
         topic_matches = []
         counter = 0
         for score_sorted_match in score_sorted_structural_matches:
@@ -180,6 +181,9 @@ class TopicMatcher:
                 break
             if match_contained_within_existing_topic_match(topic_matches,
                     score_sorted_match):
+                continue
+            if self.only_one_result_per_document and score_sorted_match.document_label \
+                    in existing_document_labels:
                 continue
             start_index = end_index = score_sorted_match.index_within_document
             index_within_list = score_sorted_match.original_index_within_list - 1
@@ -229,6 +233,8 @@ class TopicMatcher:
             topic_matches.append(TopicMatch(score_sorted_match.document_label,
                     start_index, end_index, sentences_start_index, sentences_end_index,
                     score_sorted_match.topic_score, sentences_string))
+            if self.only_one_result_per_document:
+                existing_document_labels.append(score_sorted_match.document_label)
             counter += 1
         return topic_matches
 

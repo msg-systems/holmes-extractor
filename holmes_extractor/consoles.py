@@ -104,7 +104,7 @@ class HolmesConsoles:
                     map(self._string_representation_of_word_match, match_dict['word_matches']))
                 print(word_matches_string)
 
-    def start_search_mode(self):
+    def start_search_mode(self, only_one_topic_match_per_document):
         """Starts a search mode console enabling the matching of pre-registered documents
             to search phrases entered ad-hoc by the user. This encompasses both structural
             and topic matching.
@@ -163,10 +163,13 @@ class HolmesConsoles:
             print()
             print('Performing topic matching ...')
             topic_matches = self._holmes.topic_match_documents_against(search_phrase,
-                    number_of_results = 5)
+                    number_of_results = 5,
+                            only_one_result_per_document=only_one_topic_match_per_document)
             print()
             if len(topic_matches) == 0:
                 print('No topic match results were returned.')
+            elif only_one_topic_match_per_document:
+                print('Topic matching results (maximum one per document):')
             else:
                 print('Topic matching results:')
             print()

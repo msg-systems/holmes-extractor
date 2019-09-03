@@ -9,7 +9,7 @@ from .consoles import HolmesConsoles
 class Manager:
     """The facade class for the Holmes library.
 
-    Args:
+    Parameters:
 
     model -- the name of the spaCy model, e.g. *en_core_web_lg*
     overall_similarity_threshold -- the overall similarity threshold for embedding-based
@@ -62,7 +62,7 @@ class Manager:
                     'Model does not support coreference resolution: perform_coreference_resolution may not be True')
 
     def parse_and_register_document(self, document_text, label=''):
-        """Args:
+        """Parameters:
 
         document_text -- the raw document text.
         label -- a label for the document which must be unique. Defaults to the empty string,
@@ -74,7 +74,7 @@ class Manager:
                 label)
 
     def register_parsed_document(self, document, label=''):
-        """Args:
+        """Parameters:
 
         document -- a preparsed Holmes document.
         label -- a label for the document which must be unique. Defaults to the empty string,
@@ -84,7 +84,7 @@ class Manager:
         self.structural_matcher.register_document(document, label)
 
     def deserialize_and_register_document(self, document, label=''):
-        """Args:
+        """Parameters:
 
         document -- a Holmes document serialized using the *serialize_document()* function.
         label -- a label for the document which must be unique. Defaults to the empty string,
@@ -98,7 +98,7 @@ class Manager:
         self.structural_matcher.register_document(doc, label)
 
     def remove_document(self, label):
-        """Args:
+        """Parameters:
 
         label -- the label of the document to be removed.
         """
@@ -116,7 +116,7 @@ class Manager:
             a file. If *label* is not the label of a registered document, *None* is returned
             instead.
 
-        Args:
+        Parameters:
 
         label -- the label of the document to be serialized.
         """
@@ -130,7 +130,7 @@ class Manager:
             return None
 
     def register_search_phrase(self, search_phrase_text, label=None):
-        """Args:
+        """Parameters:
 
         search_phrase_text -- the raw search phrase text.
         label -- a label for the search phrase which need *not* be unique. Defaults to the raw
@@ -224,7 +224,7 @@ class Manager:
     def topic_match_documents_against(self, text_to_match, *, maximum_activation_distance=75,
             relation_score=30, single_word_score=5, overlapping_relation_multiplier=1.5,
                 overlap_memory_size=10, maximum_activation_value=1000, sideways_match_extent=100,
-                number_of_results=10):
+                only_one_result_per_document=False, number_of_results=10):
         """Returns the results of a topic match between an entered text and the loaded documents.
 
         Properties:
@@ -243,6 +243,8 @@ class Manager:
         maximum_activation_value -- the maximum permissible activation value.
         sideways_match_extent -- the maximum number of words that may be incorporated into a
             topic match either side of the word where the activation peaked.
+        only_one_result_per_document -- if 'True', prevents multiple results from being returned
+            for the same document.
         number_of_results -- the number of topic match objects to return.
         """
         topic_matcher = TopicMatcher(self,
@@ -253,6 +255,7 @@ class Manager:
                 overlap_memory_size=overlap_memory_size,
                 maximum_activation_value=maximum_activation_value,
                 sideways_match_extent=sideways_match_extent,
+                only_one_result_per_document=only_one_result_per_document,
                 number_of_results=number_of_results)
         return topic_matcher.topic_match_documents_against(text_to_match)
 
@@ -309,9 +312,14 @@ class Manager:
         holmes_consoles = HolmesConsoles(self)
         holmes_consoles.start_chatbot_mode()
 
-    def start_search_mode_console(self):
+    def start_search_mode_console(self, only_one_topic_match_per_document=False):
         """Starts a search mode console enabling the matching of pre-registered documents
             to search phrases and topic-matching phrases entered ad-hoc by the user.
+
+            Parameters:
+
+            only_one_topic_match_per_document -- if 'True', prevents multiple topic match
+            results from being returned for the same document.
         """
         holmes_consoles = HolmesConsoles(self)
-        holmes_consoles.start_search_mode()
+        holmes_consoles.start_search_mode(only_one_topic_match_per_document)

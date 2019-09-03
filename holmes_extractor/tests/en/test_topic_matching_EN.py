@@ -101,6 +101,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 overlap_memory_size=10,
                 maximum_activation_value=1000,
                 sideways_match_extent=100,
+                only_one_result_per_document=False,
                 number_of_results=1)
         score_sorted_structural_matches = topic_matcher.perform_activation_scoring(
                 position_sorted_structural_matches)
@@ -132,6 +133,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 overlap_memory_size=10,
                 maximum_activation_value=1000,
                 sideways_match_extent=100,
+                only_one_result_per_document=False,
                 number_of_results=1)
         score_sorted_structural_matches = topic_matcher.perform_activation_scoring(
                 position_sorted_structural_matches)
@@ -162,6 +164,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 overlap_memory_size=10,
                 maximum_activation_value=1000,
                 sideways_match_extent=100,
+                only_one_result_per_document=False,
                 number_of_results=1)
         score_sorted_structural_matches = topic_matcher.perform_activation_scoring(
                 position_sorted_structural_matches)
@@ -169,3 +172,20 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 position_sorted_structural_matches)
         self.assertEqual(topic_matches[0].start_index, 1)
         self.assertEqual(topic_matches[0].end_index, 14)
+
+    def test_only_one_result_per_document(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.remove_all_search_phrases()
+        holmes_manager_coref.parse_and_register_document(
+                """
+                Peter came home. A great deal of irrelevant text. A great deal of irrelevant text.
+                A great deal of irrelevant text. A great deal of irrelevant text. A great deal of
+                irrelevant text. A great deal of irrelevant text. A great deal of irrelevant text.
+                A great deal of irrelevant text. A great deal of irrelevant text. A great deal of
+                irrelevant text. A great deal of irrelevant text. A great deal of irrelevant text.
+                A great deal of irrelevant text. A great deal of irrelevant text. A great deal of
+                irrelevant text. Peter came home.
+                """)
+        self.assertEqual(len(holmes_manager_coref.topic_match_documents_against("Peter")), 2)
+        self.assertEqual(len(holmes_manager_coref.topic_match_documents_against("Peter",
+                only_one_result_per_document=True)), 1)

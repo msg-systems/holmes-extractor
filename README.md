@@ -1401,7 +1401,8 @@ Convenience method matching the registered documents against a single
 Manager.topic_match_documents_against(self, text_to_match, *,
   maximum_activation_distance=75, relation_score=30, single_word_score=5,
   overlapping_relation_multiplier=1.5, overlap_memory_size=10,
-  maximum_activation_value=1000, sideways_match_extent=100, number_of_results=10)
+  maximum_activation_value=1000, sideways_match_extent=100,
+  only_one_result_per_document=False, number_of_results=10)
 
 Returns the results of a topic match between an entered text and the loaded documents.
 
@@ -1421,6 +1422,8 @@ overlap_memory_size -- the size of the memory for previous matches that is taken
 maximum_activation_value -- the maximum permissible activation value.
 sideways_match_extent -- the maximum number of words that may be incorporated into a
    topic match either side of the word where the activation peaked.
+only_one_result_per_document -- if 'True', prevents multiple results from being returned
+   for the same document.
 number_of_results -- the number of topic match objects to return.
 ```
 
