@@ -4,9 +4,9 @@ import holmes_extractor as holmes
 
 print('Initializing Holmes...')
 # Start the Holmes manager with the English model
-# You can try setting overall_similarity_threshold to 0.85
+# You can try setting overall_similarity_threshold to 0.9
 # and/or perform_coreference_resolution to False
-holmes_manager = holmes.Manager(model='en_core_web_lg', overall_similarity_threshold=1.00,
+holmes_manager = holmes.Manager(model='en_core_web_lg', overall_similarity_threshold=1.0,
         perform_coreference_resolution=True)
 # Get the HTML document with the list of stories by Hans Christian Andersen
 front_page = urllib.request.urlopen("http://www.aesopfables.com/aesophca.html")
