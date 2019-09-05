@@ -71,27 +71,30 @@ class TopicMatcher:
 
         text_to_match -- the text to match against the documents.
         """
-        self._holmes.remove_all_search_phrases()
         doc = self._semantic_analyzer.parse(text_to_match)
-        self.structural_matcher.register_phraselets(doc,
+        phraselet_labels_to_search_phrases = {}
+        self.structural_matcher.add_phraselets_to_dict(doc,
+                phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
                 replace_with_hypernym_ancestors=False,
                 match_all_words = False,
                 returning_serialized_phraselets = False)
-        if len(self.structural_matcher.list_search_phrase_labels()) == 0:
+        if len(phraselet_labels_to_search_phrases) == 0:
             return []
         # First get the structural matches sorted by position
         position_sorted_structural_matches = \
-                sorted(self.structural_matcher.match(), key=lambda match:
+                sorted(self.structural_matcher.match_documents_against_search_phrase_list(
+                        phraselet_labels_to_search_phrases.values(), False), key=lambda match:
                 (match.document_label, match.index_within_document))
         if len(position_sorted_structural_matches) == 0:
             # We found nothing, so we try again with all single words (not just nouns)
-            self._holmes.remove_all_search_phrases()
-            self.structural_matcher.register_phraselets(doc,
+            self.structural_matcher.add_phraselets_to_dict(doc,
+                    phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
                     replace_with_hypernym_ancestors=False,
-                    match_all_words=True,
+                    match_all_words = True,
                     returning_serialized_phraselets = False)
             position_sorted_structural_matches = \
-                    sorted(self.structural_matcher.match(), key=lambda match:
+                    sorted(self.structural_matcher.match_documents_against_search_phrase_list(
+                            phraselet_labels_to_search_phrases.values(), False), key=lambda match:
                     (match.document_label, match.index_within_document))
         # Read through the documents measuring the activation based on where
         # in the document structural matches were found
@@ -354,20 +357,23 @@ class SupervisedTopicTrainingUtils:
                                 increment(combined_label, match.document_label)
         return labels_to_frequencies_dict
 
-    def record_matches(self, *, structural_matcher, sorted_label_dict, doc, doc_label, matrix,
-            row_index):
+    def record_matches(self, *, phraselet_labels_to_search_phrases, structural_matcher,
+            sorted_label_dict, doc, doc_label, matrix, row_index, verbose):
         """ Matches a document against the currently stored phraselets and records the matches
             in a matrix.
 
             Parameters:
 
             structural_matcher -- the structural matcher object on which the phraselets are stored.
+            phraselet_labels_to_search_phrases -- a dictionary from search phrase (phraselet)
+                labels to search phrase objects.
             sorted_label_dict -- a dictionary from search phrase (phraselet) labels to their own
                 alphabetic sorting indexes.
             doc -- the document to be matched.
             doc_label - the label of 'doc'.
             matrix -- the matrix within which to record the matches.
             row_index -- the row number within the matrix corresponding to the document.
+            verbose -- if 'True', matching information is outputted to the console.
         """
 
         structural_matcher.remove_all_documents()
@@ -375,7 +381,9 @@ class SupervisedTopicTrainingUtils:
         found = False
         for label, occurrences in \
                 self.get_labels_to_classification_frequencies_dict(
-                matches=structural_matcher.match(),
+                matches=structural_matcher.match_documents_against_search_phrase_list(
+                        phraselet_labels_to_search_phrases.values(), verbose
+                ),
                 labels_to_classifications_dict=None).items():
             if self.oneshot:
                 occurrences = 1
@@ -416,6 +424,7 @@ class SupervisedTopicTrainingBasis:
         self.additional_classification_labels = set()
         self.classification_implication_dict = {}
         self.labels_to_classification_frequencies = None
+        self.phraselet_labels_to_search_phrases = {}
         self.serialized_phraselets = []
 
     def parse_and_register_training_document(self, text, classification, label=None):
@@ -451,7 +460,9 @@ class SupervisedTopicTrainingBasis:
             print('Registering document', label)
         self.training_documents[label] = doc
         self.serialized_phraselets.extend(
-                self.structural_matcher.register_phraselets(doc,
+                self.structural_matcher.add_phraselets_to_dict(doc,
+                phraselet_labels_to_search_phrases=
+                self.phraselet_labels_to_search_phrases,
                 replace_with_hypernym_ancestors=True,
                 match_all_words=self._match_all_words,
                 returning_serialized_phraselets = True))
@@ -485,7 +496,8 @@ class SupervisedTopicTrainingBasis:
             print('Matching documents against all phraselets')
         self.labels_to_classification_frequencies = self._utils.\
                 get_labels_to_classification_frequencies_dict(
-                matches=self.structural_matcher.match(),
+                matches=self.structural_matcher.match_documents_against_search_phrase_list(
+                self.phraselet_labels_to_search_phrases.values(), self.verbose),
                 labels_to_classifications_dict=
                 self.training_documents_labels_to_classifications_dict)
         self.classifications = \
@@ -570,8 +582,8 @@ class SupervisedTopicModelTrainer:
             raise NoPhraseletsAfterFilteringError(''.join(('minimum_occurrences: ',
                     str(minimum_occurrences), '; cv_threshold: ', str(cv_threshold))))
 
-        self._structural_matcher.remove_all_search_phrases()
-        self._structural_matcher.register_serialized_phraselets(self._serialized_phraselets)
+        phraselet_labels_to_search_phrases=self._structural_matcher.deserialize_phraselets(
+                self._serialized_phraselets)
         self._sorted_label_dict = {}
         for index, label in enumerate(sorted(self._labels_to_classification_frequencies.keys())):
             self._sorted_label_dict[label] = index
@@ -586,11 +598,14 @@ class SupervisedTopicModelTrainer:
                 training_documents.keys())):
             self._utils.record_matches(
                     structural_matcher = self._structural_matcher,
+                    phraselet_labels_to_search_phrases =
+                            phraselet_labels_to_search_phrases,
                     sorted_label_dict = self._sorted_label_dict,
                     doc=self._training_basis.training_documents[document_label],
                     doc_label=document_label,
                     matrix=self._input_matrix,
-                    row_index=index)
+                    row_index=index,
+                    verbose=True)
             self._record_classifications_for_training(document_label, index)
         self._hidden_layer_sizes = hidden_layer_sizes
         if self._hidden_layer_sizes == None:
@@ -695,7 +710,7 @@ class SupervisedTopicModelTrainer:
                 overlap_memory_size = self._utils.overlap_memory_size,
                 oneshot = self._utils.oneshot)
         return SupervisedTopicClassifier(self._semantic_analyzer, self._structural_matcher,
-                model)
+                model, self._training_basis.verbose)
 
 class SupervisedTopicClassifierModel:
     """ A serializable classifier model.
@@ -733,10 +748,11 @@ class SupervisedTopicClassifierModel:
 class SupervisedTopicClassifier:
     """ Classifies new documents based on a pre-trained model."""
 
-    def __init__(self, semantic_analyzer, structural_matcher, model):
+    def __init__(self, semantic_analyzer, structural_matcher, model, verbose):
         self._semantic_analyzer = semantic_analyzer
         self._structural_matcher = structural_matcher
         self._model = model
+        self._verbose = verbose
         if model != None:
             self._load_model(model)
 
@@ -745,8 +761,8 @@ class SupervisedTopicClassifier:
         if self._semantic_analyzer.model != model.semantic_analyzer_model:
             raise WrongModelDeserializationError(model.semantic_analyzer_model)
         self._structural_matcher.ontology = model.structural_matcher_ontology
-        self._structural_matcher.remove_all_search_phrases()
-        self._structural_matcher.register_serialized_phraselets(model.serialized_phraselets)
+        self._phraselet_labels_to_search_phrases = self._structural_matcher.deserialize_phraselets(
+                model.serialized_phraselets)
 
     def parse_and_classify(self, text):
         """ Returns a list containing zero, one or many document classifications. Where more
@@ -773,11 +789,13 @@ class SupervisedTopicClassifier:
             raise RuntimeError('No model defined')
         new_document_matrix = dok_matrix((1, len(self._model.sorted_label_dict)))
         if not self._utils.record_matches(structural_matcher=self._structural_matcher,
+                phraselet_labels_to_search_phrases=self._phraselet_labels_to_search_phrases,
                 sorted_label_dict=self._model.sorted_label_dict,
                 doc=doc,
                 doc_label=None,
                 matrix=new_document_matrix,
-                row_index=0):
+                row_index=0,
+                verbose=self._verbose):
             return []
         else:
             classification_indexes = self._model.mlp.predict(new_document_matrix).nonzero()[1]

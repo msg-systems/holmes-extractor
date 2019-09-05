@@ -19,14 +19,16 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
             replace_with_hypernym_ancestors = True, match_all_words = False):
         manager.remove_all_search_phrases()
         doc = manager.semantic_analyzer.parse(text_to_match)
-        manager.structural_matcher.register_phraselets(doc,
+        phraselet_labels_to_search_phrases = {}
+        manager.structural_matcher.add_phraselets_to_dict(doc,
+                phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
                 replace_with_hypernym_ancestors=replace_with_hypernym_ancestors,
                 match_all_words=match_all_words,
                 returning_serialized_phraselets=False)
         self.assertEqual(
-                set(manager.structural_matcher.list_search_phrase_labels()),
+                set(phraselet_labels_to_search_phrases.keys()),
                 set(phraselet_labels))
-        self.assertEqual(len(manager.structural_matcher.list_search_phrase_labels()),
+        self.assertEqual(len(phraselet_labels_to_search_phrases.keys()),
                 len(phraselet_labels))
 
     def test_verb_subject_no_entry_in_ontology(self):
@@ -178,17 +180,19 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
         no_ontology_coref_holmes_manager.remove_all_search_phrases()
         doc = no_ontology_coref_holmes_manager.semantic_analyzer.parse(
                 "I saw a dog. He was chasing a cat and a cat")
+        phraselet_labels_to_search_phrases = {}
         serialized_phraselets = \
-                no_ontology_coref_holmes_manager.structural_matcher.register_phraselets(
-                    doc,
-                    replace_with_hypernym_ancestors=False,
-                    match_all_words=False,
-                    returning_serialized_phraselets=True)
-        no_ontology_coref_holmes_manager.remove_all_search_phrases()
-        no_ontology_coref_holmes_manager.structural_matcher.register_serialized_phraselets(
+                no_ontology_coref_holmes_manager.structural_matcher.add_phraselets_to_dict(
+                doc,
+                phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
+                replace_with_hypernym_ancestors=False,
+                match_all_words=False,
+                returning_serialized_phraselets=True)
+        deserialized_phraselet_labels_to_search_phrases = \
+                no_ontology_coref_holmes_manager.structural_matcher.deserialize_phraselets(
                 serialized_phraselets)
         self.assertEqual(set(
-                no_ontology_coref_holmes_manager.structural_matcher.list_search_phrase_labels()),
+                deserialized_phraselet_labels_to_search_phrases.keys()),
                 set(['predicate-patient: see-dog', 'predicate-actor: chase-dog',
                 'predicate-patient: chase-cat', 'word: dog', 'word: cat']))
 

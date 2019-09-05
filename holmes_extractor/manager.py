@@ -152,45 +152,47 @@ class Manager:
             Should be called by applications wishing to retain references to the spaCy and
             Holmes information that was used to derive the matches.
         """
-        return sorted(self.structural_matcher.match(), key=lambda match: 1 -
-                         float(match.overall_similarity_measure))
+        return self.structural_matcher.match()
 
-    def _build_match_dictionary(self, match):
-        """Builds and returns a dictionary describing a match."""
-        earliest_sentence_index = sys.maxsize
-        latest_sentence_index = -1
-        for word_match in match.word_matches:
-            sentence_index = word_match.document_token.sent.start
-            if sentence_index < earliest_sentence_index:
-                earliest_sentence_index = sentence_index
-            if sentence_index > latest_sentence_index:
-                latest_sentence_index = sentence_index
-        sentences_string = ' '.join(sentence.text.strip() for sentence in
-                match.word_matches[0].document_token.doc.sents if sentence.start >=
-                earliest_sentence_index and sentence.start <= latest_sentence_index)
+    def _build_match_dictionaries(self, matches):
+        """Builds and returns a list of dictionaries describing matches."""
+        match_dicts = []
+        for match in matches:
+            earliest_sentence_index = sys.maxsize
+            latest_sentence_index = -1
+            for word_match in match.word_matches:
+                sentence_index = word_match.document_token.sent.start
+                if sentence_index < earliest_sentence_index:
+                    earliest_sentence_index = sentence_index
+                if sentence_index > latest_sentence_index:
+                    latest_sentence_index = sentence_index
+            sentences_string = ' '.join(sentence.text.strip() for sentence in
+                    match.word_matches[0].document_token.doc.sents if sentence.start >=
+                    earliest_sentence_index and sentence.start <= latest_sentence_index)
 
-        match_dict = {
-                'search_phrase': match.search_phrase_label,
-                'document': match.document_label,
-                'index_within_document': match.index_within_document,
-                'sentences_within_document': sentences_string,
-                'negated': match.is_negated,
-                'uncertain': match.is_uncertain,
-                'involves_coreference': match.involves_coreference,
-                'overall_similarity_measure': match.overall_similarity_measure}
-        text_word_matches = []
-        for word_match in match.word_matches:
-            text_word_matches.append({
-                    'search_phrase_word': word_match.search_phrase_word,
-                    'document_word': word_match.document_word,
-                    'document_phrase': self.semantic_analyzer.get_dependent_phrase(
-                            word_match.document_token),
-                    'match_type': word_match.type,
-                    'similarity_measure': word_match.similarity_measure,
-                    'involves_coreference': word_match.involves_coreference,
-                    'extracted_word': word_match.extracted_word})
-        match_dict['word_matches']=text_word_matches
-        return match_dict
+            match_dict = {
+                    'search_phrase': match.search_phrase_label,
+                    'document': match.document_label,
+                    'index_within_document': match.index_within_document,
+                    'sentences_within_document': sentences_string,
+                    'negated': match.is_negated,
+                    'uncertain': match.is_uncertain,
+                    'involves_coreference': match.involves_coreference,
+                    'overall_similarity_measure': match.overall_similarity_measure}
+            text_word_matches = []
+            for word_match in match.word_matches:
+                text_word_matches.append({
+                        'search_phrase_word': word_match.search_phrase_word,
+                        'document_word': word_match.document_word,
+                        'document_phrase': self.semantic_analyzer.get_dependent_phrase(
+                                word_match.document_token),
+                        'match_type': word_match.type,
+                        'similarity_measure': word_match.similarity_measure,
+                        'involves_coreference': word_match.involves_coreference,
+                        'extracted_word': word_match.extracted_word})
+            match_dict['word_matches']=text_word_matches
+            match_dicts.append(match_dict)
+        return match_dicts
 
     def match_returning_dictionaries(self):
         """Matches the registered search phrases to the registered documents. Returns a list
@@ -198,28 +200,22 @@ class Manager:
             descending order. Callers of this method do not have to manage any further
             dependencies on spaCy or Holmes.
         """
-        match_dicts = []
-        for match in self.match():
-            match_dicts.append(self._build_match_dictionary(match))
-        return match_dicts
+        return self._build_match_dictionaries(self.match())
 
     def match_search_phrases_against(self, entry):
-        """Convenience method matching the registered search phrases against a single document
-            supplied to the method and returning dictionaries describing any matches.
-            Any pre-existing registered documents are removed.
+        """Matches the registered search phrases against a single document
+            supplied to the method and returns dictionaries describing any matches.
         """
-        self.remove_all_documents()
-        self.parse_and_register_document(document_text=entry)
-        return self.match_returning_dictionaries()
+        doc = self.semantic_analyzer.parse(entry)
+        return self._build_match_dictionaries(
+                self.structural_matcher.match_search_phrases_against(doc))
 
     def match_documents_against(self, search_phrase):
-        """Convenience method matching the registered documents against a single search phrase
-            supplied to the method and returning dictionaries describing any matches.
-            Any pre-existing registered searched phrases are removed.
+        """Matches the registered documents against a single search phrase
+            supplied to the method and returns dictionaries describing any matches.
         """
-        self.remove_all_search_phrases()
-        self.register_search_phrase(search_phrase)
-        return self.match_returning_dictionaries()
+        return self._build_match_dictionaries(
+                self.structural_matcher.match_documents_against(search_phrase))
 
     def topic_match_documents_against(self, text_to_match, *, maximum_activation_distance=75,
             relation_score=30, single_word_score=5, overlapping_relation_multiplier=1.5,
@@ -259,15 +255,14 @@ class Manager:
                 number_of_results=number_of_results)
         return topic_matcher.topic_match_documents_against(text_to_match)
 
-    def _new_supervised_topic_structural_matcher(self, verbose):
-            return StructuralMatcher(self.semantic_analyzer, self.ontology,
-                    overall_similarity_threshold = self.overall_similarity_threshold,
-                    embedding_based_matching_on_root_words =
-                    self.embedding_based_matching_on_root_words,
-                    perform_coreference_resolution = self.perform_coreference_resolution,
-                    output_document_matching_message_to_console = verbose)
-            # a private structural matcher is required because the results would be unpredictable
-            # if the user registered search phrases additional to the generated phraselets
+    def _new_supervised_topic_structural_matcher(self):
+        return StructuralMatcher(self.semantic_analyzer, self.ontology,
+                overall_similarity_threshold = self.overall_similarity_threshold,
+                embedding_based_matching_on_root_words =
+                self.embedding_based_matching_on_root_words,
+                perform_coreference_resolution = self.perform_coreference_resolution)
+        # a private structural matcher is required to prevent the supervised topic
+        # classification from matching against previously registered documents
 
     def get_supervised_topic_training_basis(self, *, classification_ontology=None,
             overlap_memory_size=10, oneshot=True, match_all_words=False, verbose=True):
@@ -283,25 +278,26 @@ class Manager:
                 counted once only (value 'True') or multiple times (value 'False')
             match_all_words -- whether all single words should be taken into account
                 (value 'True') or only single words with noun tags (value 'False')
-            verbose -- if 'True', information about training progres is outputted to the console.
+            verbose -- if 'True', information about training progress is outputted to the console.
         """
         return SupervisedTopicTrainingBasis(
-                structural_matcher=self._new_supervised_topic_structural_matcher(verbose),
+                structural_matcher=self._new_supervised_topic_structural_matcher(),
                 classification_ontology=classification_ontology,
                 overlap_memory_size=overlap_memory_size, oneshot=oneshot,
                 match_all_words=match_all_words, verbose=verbose)
 
-    def deserialize_supervised_topic_classifier(self, serialized_model):
+    def deserialize_supervised_topic_classifier(self, serialized_model, verbose=False):
         """ Returns a document classifier that will use a pre-trained model.
 
             Parameters:
 
             serialized_model -- the pre-trained model, which will correspond to a
                 'SupervisedTopicClassifierModel' instance.
+            verbose -- if 'True', information about matching is outputted to the console.
         """
         classifier = SupervisedTopicClassifier(self.semantic_analyzer,
-                self._new_supervised_topic_structural_matcher(False),
-                None)
+                self._new_supervised_topic_structural_matcher(),
+                None, verbose)
         classifier.deserialize_model(serialized_model)
         return classifier
 

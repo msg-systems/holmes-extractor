@@ -6,18 +6,18 @@ holmes_manager = holmes.Manager('de_core_news_md')
 class GermanPhraseletProductionTest(unittest.TestCase):
 
     def _check_equals(self, text_to_match, phraselet_labels, match_all_words = False):
-        holmes_manager.remove_all_search_phrases()
         doc = holmes_manager.semantic_analyzer.parse(text_to_match)
-        holmes_manager.structural_matcher.register_phraselets(doc,
+        phraselet_labels_to_search_phrases = {}
+        holmes_manager.structural_matcher.add_phraselets_to_dict(doc,
+                phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
                 replace_with_hypernym_ancestors=False,
                 match_all_words=match_all_words,
                 returning_serialized_phraselets=False)
         self.assertEqual(
-                set(holmes_manager.structural_matcher.list_search_phrase_labels()),
+                set(phraselet_labels_to_search_phrases.keys()),
                 set(phraselet_labels))
-        self.assertEqual(len(holmes_manager.structural_matcher.list_search_phrase_labels()),
+        self.assertEqual(len(phraselet_labels_to_search_phrases.keys()),
                 len(phraselet_labels))
-
 
     def test_verb_nom(self):
         self._check_equals("Eine Pflanze wächst", ['verb-nom: wachsen-pflanzen', 'word: pflanzen'])
@@ -52,16 +52,17 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                 'word: gärtnern', 'word: frau', 'word: mittagessen'])
 
     def test_serialization(self):
-        holmes_manager.remove_all_search_phrases()
         doc = holmes_manager.semantic_analyzer.parse(
                 "Der Gärtner gibt der netten Frau ihr Mittagessen")
-        serialized_phraselets = holmes_manager.structural_matcher.register_phraselets(doc,
+        phraselet_labels_to_search_phrases = {}
+        serialized_phraselets = holmes_manager.structural_matcher.add_phraselets_to_dict(doc,
+                phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
                 replace_with_hypernym_ancestors=False,
                 match_all_words=False,
                 returning_serialized_phraselets=True)
-        holmes_manager.remove_all_search_phrases()
-        holmes_manager.structural_matcher.register_serialized_phraselets(serialized_phraselets)
-        self.assertEqual(set(holmes_manager.structural_matcher.list_search_phrase_labels()),
+        deserialized_phraselet_labels_to_search_phrases = holmes_manager.structural_matcher.\
+                deserialize_phraselets(serialized_phraselets)
+        self.assertEqual(set(deserialized_phraselet_labels_to_search_phrases.keys()),
                 set(['verb-nom: geben-gärtnern', 'verb-acc: geben-mittagessen',
                 'verb-dat: geben-frau', 'noun-dependent: frau-nett',
                 'word: gärtnern', 'word: frau', 'word: mittagessen']))

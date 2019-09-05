@@ -219,7 +219,7 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
                 ['animal', 'dog', 'hound'])
         serialized_supervised_topic_classifier_model = stc.serialize_model()
         stc2 = no_ontology_holmes_manager.deserialize_supervised_topic_classifier(
-                serialized_supervised_topic_classifier_model)
+                serialized_supervised_topic_classifier_model, verbose=True)
         self.assertEqual(['word: animal', 'word: computer', 'word: lead', 'word: robot'],
                 list(stc2._model.sorted_label_dict.keys()))
         self.assertEqual(stc2.parse_and_classify("You are a robot."), ['computers'])

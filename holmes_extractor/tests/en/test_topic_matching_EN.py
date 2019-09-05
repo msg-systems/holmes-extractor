@@ -101,54 +101,25 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self.assertEqual(topic_matches[0].relative_start_index, 1)
         self.assertEqual(topic_matches[0].relative_end_index, 5)
 
-    def test_additional_phraselets(self):
+    def test_additional_search_phrases(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.remove_all_search_phrases()
         holmes_manager_coref.parse_and_register_document(
                 "Peter visited Paris and a dog chased a cat. Beef and lamb and pork.")
         doc = holmes_manager_coref.semantic_analyzer.parse("My friend visited ENTITYGPE")
-        holmes_manager_coref.structural_matcher.register_phraselets(doc,
+        phraselet_labels_to_search_phrases = {}
+        holmes_manager_coref.structural_matcher.add_phraselets_to_dict(doc,
+                phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
                 replace_with_hypernym_ancestors=False,
                 match_all_words=False,
                 returning_serialized_phraselets=False)
         holmes_manager_coref.structural_matcher.register_search_phrase("A dog chases a cat", None, True)
         holmes_manager_coref.structural_matcher.register_search_phrase("beef", None, True)
         holmes_manager_coref.structural_matcher.register_search_phrase("lamb", None, True)
-        position_sorted_structural_matches = \
-                sorted(holmes_manager_coref.structural_matcher.match(), key=lambda match:
-                (match.document_label, match.index_within_document))
-        topic_matcher = TopicMatcher(holmes_manager_coref,
-                maximum_activation_distance=75,
-                relation_score=20,
-                single_word_score=5,
-                overlapping_relation_multiplier=1.5,
-                overlap_memory_size=10,
-                maximum_activation_value=1000,
-                sideways_match_extent=100,
-                only_one_result_per_document=False,
-                number_of_results=1)
-        score_sorted_structural_matches = topic_matcher.perform_activation_scoring(
-                position_sorted_structural_matches)
-        topic_matches = topic_matcher.get_topic_matches(score_sorted_structural_matches,
-                position_sorted_structural_matches)
-        self.assertEqual(topic_matches[0].start_index, 1)
-        self.assertEqual(topic_matches[0].end_index, 12)
-
-    def test_phraselets_removed(self):
-        holmes_manager_coref.remove_all_documents()
-        holmes_manager_coref.remove_all_search_phrases()
-        holmes_manager_coref.parse_and_register_document(
-                "Peter visited Paris and a dog chased a cat. Beef and lamb and pork.")
-        doc = holmes_manager_coref.semantic_analyzer.parse(
-                "My friend visited ENTITYGPE and ate some pork")
-        holmes_manager_coref.structural_matcher.register_phraselets(doc,
-                replace_with_hypernym_ancestors=False,
-                match_all_words=False,
-                returning_serialized_phraselets=False)
-        holmes_manager_coref.remove_all_search_phrases_with_label("word: pork")
-        position_sorted_structural_matches = \
-                sorted(holmes_manager_coref.structural_matcher.match(), key=lambda match:
-                (match.document_label, match.index_within_document))
+        position_sorted_structural_matches = sorted(holmes_manager_coref.structural_matcher.
+                        match_documents_against_search_phrase_list(
+                        phraselet_labels_to_search_phrases.values(),False),
+                        key=lambda match: (match.document_label, match.index_within_document))
         topic_matcher = TopicMatcher(holmes_manager_coref,
                 maximum_activation_distance=75,
                 relation_score=20,
@@ -165,37 +136,6 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 position_sorted_structural_matches)
         self.assertEqual(topic_matches[0].start_index, 1)
         self.assertEqual(topic_matches[0].end_index, 2)
-
-    def test_phraselets_removed_control_case(self):
-        holmes_manager_coref.remove_all_documents()
-        holmes_manager_coref.remove_all_search_phrases()
-        holmes_manager_coref.parse_and_register_document(
-                "Peter visited Paris and a dog chased a cat. Beef and lamb and pork.")
-        doc = holmes_manager_coref.semantic_analyzer.parse(
-                "My friend visited ENTITYGPE and ate some pork")
-        holmes_manager_coref.structural_matcher.register_phraselets(doc,
-                replace_with_hypernym_ancestors=False,
-                match_all_words=False,
-                returning_serialized_phraselets=False)
-        position_sorted_structural_matches = \
-                sorted(holmes_manager_coref.structural_matcher.match(), key=lambda match:
-                (match.document_label, match.index_within_document))
-        topic_matcher = TopicMatcher(holmes_manager_coref,
-                maximum_activation_distance=75,
-                relation_score=20,
-                single_word_score=5,
-                overlapping_relation_multiplier=1.5,
-                overlap_memory_size=10,
-                maximum_activation_value=1000,
-                sideways_match_extent=100,
-                only_one_result_per_document=False,
-                number_of_results=1)
-        score_sorted_structural_matches = topic_matcher.perform_activation_scoring(
-                position_sorted_structural_matches)
-        topic_matches = topic_matcher.get_topic_matches(score_sorted_structural_matches,
-                position_sorted_structural_matches)
-        self.assertEqual(topic_matches[0].start_index, 1)
-        self.assertEqual(topic_matches[0].end_index, 14)
 
     def test_only_one_result_per_document(self):
         holmes_manager_coref.remove_all_documents()

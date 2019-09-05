@@ -128,8 +128,7 @@ class StructuralMatcher:
     """The class responsible for matching search phrases with documents."""
 
     def __init__(self, semantic_analyzer, ontology, overall_similarity_threshold,
-            embedding_based_matching_on_root_words, perform_coreference_resolution,
-            output_document_matching_message_to_console=False):
+            embedding_based_matching_on_root_words, perform_coreference_resolution):
         """Args:
 
         semantic_analyzer -- the *SemanticAnalyzer* object to use in generating search phrase
@@ -144,8 +143,6 @@ class StructuralMatcher:
             matching should be attempted on search-phrase root tokens, which has a considerable
             performance hit. Defaults to *False*.
         perform_coreference_resolution -- *True*, if coreference resolution should be performed.
-        output_document_matching_message_to_console -- *True* if a status message should be written
-            to the console when a document is matched.
         """
         self.semantic_analyzer = semantic_analyzer
         self.ontology = ontology
@@ -153,11 +150,9 @@ class StructuralMatcher:
         self.embedding_based_matching_on_root_words = embedding_based_matching_on_root_words
         self.search_phrase_labels = set()
         self.search_phrases = []
-        # Dict from document labels to *_RegisteredDocument* objects
-        self._registered_documents = {}
+        # Dict from document labels to *_IndexedDocument* objects
+        self._indexed_documents = {}
         self.perform_coreference_resolution = perform_coreference_resolution
-        self.output_document_matching_message_to_console = \
-                output_document_matching_message_to_console
 
     class _SearchPhrase:
 
@@ -188,7 +183,7 @@ class StructuralMatcher:
             self.ontology = ontology
             self.topic_match_phraselet = topic_match_phraselet
 
-    class _RegisteredDocument:
+    class _IndexedDocument:
         """Args:
 
         doc -- the Holmes document
@@ -272,25 +267,25 @@ class StructuralMatcher:
 
     def register_search_phrase(self, search_phrase_text, label, topic_match_phraselet=False):
         search_phrase_doc = self.semantic_analyzer.parse(search_phrase_text)
-        self._internal_register_search_phrase(search_phrase_text, search_phrase_doc, label,
-                topic_match_phraselet)
+        self.search_phrases.append(self._create_search_phrase(search_phrase_text,
+                search_phrase_doc, label, topic_match_phraselet))
+        self.search_phrase_labels.add(label)
 
-    def register_phraselet_doc(self, phraselet_doc, label):
-        if label not in self.search_phrase_labels:
-            self._internal_register_search_phrase('topic match phraselet', phraselet_doc, label,
-                    True)
-
-    def register_phraselets(self, doc, *, replace_with_hypernym_ancestors,
-            match_all_words, returning_serialized_phraselets):
-        """ Generates and registers topic matching phraselets extracted from a matching text.
+    def add_phraselets_to_dict(self, doc, *, phraselet_labels_to_search_phrases,
+            replace_with_hypernym_ancestors, match_all_words, returning_serialized_phraselets):
+        """ Creates topic matching phraselets extracted from a matching text.
 
         Properties:
 
         doc -- the Holmes-parsed document
+        phraselet_labels_to_search_phrases -- a dictionary from labels to search phrases that
+            ensures that the same phraselet is not processed multiple times.
         replace_with_hypernym_ancestors -- if 'True', all words present in the ontology
             are replaced with their most general (highest) ancestors.
         match_all_words -- if 'True', word phraselets are generated for all matchable words
             rather than just for words whose tags match the phraselet template.
+        returning_serialized_phraselets -- if 'True', phraselets ready for serialization are
+            returned.
         """
 
         def get_word_from_token(token):
@@ -322,7 +317,10 @@ class StructuralMatcher:
                             'ENTITYNOUN':
                             # ENTITYNOUN has to be excluded as single word although it is still
                             # permitted as the child of a relation phraselet template
-                        self.register_phraselet_doc(phraselet_doc, phraselet_label)
+                        if phraselet_label not in phraselet_labels_to_search_phrases:
+                            phraselet_labels_to_search_phrases[phraselet_label] = \
+                                    self._create_search_phrase('topic match phraselet',
+                                    phraselet_doc, phraselet_label, True)
                         if returning_serialized_phraselets:
                             serialized_phraselets.append(SerializedPhraselet(
                                     phraselet_label, phraselet_template.label, word, None))
@@ -377,22 +375,27 @@ class StructuralMatcher:
                                         self.semantic_analyzer.phraselet_stop_lemmas and \
                                         child_word not in \
                                         self.semantic_analyzer.phraselet_stop_lemmas:
-                                    self.register_phraselet_doc(phraselet_doc, phraselet_label)
-                                    if returning_serialized_phraselets:
-                                        serialized_phraselets.append(SerializedPhraselet(
-                                                phraselet_label, phraselet_template.label,
-                                                parent_word, child_word))
+                                    if phraselet_label not in phraselet_labels_to_search_phrases:
+                                        phraselet_labels_to_search_phrases[phraselet_label] = \
+                                                self._create_search_phrase('topic match phraselet',
+                                                phraselet_doc, phraselet_label, True)
+                                        if returning_serialized_phraselets:
+                                            serialized_phraselets.append(SerializedPhraselet(
+                                                    phraselet_label, phraselet_template.label,
+                                                    parent_word, child_word))
             process_single_word_phraselet_templates(token, True)
-        if len(self.list_search_phrase_labels()) == 0 and not match_all_words:
+        if len(phraselet_labels_to_search_phrases) == 0 and not match_all_words:
             for token in doc:
                 process_single_word_phraselet_templates(token, False)
         if returning_serialized_phraselets:
             return serialized_phraselets
 
-    def register_serialized_phraselets(self, serialized_phraselets):
-        """ Re-registers serialized topic matching phraselets. """
+    def deserialize_phraselets(self, serialized_phraselets):
+        """ Deserializes serialized phraselets to recreate the dictionary from
+            labels to search phrases.
+        """
 
-        def register_serialized_phraselet(serialized_phraselet):
+        def deserialize_phraselet(serialized_phraselet, phraselet_labels_to_search_phrases):
             for phraselet_template in self.semantic_analyzer.phraselet_templates:
                 if serialized_phraselet.template_label == phraselet_template.label:
                     phraselet_doc = self.semantic_analyzer.parse(
@@ -408,13 +411,18 @@ class StructuralMatcher:
                     else:
                         phraselet_label = ''.join((phraselet_template.label, ': ',
                                 serialized_phraselet.parent_word))
-                    self.register_phraselet_doc(phraselet_doc, phraselet_label)
+                    if phraselet_label not in phraselet_labels_to_search_phrases:
+                        phraselet_labels_to_search_phrases[phraselet_label] = \
+                                self._create_search_phrase('topic match phraselet',
+                                phraselet_doc, phraselet_label, True)
                     return
             raise RuntimeError(' '.join(('Phraselet template', serialized_phraselet.template_label,
                     'not found.')))
 
+        phraselet_labels_to_search_phrases = {}
         for serialized_phraselet in serialized_phraselets:
-            register_serialized_phraselet(serialized_phraselet)
+            deserialize_phraselet(serialized_phraselet, phraselet_labels_to_search_phrases)
+        return phraselet_labels_to_search_phrases
 
     def _redefine_multiwords_on_head_tokens(self, doc):
         if self.ontology != None:
@@ -434,7 +442,7 @@ class StructuralMatcher:
                                     multiword_token.i, 0 - (token.i + 1), None)]
                             multiword_token._.holmes.is_matchable = False
 
-    def _internal_register_search_phrase(self, search_phrase_text, search_phrase_doc,
+    def _create_search_phrase(self, search_phrase_text, search_phrase_doc,
             label, topic_match_phraselet):
 
         def replace_grammatical_root_token_recursively(token):
@@ -507,17 +515,21 @@ class StructuralMatcher:
                 len(matchable_non_entity_tokens_to_lexemes) > 0:
             single_token_similarity_threshold = \
                     self.overall_similarity_threshold ** len(matchable_non_entity_tokens_to_lexemes)
-        if len(root_tokens) == 1:
-            self.search_phrases.append(self._SearchPhrase(search_phrase_doc, tokens_to_match,
-                    root_tokens[0], matchable_non_entity_tokens_to_lexemes,
-                    single_token_similarity_threshold, label, self.ontology,
-                    topic_match_phraselet))
-            self.search_phrase_labels.add(label)
+        return self._SearchPhrase(search_phrase_doc, tokens_to_match,
+                root_tokens[0], matchable_non_entity_tokens_to_lexemes,
+                single_token_similarity_threshold, label, self.ontology,
+                topic_match_phraselet)
 
     def list_search_phrase_labels(self):
         return sorted(self.search_phrase_labels)
 
     def register_document(self, parsed_document, label):
+
+        if label in self._indexed_documents.keys():
+            raise DuplicateDocumentError(label)
+        self._indexed_documents[label] = self._create_document(parsed_document, label)
+
+    def _create_document(self, parsed_document, label):
 
         def add_dict_entry(dict, word, token_index):
             if word in dict.keys():
@@ -532,8 +544,6 @@ class StructuralMatcher:
                     return multiword_span.text.lower()
             return None
 
-        if label in self._registered_documents.keys():
-            raise DuplicateDocumentError(label)
         words_to_token_indexes_dict = {}
         for token in parsed_document:
             if self.ontology != None:
@@ -553,22 +563,21 @@ class StructuralMatcher:
                     or token.ent_type_ != token.head.ent_type_):
                 entity_label = ''.join(('ENTITY', token.ent_type_))
                 add_dict_entry(words_to_token_indexes_dict, entity_label, token.i)
-        self._registered_documents[label] = self._RegisteredDocument(parsed_document,
-                words_to_token_indexes_dict)
+        return self._IndexedDocument(parsed_document, words_to_token_indexes_dict)
 
     def remove_document(self, label):
-        self._registered_documents.pop(label)
+        self._indexed_documents.pop(label)
 
     def remove_all_documents(self):
-        self._registered_documents = {}
+        self._indexed_documents = {}
 
     def document_labels(self):
         """Returns a list of the labels of the currently registered documents."""
-        return self._registered_documents.keys()
+        return self._indexed_documents.keys()
 
     def get_document(self, label):
-        if label in self._registered_documents.keys():
-            return self._registered_documents[label].doc
+        if label in self._indexed_documents.keys():
+            return self._indexed_documents[label].doc
         else:
             return None
 
@@ -1052,25 +1061,25 @@ class StructuralMatcher:
         matches_to_return.extend(working_matches)
         return matches_to_return
 
-    def match(self):
-        """Finds and returns matches between the search phrases and the documents
-        managed by this object.
+    def _internal_match(self, indexed_documents, search_phrases,
+            output_document_matching_message_to_console=False):
+        """Finds and returns matches between search phrases and documents.
         """
-        if len(self._registered_documents) == 0:
+        if len(indexed_documents) == 0:
             raise NoSearchedDocumentError(
                 'At least one searched document is required to match.')
-        if len(self.search_phrases) == 0:
+        if len(search_phrases) == 0:
             raise NoSearchPhraseError('At least one search_phrase is required to match.')
         matches = []
-        for document_label, registered_document in self._registered_documents.items():
+        for document_label, registered_document in indexed_documents.items():
             doc = registered_document.doc
-            if self.output_document_matching_message_to_console:
+            if output_document_matching_message_to_console:
                 print('Processing document', document_label)
             # Dictionary used to improve performance when embedding-based matching for root tokens
             # is active and there are multiple search phrases with the same root token word: the
             # same indexes in the document will then match all the search phrase root tokens.
             root_lexeme_to_indexes_to_match_dict = {}
-            for search_phrase in self.search_phrases:
+            for search_phrase in search_phrases:
                 if search_phrase.topic_match_phraselet and len(search_phrase.doc) == 1 and not \
                         self.embedding_based_matching_on_root_words:
                     # We are only matching a single word without embedding, so to improve
@@ -1139,4 +1148,32 @@ class StructuralMatcher:
                 for index_to_match in sorted(matched_indexes_set):
                     matches.extend(self._get_matches_starting_at_root_word_match(
                             search_phrase, doc, doc[index_to_match], document_label))
-        return matches
+        return sorted(matches, key=lambda match: 1 - float(match.overall_similarity_measure))
+
+    def match(self):
+        """Finds and returns matches between the search phrases and the documents
+        managed by this object.
+        """
+        return self._internal_match(self._indexed_documents, self.search_phrases)
+
+    def match_search_phrases_against(self, parsed_document):
+        """Matches the registered search phrases against a single document
+            supplied to the method.
+        """
+        indexed_documents = {'':self._create_document(parsed_document, '')}
+        return self._internal_match(indexed_documents, self.search_phrases)
+
+    def match_documents_against(self, search_phrase_text):
+        """Matches the registered documents against a single search phrase text
+            supplied to the method.
+        """
+        search_phrase_doc = self.semantic_analyzer.parse(search_phrase_text)
+        search_phrases = [self._create_search_phrase(search_phrase_text,
+                search_phrase_doc, search_phrase_text, False)]
+        return self._internal_match(self._indexed_documents, search_phrases)
+
+    def match_documents_against_search_phrase_list(self, search_phrases, verbose):
+        """Matches the registered documents against a list of search phrase
+            objects supplied to the method.
+        """
+        return self._internal_match(self._indexed_documents, search_phrases, verbose)
