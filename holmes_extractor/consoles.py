@@ -32,8 +32,8 @@ class HolmesConsoles:
             extracted_word = ''
         string = ''.join(("'", word_match['document_phrase'], "'", extracted_word, "->'",
                 word_match['search_phrase_word'], "' (", word_match['match_type']))
-        if word_match['similarity_measure'] < 1.0:
-            string = ''.join((string, ': ', str(word_match['similarity_measure'])))
+        if float(word_match['similarity_measure']) < 1.0:
+            string = ''.join((string, ': ', word_match['similarity_measure']))
         string = ''.join((string, ")"))
         return string
 

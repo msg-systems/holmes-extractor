@@ -1,6 +1,7 @@
 import copy
 from .errors import *
 from .semantics import SemanticDependency
+from threading import Lock
 
 class WordMatch:
     """A match between a searched phrase word and a document word.
@@ -153,6 +154,7 @@ class StructuralMatcher:
         # Dict from document labels to *_IndexedDocument* objects
         self._indexed_documents = {}
         self.perform_coreference_resolution = perform_coreference_resolution
+        self._lock = Lock()
 
     class _SearchPhrase:
 
@@ -256,20 +258,23 @@ class StructuralMatcher:
             pointer += 1
 
     def remove_all_search_phrases(self):
-        self.search_phrases = []
-        self.search_phrase_labels = set()
+        with self._lock:
+            self.search_phrases = []
+            self.search_phrase_labels = set()
 
     def remove_all_search_phrases_with_label(self, label):
-        self.search_phrases = [search_phrase for search_phrase in self.search_phrases if
-                search_phrase.label != label]
-        if label in self.search_phrase_labels:
-            self.search_phrase_labels.remove(label)
+        with self._lock:
+            self.search_phrases = [search_phrase for search_phrase in self.search_phrases if
+                    search_phrase.label != label]
+            if label in self.search_phrase_labels:
+                self.search_phrase_labels.remove(label)
 
     def register_search_phrase(self, search_phrase_text, label, topic_match_phraselet=False):
         search_phrase_doc = self.semantic_analyzer.parse(search_phrase_text)
-        self.search_phrases.append(self._create_search_phrase(search_phrase_text,
-                search_phrase_doc, label, topic_match_phraselet))
-        self.search_phrase_labels.add(label)
+        with self._lock:
+            self.search_phrases.append(self._create_search_phrase(search_phrase_text,
+                    search_phrase_doc, label, topic_match_phraselet))
+            self.search_phrase_labels.add(label)
 
     def add_phraselets_to_dict(self, doc, *, phraselet_labels_to_search_phrases,
             replace_with_hypernym_ancestors, match_all_words, returning_serialized_phraselets):
@@ -521,13 +526,17 @@ class StructuralMatcher:
                 topic_match_phraselet)
 
     def list_search_phrase_labels(self):
-        return sorted(self.search_phrase_labels)
+        with self._lock:
+            search_phrase_labels = sorted(self.search_phrase_labels)
+        return search_phrase_labels
 
     def register_document(self, parsed_document, label):
 
-        if label in self._indexed_documents.keys():
-            raise DuplicateDocumentError(label)
-        self._indexed_documents[label] = self._create_document(parsed_document, label)
+        working_document = self._create_document(parsed_document, label)
+        with self._lock:
+            if label in self._indexed_documents.keys():
+                raise DuplicateDocumentError(label)
+            self._indexed_documents[label] = working_document
 
     def _create_document(self, parsed_document, label):
 
@@ -566,20 +575,27 @@ class StructuralMatcher:
         return self._IndexedDocument(parsed_document, words_to_token_indexes_dict)
 
     def remove_document(self, label):
-        self._indexed_documents.pop(label)
+        with self._lock:
+            self._indexed_documents.pop(label)
 
     def remove_all_documents(self):
-        self._indexed_documents = {}
+        with self._lock:
+            self._indexed_documents = {}
 
     def document_labels(self):
         """Returns a list of the labels of the currently registered documents."""
-        return self._indexed_documents.keys()
+
+        with self._lock:
+            document_labels = self._indexed_documents.keys()
+        return document_labels
 
     def get_document(self, label):
-        if label in self._indexed_documents.keys():
-            return self._indexed_documents[label].doc
-        else:
-            return None
+        with self._lock:
+            if label in self._indexed_documents.keys():
+                document = self._indexed_documents[label].doc
+            else:
+                document = None
+        return document
 
     def _match_recursively(self, *, search_phrase, search_phrase_token, document, document_token,
         search_phrase_tokens_to_word_matches, search_phrase_and_document_visited_table,
@@ -1154,26 +1170,36 @@ class StructuralMatcher:
         """Finds and returns matches between the search phrases and the documents
         managed by this object.
         """
-        return self._internal_match(self._indexed_documents, self.search_phrases)
+        with self._lock:
+            indexed_documents = self._indexed_documents
+            search_phrases = self.search_phrases
+        return self._internal_match(indexed_documents, search_phrases)
 
     def match_search_phrases_against(self, parsed_document):
         """Matches the registered search phrases against a single document
             supplied to the method.
         """
+
+        with self._lock:
+            search_phrases = self.search_phrases
         indexed_documents = {'':self._create_document(parsed_document, '')}
-        return self._internal_match(indexed_documents, self.search_phrases)
+        return self._internal_match(indexed_documents, search_phrases)
 
     def match_documents_against(self, search_phrase_text):
         """Matches the registered documents against a single search phrase text
             supplied to the method.
         """
+        with self._lock:
+            indexed_documents = self._indexed_documents
         search_phrase_doc = self.semantic_analyzer.parse(search_phrase_text)
         search_phrases = [self._create_search_phrase(search_phrase_text,
                 search_phrase_doc, search_phrase_text, False)]
-        return self._internal_match(self._indexed_documents, search_phrases)
+        return self._internal_match(indexed_documents, search_phrases)
 
     def match_documents_against_search_phrase_list(self, search_phrases, verbose):
         """Matches the registered documents against a list of search phrase
             objects supplied to the method.
         """
-        return self._internal_match(self._indexed_documents, search_phrases, verbose)
+        with self._lock:
+            indexed_documents = self._indexed_documents
+        return self._internal_match(indexed_documents, search_phrases, verbose)

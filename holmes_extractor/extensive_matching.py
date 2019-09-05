@@ -395,7 +395,7 @@ class SupervisedTopicTrainingUtils:
 
 class SupervisedTopicTrainingBasis:
     """ Holder object for training documents and their classifications from which one or more
-        'SupervisedTopicModelTrainer' objects can be derived.
+        'SupervisedTopicModelTrainer' objects can be derived. This class is not threadsafe.
     """
     def __init__(self, *, structural_matcher, classification_ontology, overlap_memory_size,
             oneshot, match_all_words, verbose):
@@ -562,7 +562,7 @@ class SupervisedTopicTrainingBasis:
         )
 
 class SupervisedTopicModelTrainer:
-    """ Worker object used to train and generate models. """
+    """ Worker object used to train and generate models. This class is not threadsafe."""
 
     def __init__(self, *, training_basis, semantic_analyzer, structural_matcher,
             labels_to_classification_frequencies, serialized_phraselets, minimum_occurrences,
@@ -753,10 +753,6 @@ class SupervisedTopicClassifier:
         self._structural_matcher = structural_matcher
         self._model = model
         self._verbose = verbose
-        if model != None:
-            self._load_model(model)
-
-    def _load_model(self, model):
         self._utils = SupervisedTopicTrainingUtils(model.overlap_memory_size, model.oneshot)
         if self._semantic_analyzer.model != model.semantic_analyzer_model:
             raise WrongModelDeserializationError(model.semantic_analyzer_model)
@@ -808,7 +804,3 @@ class SupervisedTopicClassifier:
 
     def serialize_model(self):
         return jsonpickle.encode(self._model)
-
-    def deserialize_model(self, serialized_model):
-        self._model = jsonpickle.decode(serialized_model)
-        self._load_model(self._model)

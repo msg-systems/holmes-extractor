@@ -11,6 +11,9 @@ class Ontology:
     This class is designed for small ontologies that have been constructed by hand
     for specific use cases.
 
+    Note that Holmes is not designed to support changes to a loaded ontology via direct
+    calls to the methods of this class.
+
     Matching is case-insensitive.
 
     Args:

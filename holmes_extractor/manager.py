@@ -187,7 +187,7 @@ class Manager:
                         'document_phrase': self.semantic_analyzer.get_dependent_phrase(
                                 word_match.document_token),
                         'match_type': word_match.type,
-                        'similarity_measure': word_match.similarity_measure,
+                        'similarity_measure': str(word_match.similarity_measure),
                         'involves_coreference': word_match.involves_coreference,
                         'extracted_word': word_match.extracted_word})
             match_dict['word_matches']=text_word_matches
@@ -295,10 +295,10 @@ class Manager:
                 'SupervisedTopicClassifierModel' instance.
             verbose -- if 'True', information about matching is outputted to the console.
         """
+        model = jsonpickle.decode(serialized_model)
         classifier = SupervisedTopicClassifier(self.semantic_analyzer,
                 self._new_supervised_topic_structural_matcher(),
-                None, verbose)
-        classifier.deserialize_model(serialized_model)
+                model, verbose)
         return classifier
 
     def start_chatbot_mode_console(self):
