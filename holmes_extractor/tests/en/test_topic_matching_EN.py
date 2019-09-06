@@ -191,6 +191,25 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self.assertEqual(topic_matches[0].end_index - topic_matches[0].start_index, 7)
         self.assertEqual(topic_matches[1].end_index - topic_matches[1].start_index, 4)
 
+    def test_dictionaries(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.remove_all_search_phrases()
+        holmes_manager_coref.parse_and_register_document("""
+        A dog chased a cat.
+        A great deal of irrelevant text. A great deal of irrelevant text. A great deal of
+        irrelevant text. A great deal of irrelevant text. A great deal of irrelevant text.
+        A great deal of irrelevant text. A great deal of irrelevant text. A great deal of
+        irrelevant text. A great deal of irrelevant text. A great deal of irrelevant text.
+        A great deal of irrelevant text. A great deal of irrelevant text. A great deal of
+        irrelevant text. A great deal of irrelevant text. A great deal of irrelevant text.
+        A dog chased a cat. A cat. Another irrelevant sentence.
+        """)
+        topic_match_dictionaries = \
+                holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
+                "The dog chased the cat")
+        self.assertEqual(topic_match_dictionaries,
+        [{'document_label': '', 'text': 'A dog chased a cat. A cat.', 'sentences_character_start_index_in_document': 580, 'sentences_character_end_index_in_document': 606, 'finding_character_start_index_in_sentences': 2, 'finding_character_end_index_in_sentences': 25, 'score': 99.80266666666668}, {'document_label': '', 'text': 'A dog chased a cat.', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 37, 'finding_character_start_index_in_sentences': 11, 'finding_character_end_index_in_sentences': 27, 'score': 99.80266666666668}])
+
     def test_result_ordering_by_match_length_different_documents(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.remove_all_search_phrases()

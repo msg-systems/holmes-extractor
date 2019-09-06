@@ -2,6 +2,8 @@ import urllib.request
 from bs4 import BeautifulSoup
 import holmes_extractor as holmes
 import os
+import json
+import falcon
 
 working_directory=REPLACE WITH PATH TO WORKING DIRECTORY IN SINGLE OR DOUBLE QUOTES
 HOLMES_EXTENSION = 'hdc'
@@ -79,5 +81,22 @@ else:
             labels_to_documents)
     # Generate flag file to indicate files can be reloaded on next run
     open(flag_filename, 'a').close()
-# Only return one topic match per story
-holmes_manager.start_search_mode_console(only_one_topic_match_per_document=True)
+
+#Comment following line in to activate interactive console
+#holmes_manager.start_search_mode_console(only_one_topic_match_per_document=True)
+#Only return one topic match per story
+
+# The following code starts a RESTful Http service to perform topic searches. It is deployed as
+# as WSGI application. Examples of how to start it are (both issued from the directory that
+# contains the script):
+
+# gunicorn --reload example_search_DE_literature (Linux)
+# waitress-serve example_search_DE_literature:application (Windows)
+
+class RestHandler():
+    def on_get(self, req, resp):
+        resp.body = json.dumps(holmes_manager.topic_match_documents_returning_dictionaries_against(
+                req.params['entry'], only_one_result_per_document=True))
+
+application = falcon.API()
+application.add_route('/maerchenQuery', RestHandler())
