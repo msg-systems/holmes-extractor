@@ -65,12 +65,15 @@ class MultithreadingTest(unittest.TestCase):
         self._process_threads(self._match_against_search_phrases_within_thread,
                 document, expected_output)
 
-    def _inner_classify(self, document, expected_output):
+    def _inner_classify(self, documents, expected_output):
         self._process_threads(self._classify_within_thread,
-                document, expected_output)
+                documents, expected_output)
 
-    def _classify_within_thread(self, document, queue):
-        queue.put(stc.parse_and_classify(document))
+    def _classify_within_thread(self, documents, queue):
+        output = []
+        for document in documents:
+            output.append(stc.parse_and_classify(document))
+        queue.put(output)
 
     def test_multithreading_matching_against_documents_general(self):
         self._inner_match_against_documents("A gnu is chased",
@@ -111,10 +114,10 @@ class MultithreadingTest(unittest.TestCase):
 
     def test_multithreading_supervised_document_classification(self):
 
-        self._inner_classify("You are a robot.", ['computers'])
-        self._inner_classify("You are a cat.", ['animal'])
-        self._inner_classify("My name is Charles and I like sewing.", [])
-        self._inner_classify("Your dog appears to be on a lead.", ['animal', 'dog', 'hound'])
+        self._inner_classify(["You are a robot.", "You are a cat",
+                "My name is Charles and I like sewing.",
+                "Your dog appears to be on a lead."],
+                [['computers'], ['animal'], [], ['animal', 'dog', 'hound']])
 
     def test_multithreading_topic_matching(self):
 
