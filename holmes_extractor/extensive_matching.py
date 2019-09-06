@@ -605,7 +605,7 @@ class SupervisedTopicModelTrainer:
                     doc_label=document_label,
                     matrix=self._input_matrix,
                     row_index=index,
-                    verbose=True)
+                    verbose=self._training_basis.verbose)
             self._record_classifications_for_training(document_label, index)
         self._hidden_layer_sizes = hidden_layer_sizes
         if self._hidden_layer_sizes == None:

@@ -778,10 +778,11 @@ class StructuralMatcher:
                         return True
 
         if search_phrase_token.i in search_phrase.matchable_non_entity_tokens_to_lexemes.keys():
-            lexeme = search_phrase.matchable_non_entity_tokens_to_lexemes[search_phrase_token.i]
-            if lexeme.vector_norm > 0 and document_token.vector_norm > 0:
-                similarity_measure = lexeme.similarity(
-                        self.semantic_analyzer.nlp.vocab[document_token.lemma_])
+            search_phrase_lexeme = \
+                    search_phrase.matchable_non_entity_tokens_to_lexemes[search_phrase_token.i]
+            document_lexeme = self.semantic_analyzer.nlp.vocab[document_token.lemma_]
+            if search_phrase_lexeme.vector_norm > 0 and document_lexeme.vector_norm > 0:
+                similarity_measure = search_phrase_lexeme.similarity(document_lexeme)
                 if similarity_measure > search_phrase.single_token_similarity_threshold:
                     if not search_phrase.topic_match_phraselet:
                         search_phrase_word_to_use = search_phrase_token.lemma_
@@ -1149,12 +1150,15 @@ class StructuralMatcher:
                         for document_word in registered_document.words_to_token_indexes_dict.keys():
                             indexes_to_match = registered_document.words_to_token_indexes_dict[
                                     document_word]
-                            lexeme = search_phrase.matchable_non_entity_tokens_to_lexemes[
+                            search_phrase_lexeme = \
+                                    search_phrase.matchable_non_entity_tokens_to_lexemes[
                                     search_phrase.root_token.i]
-                            if lexeme.vector_norm > 0 and doc[indexes_to_match[0]].vector_norm > 0:
-                                similarity_measure = lexeme.similarity(
-                                        self.semantic_analyzer.nlp.vocab[doc[indexes_to_match[0]].
-                                        lemma_])
+                            document_lexeme = self.semantic_analyzer.nlp.vocab[
+                                    doc[indexes_to_match[0]].lemma_]
+                            if search_phrase_lexeme.vector_norm > 0 and \
+                                    document_lexeme.vector_norm > 0:
+                                similarity_measure = search_phrase_lexeme.similarity(
+                                        document_lexeme)
                                 if similarity_measure >= \
                                         search_phrase.single_token_similarity_threshold:
                                     matched_indexes_set.update(indexes_to_match)
@@ -1171,8 +1175,8 @@ class StructuralMatcher:
         managed by this object.
         """
         with self._lock:
-            indexed_documents = self._indexed_documents
-            search_phrases = self.search_phrases
+            indexed_documents = self._indexed_documents.copy()
+            search_phrases = self.search_phrases.copy()
         return self._internal_match(indexed_documents, search_phrases)
 
     def match_search_phrases_against(self, parsed_document):
@@ -1181,7 +1185,7 @@ class StructuralMatcher:
         """
 
         with self._lock:
-            search_phrases = self.search_phrases
+            search_phrases = self.search_phrases.copy()
         indexed_documents = {'':self._create_document(parsed_document, '')}
         return self._internal_match(indexed_documents, search_phrases)
 
@@ -1190,7 +1194,7 @@ class StructuralMatcher:
             supplied to the method.
         """
         with self._lock:
-            indexed_documents = self._indexed_documents
+            indexed_documents = self._indexed_documents.copy()
         search_phrase_doc = self.semantic_analyzer.parse(search_phrase_text)
         search_phrases = [self._create_search_phrase(search_phrase_text,
                 search_phrase_doc, search_phrase_text, False)]
@@ -1201,5 +1205,5 @@ class StructuralMatcher:
             objects supplied to the method.
         """
         with self._lock:
-            indexed_documents = self._indexed_documents
+            indexed_documents = self._indexed_documents.copy()
         return self._internal_match(indexed_documents, search_phrases, verbose)
