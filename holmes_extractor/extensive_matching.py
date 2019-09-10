@@ -316,7 +316,8 @@ class TopicMatcher:
             topic_match_dicts.append(topic_match_dict)
         topic_match_counter = 0
         while topic_match_counter < len(topic_matches) -1:
-            for following_topic_match_counter in range(topic_match_counter + 1, len(topic_matches)):
+            for following_topic_match_counter in range(topic_match_counter + 1,
+                    len(topic_matches)):
                 if topic_match_dicts[following_topic_match_counter]['score'] / topic_match_dicts[
                         topic_match_counter]['score'] > tied_result_quotient:
                     working_rank = topic_match_dicts[topic_match_counter]['rank']
@@ -324,9 +325,8 @@ class TopicMatcher:
                         working_rank = ''.join((working_rank, '='))
                     topic_match_dicts[topic_match_counter]['rank'] = working_rank
                     topic_match_dicts[following_topic_match_counter]['rank'] = working_rank
-                    topic_match_counter = following_topic_match_counter
                 else:
-                    topic_match_counter = following_topic_match_counter
+                    topic_match_counter = following_topic_match_counter - 1
                     break
             topic_match_counter += 1
         return topic_match_dicts
