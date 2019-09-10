@@ -259,7 +259,8 @@ class Manager:
             maximum_activation_distance=75, relation_score=30, single_word_score=5,
             overlapping_relation_multiplier=1.5, overlap_memory_size=10,
             maximum_activation_value=1000, sideways_match_extent=100,
-            only_one_result_per_document=False, number_of_results=10):
+            only_one_result_per_document=False, number_of_results=10,
+            tied_result_quotient=0.9):
         """Returns a list of dictionaries representing the results of a topic match between an
             entered text and the loaded documents. Callers of this method do not have to manage any
             further dependencies on spaCy or Holmes.
@@ -283,8 +284,11 @@ class Manager:
         only_one_result_per_document -- if 'True', prevents multiple results from being returned
             for the same document.
         number_of_results -- the number of topic match objects to return.
+        tied_result_quotient -- the quotient between a result and following results above which
+            the results are interpreted as tied
+
         """
-        topic_matches = self.topic_match_documents_against(text_to_match,
+        topic_matcher = TopicMatcher(self,
                 maximum_activation_distance=maximum_activation_distance,
                 relation_score=relation_score,
                 single_word_score=single_word_score,
@@ -294,32 +298,8 @@ class Manager:
                 sideways_match_extent=sideways_match_extent,
                 only_one_result_per_document=only_one_result_per_document,
                 number_of_results=number_of_results)
-        topic_match_dicts = []
-        for topic_match in topic_matches:
-            doc = self.structural_matcher.get_document(topic_match.document_label)
-            sentences_character_start_index_in_document = doc[topic_match.sentences_start_index].idx
-            sentences_character_end_index_in_document = doc[topic_match.sentences_end_index].idx + \
-                    len(doc[topic_match.sentences_end_index].text)
-            finding_character_start_index_in_sentences = doc[topic_match.start_index].idx - \
-                    sentences_character_start_index_in_document
-            finding_character_end_index_in_sentences = doc[topic_match.end_index].idx + \
-                    len(doc[topic_match.end_index].text) - \
-                    sentences_character_start_index_in_document
-            topic_match_dict = {
-                'document_label': topic_match.document_label,
-                'text': topic_match.text,
-                'sentences_character_start_index_in_document':
-                        sentences_character_start_index_in_document,
-                'sentences_character_end_index_in_document':
-                        sentences_character_end_index_in_document,
-                'finding_character_start_index_in_sentences':
-                        finding_character_start_index_in_sentences,
-                'finding_character_end_index_in_sentences':
-                        finding_character_end_index_in_sentences,
-                'score': topic_match.score,
-            }
-            topic_match_dicts.append(topic_match_dict)
-        return topic_match_dicts
+        return topic_matcher.topic_match_documents_returning_dictionaries_against(text_to_match,
+                tied_result_quotient=tied_result_quotient)
 
     def _new_supervised_topic_structural_matcher(self):
         return StructuralMatcher(self.semantic_analyzer, self.ontology,

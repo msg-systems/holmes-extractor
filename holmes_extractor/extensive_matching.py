@@ -257,21 +257,79 @@ class TopicMatcher:
                         score_sorted_match.index_within_document
                 )
                 index_within_list += 1
-            relevant_sentences = [sentence for sentence in
-                    self.structural_matcher.get_document(score_sorted_match.document_label).sents
+            working_document = \
+                    self.structural_matcher.get_document(score_sorted_match.document_label)
+            relevant_sentences = [sentence for sentence in working_document.sents
                     if sentence.end >= start_index and sentence.start <= end_index]
             sentences_start_index = relevant_sentences[0].start
             sentences_end_index = relevant_sentences[-1].end - 1
-            sentences_string = ' '.join(sentence.text.strip() for sentence in relevant_sentences)
+            text = working_document[sentences_start_index: sentences_end_index + 1].text
             topic_matches.append(TopicMatch(score_sorted_match.document_label,
                     start_index, end_index, sentences_start_index, sentences_end_index,
-                    score_sorted_match.topic_score, sentences_string))
+                    score_sorted_match.topic_score, text))
             if self.only_one_result_per_document:
                 existing_document_labels.append(score_sorted_match.document_label)
             counter += 1
         # If two matches have the same score, order them by length
         return sorted(topic_matches, key=lambda topic_match: (0-topic_match.score,
                 topic_match.start_index - topic_match.end_index))
+
+    def topic_match_documents_returning_dictionaries_against(self, text_to_match,
+            tied_result_quotient):
+        """Returns a list of dictionaries representing the results of a topic match between an
+            entered text and the loaded documents. Callers of this method do not have to manage any
+            further dependencies on spaCy or Holmes.
+
+        Properties:
+
+        text_to_match -- the text to match against the loaded documents.
+        tied_result_quotient -- the quotient between a result and following results above which
+            the results are interpreted as tied
+        """
+        topic_matches = self.topic_match_documents_against(text_to_match)
+        topic_match_dicts = []
+        for topic_match_counter in range(0, len(topic_matches)):
+            topic_match = topic_matches[topic_match_counter]
+            doc = self.structural_matcher.get_document(topic_match.document_label)
+            sentences_character_start_index_in_document = doc[topic_match.sentences_start_index].idx
+            sentences_character_end_index_in_document = doc[topic_match.sentences_end_index].idx + \
+                    len(doc[topic_match.sentences_end_index].text)
+            finding_character_start_index_in_sentences = doc[topic_match.start_index].idx - \
+                    sentences_character_start_index_in_document
+            finding_character_end_index_in_sentences = doc[topic_match.end_index].idx + \
+                    len(doc[topic_match.end_index].text) - \
+                    sentences_character_start_index_in_document
+            topic_match_dict = {
+                'document_label': topic_match.document_label,
+                'text': topic_match.text,
+                'rank': str(topic_match_counter + 1),
+                'sentences_character_start_index_in_document':
+                        sentences_character_start_index_in_document,
+                'sentences_character_end_index_in_document':
+                        sentences_character_end_index_in_document,
+                'finding_character_start_index_in_sentences':
+                        finding_character_start_index_in_sentences,
+                'finding_character_end_index_in_sentences':
+                        finding_character_end_index_in_sentences,
+                'score': topic_match.score,
+            }
+            topic_match_dicts.append(topic_match_dict)
+        topic_match_counter = 0
+        while topic_match_counter < len(topic_matches) -1:
+            for following_topic_match_counter in range(topic_match_counter + 1, len(topic_matches)):
+                if topic_match_dicts[following_topic_match_counter]['score'] / topic_match_dicts[
+                        topic_match_counter]['score'] > tied_result_quotient:
+                    working_rank = topic_match_dicts[topic_match_counter]['rank']
+                    if not working_rank.endswith('='):
+                        working_rank = ''.join((working_rank, '='))
+                    topic_match_dicts[topic_match_counter]['rank'] = working_rank
+                    topic_match_dicts[following_topic_match_counter]['rank'] = working_rank
+                    topic_match_counter = following_topic_match_counter
+                else:
+                    topic_match_counter = following_topic_match_counter
+                    break
+            topic_match_counter += 1
+        return topic_match_dicts
 
 class SupervisedTopicTrainingUtils:
 

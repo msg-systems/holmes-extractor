@@ -26,6 +26,8 @@ for anchor in front_page_soup.find_all('a'):
             script.decompose()    # rip it out
         # Remove any carriage returns and line feeds from the raw text
         this_document_text = this_document_soup.get_text().replace('\n', ' ').replace('\r', ' ').replace('  ', ' ')
+        # Replace multiple spaces with single spaces
+        this_document_text = ' '.join(this_document_text.split())
         # Remove 'Process took:', which for some reason remains at the end of each raw text document
         end_of_text_index = this_document_text.index('Process took:')
         if end_of_text_index > 0:

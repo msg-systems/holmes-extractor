@@ -194,21 +194,19 @@ class EnglishTopicMatchingTest(unittest.TestCase):
     def test_dictionaries(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.remove_all_search_phrases()
-        holmes_manager_coref.parse_and_register_document("""
-        A dog chased a cat.
-        A great deal of irrelevant text. A great deal of irrelevant text. A great deal of
-        irrelevant text. A great deal of irrelevant text. A great deal of irrelevant text.
-        A great deal of irrelevant text. A great deal of irrelevant text. A great deal of
-        irrelevant text. A great deal of irrelevant text. A great deal of irrelevant text.
-        A great deal of irrelevant text. A great deal of irrelevant text. A great deal of
-        irrelevant text. A great deal of irrelevant text. A great deal of irrelevant text.
-        A dog chased a cat. A cat. Another irrelevant sentence.
-        """)
+        holmes_manager_coref.parse_and_register_document("A dog chased a cat. A great deal of irrelevant text. A great deal of irrelevant text. A great deal of irrelevant text. A great deal of irrelevant text. A great deal of irrelevant text. A great deal of irrelevant text. A great deal of irrelevant text. A great deal of irrelevant text. A great deal of irrelevant text. A great deal of irrelevant text. A great deal of irrelevant text. A great deal of irrelevant text. A great deal of irrelevant text. A great deal of irrelevant text. A great deal of irrelevant text. A dog chased a cat. A cat. Another irrelevant sentence.")
+        holmes_manager_coref.parse_and_register_document("Dogs and cats.",
+                "animals")
         topic_match_dictionaries = \
                 holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
                 "The dog chased the cat")
         self.assertEqual(topic_match_dictionaries,
-        [{'document_label': '', 'text': 'A dog chased a cat. A cat.', 'sentences_character_start_index_in_document': 580, 'sentences_character_end_index_in_document': 606, 'finding_character_start_index_in_sentences': 2, 'finding_character_end_index_in_sentences': 25, 'score': 99.80266666666668}, {'document_label': '', 'text': 'A dog chased a cat.', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 37, 'finding_character_start_index_in_sentences': 11, 'finding_character_end_index_in_sentences': 27, 'score': 99.80266666666668}])
+        [{'document_label': '', 'text': 'A dog chased a cat. A cat.', 'rank': '1=', 'sentences_character_start_index_in_document': 515, 'sentences_character_end_index_in_document': 541, 'finding_character_start_index_in_sentences': 2, 'finding_character_end_index_in_sentences': 25, 'score': 99.80266666666668}, {'document_label': '', 'text': 'A dog chased a cat.', 'rank': '1=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'finding_character_start_index_in_sentences': 2, 'finding_character_end_index_in_sentences': 18, 'score': 99.80266666666668}, {'document_label': 'animals', 'text': 'Dogs and cats.', 'rank': '3', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 14, 'finding_character_start_index_in_sentences': 0, 'finding_character_end_index_in_sentences': 13, 'score': 9.866666666666667}])
+        topic_match_dictionaries = \
+                holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
+                "The dog chased the cat", tied_result_quotient=0.01)
+        self.assertEqual(topic_match_dictionaries,
+        [{'document_label': '', 'text': 'A dog chased a cat. A cat.', 'rank': '1=', 'sentences_character_start_index_in_document': 515, 'sentences_character_end_index_in_document': 541, 'finding_character_start_index_in_sentences': 2, 'finding_character_end_index_in_sentences': 25, 'score': 99.80266666666668}, {'document_label': '', 'text': 'A dog chased a cat.', 'rank': '1=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'finding_character_start_index_in_sentences': 2, 'finding_character_end_index_in_sentences': 18, 'score': 99.80266666666668}, {'document_label': 'animals', 'text': 'Dogs and cats.', 'rank': '1=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 14, 'finding_character_start_index_in_sentences': 0, 'finding_character_end_index_in_sentences': 13, 'score': 9.866666666666667}])
 
     def test_result_ordering_by_match_length_different_documents(self):
         holmes_manager_coref.remove_all_documents()
