@@ -767,7 +767,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
 
     # Lemmas that should be suppressed as parents within relation phraselets or as words of
     # single-word phraselets.
-    phraselet_stop_lemmas = ['be', 'have']
+    phraselet_stop_lemmas = ['be', 'have', 'get']
 
     def _set_negation(self, token):
         """Marks the negation on the token. A token is negative if it or one of its ancestors

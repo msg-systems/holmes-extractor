@@ -63,7 +63,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self._check_equals("The donkey has a roof", "The donkey has a roof", 19, False)
 
     def test_stopwords_control(self):
-        self._check_equals("The donkey gets a roof", "The donkey gets a roof", 82, False)
+        self._check_equals("The donkey paints a roof", "The donkey paints a roof", 82, False)
 
     def test_indexes(self):
         holmes_manager_coref.remove_all_documents()
