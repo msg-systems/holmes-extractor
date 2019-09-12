@@ -21,7 +21,7 @@ def extract_chapters_from_book(book_uri, title):
     book = book.replace("Harry Potter and the Goblet of Fire - J.K. Rowling", "")
     book = book.replace("Harry Potter and the Deathly Hallows - J.K. Rowling", "")
     book = book[1:]
-    chapter_headings = [heading for heading in re.finditer("(?<=((\\n\\n\\n\\n)|(\* \\n\\n)))((?!.*(WEASLEY WILL MAKE SURE)|(DO NOT OPEN THE PARCEL)|(HEADMISTRESS OF HOGWARTS))[A-Z\-’., ]+)(\\n{1,2}((?!.*(WHO\-MUST))[A-Z\-’., ]+))?(?=(\\n\\n([^\\n]|(\\n\\n((“Harry!”)|(Harry’s)|(Ron’s)|(“Hagrid)|(Three o’clock))))))", book)]
+    chapter_headings = [heading for heading in re.finditer("(?<=((\\n\\n\\n\\n)|(\* \\n\\n)))((?!.*(WEASLEY WILL MAKE SURE)|(DO NOT OPEN THE PARCEL)|(HEADMISTRESS OF HOGWARTS))[A-Z][A-Z\-’., ]+)(\\n{1,2}((?!.*(WHO\-MUST))[A-Z\-’., ]+))?(?=(\\n\\n([^\\n]|(\\n\\n((“Harry!”)|(Harry’s)|(Ron’s)|(“Hagrid)|(Three o’clock))))))", book)]
     chapter_counter = 1
     for chapter_heading in chapter_headings:
         label = ''.join(('Book ', title, '; Ch ', str(chapter_counter), ': ', chapter_heading.group().replace('\n', '')))
