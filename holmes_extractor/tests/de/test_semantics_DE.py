@@ -262,6 +262,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
     def test_apprart(self):
         doc = analyzer.parse("Er geht zur Party")
+        self.assertEqual(doc[1]._.holmes.string_representation_of_children(), '0:sb; 2:mo; 3:pobjp')
         self.assertEqual(doc[2].lemma_, 'zur')
         self.assertEqual(doc[2]._.holmes.lemma, 'zu')
 
@@ -441,13 +442,15 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = analyzer.parse(
                 "Der Mitarbeiter braucht eine Versicherung für die nächsten fünf Jahre")
         self.assertEqual(doc[2]._.holmes.string_representation_of_children(),
-                '1:sb; 4:oa; 5:moposs(U)')
+                '1:sb; 4:oa; 5:moposs(U); 9:pobjp(U)')
+        self.assertEqual(doc[4]._.holmes.string_representation_of_children(), '5:mnr; 9:pobjp')
 
     def test_multiple_preposition_dependencies_added_to_noun(self):
         doc = analyzer.parse(
                 "Der Mitarbeiter braucht eine Versicherung für die nächsten fünf Jahre und in Europa")
         self.assertEqual(doc[2]._.holmes.string_representation_of_children(),
-                '1:sb; 4:oa; 5:moposs(U); 11:moposs(U)')
+                '1:sb; 4:oa; 5:moposs(U); 9:pobjp(U); 11:moposs(U); 12:pobjp(U)')
+        self.assertEqual(doc[4]._.holmes.string_representation_of_children(), '5:mnr; 9:pobjp; 11:mnr; 12:pobjp')
 
     def test_no_exception_thrown_when_preposition_dependency_is_righthand_sibling(self):
         doc = analyzer.parse(
@@ -475,6 +478,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
                 "Eine interessante Überlegung über gesunde Mittagessen.")
         self.assertEqual(doc[1].lemma_, 'interessante')
         self.assertEqual(doc[1]._.holmes.lemma, 'interessant')
+        self.assertEqual(doc[2]._.holmes.string_representation_of_children(), '1:nk; 3:mnr; 5:pobjp')
         self.assertEqual(doc[4].lemma_, 'gesunden')
         self.assertEqual(doc[4]._.holmes.lemma, 'gesund')
 

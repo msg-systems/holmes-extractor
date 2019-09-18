@@ -21,6 +21,8 @@ holmes_manager.register_search_phrase("Jemand braucht für fünf Jahre")
 holmes_manager.register_search_phrase("Ein Urlaub ist schwer zu buchen")
 holmes_manager.register_search_phrase("Ein Mann geht aus")
 holmes_manager.register_search_phrase("Ein Mann singt")
+holmes_manager.register_search_phrase("Eine Party in den Bergen")
+holmes_manager.register_search_phrase("Jemand wandert in den Bergen")
 holmes_manager_with_variable_search_phrases = holmes.Manager(model='de_core_news_md')
 holmes_manager_with_embeddings = holmes.Manager(model='de_core_news_md',
         overall_similarity_threshold=0.7, perform_coreference_resolution=False)
@@ -488,3 +490,23 @@ class GermanStructuralMatchingTest(unittest.TestCase):
         matches = self._get_matches(holmes_manager_with_embeddings,
                 "Ich wohne im blauen Himmel")
         self.assertEqual(len(matches), 1)
+
+    def test_prepositional_phrase_dependent_on_noun_no_conjunction(self):
+        matches = self._get_matches(holmes_manager,
+                "Eine Party in den Bergen")
+        self.assertEqual(len(matches), 1)
+
+    def test_prepositional_phrase_dependent_on_noun_with_conjunction(self):
+        matches = self._get_matches(holmes_manager,
+                "Eine Party in den Bergen und den Bergen")
+        self.assertEqual(len(matches), 2)
+
+    def test_prepositional_phrase_dependent_on_verb_no_conjunction(self):
+        matches = self._get_matches(holmes_manager,
+                "Mein Freund wandert in den Bergen")
+        self.assertEqual(len(matches), 1)
+
+    def test_prepositional_phrase_dependent_on_verb_with_conjunction(self):
+        matches = self._get_matches(holmes_manager,
+                "Mein Freund wandert in den Bergen und den Bergen")
+        self.assertEqual(len(matches), 2)

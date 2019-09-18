@@ -20,6 +20,7 @@ coref_holmes_manager.register_search_phrase("A leopard chases a leopard")
 coref_holmes_manager.register_search_phrase("A holiday is hard to find")
 coref_holmes_manager.register_search_phrase("A man sings")
 coref_holmes_manager.register_search_phrase("Somebody finds a policy")
+coref_holmes_manager.register_search_phrase("Somebody writes a book about an animal")
 no_coref_holmes_manager = holmes.Manager(model='en_core_web_lg', ontology=ontology,
         perform_coreference_resolution=False)
 no_coref_holmes_manager.register_search_phrase("A dog chases a cat")
@@ -767,3 +768,21 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         self.assertEqual(len(matches), 4)
         for match in matches:
             self.assertTrue(match.is_uncertain)
+
+    def test_prepositional_phrase_no_conjunction(self):
+        coref_holmes_manager.remove_all_documents()
+        coref_holmes_manager.parse_and_register_document(
+                """We discussed dogs. My friend decided to write a book about them.""")
+        matches = coref_holmes_manager.match()
+        self.assertEqual(len(matches), 1)
+        for match in matches:
+            self.assertFalse(match.is_uncertain)
+
+    def test_prepositional_phrase_with_conjunction(self):
+        coref_holmes_manager.remove_all_documents()
+        coref_holmes_manager.parse_and_register_document(
+                """We discussed the dog and the cat. My friend decided to write a book about them.""")
+        matches = coref_holmes_manager.match()
+        self.assertEqual(len(matches), 2)
+        for match in matches:
+            self.assertFalse(match.is_uncertain)

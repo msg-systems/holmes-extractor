@@ -1006,8 +1006,9 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
             token._.holmes.is_matchable = False
 
         # Add new dependencies to phrases with 'by', 'of' and 'to' to enable the matching
-        # of deverbal nominal phrases with verb phrases, also add 'dative' dependency to
-        # nouns within dative 'to' phrases
+        # of deverbal nominal phrases with verb phrases; add 'dative' dependency to
+        # nouns within dative 'to' phrases; add new dependency spanning other prepositions
+        # to facilitate topic matching and supervised document classification
         for dependency in (dependency for dependency in token._.holmes.children
                 if dependency.label in ('prep', 'agent', 'dative')):
             child = dependency.child_token(token.doc)
@@ -1021,15 +1022,29 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                 else:
                     working_dependency_label = 'pobjt'
             else:
-                continue
-            # the actual preposition is marked as not matchable
-            child._.holmes.is_matchable = False
+                working_dependency_label = 'pobjp'
+            # for 'by', 'of' and 'to' the preposition is marked as not matchable
+            if working_dependency_label != 'pobjp':
+                child._.holmes.is_matchable = False
             for child_dependency in (child_dependency for child_dependency in
-                    child._.holmes.children if child_dependency.label == 'pobj' if token.i !=
+                    child._.holmes.children if child_dependency.label == 'pobj' and token.i !=
                     child_dependency.child_index):
                 token._.holmes.children.append(
                         SemanticDependency(token.i, child_dependency.child_index,
-                        working_dependency_label))
+                        working_dependency_label, dependency.is_uncertain or
+                        child_dependency.is_uncertain))
+
+        # where a 'prepposs' dependency has been added and the preposition is not 'by', 'of' or
+        #'to', add a corresponding uncertain 'pobjp'
+        for dependency in (dependency for dependency in token._.holmes.children
+                if dependency.label == 'prepposs'):
+            child = dependency.child_token(token.doc)
+            for child_dependency in (child_dependency for child_dependency in
+                    child._.holmes.children if child_dependency.label == 'pobj' and token.i !=
+                    child_dependency.child_index and child._.holmes.is_matchable):
+                token._.holmes.children.append(
+                        SemanticDependency(token.i, child_dependency.child_index,
+                        'pobjp', True))
 
         # handle present active participles
         if token.dep_ == 'acl' and token.tag_ == 'VBG':
@@ -1366,17 +1381,35 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
             token.head._.holmes.remove_dependency_with_child_index(token.i)
 
         # equivalence between 'der Abschluss einer Versicherung' and 'der Abschluss von einer
-        # Versicherung': add an additional dependency spanning the preposition
+        # Versicherung': add an additional dependency spanning the preposition; in all other cases
+        # add a new dependency spanning the preposition to facilitate topic matching and supervised
+        # document classification
         for dependency in (dependency for dependency in token._.holmes.children
-                if dependency.label in ('mnr','pg') and
-                dependency.child_token(token.doc)._.holmes.lemma in ('von', 'vom')):
+                if dependency.label in ('mo', 'mnr','pg')):
             child = dependency.child_token(token.doc)
             for child_dependency in (child_dependency for child_dependency in
                     child._.holmes.children if child_dependency.label == 'nk' and
-                    token.i != child_dependency.child_index):
+                    token.i != child_dependency.child_index and child.pos_ == 'ADP'):
+                if dependency.label != 'mo' and \
+                        dependency.child_token(token.doc)._.holmes.lemma in ('von', 'vom'):
+                    token._.holmes.children.append(SemanticDependency(
+                        token.i, child_dependency.child_index, 'nk'))
+                    child._.holmes.is_matchable = False
+                else:
+                    token._.holmes.children.append(SemanticDependency(
+                        token.i, child_dependency.child_index, 'pobjp',
+                        dependency.is_uncertain or child_dependency.is_uncertain))
+
+        # # where a 'moposs' dependency has been added and the preposition is not 'von' or 'vom',
+        # add a corresponding uncertain 'pobjp'
+        for dependency in (dependency for dependency in token._.holmes.children
+                if dependency.label == 'moposs'):
+            child = dependency.child_token(token.doc)
+            for child_dependency in (child_dependency for child_dependency in
+                    child._.holmes.children if child_dependency.label == 'nk' and
+                    token.i != child_dependency.child_index and child._.holmes.is_matchable):
                 token._.holmes.children.append(SemanticDependency(
-                    token.i, child_dependency.child_index, 'nk'))
-                child._.holmes.is_matchable = False
+                        token.i, child_dependency.child_index, 'pobjp', True))
 
         # Loop through the structure around a dependent verb to find the lexical token at which
         # to add new dependencies, and find out whether it is active or passive so we know

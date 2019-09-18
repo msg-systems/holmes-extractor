@@ -955,39 +955,23 @@ class StructuralMatcher:
                     return True
             return False
 
-        def check_match_is_coherent_recursively(this_document_token,
-                not_yet_traversed_document_token_indexes, traversed_token_indexes):
-            """Ensure that the document tokens within a match form a coherent structure linked
-                by semantic dependencies. In some rare situations involving embeddings, matches
-                can be returned from the recursive matching logic where this is not the case.
-            """
+        def check_document_tokens_are_linked_by_dependency(document_parent, document_child):
             if self.perform_coreference_resolution:
                 parents = self.semantic_analyzer.token_and_coreference_chain_indexes(
-                        this_document_token)
+                        document_parent)
             else:
-                parents = [this_document_token.i]
-            for parent_document_index in (parent_index for parent_index in
-                    parents if parent_index not in traversed_token_indexes):
-                parent_document_token = this_document_token.doc[parent_document_index]
-                if parent_document_token.i in not_yet_traversed_document_token_indexes:
-                    not_yet_traversed_document_token_indexes.remove(
-                        parent_document_token.i)
-                traversed_token_indexes.append(parent_document_token.i)
-                for dependency in parent_document_token._.holmes.children:
-                    child_document_token = dependency.child_token(parent_document_token.doc)
-                    if self.perform_coreference_resolution:
-                        children = self.semantic_analyzer.token_and_coreference_chain_indexes(
-                                child_document_token)
-                    else:
-                        children = [child_document_token.i]
-                    for child_document_index in (child_index for child_index in
-                            children if child_index in not_yet_traversed_document_token_indexes
-                            and child_index not in traversed_token_indexes):
-                        child_document_token = this_document_token.doc[
-                                child_document_index]
-                        check_match_is_coherent_recursively(child_document_token,
-                                not_yet_traversed_document_token_indexes,
-                                traversed_token_indexes)
+                parents = [document_parent.i]
+            if self.perform_coreference_resolution:
+                children = self.semantic_analyzer.token_and_coreference_chain_indexes(
+                        document_child)
+            else:
+                children = [document_child.i]
+            for parent in parents:
+                for child in children:
+                    if document_parent.doc[parent]._.holmes.\
+                            has_dependency_with_child_index(child):
+                        return True
+            return False
 
         matches = [Match(search_phrase.label, document_label,
                 search_phrase.topic_match_phraselet and len(search_phrase.doc) == 1)]
@@ -1021,30 +1005,36 @@ class StructuralMatcher:
             matches = working_matches
 
         matches_to_return = []
-        # now carry out the coherence check
         for match in matches:
-            not_yet_traversed_document_token_indexes = set(
-                    word_match.document_token.i for word_match in match.word_matches)
-            for document_token_matching_root in (word_match.document_token
-                    for word_match in match.word_matches
-                    if word_match.search_phrase_token.i == search_phrase.root_token.i):
-                check_match_is_coherent_recursively(
-                        document_token_matching_root, not_yet_traversed_document_token_indexes, [])
-                if len(not_yet_traversed_document_token_indexes) == 0:
-                    not_normalized_overall_similarity_measure = 1.0
-                    for word_match in match.word_matches:
-                        not_normalized_overall_similarity_measure *= word_match.similarity_measure
-                    if not_normalized_overall_similarity_measure < 1.0:
-                        overall_similarity_measure = \
-                                round(not_normalized_overall_similarity_measure ** \
-                                (1 / len(search_phrase.matchable_non_entity_tokens_to_lexemes)), 8)
-                    else:
-                        overall_similarity_measure = 1.0
-                    if overall_similarity_measure == 1.0 or \
-                            overall_similarity_measure >= self.overall_similarity_threshold:
-                        match.overall_similarity_measure = str(
-                            overall_similarity_measure)
-                        matches_to_return.append(match)
+            failed = False
+            not_normalized_overall_similarity_measure = 1.0
+            # now carry out the coherence check
+            for parent_word_match in match.word_matches:
+                for search_phrase_dependency in \
+                        parent_word_match.search_phrase_token._.holmes.children:
+                    for child_word_match in (cwm for cwm in match.word_matches if cwm.
+                            search_phrase_token.i == search_phrase_dependency.child_index):
+                        if not check_document_tokens_are_linked_by_dependency(
+                                parent_word_match.document_token, child_word_match.document_token):
+                            failed=True
+                    if failed:
+                        break
+                if failed:
+                    break
+                not_normalized_overall_similarity_measure *= parent_word_match.similarity_measure
+            if failed:
+                continue
+            if not_normalized_overall_similarity_measure < 1.0:
+                overall_similarity_measure = \
+                        round(not_normalized_overall_similarity_measure ** \
+                        (1 / len(search_phrase.matchable_non_entity_tokens_to_lexemes)), 8)
+            else:
+                overall_similarity_measure = 1.0
+            if overall_similarity_measure == 1.0 or \
+                    overall_similarity_measure >= self.overall_similarity_threshold:
+                match.overall_similarity_measure = str(
+                    overall_similarity_measure)
+                matches_to_return.append(match)
         return matches_to_return
 
     def _get_matches_starting_at_root_word_match(self, search_phrase, document,

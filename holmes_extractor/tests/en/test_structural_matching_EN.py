@@ -24,6 +24,8 @@ nocoref_holmes_manager.register_search_phrase("Somebody eats at an office")
 nocoref_holmes_manager.register_search_phrase("A holiday is hard to book")
 nocoref_holmes_manager.register_search_phrase("A man sings")
 nocoref_holmes_manager.register_search_phrase("Somebody finds insurance")
+nocoref_holmes_manager.register_search_phrase("A salesman lives in ENTITYGPE")
+nocoref_holmes_manager.register_search_phrase("A salesman has a house in ENTITYGPE")
 holmes_manager_with_variable_search_phrases = holmes.Manager(model='en_core_web_lg',
         ontology=ontology, perform_coreference_resolution=False)
 holmes_manager_with_embeddings = holmes.Manager(model='en_core_web_lg',
@@ -31,10 +33,10 @@ holmes_manager_with_embeddings = holmes.Manager(model='en_core_web_lg',
 
 class EnglishStructuralMatchingTest(unittest.TestCase):
 
-    def _get_matches(self, nocoref_holmes_manager, text):
-        nocoref_holmes_manager.remove_all_documents()
-        nocoref_holmes_manager.parse_and_register_document(document_text=text)
-        return nocoref_holmes_manager.match()
+    def _get_matches(self, holmes_manager, text):
+        holmes_manager.remove_all_documents()
+        holmes_manager.parse_and_register_document(document_text=text)
+        return holmes_manager.match()
 
     def test_direct_matching(self):
         matches = self._get_matches(nocoref_holmes_manager, "The dog chased the cat")
@@ -379,9 +381,17 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
 
     def test_coherent_matching_1(self):
         holmes_manager_with_embeddings.register_search_phrase("Farmers go into the mountains")
-        matches = self._get_matches(holmes_manager_with_embeddings,
+        match_dict = holmes_manager_with_embeddings.match_search_phrases_against(
                 "In Norway the peasants go into the mountains")
-        self.assertEqual(len(matches), 1) # 2 if coherent matching not working properly
+        self.assertEqual(len(match_dict), 1)
+        self.assertEqual(match_dict[0]['word_matches'][0]['search_phrase_word'], "farmer")
+        self.assertEqual(match_dict[0]['word_matches'][0]['document_word'], "peasant")
+        self.assertEqual(match_dict[0]['word_matches'][1]['search_phrase_word'], "go")
+        self.assertEqual(match_dict[0]['word_matches'][1]['document_word'], "go")
+        self.assertEqual(match_dict[0]['word_matches'][2]['search_phrase_word'], "into")
+        self.assertEqual(match_dict[0]['word_matches'][2]['document_word'], "into")
+        self.assertEqual(match_dict[0]['word_matches'][3]['search_phrase_word'], "mountain")
+        self.assertEqual(match_dict[0]['word_matches'][3]['document_word'], "mountain")
 
     def test_coherent_matching_2(self):
         matches = self._get_matches(nocoref_holmes_manager,
@@ -514,3 +524,17 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
         self.assertEqual(len(matches), 4)
         for match in matches:
             self.assertTrue(match.is_uncertain)
+
+    def test_matching_with_prepositional_phrase_dependent_on_verb(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "The salesman lived in England, Germany and France")
+        self.assertEqual(len(matches), 3)
+        for match in matches:
+            self.assertFalse(match.is_uncertain)
+
+    def test_matching_with_prepositional_phrase_dependent_on_noun(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "The salesman had a house in England, Germany and France")
+        self.assertEqual(len(matches), 3)
+        for match in matches:
+            self.assertFalse(match.is_uncertain)

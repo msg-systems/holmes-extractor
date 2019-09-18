@@ -281,7 +281,7 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
                 '1:pobj')
         self.assertEqual(doc[5]._.holmes.string_representation_of_children(),'4:poss')
         self.assertEqual(doc[3]._.holmes.string_representation_of_children(),
-                '2:nsubj; 5:dobj; 6:prep')
+                '1:pobjp; 2:nsubj; 5:dobj; 6:prep')
 
     def test_displaced_preposition_no_complementizer_with_conjunction(self):
         doc = analyzer.parse(
@@ -289,18 +289,18 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[11]._.holmes.string_representation_of_children(),
                 '1:pobj(U); 4:pobj')
         self.assertEqual(doc[6]._.holmes.string_representation_of_children(),
-                '5:nsubj; 7:cc; 8:conj; 11:prep(U)')
+                '1:pobjp(U); 4:pobjp(U); 5:nsubj; 7:cc; 8:conj; 11:prep(U)')
         self.assertEqual(doc[8]._.holmes.string_representation_of_children(),
-                '5:nsubj(U); 10:dobj; 11:prep')
+                '1:pobjp(U); 4:pobjp; 5:nsubj(U); 10:dobj; 11:prep')
 
     def test_displaced_preposition_no_complementizer_with_second_preposition(self):
         doc = analyzer.parse("The office you ate your roll with gusto at was new")
         self.assertEqual(doc[8]._.holmes.string_representation_of_children(),
                 '1:pobj')
         self.assertEqual(doc[5]._.holmes.string_representation_of_children(),
-                '4:poss; 6:prepposs(U)')
+                '4:poss; 6:prepposs(U); 7:pobjp(U)')
         self.assertEqual(doc[3]._.holmes.string_representation_of_children(),
-                '2:nsubj; 5:dobj; 6:prep; 8:prep')
+                '1:pobjp; 2:nsubj; 5:dobj; 6:prep; 7:pobjp; 8:prep')
 
     def test_displaced_preposition_no_complementizer_with_second_preposition_and_conjunction(self):
         doc = analyzer.parse(
@@ -308,9 +308,9 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[13]._.holmes.string_representation_of_children(),
                 '1:pobj(U); 4:pobj')
         self.assertEqual(doc[6]._.holmes.string_representation_of_children(),
-                '5:nsubj; 7:cc; 8:conj; 13:prep(U)')
+                '1:pobjp(U); 4:pobjp(U); 5:nsubj; 7:cc; 8:conj; 13:prep(U)')
         self.assertEqual(doc[8]._.holmes.string_representation_of_children(),
-                '5:nsubj(U); 10:dobj; 11:prep; 13:prep')
+                '1:pobjp(U); 4:pobjp; 5:nsubj(U); 10:dobj; 11:prep; 12:pobjp; 13:prep')
 
     def test_displaced_preposition_that(self):
         doc = analyzer.parse("The office that you ate your roll at was new")
@@ -318,7 +318,7 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
                 '1:pobj')
         self.assertEqual(doc[6]._.holmes.string_representation_of_children(),'5:poss')
         self.assertEqual(doc[4]._.holmes.string_representation_of_children(),
-                '3:nsubj; 6:dobj; 7:prep')
+                '1:pobjp; 3:nsubj; 6:dobj; 7:prep')
 
     def test_displaced_preposition_that_preposition_points_to_that(self):
         # For some reason gets a different spaCy representation that the previous one
@@ -327,7 +327,7 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
                 '1:pobj')
         self.assertEqual(doc[6]._.holmes.string_representation_of_children(),'5:poss')
         self.assertEqual(doc[4]._.holmes.string_representation_of_children(),
-                '3:nsubj; 6:dobj; 7:prep')
+                '1:pobjp; 3:nsubj; 6:dobj; 7:prep')
 
     def test_displaced_preposition_that_with_conjunction(self):
         doc = analyzer.parse(
@@ -335,27 +335,27 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[12]._.holmes.string_representation_of_children(),
                 '1:pobj(U); 4:pobj')
         self.assertEqual(doc[7]._.holmes.string_representation_of_children(),
-                '6:nsubj; 8:cc; 9:conj; 12:prep(U)')
+                '1:pobjp(U); 4:pobjp(U); 6:nsubj; 8:cc; 9:conj; 12:prep(U)')
         self.assertEqual(doc[9]._.holmes.string_representation_of_children(),
-                '6:nsubj(U); 11:dobj; 12:prep')
+                '1:pobjp(U); 4:pobjp; 6:nsubj(U); 11:dobj; 12:prep')
 
     def test_displaced_preposition_that_with_second_preposition_preposition_points_to_that(self):
         doc = analyzer.parse("The building that you ate your roll with gusto at was new")
         self.assertEqual(doc[9]._.holmes.string_representation_of_children(),
                 '1:pobj')
         self.assertEqual(doc[6]._.holmes.string_representation_of_children(),
-                '5:poss; 7:prepposs(U)')
+                '5:poss; 7:prepposs(U); 8:pobjp(U)')
         self.assertEqual(doc[4]._.holmes.string_representation_of_children(),
-                '3:nsubj; 6:dobj; 7:prep; 9:prep')
+                '1:pobjp; 3:nsubj; 6:dobj; 7:prep; 8:pobjp; 9:prep')
 
     def test_displaced_preposition_that_with_second_preposition(self):
         doc = analyzer.parse("The office that you ate your roll with gusto at was new")
         self.assertEqual(doc[9]._.holmes.string_representation_of_children(),
                 '1:pobj')
         self.assertEqual(doc[6]._.holmes.string_representation_of_children(),
-                '5:poss; 7:prepposs(U)')
+                '5:poss; 7:prepposs(U); 8:pobjp(U)')
         self.assertEqual(doc[4]._.holmes.string_representation_of_children(),
-                '3:nsubj; 6:dobj; 7:prep; 9:prep')
+                '1:pobjp; 3:nsubj; 6:dobj; 7:prep; 8:pobjp; 9:prep')
 
     def test_displaced_preposition_that_with_second_preposition_and_conjunction(self):
         doc = analyzer.parse(
@@ -363,9 +363,9 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[14]._.holmes.string_representation_of_children(),
                 '1:pobj(U); 4:pobj')
         self.assertEqual(doc[7]._.holmes.string_representation_of_children(),
-                '6:nsubj; 8:cc; 9:conj; 14:prep(U)')
+                '1:pobjp(U); 4:pobjp(U); 6:nsubj; 8:cc; 9:conj; 14:prep(U)')
         self.assertEqual(doc[9]._.holmes.string_representation_of_children(),
-                '6:nsubj(U); 11:dobj; 12:prep; 14:prep')
+                '1:pobjp(U); 4:pobjp; 6:nsubj(U); 11:dobj; 12:prep; 13:pobjp; 14:prep')
 
     def test_simple_whose_clause(self):
         doc = analyzer.parse("The dog whose owner I met was tired")
@@ -604,18 +604,18 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
     def test_single_preposition_dependency_added_to_noun(self):
         doc = analyzer.parse("The employee needs insurance for the next five years")
         self.assertEqual(doc[3]._.holmes.string_representation_of_children(),
-                '4:prepposs(U)')
+                '4:prepposs(U); 8:pobjp(U)')
 
     def test_multiple_preposition_dependencies_added_to_noun(self):
         doc = analyzer.parse("The employee needs insurance for the next five years and in Europe")
         self.assertEqual(doc[3]._.holmes.string_representation_of_children(),
-                '4:prepposs(U); 10:prepposs(U)')
+                '4:prepposs(U); 8:pobjp(U); 10:prepposs(U); 11:pobjp(U)')
 
     def test_single_preposition_dependency_added_to_coreferring_pronoun(self):
         doc = analyzer.parse(
                 "We discussed the house. The employee needs it for the next five years")
         self.assertEqual(doc[8]._.holmes.string_representation_of_children(),
-                '9:prepposs(U)')
+                '9:prepposs(U); 13:pobjp(U)')
 
     def test_single_preposition_dependency_not_added_to_non_coreferring_pronoun(self):
         doc = analyzer.parse("The employee needs it for the next five years")
@@ -686,3 +686,13 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
                 '0:arg(U); 2:arg(U); 7:aux; 9:cc; 11:conj')
         self.assertEqual(doc[11]._.holmes.string_representation_of_children(),
                 '0:arg(U); 2:arg(U); 10:aux')
+
+    def test_prepositional_phrase_dependent_on_noun_no_conjunction(self):
+        doc = analyzer.parse("Houses in the village.")
+        self.assertEqual(doc[0]._.holmes.string_representation_of_children(),
+                '1:prep; 3:pobjp')
+
+    def test_prepositional_phrase_dependent_on_noun_with_conjunction(self):
+        doc = analyzer.parse("Houses in the village and the town.")
+        self.assertEqual(doc[0]._.holmes.string_representation_of_children(),
+                '1:prep; 3:pobjp; 6:pobjp')
