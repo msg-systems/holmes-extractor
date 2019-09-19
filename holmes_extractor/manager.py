@@ -218,9 +218,10 @@ class Manager:
                 self.structural_matcher.match_documents_against(search_phrase))
 
     def topic_match_documents_against(self, text_to_match, *, maximum_activation_distance=75,
-            relation_score=30, single_word_score=5, overlapping_relation_multiplier=1.5,
-                overlap_memory_size=10, maximum_activation_value=1000, sideways_match_extent=100,
-                only_one_result_per_document=False, number_of_results=10):
+            relation_score=30, single_word_score=5, single_word_any_tag_score=2,
+            overlapping_relation_multiplier=1.5, overlap_memory_size=10,
+            maximum_activation_value=1000, sideways_match_extent=100,
+            only_one_result_per_document=False, number_of_results=10):
         """Returns the results of a topic match between an entered text and the loaded documents.
 
         Properties:
@@ -230,6 +231,9 @@ class Manager:
             reduce to zero when the library is reading through a document.
         relation_score -- the activation score added when a two-word relation is matched.
         single_word_score -- the activation score added when a single word is matched.
+        single_word_any_tag_score -- the activation score added when a single word is matched
+            whose tag did not correspond to the template specification. Only used when following the
+            phraselet specification yielded too few results.
         overlapping_relation_multiplier -- the value by which the activation score is multiplied
             when two relations were matched and the matches involved a common document word.
         overlap_memory_size -- the size of the memory for previous matches that is taken into
@@ -247,6 +251,7 @@ class Manager:
                 maximum_activation_distance=maximum_activation_distance,
                 relation_score=relation_score,
                 single_word_score=single_word_score,
+                single_word_any_tag_score=single_word_any_tag_score,
                 overlapping_relation_multiplier=overlapping_relation_multiplier,
                 overlap_memory_size=overlap_memory_size,
                 maximum_activation_value=maximum_activation_value,
@@ -257,10 +262,9 @@ class Manager:
 
     def topic_match_documents_returning_dictionaries_against(self, text_to_match, *,
             maximum_activation_distance=75, relation_score=30, single_word_score=5,
-            overlapping_relation_multiplier=1.5, overlap_memory_size=10,
-            maximum_activation_value=1000, sideways_match_extent=100,
-            only_one_result_per_document=False, number_of_results=10,
-            tied_result_quotient=0.9):
+            single_word_any_tag_score=2, overlapping_relation_multiplier=1.5,
+            overlap_memory_size=10,maximum_activation_value=1000, sideways_match_extent=100,
+            only_one_result_per_document=False, number_of_results=10,tied_result_quotient=0.9):
         """Returns a list of dictionaries representing the results of a topic match between an
             entered text and the loaded documents. Callers of this method do not have to manage any
             further dependencies on spaCy or Holmes.
@@ -272,6 +276,9 @@ class Manager:
             reduce to zero when the library is reading through a document.
         relation_score -- the activation score added when a two-word relation is matched.
         single_word_score -- the activation score added when a single word is matched.
+        single_word_any_tag_score -- the activation score added when a single word is matched
+            whose tag did not correspond to the template specification. Only used when following the
+            phraselet specification yielded too few results.
         overlapping_relation_multiplier -- the value by which the activation score is multiplied
             when two relations were matched and the matches involved a common document word.
         overlap_memory_size -- the size of the memory for previous matches that is taken into
@@ -292,6 +299,7 @@ class Manager:
                 maximum_activation_distance=maximum_activation_distance,
                 relation_score=relation_score,
                 single_word_score=single_word_score,
+                single_word_any_tag_score=single_word_any_tag_score,
                 overlapping_relation_multiplier=overlapping_relation_multiplier,
                 overlap_memory_size=overlap_memory_size,
                 maximum_activation_value=maximum_activation_value,

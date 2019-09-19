@@ -20,50 +20,50 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         manager.remove_all_documents()
         manager.parse_and_register_document(document_text)
         topic_matches = manager.topic_match_documents_against(text_to_match, relation_score=20,
-                single_word_score=10)
+                single_word_score=10, single_word_any_tag_score=5)
         self.assertEqual(int(topic_matches[0].score), highest_score)
 
     def test_direct_matching(self):
-        self._check_equals("A plant grows", "A plant grows", 29)
+        self._check_equals("A plant grows", "A plant grows", 34)
 
     def test_direct_matching_nonsense_word(self):
-        self._check_equals("My friend visited gegwghg", "Peter visited gegwghg", 29)
+        self._check_equals("My friend visited gegwghg", "Peter visited gegwghg", 34)
 
     def test_coref_matching(self):
-        self._check_equals("A plant grows", "I saw a plant. It was growing", 29)
+        self._check_equals("A plant grows", "I saw a plant. It was growing", 34)
 
     def test_entity_matching(self):
-        self._check_equals("My friend visited ENTITYGPE", "Peter visited Paris", 29)
+        self._check_equals("My friend visited ENTITYGPE", "Peter visited Paris", 34)
 
     def test_entitynoun_matching(self):
-        self._check_equals("My friend visited ENTITYNOUN", "Peter visited a city", 20)
+        self._check_equals("My friend visited ENTITYNOUN", "Peter visited a city", 25)
 
     def test_ontology_matching(self):
-        self._check_equals("I saw an animal", "Somebody saw a cat", 29)
+        self._check_equals("I saw an animal", "Somebody saw a cat", 34)
 
     def test_ontology_matching_word_only(self):
         self._check_equals("I saw an animal", "Somebody chased a cat", 10)
 
     def test_embedding_matching_not_root(self):
-        self._check_equals("I saw a king", "Somebody saw a queen", 17)
+        self._check_equals("I saw a king", "Somebody saw a queen", 22)
 
     def test_embedding_matching_root(self):
-        self._check_equals("I saw a king", "Somebody saw a queen", 23, True)
+        self._check_equals("I saw a king", "Somebody saw a queen", 28, True)
 
     def test_embedding_matching_root_word_only(self):
         self._check_equals("king", "queen", 7, True)
 
     def test_matching_only_adjective(self):
-        self._check_equals("nice", "nice", 10, False)
+        self._check_equals("nice", "nice", 5, False)
 
     def test_matching_only_adjective_where_noun(self):
-        self._check_equals("nice place", "nice", 10, False)
+        self._check_equals("nice place", "nice", 5, False)
 
     def test_stopwords(self):
         self._check_equals("The donkey has a roof", "The donkey has a roof", 19, False)
 
     def test_stopwords_control(self):
-        self._check_equals("The donkey paints a roof", "The donkey paints a roof", 82, False)
+        self._check_equals("The donkey paints a roof", "The donkey paints a roof", 87, False)
 
     def test_indexes(self):
         holmes_manager_coref.remove_all_documents()
@@ -124,6 +124,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 maximum_activation_distance=75,
                 relation_score=20,
                 single_word_score=5,
+                single_word_any_tag_score=2,
                 overlapping_relation_multiplier=1.5,
                 overlap_memory_size=10,
                 maximum_activation_value=1000,
@@ -201,12 +202,12 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
                 "The dog chased the cat")
         self.assertEqual(topic_match_dictionaries,
-        [{'document_label': '', 'text': 'A dog chased a cat. A cat.', 'rank': '1=', 'sentences_character_start_index_in_document': 515, 'sentences_character_end_index_in_document': 541, 'finding_character_start_index_in_sentences': 2, 'finding_character_end_index_in_sentences': 25, 'score': 99.80266666666668}, {'document_label': '', 'text': 'A dog chased a cat.', 'rank': '1=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'finding_character_start_index_in_sentences': 2, 'finding_character_end_index_in_sentences': 18, 'score': 99.80266666666668}, {'document_label': 'animals', 'text': 'Dogs and cats.', 'rank': '3', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 14, 'finding_character_start_index_in_sentences': 0, 'finding_character_end_index_in_sentences': 13, 'score': 9.866666666666667}])
+        [{'document_label': '', 'text': 'A dog chased a cat. A cat.', 'rank': '1=', 'sentences_character_start_index_in_document': 515, 'sentences_character_end_index_in_document': 541, 'finding_character_start_index_in_sentences': 2, 'finding_character_end_index_in_sentences': 25, 'score': 101.74933333333334}, {'document_label': '', 'text': 'A dog chased a cat.', 'rank': '1=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'finding_character_start_index_in_sentences': 2, 'finding_character_end_index_in_sentences': 18, 'score': 101.74933333333334}, {'document_label': 'animals', 'text': 'Dogs and cats.', 'rank': '3', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 14, 'finding_character_start_index_in_sentences': 0, 'finding_character_end_index_in_sentences': 13, 'score': 9.866666666666667}])
         topic_match_dictionaries = \
                 holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
                 "The dog chased the cat", tied_result_quotient=0.01)
         self.assertEqual(topic_match_dictionaries,
-        [{'document_label': '', 'text': 'A dog chased a cat. A cat.', 'rank': '1=', 'sentences_character_start_index_in_document': 515, 'sentences_character_end_index_in_document': 541, 'finding_character_start_index_in_sentences': 2, 'finding_character_end_index_in_sentences': 25, 'score': 99.80266666666668}, {'document_label': '', 'text': 'A dog chased a cat.', 'rank': '1=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'finding_character_start_index_in_sentences': 2, 'finding_character_end_index_in_sentences': 18, 'score': 99.80266666666668}, {'document_label': 'animals', 'text': 'Dogs and cats.', 'rank': '1=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 14, 'finding_character_start_index_in_sentences': 0, 'finding_character_end_index_in_sentences': 13, 'score': 9.866666666666667}])
+        [{'document_label': '', 'text': 'A dog chased a cat. A cat.', 'rank': '1=', 'sentences_character_start_index_in_document': 515, 'sentences_character_end_index_in_document': 541, 'finding_character_start_index_in_sentences': 2, 'finding_character_end_index_in_sentences': 25, 'score': 101.74933333333334}, {'document_label': '', 'text': 'A dog chased a cat.', 'rank': '1=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'finding_character_start_index_in_sentences': 2, 'finding_character_end_index_in_sentences': 18, 'score': 101.74933333333334}, {'document_label': 'animals', 'text': 'Dogs and cats.', 'rank': '1=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 14, 'finding_character_start_index_in_sentences': 0, 'finding_character_end_index_in_sentences': 13, 'score': 9.866666666666667}])
 
     def test_result_ordering_by_match_length_different_documents(self):
         holmes_manager_coref.remove_all_documents()

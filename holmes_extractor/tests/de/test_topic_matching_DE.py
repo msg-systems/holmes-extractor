@@ -9,29 +9,29 @@ class GermanTopicMatchingTest(unittest.TestCase):
         holmes_manager.remove_all_documents()
         holmes_manager.parse_and_register_document(document_text)
         topic_matches = holmes_manager.topic_match_documents_against(text_to_match,
-                relation_score=20, single_word_score=10)
+                relation_score=20, single_word_score=10, single_word_any_tag_score=5)
         self.assertEqual(int(topic_matches[0].score), highest_score)
 
     def test_direct_matching(self):
-        self._check_equals("Eine Pflanze wächst", "Eine Pflanze wächst", 29)
+        self._check_equals("Eine Pflanze wächst", "Eine Pflanze wächst", 34)
 
     def test_direct_matching_nonsense_word(self):
-        self._check_equals("Ein Gegwghg wächst", "Ein Gegwghg wächst", 29)
+        self._check_equals("Ein Gegwghg wächst", "Ein Gegwghg wächst", 34)
 
     def test_entity_matching(self):
-        self._check_equals("Ein ENTITYPER singt", "Peter singt", 29)
+        self._check_equals("Ein ENTITYPER singt", "Peter singt", 34)
 
     def test_entitynoun_matching(self):
-        self._check_equals("Ein ENTITYNOUN singt", "Ein Vogel singt", 20)
+        self._check_equals("Ein ENTITYNOUN singt", "Ein Vogel singt", 25)
 
     def test_matching_only_adjective(self):
-        self._check_equals("nett", "nett", 10)
+        self._check_equals("nett", "nett", 5)
 
     def test_matching_only_adjective_where_noun(self):
-        self._check_equals("netter Ort", "nett", 10)
+        self._check_equals("netter Ort", "nett", 5)
 
     def test_matching_no_change_from_template_words(self):
-        self._check_equals("Eine beschriebene Sache", "Eine beschriebene Sache", 30)
+        self._check_equals("Eine beschriebene Sache", "Eine beschriebene Sache", 34)
 
     def test_indexes(self):
         holmes_manager.remove_all_documents()

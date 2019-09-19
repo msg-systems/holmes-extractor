@@ -47,7 +47,7 @@ class TopicMatcher:
     """A topic matcher object. See manager.py for details of the properties."""
 
     def __init__(self, holmes, *, maximum_activation_distance, relation_score,
-            single_word_score, overlapping_relation_multiplier,
+            single_word_score, single_word_any_tag_score, overlapping_relation_multiplier,
             overlap_memory_size, maximum_activation_value, sideways_match_extent,
             only_one_result_per_document, number_of_results):
         self._holmes = holmes
@@ -57,6 +57,7 @@ class TopicMatcher:
         self.maximum_activation_distance = maximum_activation_distance
         self.relation_score = relation_score
         self.single_word_score = single_word_score
+        self.single_word_any_tag_score = single_word_any_tag_score
         self.overlapping_relation_multiplier = overlapping_relation_multiplier
         self.overlap_memory_size = overlap_memory_size
         self.maximum_activation_value = maximum_activation_value
@@ -78,21 +79,14 @@ class TopicMatcher:
                 replace_with_hypernym_ancestors=False,
                 match_all_words = False,
                 returning_serialized_phraselets = False)
-        if len(phraselet_labels_to_search_phrases) == 0:
-            return []
-        # First get the structural matches sorted by position
+        # now add the single word phraselets whose tags did not match. The structural
+        # matcher logic ensures the same phraselet cannot be added twice.
+        self.structural_matcher.add_phraselets_to_dict(doc,
+                phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
+                replace_with_hypernym_ancestors=False,
+                match_all_words = True,
+                returning_serialized_phraselets = False)
         position_sorted_structural_matches = \
-                sorted(self.structural_matcher.match_documents_against_search_phrase_list(
-                        phraselet_labels_to_search_phrases.values(), False), key=lambda match:
-                (match.document_label, match.index_within_document))
-        if len(position_sorted_structural_matches) == 0:
-            # We found nothing, so we try again with all single words (not just nouns)
-            self.structural_matcher.add_phraselets_to_dict(doc,
-                    phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
-                    replace_with_hypernym_ancestors=False,
-                    match_all_words = True,
-                    returning_serialized_phraselets = False)
-            position_sorted_structural_matches = \
                     sorted(self.structural_matcher.match_documents_against_search_phrase_list(
                             phraselet_labels_to_search_phrases.values(), False), key=lambda match:
                     (match.document_label, match.index_within_document))
@@ -132,19 +126,35 @@ class TopicMatcher:
             adjusted_relation_score = self.relation_score * float(match.overall_similarity_measure)
             adjusted_single_word_score = self.single_word_score * \
                     float(match.overall_similarity_measure)
+            adjusted_single_word_any_tag_score = self.single_word_any_tag_score * \
+                    float(match.overall_similarity_measure)
             if not match.from_single_word_phraselet:
                 current_activation_score += adjusted_relation_score
                 current_unconstrained_activation_score += adjusted_relation_score
-            elif last_search_phrase_label != match.search_phrase_label:
-                current_activation_score += adjusted_single_word_score
-                current_unconstrained_activation_score += adjusted_single_word_score
-            else:
+            elif not match.from_topic_match_phraselet_created_without_matching_tags:
+                if last_search_phrase_label != match.search_phrase_label:
+                    current_activation_score += adjusted_single_word_score
+                    current_unconstrained_activation_score += adjusted_single_word_score
+                else:
                 # If the same single word match occurs repeatedly, we do not allow the activation to
-                # increase further
-                current_activation_score = max(current_activation_score, adjusted_single_word_score)
-                current_unconstrained_activation_score += \
-                        max(current_unconstrained_activation_score,
-                        adjusted_single_word_score)
+                # increase further.
+                    current_activation_score = max(current_activation_score,
+                            adjusted_single_word_score)
+                    current_unconstrained_activation_score += \
+                            max(current_unconstrained_activation_score,
+                            adjusted_single_word_score)
+            else:
+                if last_search_phrase_label != match.search_phrase_label:
+                    current_activation_score += adjusted_single_word_any_tag_score
+                    current_unconstrained_activation_score += adjusted_single_word_any_tag_score
+                else:
+                # If the same single word match occurs repeatedly, we do not allow the activation to
+                # increase further.
+                    current_activation_score = max(current_activation_score,
+                            adjusted_single_word_any_tag_score)
+                    current_unconstrained_activation_score += \
+                            max(current_unconstrained_activation_score,
+                            adjusted_single_word_any_tag_score)
             if not match.from_single_word_phraselet:
                 for word_match in match.word_matches:
                     if word_match.document_token.i in previous_topic_matches:
