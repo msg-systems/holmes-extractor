@@ -72,6 +72,63 @@ class TopicMatcher:
 
         text_to_match -- the text to match against the documents.
         """
+
+        single_word_indexes_to_matches = {}
+        parent_indexes_to_matches = {}
+        child_indexes_to_matches = {}
+
+        def get_working_label(match, index):
+            return ': '.join((match.document_label, str(index)))
+
+        def add_entry_to_dict(dict, key, value):
+            if key in dict:
+                dict[key].append(value)
+            else:
+                dict[key] = [value]
+
+        def get_word_match_from_two_term_match(match, parent): ## child if parent==False
+            for word_match in match.word_matches:
+                if parent and word_match.search_phrase_token.dep_ == 'ROOT':
+                    return word_match
+                if not parent and word_match.search_phrase_token.dep_ != 'ROOT':
+                    return word_match
+            raise RuntimeError(''.join(('Word match not found with parent==', parent)))
+
+        def add_match_information_to_index_dictionaries(matches):
+            for match in matches:
+                if match.from_single_word_phraselet:
+                    add_entry_to_dict(single_word_indexes_to_matches,
+                    get_working_label(match, match.index_within_document), match)
+                else:
+                    parent_word_match = get_word_match_from_two_term_match(match, True)
+                    add_entry_to_dict(parent_indexes_to_matches,
+                            get_working_label(match, parent_word_match.document_token.i), match)
+                    child_word_match = get_word_match_from_two_term_match(match, False)
+                    add_entry_to_dict(child_indexes_to_matches,
+                            get_working_label(match, child_word_match.document_token.i), match)
+
+        def filter_superfluous_matches_caused_by_coreference(match):
+            """e.g. 'I saw a big dog. The dog was barking' should only match 'big dog' once"""
+            if match.from_single_word_phraselet:
+                return True
+            child_word_match = get_word_match_from_two_term_match(match, False)
+            child_index = child_word_match.document_token.i
+            working_label = get_working_label(match, child_index)
+            if len(child_indexes_to_matches[working_label]) == 1:
+                return True
+            for other_match in child_indexes_to_matches[working_label]:
+                this_parent_word_match = get_word_match_from_two_term_match(match, True)
+                other_parent_word_match = get_word_match_from_two_term_match(other_match, True)
+                if this_parent_word_match.document_token.i != \
+                        other_parent_word_match.document_token.i and \
+                        other_parent_word_match.document_token.i in \
+                        self._semantic_analyzer.token_and_coreference_chain_indexes(
+                        this_parent_word_match.document_token) \
+                        and abs(other_parent_word_match.document_token.i - child_index) < \
+                        abs(this_parent_word_match.document_token.i - child_index):
+                    return False
+            return True
+
         doc = self._semantic_analyzer.parse(text_to_match)
         phraselet_labels_to_search_phrases = {}
         self.structural_matcher.add_phraselets_to_dict(doc,
@@ -86,9 +143,13 @@ class TopicMatcher:
                 replace_with_hypernym_ancestors=False,
                 match_all_words = True,
                 returning_serialized_phraselets = False)
+        structural_matches = self.structural_matcher.match_documents_against_search_phrase_list(
+                phraselet_labels_to_search_phrases.values(), False)
+        add_match_information_to_index_dictionaries(structural_matches)
+        structural_matches = list(filter(filter_superfluous_matches_caused_by_coreference,
+                structural_matches))
         position_sorted_structural_matches = \
-                    sorted(self.structural_matcher.match_documents_against_search_phrase_list(
-                            phraselet_labels_to_search_phrases.values(), False), key=lambda match:
+                    sorted(structural_matches, key=lambda match:
                     (match.document_label, match.index_within_document))
         # Read through the documents measuring the activation based on where
         # in the document structural matches were found
