@@ -67,6 +67,13 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                 'verb-dat: geben-frau', 'noun-dependent: frau-nett',
                 'word: gärtnern', 'word: frau', 'word: mittagessen']))
 
+    def test_phraselet_stop_words_governor(self):
+        self._check_equals("Immer hatte er es", ['word: immer'])
+
+    def test_phraselet_stop_words_governed(self):
+        self._check_equals("Dann machte er es zu Hause", ['word: hausen',
+                'prepgovernor-noun: machen-hausen'])
+
     def test_only_verb(self):
         self._check_equals("springen", ['word: springen'])
 
@@ -77,3 +84,9 @@ class GermanPhraseletProductionTest(unittest.TestCase):
         self._check_equals("Der Gärtner gibt der netten Frau ihr Mittagessen",
                 ['word: gärtnern', 'word: frau', 'word: mittagessen',
                 'word: geben', 'word: nett'], True)
+
+    def test_moposs(self):
+        self._check_equals("Er braucht eine Versicherung für fünf Jahre",
+                ['verb-acc: brauchen-versicherung', 'noun-dependent: jahr-fünf',
+                'prepgovernor-noun: brauchen-jahr', 'prepgovernor-noun: versicherung-jahr',
+                'word: jahr', 'word: versicherung'], False)

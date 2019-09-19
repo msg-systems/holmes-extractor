@@ -69,7 +69,8 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                 "A gardener's healthy hobby plant grows in the sun",
                 ['predicate-actor: grow-plant', 'governor-adjective: plant-healthy',
                 'noun-noun: plant-hobby', 'possessor-possessed: plant-gardener',
-                'word: plant', 'word: hobby', 'word: gardener', 'word: sun'])
+                'prepgovernor-noun: grow-sun', 'word: plant', 'word: hobby', 'word: gardener',
+                'word: sun'])
 
     def test_class_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "A dog progresses",
@@ -111,7 +112,7 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
         self._check_equals(ontology_holmes_manager,
                 "Information extraction progresses with information",
                 ['predicate-actor: progress-extraction', 'noun-noun: extraction-information',
-                'word: information', 'word: extraction'])
+                'prepgovernor-noun: progress-information', 'word: information', 'word: extraction'])
 
     def test_text_in_ontology_lemma_not_in_ontology(self):
         self._check_equals(ontology_holmes_manager,
@@ -170,11 +171,26 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                 "He saw rainbows",
                 ['predicate-patient: see-rainbows', 'word: rainbows'], False)
 
+    def test_prepposs(self):
+        self._check_equals(symmetric_ontology_nocoref_holmes_manager,
+                "He needs insurance for five years",
+                ['predicate-patient: need-insurance', 'number-noun: year-five',
+                'prepgovernor-noun: need-year', 'prepgovernor-noun: insurance-year',
+                'word: insurance', 'word: year'], False)
+
     def test_coref(self):
         self._check_equals(no_ontology_coref_holmes_manager,
                 "I saw a dog. He was chasing a cat and a cat",
                 ['predicate-patient: see-dog', 'predicate-actor: chase-dog',
                 'predicate-patient: chase-cat', 'word: dog', 'word: cat'])
+
+    def test_phraselet_stop_words_governor(self):
+        self._check_equals(no_ontology_coref_holmes_manager,
+                "Always he had it", ['word: always'])
+
+    def test_phraselet_stop_words_governed(self):
+        self._check_equals(no_ontology_coref_holmes_manager,
+                "So he did it at home", ['word: home', 'prepgovernor-noun: do-home'])
 
     def test_coref_and_serialization(self):
         no_ontology_coref_holmes_manager.remove_all_search_phrases()

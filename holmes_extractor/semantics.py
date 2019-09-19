@@ -759,15 +759,19 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                 ['poss', 'pobjo'],
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS'],
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS']),
+        PhraseletTemplate("prepgovernor-noun", "A thing in a thing", 1, 4,
+                ['pobjp'],
+                ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
+                ['FW', 'NN', 'NNP', 'NNPS', 'NNS']),
         PhraseletTemplate("word", "thing", 0, None,
                 None,
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS'],
                 None)
                 ]
 
-    # Lemmas that should be suppressed as parents within relation phraselets or as words of
+    # Lemmas that should be suppressed  within relation phraselets or as words of
     # single-word phraselets.
-    phraselet_stop_lemmas = ['be', 'have', 'get']
+    phraselet_stop_lemmas = ['be', 'have', 'get', 'then', 'therefore', 'so']
 
     def _set_negation(self, token):
         """Marks the negation on the token. A token is negative if it or one of its ancestors
@@ -1216,12 +1220,17 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                 ['mo', 'oc'],
                 ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP'],
                 ['ADJA', 'ADJD', 'ADV']),
+        PhraseletTemplate("prepgovernor-noun", "Eine Sache in einer Sache", 1, 4,
+                ['pobjp'],
+                ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
+                        'FM', 'NE', 'NNE', 'NN'],
+                ['FM', 'NE', 'NNE', 'NN']),
         PhraseletTemplate("word", "Sache", 0, None,
                 None,
                 ['FM', 'NE', 'NNE', 'NN'],
                 None)]
 
-    phraselet_stop_lemmas = ['sein', 'haben']
+    phraselet_stop_lemmas = ['sein', 'haben', 'dann', 'danach', 'so']
 
     def _set_negation(self, token):
         """Marks the negation on the token. A token is negative if it or one of its ancestors
