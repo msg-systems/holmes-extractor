@@ -21,6 +21,7 @@ coref_holmes_manager.register_search_phrase("A holiday is hard to find")
 coref_holmes_manager.register_search_phrase("A man sings")
 coref_holmes_manager.register_search_phrase("Somebody finds a policy")
 coref_holmes_manager.register_search_phrase("Somebody writes a book about an animal")
+coref_holmes_manager.register_search_phrase("Hermione breaks")
 no_coref_holmes_manager = holmes.Manager(model='en_core_web_lg', ontology=ontology,
         perform_coreference_resolution=False)
 no_coref_holmes_manager.register_search_phrase("A dog chases a cat")
@@ -786,3 +787,28 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         self.assertEqual(len(matches), 2)
         for match in matches:
             self.assertFalse(match.is_uncertain)
+
+    def test_coreference_of_noun_phrase_with_conjunction_only_one_matches(self):
+        coref_holmes_manager.remove_all_documents()
+        coref_holmes_manager.parse_and_register_document(
+                """A dog and a man came.  A dog and a man sang""")
+        matches = coref_holmes_manager.match()
+        self.assertEqual(len(matches), 1)
+        for match in matches:
+            self.assertFalse(match.is_uncertain)
+
+    def test_coreference_of_noun_phrase_with_conjunction_both_match(self):
+        coref_holmes_manager.remove_all_documents()
+        coref_holmes_manager.parse_and_register_document(
+                """A man and a man came.  A man and a man sang""")
+        matches = coref_holmes_manager.match()
+        self.assertEqual(len(matches), 2)
+        for match in matches:
+            self.assertFalse(match.is_uncertain)
+
+    def test_coreference_of_noun_phrase_with_conjunction_multiple_clusters(self):
+        coref_holmes_manager.remove_all_documents()
+        coref_holmes_manager.parse_and_register_document(
+                """Harry asked weakly, and when nothing happened except that Ron and Hermione gripped each other still more firmly and swayed on the spot, he raised his voice. “01! There’s a war going on here!” Ron and Hermione broke apart, their arms still around each other. “I know, mate,” said Ron, who looked as though he had recently been hit on the back of the head with a Bludger, “so it’s now or never, isn’t it?” “Never mind that, what about the Horcrux?” Harry shouted. “D’you think you could just — just hold it in until we’ve got the diadem?” “Yeah — right — sorry — ” said Ron, and he and Hermione set about gathering up fangs, both pink in the face.""")
+        matches = coref_holmes_manager.match()
+        self.assertEqual(len(matches), 1)

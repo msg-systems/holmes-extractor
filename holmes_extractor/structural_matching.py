@@ -826,14 +826,16 @@ class StructuralMatcher:
             document_label):
         """Investigate possible matches when recursion is complete."""
 
-        def get_mention_index_within_coref_cluster(cluster, token):
-            """Get the index of the mention within *cluster* in which *token* occurs."""
-            counter = -1
-            for mention in cluster.mentions:
-                counter += 1
-                if token.i >= mention.start and token.i <= mention.end:
-                    return counter
-            return counter
+        def get_mention_head_index_for_token(token):
+            """ Returns the leftmost start index of the mentions in any clusters
+                that contain this token. """
+            index_to_return = token.i
+            for cluster in token._.coref_clusters:
+                for mention in (mention for mention in cluster.mentions if token.i in \
+                        mention.root._.holmes.righthand_siblings):
+                    if mention.root.i < index_to_return:
+                        index_to_return = mention.root.i
+            return index_to_return
 
         def filter_word_matches_based_on_coreference_resolution(word_matches):
             """ When coreference resolution is active, additional matches are sometimes
@@ -842,29 +844,27 @@ class StructuralMatcher:
             dict = {}
             # Find the structurally matching document tokens for this list of word matches
             for word_match in word_matches:
-                structurally_matched_document_token_index = \
-                    word_match.structurally_matched_document_token.i
-                if structurally_matched_document_token_index in dict.keys():
-                    dict[structurally_matched_document_token_index].append(word_match)
+                structural_index = get_mention_head_index_for_token(
+                    word_match.structurally_matched_document_token)
+                if structural_index in dict.keys():
+                    dict[structural_index].append(word_match)
                 else:
-                    dict[structurally_matched_document_token_index] = [word_match]
+                    dict[structural_index] = [word_match]
             new_word_matches = []
-            for structurally_matched_document_token_index in dict.keys():
+            for structural_index in dict.keys():
                 # For each structural token, find the best matching coreference mention
-                relevant_word_matches = dict[structurally_matched_document_token_index]
+                relevant_word_matches = dict[structural_index]
                 structurally_matched_document_token = \
                         relevant_word_matches[0].document_token.doc[
-                        structurally_matched_document_token_index]
+                        structural_index]
                 already_added_document_token_indexes = set()
                 if structurally_matched_document_token._.in_coref:
+                    working_index = -1
                     # There can potentially be multiple clusters.
                     for cluster in structurally_matched_document_token._.coref_clusters:
-                        structural_index = get_mention_index_within_coref_cluster(
-                            cluster, structurally_matched_document_token)
-                        working_index = -1
                         for relevant_word_match in relevant_word_matches:
-                            this_index = get_mention_index_within_coref_cluster(
-                                    cluster, relevant_word_match.document_token)
+                            this_index = get_mention_head_index_for_token(
+                                    relevant_word_match.document_token)
                             # The best mention should be as close to the structural
                             # index as possible and preferably not after it.
                             if working_index == -1 or\
@@ -878,8 +878,8 @@ class StructuralMatcher:
                                 working_index = this_index
                         # Filter out any matches from mentions other than the best mention
                         for relevant_word_match in relevant_word_matches:
-                            if get_mention_index_within_coref_cluster(
-                                    cluster, relevant_word_match.document_token) == working_index \
+                            if working_index == get_mention_head_index_for_token(
+                                    relevant_word_match.document_token) \
                                     and relevant_word_match.document_token.i not in \
                                     already_added_document_token_indexes:
                                         already_added_document_token_indexes.add(

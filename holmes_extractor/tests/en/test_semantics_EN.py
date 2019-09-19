@@ -648,6 +648,17 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(analyzer.token_and_coreference_chain_indexes(doc[7]), [0,2,7])
         self.assertEqual(analyzer.token_and_coreference_chain_indexes(doc[3]), [3])
 
+    def test_coreference_repeated_conjunctions(self):
+        doc = analyzer.parse("A dog and a man came. A dog and a man sang")
+        # suboptimal situation that has to be rectified during structural matching
+        self.assertEqual(analyzer.token_and_coreference_chain_indexes(doc[1]),
+                [1,8,11])
+        self.assertEqual(analyzer.token_and_coreference_chain_indexes(doc[4]),
+                [4,8,11])
+        self.assertEqual(analyzer.token_and_coreference_chain_indexes(doc[8]), [1,4,8])
+        self.assertEqual(analyzer.token_and_coreference_chain_indexes(doc[11]),
+                [1,4,11])
+
     def test_maximum_mentions_difference(self):
         doc = analyzer.parse("""Richard came to work. He was happy. He was happy. He was happy.
         He was happy. He was happy. He was happy. He was happy. He was happy.""")
