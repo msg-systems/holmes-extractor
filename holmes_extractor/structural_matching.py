@@ -574,6 +574,8 @@ class StructuralMatcher:
 
         words_to_token_indexes_dict = {}
         for token in parsed_document:
+            for child in token._.holmes.children:
+                token.doc[child.child_index]._.holmes.parent_token_indexes.append(token.i)
             if self.ontology != None:
                 multiword = get_multiword(token)
                 if multiword != None:

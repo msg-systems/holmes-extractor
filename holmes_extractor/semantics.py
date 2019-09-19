@@ -80,6 +80,8 @@ class HolmesDictionary:
         self.is_involved_in_or_conjunction = False
         self.is_negated = None
         self.is_matchable = None
+        self.parent_token_indexes = [] # the indexes of tokens that have SemanticDependency objects
+        # pointing to this token. Only set at the very end of the document creation process.
 
     @property
     def is_uncertain(self):
@@ -1223,7 +1225,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
         PhraseletTemplate("prepgovernor-noun", "Eine Sache in einer Sache", 1, 4,
                 ['pobjp'],
                 ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
-                        'FM', 'NE', 'NNE', 'NN'],
+                'FM', 'NE', 'NNE', 'NN'],
                 ['FM', 'NE', 'NNE', 'NN']),
         PhraseletTemplate("word", "Sache", 0, None,
                 None,

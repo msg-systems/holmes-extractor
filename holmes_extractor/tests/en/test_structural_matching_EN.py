@@ -538,3 +538,12 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
         self.assertEqual(len(matches), 3)
         for match in matches:
             self.assertFalse(match.is_uncertain)
+
+    def test_parent_token_indexes(self):
+        holmes_manager_with_variable_search_phrases.remove_all_documents
+        holmes_manager_with_variable_search_phrases.parse_and_register_document("Houses in the village.", 'village')
+        doc = holmes_manager_with_variable_search_phrases.structural_matcher.get_document(
+                'village')
+        self.assertEqual(doc[0]._.holmes.string_representation_of_children(),
+                '1:prep; 3:pobjp')
+        self.assertEqual(doc[3]._.holmes.parent_token_indexes, [0,1])

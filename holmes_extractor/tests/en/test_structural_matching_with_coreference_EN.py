@@ -812,3 +812,11 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
                 """Harry asked weakly, and when nothing happened except that Ron and Hermione gripped each other still more firmly and swayed on the spot, he raised his voice. “01! There’s a war going on here!” Ron and Hermione broke apart, their arms still around each other. “I know, mate,” said Ron, who looked as though he had recently been hit on the back of the head with a Bludger, “so it’s now or never, isn’t it?” “Never mind that, what about the Horcrux?” Harry shouted. “D’you think you could just — just hold it in until we’ve got the diadem?” “Yeah — right — sorry — ” said Ron, and he and Hermione set about gathering up fangs, both pink in the face.""")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
+
+    def test_parent_token_indexes(self):
+        coref_holmes_manager.remove_all_documents()
+        coref_holmes_manager.parse_and_register_document(
+                "I saw a house. It stood in the village.", 'village')
+        doc = coref_holmes_manager.structural_matcher.get_document(
+                'village')
+        self.assertEqual(doc[9]._.holmes.parent_token_indexes, [6,7])
