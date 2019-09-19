@@ -133,7 +133,7 @@ class MultithreadingTest(unittest.TestCase):
             t = Thread(target=topic_match_within_thread)
             t.start()
         for i in range(NUMBER_OF_THREADS):
-            output = queue.get(True,5)
+            output = queue.get(True,10)
             self.assertEqual(output, ['panther', 'The hungry panther chased the angry gnu.',
                     'foal', 'A foal'])
 
