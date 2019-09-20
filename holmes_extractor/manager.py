@@ -95,7 +95,7 @@ class Manager:
             raise SerializationNotSupportedError(self.semantic_analyzer.model)
         doc = self.semantic_analyzer.from_serialized_string(document)
         self.semantic_analyzer.debug_structures(doc) # only has effect when debug=True
-        self.structural_matcher.register_document(doc, label)
+        self.structural_matcher.register_document(doc, label, True)
 
     def remove_document(self, label):
         """Parameters:

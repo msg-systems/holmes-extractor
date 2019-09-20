@@ -224,5 +224,6 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
     def test_match_all_words(self):
         self._check_equals(no_ontology_coref_holmes_manager,
                 "I saw a dog. He was chasing a cat and a cat",
-                ['word: dog', 'word: cat',
+                ['predicate-actor: chase-dog', 'predicate-patient: chase-cat',
+                'predicate-patient: see-dog', 'word: dog', 'word: cat',
                 'word: see', 'word: chase', 'word: -pron-'], False, True)

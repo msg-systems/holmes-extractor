@@ -80,8 +80,9 @@ class HolmesDictionary:
         self.is_involved_in_or_conjunction = False
         self.is_negated = None
         self.is_matchable = None
-        self.parent_token_indexes = [] # the indexes of tokens that have SemanticDependency objects
-        # pointing to this token. Only set at the very end of the document creation process.
+        self.parent_dependencies = [] # list of [index, label] specifications of dependencies
+        # where this token is the child. Remains empty until the document is registered with
+        # the manager and is used in topic matching.
 
     @property
     def is_uncertain(self):
@@ -151,7 +152,7 @@ class PhraseletTemplate:
         (for relation phraselets) or of the word (for single-word phraselets).
     child_index -- the index within 'template_sentence' of the child participant in the dependency
         (for relation phraselets) or 'None' for single-word phraselets.
-    reverse_matching_dependency_labels -- the labels of dependencies that match the template
+    dependency_labels -- the labels of dependencies that match the template
         (for relation phraselets) or 'None' for single-word phraselets.
     parent_tags -- the tag_ values of parent participants in the dependency (for parent phraselets)
         of of the word (for single-word phraselets) that match the template. For performance
@@ -162,12 +163,12 @@ class PhraseletTemplate:
     """
 
     def __init__(self, label, template_sentence, parent_index, child_index,
-            reverse_matching_dependency_labels, parent_tags, child_tags):
+            dependency_labels, parent_tags, child_tags):
         self.label = label
         self.template_sentence = template_sentence
         self.parent_index = parent_index
         self.child_index = child_index
-        self.reverse_matching_dependency_labels = reverse_matching_dependency_labels
+        self.dependency_labels = dependency_labels
         self.parent_tags = parent_tags
         self.child_tags = child_tags
 

@@ -201,16 +201,17 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
         self.assertEqual(['Mimi Momo', 'animal', 'cat', 'computers', 'dog', 'hound', 'puppy'],
                 sttb.classifications)
         trainer = sttb.train(minimum_occurrences=0, cv_threshold=0, mlp_max_iter=10000)
-        self.assertEqual(['word: animal', 'word: computer', 'word: lead', 'word: robot'],
+        self.assertEqual(['prepgovernor-noun: animal-lead', 'word: animal', 'word: computer',
+                'word: lead', 'word: robot'],
                 list(trainer._sorted_label_dict.keys()))
-        self.assertEqual([[1.0, 0.0, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0], [1.0, 0.0, 1.0, 0.0],
-                [1.0, 0.0, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 1.0]], trainer._input_matrix.toarray().tolist())
+        self.assertEqual([[0.0, 1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0],
+                [1.0, 1.0, 0.0, 1.0, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 1.0]], trainer._input_matrix.toarray().tolist())
         self.assertEqual([[0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0], [0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0],
                 [0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0], [1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0], [0.0,
                 1.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0,
                 1.0, 0.0, 0.0, 0.0]], trainer._output_matrix.toarray().tolist())
-        self.assertEqual([4,5,6], trainer._hidden_layer_sizes)
+        self.assertEqual([5,5,6], trainer._hidden_layer_sizes)
         stc = trainer.classifier()
         self.assertEqual(stc.parse_and_classify("You are a robot."), ['computers'])
         self.assertEqual(stc.parse_and_classify("You are a cat."), ['animal'])
@@ -220,8 +221,8 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
         serialized_supervised_topic_classifier_model = stc.serialize_model()
         stc2 = no_ontology_holmes_manager.deserialize_supervised_topic_classifier(
                 serialized_supervised_topic_classifier_model, verbose=True)
-        self.assertEqual(['word: animal', 'word: computer', 'word: lead', 'word: robot'],
-                list(stc2._model.sorted_label_dict.keys()))
+        self.assertEqual(['prepgovernor-noun: animal-lead', 'word: animal', 'word: computer',
+                'word: lead', 'word: robot'], list(stc2._model.sorted_label_dict.keys()))
         self.assertEqual(stc2.parse_and_classify("You are a robot."), ['computers'])
         self.assertEqual(stc2.parse_and_classify("You are a cat."), ['animal'])
         self.assertEqual(stc2.parse_and_classify("My name is Charles and I like sewing."), [])
@@ -248,35 +249,35 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
         self.assertEqual(['Mimi Momo', 'animal', 'cat', 'computers', 'dog', 'hound', 'puppy'],
                 sttb.classifications)
         trainer = sttb.train(minimum_occurrences=0, cv_threshold=0, mlp_max_iter=10000)
-        self.assertEqual(['word: animal', 'word: computer', 'word: lead', 'word: on',
-                'word: robot'],
+        self.assertEqual(['prepgovernor-noun: animal-lead', 'word: animal', 'word: computer',
+                'word: lead', 'word: on', 'word: robot'],
                 list(trainer._sorted_label_dict.keys()))
-        self.assertEqual([[1.0, 0.0, 0.0, 0.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0],
-                [1.0, 0.0, 1.0, 1.0, 0.0], [1.0, 0.0, 0.0, 0.0, 0.0],
-                [1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0],
-                [0.0, 0.0, 0.0, 0.0, 1.0]], trainer._input_matrix.toarray().tolist())
+        self.assertEqual([[0.0, 1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+                [1.0, 1.0, 0.0, 1.0, 1.0, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
+                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0]], trainer._input_matrix.toarray().tolist())
         self.assertEqual([[0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0], [0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0],
                 [0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0], [1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0], [0.0,
                 1.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0,
                 1.0, 0.0, 0.0, 0.0]], trainer._output_matrix.toarray().tolist())
-        self.assertEqual([5,5,6], trainer._hidden_layer_sizes)
+        self.assertEqual([6,6,6], trainer._hidden_layer_sizes)
         stc = trainer.classifier()
         self.assertEqual(stc.parse_and_classify("You are a robot."), ['computers'])
         self.assertEqual(stc.parse_and_classify("You are a cat."), ['animal'])
         self.assertEqual(stc.parse_and_classify("My name is Charles and I like sewing."), [])
         self.assertEqual(stc.parse_and_classify("Your dog appears to be on a lead."),
-                ['animal', 'dog', 'hound'])
+                ['animal', 'hound', 'dog'])
         serialized_supervised_topic_classifier_model = stc.serialize_model()
         stc2 = no_ontology_holmes_manager.deserialize_supervised_topic_classifier(
                 serialized_supervised_topic_classifier_model)
-        self.assertEqual(['word: animal', 'word: computer', 'word: lead', 'word: on',
-                'word: robot'],
+        self.assertEqual(['prepgovernor-noun: animal-lead', 'word: animal', 'word: computer',
+                'word: lead', 'word: on', 'word: robot'],
                 list(stc2._model.sorted_label_dict.keys()))
         self.assertEqual(stc2.parse_and_classify("You are a robot."), ['computers'])
         self.assertEqual(stc2.parse_and_classify("You are a cat."), ['animal'])
         self.assertEqual(stc2.parse_and_classify("My name is Charles and I like sewing."), [])
         self.assertEqual(stc2.parse_and_classify("Your dog appears to be on a lead."),
-                ['animal', 'dog', 'hound'])
+                ['animal', 'hound', 'dog'])
 
     def test_filtering(self):
         sttb = holmes_manager.get_supervised_topic_training_basis()

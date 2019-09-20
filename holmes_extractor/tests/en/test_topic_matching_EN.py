@@ -6,17 +6,15 @@ import os
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join((script_directory,'test_ontology.owl')))
 holmes_manager_coref = holmes.Manager(model='en_core_web_lg', ontology=ontology,
-        overall_similarity_threshold=0.85, perform_coreference_resolution=True)
+        overall_similarity_threshold=0.72, perform_coreference_resolution=True)
 holmes_manager_coref_embedding_on_root = holmes.Manager(model='en_core_web_lg', ontology=ontology,
         overall_similarity_threshold=0.72, embedding_based_matching_on_root_words=True)
+holmes_manager_coref_no_embeddings = holmes.Manager(model='en_core_web_lg', ontology=ontology,
+        overall_similarity_threshold=1, perform_coreference_resolution=True)
 
 class EnglishTopicMatchingTest(unittest.TestCase):
 
-    def _check_equals(self, text_to_match, document_text, highest_score, embedding_on_root = False):
-        if embedding_on_root:
-            manager = holmes_manager_coref_embedding_on_root
-        else:
-            manager = holmes_manager_coref
+    def _check_equals(self, text_to_match, document_text, highest_score, manager):
         manager.remove_all_documents()
         manager.parse_and_register_document(document_text)
         topic_matches = manager.topic_match_documents_against(text_to_match, relation_score=20,
@@ -24,46 +22,114 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self.assertEqual(int(topic_matches[0].score), highest_score)
 
     def test_direct_matching(self):
-        self._check_equals("A plant grows", "A plant grows", 34)
+        self._check_equals("A plant grows", "A plant grows", 34, holmes_manager_coref)
 
     def test_direct_matching_nonsense_word(self):
-        self._check_equals("My friend visited gegwghg", "Peter visited gegwghg", 34)
+        self._check_equals("My friend visited gegwghg", "Peter visited gegwghg", 34,
+                holmes_manager_coref)
+
+    def test_dative_matching(self):
+        self._check_equals("I gave Peter a dog", "I gave Peter a present", 34, holmes_manager_coref)
 
     def test_coref_matching(self):
-        self._check_equals("A plant grows", "I saw a plant. It was growing", 34)
+        self._check_equals("A plant grows", "I saw a plant. It was growing", 34,
+                holmes_manager_coref)
 
     def test_entity_matching(self):
-        self._check_equals("My friend visited ENTITYGPE", "Peter visited Paris", 34)
+        self._check_equals("My friend visited ENTITYGPE", "Peter visited Paris", 34,
+                holmes_manager_coref)
 
     def test_entitynoun_matching(self):
-        self._check_equals("My friend visited ENTITYNOUN", "Peter visited a city", 25)
+        self._check_equals("My friend visited ENTITYNOUN", "Peter visited a city", 25,
+                holmes_manager_coref)
 
     def test_ontology_matching(self):
-        self._check_equals("I saw an animal", "Somebody saw a cat", 34)
+        self._check_equals("I saw an animal", "Somebody saw a cat", 34,
+                holmes_manager_coref)
 
     def test_ontology_matching_word_only(self):
-        self._check_equals("I saw an animal", "Somebody chased a cat", 10)
+        self._check_equals("I saw an animal", "Somebody chased a cat", 10,
+                holmes_manager_coref)
 
     def test_embedding_matching_not_root(self):
-        self._check_equals("I saw a king", "Somebody saw a queen", 22)
+        self._check_equals("I saw a king", "Somebody saw a queen", 22,
+                holmes_manager_coref)
 
     def test_embedding_matching_root(self):
-        self._check_equals("I saw a king", "Somebody saw a queen", 28, True)
+        self._check_equals("I saw a king", "Somebody saw a queen", 28,
+                holmes_manager_coref_embedding_on_root)
 
     def test_embedding_matching_root_word_only(self):
-        self._check_equals("king", "queen", 7, True)
+        self._check_equals("king", "queen", 7,
+                holmes_manager_coref_embedding_on_root)
 
     def test_matching_only_adjective(self):
-        self._check_equals("nice", "nice", 5, False)
+        self._check_equals("nice", "nice", 5, holmes_manager_coref)
 
     def test_matching_only_adjective_where_noun(self):
-        self._check_equals("nice place", "nice", 5, False)
+        self._check_equals("nice place", "nice", 5, holmes_manager_coref)
 
     def test_stopwords(self):
-        self._check_equals("The donkey has a roof", "The donkey has a roof", 19, False)
+        self._check_equals("The donkey has a roof", "The donkey has a roof", 19,
+                holmes_manager_coref)
 
     def test_stopwords_control(self):
-        self._check_equals("The donkey paints a roof", "The donkey paints a roof", 87, False)
+        self._check_equals("The donkey paints a roof", "The donkey paints a roof", 87,
+                holmes_manager_coref)
+
+    def test_reverse_matching_noun_no_coreference(self):
+        self._check_equals("A car with an engine", "An automobile with an engine", 31,
+                holmes_manager_coref)
+
+    def test_reverse_matching_noun_no_coreference_control_no_embeddings(self):
+        self._check_equals("A car with an engine", "An automobile with an engine", 14,
+                holmes_manager_coref_no_embeddings)
+
+    def test_reverse_matching_noun_no_coreference_control_same_word(self):
+        self._check_equals("A car with an engine", "A car with an engine", 43,
+                holmes_manager_coref_no_embeddings)
+
+    def test_reverse_matching_noun_coreference_on_governor(self):
+        self._check_equals("A car with an engine", "I saw an automobile. I saw it with an engine",
+                30,
+                holmes_manager_coref)
+
+    def test_reverse_matching_noun_coreference_on_governor_control_no_embeddings(self):
+        self._check_equals("A car with an engine", "I saw an automobile. I saw it with an engine",
+                14,
+                holmes_manager_coref_no_embeddings)
+
+    def test_reverse_matching_noun_coreference_on_governor_control_same_word(self):
+        self._check_equals("A car with an engine", "I saw a car. I saw it with an engine",
+                42,
+                holmes_manager_coref_no_embeddings)
+
+    def test_reverse_matching_noun_coreference_on_governed(self):
+        self._check_equals(
+                "An engine with a car", "I saw an automobile. There was an engine with it", 31,
+                holmes_manager_coref)
+
+    def test_reverse_matching_noun_coreference_on_governed_control_no_embeddings(self):
+        self._check_equals(
+                "An engine with a car", "I saw an automobile. There was an engine with it", 14,
+                holmes_manager_coref_no_embeddings)
+
+    def test_reverse_matching_noun_coreference_on_governed_control_same_word(self):
+        self._check_equals(
+                "An engine with a car", "I saw a car. There was an engine with it", 43,
+                holmes_manager_coref_no_embeddings)
+
+    def test_reverse_matching_verb(self):
+        self._check_equals("A company is bought", "A company is purchased", 27,
+                holmes_manager_coref)
+
+    def test_reverse_matching_verb_control_no_embeddings(self):
+        self._check_equals("A company is bought", "A company is purchased", 10,
+                holmes_manager_coref_no_embeddings)
+
+    def test_reverse_matching_verb_control_same_word(self):
+        self._check_equals("A company is bought", "A company is bought", 34,
+                holmes_manager_coref_no_embeddings)
 
     def test_coreference_double_match_on_governed(self):
         holmes_manager_coref.remove_all_documents()
@@ -80,7 +146,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self.assertEqual(topic_matches[0].relative_end_index, 2)
 
     def test_coreference_double_match_on_governor(self):
-        self._check_equals("A big man", "I saw a big man. The man walked", 34, False)
+        self._check_equals("A big man", "I saw a big man. The man walked", 34, holmes_manager_coref)
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document(
                 "I saw a big man. The man walked")
@@ -141,9 +207,9 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 replace_with_hypernym_ancestors=False,
                 match_all_words=False,
                 returning_serialized_phraselets=False)
-        holmes_manager_coref.structural_matcher.register_search_phrase("A dog chases a cat", None, True)
-        holmes_manager_coref.structural_matcher.register_search_phrase("beef", None, True)
-        holmes_manager_coref.structural_matcher.register_search_phrase("lamb", None, True)
+        holmes_manager_coref.structural_matcher.register_search_phrase("A dog chases a cat", None)
+        holmes_manager_coref.structural_matcher.register_search_phrase("beef", None)
+        holmes_manager_coref.structural_matcher.register_search_phrase("lamb", None)
         position_sorted_structural_matches = sorted(holmes_manager_coref.structural_matcher.
                         match_documents_against_search_phrase_list(
                         phraselet_labels_to_search_phrases.values(),False),

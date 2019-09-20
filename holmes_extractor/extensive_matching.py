@@ -73,18 +73,45 @@ class TopicMatcher:
         text_to_match -- the text to match against the documents.
         """
 
-        single_word_indexes_to_matches = {}
-        parent_indexes_to_matches = {}
-        child_indexes_to_matches = {}
+        class DocumentInfo:
+            def __init__(self):
+                self.tag_checked_single_word_indexes = set()
+                self.parent_indexes = set()
+                self.child_indexes_to_matches = {}
 
-        def get_working_label(match, index):
-            return ': '.join((match.document_label, str(index)))
+        def get_document_info(document_label):
+            if document_label not in self._document_info_dict:
+                self._document_info_dict[document_label] = DocumentInfo()
+            return self._document_info_dict[document_label]
 
-        def add_entry_to_dict(dict, key, value):
-            if key in dict:
-                dict[key].append(value)
-            else:
-                dict[key] = [value]
+        def get_not_yet_matched_parent_indexes_with_possible_child(document_label, index):
+            token_indexes_to_return = set()
+            document_info = get_document_info(document_label)
+            doc = self.structural_matcher.get_document(document_label)
+            for token_index in \
+                    self._semantic_analyzer.token_and_coreference_chain_indexes(doc[index]):
+                child_token = doc[token_index]
+                for parent_dependency in child_token._.holmes.parent_dependencies:
+                    for parent_token_index in \
+                            self._semantic_analyzer.token_and_coreference_chain_indexes(
+                            doc[parent_dependency[0]]):
+                        if parent_token_index not in document_info.parent_indexes:
+                            parent_token = doc[parent_token_index]
+                            for pt in (pt for pt in self._semantic_analyzer.phraselet_templates if
+                                    not pt.single_word() and
+                                    parent_token.tag_ in pt.parent_tags and
+                                    child_token.tag_ in pt.child_tags):
+                                add = False
+                                for pt_label in pt.dependency_labels:
+                                    if self._semantic_analyzer.dependency_labels_match(
+                                            search_phrase_dependency_label=pt_label,
+                                            document_dependency_label=parent_dependency[1]):
+                                        add = True
+                                        break
+                                if add:
+                                    token_indexes_to_return.add(parent_token_index)
+                                    break
+            return token_indexes_to_return
 
         def get_word_match_from_two_term_match(match, parent): ## child if parent==False
             for word_match in match.word_matches:
@@ -92,20 +119,25 @@ class TopicMatcher:
                     return word_match
                 if not parent and word_match.search_phrase_token.dep_ != 'ROOT':
                     return word_match
-            raise RuntimeError(''.join(('Word match not found with parent==', parent)))
+            raise RuntimeError(''.join(('Word match not found with parent==', str(parent))))
 
-        def add_match_information_to_index_dictionaries(matches):
+        def rebuild_document_info_dict(matches):
+            self._document_info_dict = {}
             for match in matches:
-                if match.from_single_word_phraselet:
-                    add_entry_to_dict(single_word_indexes_to_matches,
-                    get_working_label(match, match.index_within_document), match)
-                else:
+                document_info = get_document_info(match.document_label)
+                if match.from_single_word_phraselet and not \
+                        match.from_topic_match_phraselet_created_without_matching_tags:
+                    document_info.tag_checked_single_word_indexes.add(match.index_within_document)
+                elif not match.from_single_word_phraselet:
                     parent_word_match = get_word_match_from_two_term_match(match, True)
-                    add_entry_to_dict(parent_indexes_to_matches,
-                            get_working_label(match, parent_word_match.document_token.i), match)
+                    document_info.parent_indexes.add(parent_word_match.document_token.i)
                     child_word_match = get_word_match_from_two_term_match(match, False)
-                    add_entry_to_dict(child_indexes_to_matches,
-                            get_working_label(match, child_word_match.document_token.i), match)
+                    if child_word_match.document_token.i in document_info.child_indexes_to_matches:
+                        document_info.child_indexes_to_matches[
+                                child_word_match.document_token.i].append(match)
+                    else:
+                        document_info.child_indexes_to_matches[
+                                child_word_match.document_token.i] = [match]
 
         def filter_superfluous_matches_caused_by_coreference(match):
             """e.g. 'I saw a big dog. The dog was barking' should only match 'big dog' once"""
@@ -113,10 +145,10 @@ class TopicMatcher:
                 return True
             child_word_match = get_word_match_from_two_term_match(match, False)
             child_index = child_word_match.document_token.i
-            working_label = get_working_label(match, child_index)
-            if len(child_indexes_to_matches[working_label]) == 1:
+            document_info = get_document_info(match.document_label)
+            if len(document_info.child_indexes_to_matches[child_index]) == 1:
                 return True
-            for other_match in child_indexes_to_matches[working_label]:
+            for other_match in document_info.child_indexes_to_matches[child_index]:
                 this_parent_word_match = get_word_match_from_two_term_match(match, True)
                 other_parent_word_match = get_word_match_from_two_term_match(other_match, True)
                 if this_parent_word_match.document_token.i != \
@@ -136,8 +168,7 @@ class TopicMatcher:
                 replace_with_hypernym_ancestors=False,
                 match_all_words = False,
                 returning_serialized_phraselets = False)
-        # now add the single word phraselets whose tags did not match. The structural
-        # matcher logic ensures the same phraselet cannot be added twice.
+        # now add the single word phraselets whose tags did not match.
         self.structural_matcher.add_phraselets_to_dict(doc,
                 phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
                 replace_with_hypernym_ancestors=False,
@@ -145,12 +176,28 @@ class TopicMatcher:
                 returning_serialized_phraselets = False)
         structural_matches = self.structural_matcher.match_documents_against_search_phrase_list(
                 phraselet_labels_to_search_phrases.values(), False)
-        add_match_information_to_index_dictionaries(structural_matches)
+        rebuild_document_info_dict(structural_matches)
+        document_labels_to_indexes_to_try_matching_sets = {}
+        for document_label in self._document_info_dict:
+            working_indexes = set()
+            for index in self._document_info_dict[document_label].tag_checked_single_word_indexes:
+                working_indexes |= \
+                        get_not_yet_matched_parent_indexes_with_possible_child(document_label,
+                        index)
+            if len(working_indexes) > 0:
+                document_labels_to_indexes_to_try_matching_sets[document_label] = working_indexes
+        if len(document_labels_to_indexes_to_try_matching_sets) > 0:
+            structural_matches.extend(self.structural_matcher.
+                    match_documents_against_search_phrase_list(
+                    phraselet_labels_to_search_phrases.values(), False,
+                    document_labels_to_indexes_to_try_matching_sets))
+            rebuild_document_info_dict(structural_matches)
         structural_matches = list(filter(filter_superfluous_matches_caused_by_coreference,
                 structural_matches))
         position_sorted_structural_matches = \
                     sorted(structural_matches, key=lambda match:
-                    (match.document_label, match.index_within_document))
+                    (match.document_label, match.index_within_document,
+                    match.from_single_word_phraselet))
         # Read through the documents measuring the activation based on where
         # in the document structural matches were found
         score_sorted_structural_matches = self.perform_activation_scoring(

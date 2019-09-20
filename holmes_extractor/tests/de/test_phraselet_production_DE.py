@@ -83,7 +83,9 @@ class GermanPhraseletProductionTest(unittest.TestCase):
     def test_match_all_words(self):
         self._check_equals("Der Gärtner gibt der netten Frau ihr Mittagessen",
                 ['word: gärtnern', 'word: frau', 'word: mittagessen',
-                'word: geben', 'word: nett'], True)
+                'word: geben', 'word: nett',  'verb-nom: geben-gärtnern',
+                'verb-dat: geben-frau', 'verb-acc: geben-mittagessen',
+                'noun-dependent: frau-nett'], True)
 
     def test_moposs(self):
         self._check_equals("Er braucht eine Versicherung für fünf Jahre",

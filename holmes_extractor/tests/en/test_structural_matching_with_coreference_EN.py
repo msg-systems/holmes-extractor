@@ -816,7 +816,8 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
     def test_parent_token_indexes(self):
         coref_holmes_manager.remove_all_documents()
         coref_holmes_manager.parse_and_register_document(
-                "I saw a house. It stood in the village.", 'village')
+                "I saw a house. I saw it in the village.", 'village')
         doc = coref_holmes_manager.structural_matcher.get_document(
                 'village')
-        self.assertEqual(doc[9]._.holmes.parent_token_indexes, [6,7])
+        self.assertTrue(coref_holmes_manager.semantic_analyzer.is_involved_in_coreference(doc[7]))
+        self.assertEqual(doc[10]._.holmes.parent_dependencies, [[6,'pobjp'],[7,'pobjp'],[8,'pobj']])
