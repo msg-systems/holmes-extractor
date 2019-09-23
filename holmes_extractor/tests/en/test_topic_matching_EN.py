@@ -6,9 +6,9 @@ import os
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join((script_directory,'test_ontology.owl')))
 holmes_manager_coref = holmes.Manager(model='en_core_web_lg', ontology=ontology,
-        overall_similarity_threshold=0.72, perform_coreference_resolution=True)
+        overall_similarity_threshold=0.65, perform_coreference_resolution=True)
 holmes_manager_coref_embedding_on_root = holmes.Manager(model='en_core_web_lg', ontology=ontology,
-        overall_similarity_threshold=0.72, embedding_based_matching_on_root_words=True)
+        overall_similarity_threshold=0.65, embedding_based_matching_on_root_words=True)
 holmes_manager_coref_no_embeddings = holmes.Manager(model='en_core_web_lg', ontology=ontology,
         overall_similarity_threshold=1, perform_coreference_resolution=True)
 
@@ -18,7 +18,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         manager.remove_all_documents()
         manager.parse_and_register_document(document_text)
         topic_matches = manager.topic_match_documents_against(text_to_match, relation_score=20,
-                single_word_score=10, single_word_any_tag_score=5)
+                reverse_only_relation_score=15, single_word_score=10, single_word_any_tag_score=5)
         self.assertEqual(int(topic_matches[0].score), highest_score)
 
     def test_direct_matching(self):
@@ -78,30 +78,30 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 holmes_manager_coref)
 
     def test_reverse_matching_noun_no_coreference(self):
-        self._check_equals("A car with an engine", "An automobile with an engine", 31,
+        self._check_equals("A car with an engine", "An automobile with an engine", 61,
                 holmes_manager_coref)
 
     def test_reverse_matching_noun_no_coreference_control_no_embeddings(self):
-        self._check_equals("A car with an engine", "An automobile with an engine", 14,
+        self._check_equals("A car with an engine", "An automobile with an engine", 29,
                 holmes_manager_coref_no_embeddings)
 
     def test_reverse_matching_noun_no_coreference_control_same_word(self):
-        self._check_equals("A car with an engine", "A car with an engine", 43,
+        self._check_equals("A car with an engine", "A car with an engine", 79,
                 holmes_manager_coref_no_embeddings)
 
     def test_reverse_matching_noun_coreference_on_governor(self):
         self._check_equals("A car with an engine", "I saw an automobile. I saw it with an engine",
-                30,
+                60,
                 holmes_manager_coref)
 
     def test_reverse_matching_noun_coreference_on_governor_control_no_embeddings(self):
         self._check_equals("A car with an engine", "I saw an automobile. I saw it with an engine",
-                14,
+                29,
                 holmes_manager_coref_no_embeddings)
 
     def test_reverse_matching_noun_coreference_on_governor_control_same_word(self):
         self._check_equals("A car with an engine", "I saw a car. I saw it with an engine",
-                42,
+                77,
                 holmes_manager_coref_no_embeddings)
 
     def test_reverse_matching_noun_coreference_on_governed(self):
@@ -130,6 +130,37 @@ class EnglishTopicMatchingTest(unittest.TestCase):
     def test_reverse_matching_verb_control_same_word(self):
         self._check_equals("A company is bought", "A company is bought", 34,
                 holmes_manager_coref_no_embeddings)
+
+    def test_reverse_matching_verb_with_coreference_and_conjunction(self):
+        self._check_equals("A company is bought", "A company is bought and purchased", 34,
+                holmes_manager_coref)
+
+    def test_reverse_matching_leading_to_new_forward_matching(self):
+        self._check_equals("Somebody buys a van and a car",
+                "Somebody purchases a van and an automobile", 59,
+                holmes_manager_coref)
+
+    def test_reverse_matching_leading_to_new_forward_matching_link_word_also_similar(self):
+        self._check_equals("Somebody buys a vehicle and a car",
+                "Somebody purchases a vehicle and an automobile", 84,
+                holmes_manager_coref)
+            # more than in example above because car and vehicle are more similar
+            # than car and automobile
+
+    def test_reverse_matching_leading_to_new_forward_matching_control(self):
+        self._check_equals("Somebody buys a van and a car",
+                "Somebody purchases a van and a pig", 27,
+                holmes_manager_coref)
+
+    def test_two_matches_on_same_document_tokens_because_of_embeddings(self):
+        self._check_equals("Somebody buys a vehicle",
+                "Somebody buys a vehicle and a car", 34,
+                holmes_manager_coref)
+
+    def test_reverse_matching_only(self):
+        self._check_equals("with an idea",
+                "with an idea", 29,
+                holmes_manager_coref)
 
     def test_coreference_double_match_on_governed(self):
         holmes_manager_coref.remove_all_documents()
@@ -206,7 +237,8 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
                 replace_with_hypernym_ancestors=False,
                 match_all_words=False,
-                returning_serialized_phraselets=False)
+                returning_serialized_phraselets=False,
+                include_reverse_only=False)
         holmes_manager_coref.structural_matcher.register_search_phrase("A dog chases a cat", None)
         holmes_manager_coref.structural_matcher.register_search_phrase("beef", None)
         holmes_manager_coref.structural_matcher.register_search_phrase("lamb", None)
@@ -217,6 +249,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         topic_matcher = TopicMatcher(holmes_manager_coref,
                 maximum_activation_distance=75,
                 relation_score=20,
+                reverse_only_relation_score=15,
                 single_word_score=5,
                 single_word_any_tag_score=2,
                 overlapping_relation_multiplier=1.5,

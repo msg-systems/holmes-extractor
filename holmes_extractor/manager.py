@@ -218,7 +218,8 @@ class Manager:
                 self.structural_matcher.match_documents_against(search_phrase))
 
     def topic_match_documents_against(self, text_to_match, *, maximum_activation_distance=75,
-            relation_score=30, single_word_score=5, single_word_any_tag_score=2,
+            relation_score=30, reverse_only_relation_score = 20,
+            single_word_score=5, single_word_any_tag_score=2,
             overlapping_relation_multiplier=1.5, overlap_memory_size=10,
             maximum_activation_value=1000, sideways_match_extent=100,
             only_one_result_per_document=False, number_of_results=10):
@@ -230,6 +231,8 @@ class Manager:
         maximum_activation_distance -- the number of words it takes for a previous activation to
             reduce to zero when the library is reading through a document.
         relation_score -- the activation score added when a two-word relation is matched.
+        reverse_only_relation_score -- the activation score added when a two-word relation
+                is matched using a search phrase that can only be reverse-matched.
         single_word_score -- the activation score added when a single word is matched.
         single_word_any_tag_score -- the activation score added when a single word is matched
             whose tag did not correspond to the template specification. Only used when following the
@@ -250,6 +253,7 @@ class Manager:
         topic_matcher = TopicMatcher(self,
                 maximum_activation_distance=maximum_activation_distance,
                 relation_score=relation_score,
+                reverse_only_relation_score=reverse_only_relation_score,
                 single_word_score=single_word_score,
                 single_word_any_tag_score=single_word_any_tag_score,
                 overlapping_relation_multiplier=overlapping_relation_multiplier,
@@ -261,8 +265,8 @@ class Manager:
         return topic_matcher.topic_match_documents_against(text_to_match)
 
     def topic_match_documents_returning_dictionaries_against(self, text_to_match, *,
-            maximum_activation_distance=75, relation_score=30, single_word_score=5,
-            single_word_any_tag_score=2, overlapping_relation_multiplier=1.5,
+            maximum_activation_distance=75, relation_score=30, reverse_only_relation_score = 20,
+            single_word_score=5, single_word_any_tag_score=2, overlapping_relation_multiplier=1.5,
             overlap_memory_size=10,maximum_activation_value=1000, sideways_match_extent=100,
             only_one_result_per_document=False, number_of_results=10,tied_result_quotient=0.9):
         """Returns a list of dictionaries representing the results of a topic match between an
@@ -275,6 +279,8 @@ class Manager:
         maximum_activation_distance -- the number of words it takes for a previous activation to
             reduce to zero when the library is reading through a document.
         relation_score -- the activation score added when a two-word relation is matched.
+        reverse_only_relation_score -- the activation score added when a two-word relation
+                is matched using a search phrase that can only be reverse-matched.
         single_word_score -- the activation score added when a single word is matched.
         single_word_any_tag_score -- the activation score added when a single word is matched
             whose tag did not correspond to the template specification. Only used when following the
@@ -298,6 +304,7 @@ class Manager:
         topic_matcher = TopicMatcher(self,
                 maximum_activation_distance=maximum_activation_distance,
                 relation_score=relation_score,
+                reverse_only_relation_score=reverse_only_relation_score,
                 single_word_score=single_word_score,
                 single_word_any_tag_score=single_word_any_tag_score,
                 overlapping_relation_multiplier=overlapping_relation_multiplier,

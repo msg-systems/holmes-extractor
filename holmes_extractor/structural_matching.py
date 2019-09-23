@@ -64,6 +64,7 @@ class Match:
     from_single_word_phraselet -- *True* if this is a match against a single-word
         phraselet.
     from_topic_match_phraselet_created_without_matching_tags -- **True** or **False**
+    from_reverse_only_topic_match_phraselet -- **True** or **False**
     overall_similarity_measure -- the overall similarity of the match, or *1.0* if the embedding
         strategy was not involved in the match.
     index_within_document -- the index of the document token that matched the search phrase
@@ -71,7 +72,8 @@ class Match:
     """
 
     def __init__(self, search_phrase_label, document_label, from_single_word_phraselet,
-            from_topic_match_phraselet_created_without_matching_tags):
+            from_topic_match_phraselet_created_without_matching_tags,
+            from_reverse_only_topic_match_phraselet):
         self.word_matches = []
         self.is_negated = False
         self.is_uncertain = False
@@ -80,6 +82,7 @@ class Match:
         self.from_single_word_phraselet = from_single_word_phraselet
         self.from_topic_match_phraselet_created_without_matching_tags = \
                 from_topic_match_phraselet_created_without_matching_tags
+        self.from_reverse_only_topic_match_phraselet = from_reverse_only_topic_match_phraselet
         self.index_within_document = None
         self.overall_similarity_measure = '1.0'
 
@@ -93,7 +96,8 @@ class Match:
     def __copy__(self):
         match_to_return = Match(self.search_phrase_label, self.document_label,
                 self.from_single_word_phraselet,
-                self.from_topic_match_phraselet_created_without_matching_tags)
+                self.from_topic_match_phraselet_created_without_matching_tags,
+                self.from_reverse_only_topic_match_phraselet)
         match_to_return.word_matches = self.word_matches.copy()
         match_to_return.is_negated = self.is_negated
         match_to_return.is_uncertain = self.is_uncertain
@@ -171,7 +175,7 @@ class StructuralMatcher:
         def __init__(self, doc, matchable_tokens, root_token,
                 matchable_non_entity_tokens_to_lexemes, single_token_similarity_threshold, label,
                 ontology, topic_match_phraselet,
-                topic_match_phraselet_created_without_matching_tags):
+                topic_match_phraselet_created_without_matching_tags, reverse_only):
             """Args:
 
             doc -- the Holmes document created for the search phrase
@@ -188,6 +192,7 @@ class StructuralMatcher:
             topic_match_phraselet -- 'True' if a topic match phraselet, otherwise 'False'.
             topic_match_phraselet_created_without_matching_tags -- 'True' if a topic match
             phraselet created without matching tags (= 'all words'), otherwise 'False'
+            reverse_only -- 'True' if a phraselet that should only be reverse-matched
             """
             self.doc = doc
             self.matchable_tokens = matchable_tokens
@@ -199,6 +204,7 @@ class StructuralMatcher:
             self.topic_match_phraselet = topic_match_phraselet
             self.topic_match_phraselet_created_without_matching_tags = \
                     topic_match_phraselet_created_without_matching_tags
+            self.reverse_only = reverse_only
 
     class _IndexedDocument:
         """Args:
@@ -292,7 +298,8 @@ class StructuralMatcher:
             self.search_phrase_labels.add(label)
 
     def add_phraselets_to_dict(self, doc, *, phraselet_labels_to_search_phrases,
-            replace_with_hypernym_ancestors, match_all_words, returning_serialized_phraselets):
+            replace_with_hypernym_ancestors, match_all_words, returning_serialized_phraselets,
+            include_reverse_only):
         """ Creates topic matching phraselets extracted from a matching text.
 
         Properties:
@@ -306,6 +313,9 @@ class StructuralMatcher:
             rather than just for words whose tags match the phraselet template.
         returning_serialized_phraselets -- if 'True', phraselets ready for serialization are
             returned.
+        include_reverse_only -- whether to generate phraselets that are only reverse-matched.
+            Reverse matching is used in topic matching but not in supervised document
+            classification.
         """
 
         def get_word_from_token(token):
@@ -365,7 +375,8 @@ class StructuralMatcher:
                     for child in children:
                         for phraselet_template in (phraselet_template for phraselet_template in
                                 self.semantic_analyzer.phraselet_templates if not
-                                phraselet_template.single_word()):
+                                phraselet_template.single_word() and (not
+                                phraselet_template.reverse_only or include_reverse_only)):
                             if dependency.label in \
                                     phraselet_template.dependency_labels and \
                                     doc[parent].tag_ in phraselet_template.parent_tags and \
@@ -541,10 +552,15 @@ class StructuralMatcher:
                 len(matchable_non_entity_tokens_to_lexemes) > 0:
             single_token_similarity_threshold = \
                     self.overall_similarity_threshold ** len(matchable_non_entity_tokens_to_lexemes)
+        if phraselet_template == None:
+            reverse_only = False
+        else:
+            reverse_only = phraselet_template.reverse_only
         return self._SearchPhrase(search_phrase_doc, tokens_to_match,
                 root_tokens[0], matchable_non_entity_tokens_to_lexemes,
                 single_token_similarity_threshold, label, self.ontology,
-                phraselet_template != None, topic_match_phraselet_created_without_matching_tags)
+                phraselet_template != None, topic_match_phraselet_created_without_matching_tags,
+                reverse_only)
 
     def list_search_phrase_labels(self):
         with self._lock:
@@ -1000,7 +1016,8 @@ class StructuralMatcher:
 
         matches = [Match(search_phrase.label, document_label,
                 search_phrase.topic_match_phraselet and len(search_phrase.doc) == 1,
-                search_phrase.topic_match_phraselet_created_without_matching_tags)]
+                search_phrase.topic_match_phraselet_created_without_matching_tags,
+                search_phrase.reverse_only)]
         for search_phrase_token in search_phrase.matchable_tokens:
             word_matches = search_phrase_tokens_to_word_matches[search_phrase_token.i]
             if len(word_matches) == 0:
@@ -1108,7 +1125,7 @@ class StructuralMatcher:
             - 'embedding_based_matching_on_root_words' is overridden (-> True) if
                 overall_similarity_threshold < 1.0.
             - Single-word phraselets are ignored.
-            - TODO
+            - Search phrases marked as 'reverse only' are included.
         """
         embedding_based_matching_on_root_words = self.overall_similarity_threshold < 1.0 and \
                 (self.embedding_based_matching_on_root_words or \
@@ -1137,6 +1154,9 @@ class StructuralMatcher:
                 if document_labels_to_indexes_to_try_matching_sets != None and \
                         len(search_phrase.doc) == 1:
                     continue
+                if document_labels_to_indexes_to_try_matching_sets == None and \
+                        search_phrase.reverse_only:
+                    continue
                 if search_phrase.topic_match_phraselet and len(search_phrase.doc) == 1 and not \
                         embedding_based_matching_on_root_words:
                     # We are only matching a single word without embedding, so to improve
@@ -1148,7 +1168,8 @@ class StructuralMatcher:
                             for index in registered_document.words_to_token_indexes_dict[
                                     word_matching_root_token]:
                                 minimal_match = Match(search_phrase.label, document_label, True,
-                                search_phrase.topic_match_phraselet_created_without_matching_tags)
+                                search_phrase.topic_match_phraselet_created_without_matching_tags,
+                                search_phrase.reverse_only,)
                                 minimal_match.index_within_document = index
                                 matches.append(minimal_match)
                     continue

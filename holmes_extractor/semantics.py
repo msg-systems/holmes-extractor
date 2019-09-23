@@ -160,10 +160,15 @@ class PhraseletTemplate:
         where possible.
     child_tags -- the tag_ values of child participants in the dependency (for parent phraselets)
         that match the template, or 'None' for single-word phraselets.
+    reverse_only -- specifies that phraselets derived from this template should only be
+        reverse-matched, e.g. matching should only be attempted during topic matching when the
+        possible child token has already been matched to a different single-word phraselet. This
+        is used for performance reasons when the parent tag belongs to a closed word class like
+        prepositions.
     """
 
     def __init__(self, label, template_sentence, parent_index, child_index,
-            dependency_labels, parent_tags, child_tags):
+            dependency_labels, parent_tags, child_tags, *, reverse_only):
         self.label = label
         self.template_sentence = template_sentence
         self.parent_index = parent_index
@@ -171,6 +176,7 @@ class PhraseletTemplate:
         self.dependency_labels = dependency_labels
         self.parent_tags = parent_tags
         self.child_tags = child_tags
+        self.reverse_only = reverse_only
 
     def single_word(self):
         """ 'True' if this is a template for single-word phraselets, otherwise 'False'. """
@@ -285,6 +291,15 @@ class SemanticAnalyzer(ABC):
         if search_phrase_dependency_label not in self._matching_dep_dict.keys():
             return False
         return document_dependency_label in self._matching_dep_dict[search_phrase_dependency_label]
+
+    def lefthand_sibling_recursively(self, token):
+        """If *token* is a righthand sibling, return the token that has a sibling reference
+            to it, otherwise return *token* itself.
+        """
+        if token.dep_ not in self._conjunction_deps:
+            return token
+        else:
+            return self.lefthand_sibling_recursively(token.head)
 
     def debug_structures(self, doc):
         if self.debug:
@@ -737,39 +752,42 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
         PhraseletTemplate("predicate-actor", "A thing does", 2, 1,
                 ['nsubj', 'csubj', 'pobjb', 'advmodsubj'],
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-                ['FW', 'NN', 'NNP', 'NNPS', 'NNS']),
+                ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only = False),
         PhraseletTemplate("predicate-patient", "Somebody does a thing", 1, 3,
                 ['dobj', 'relant', 'nsubjpass', 'csubjpass','advmodobj', 'pobjo'],
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-                ['FW', 'NN', 'NNP', 'NNPS', 'NNS']),
+                ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only = False),
         PhraseletTemplate("predicate-recipient", "Somebody gives a thing something", 1, 3,
                 ['dative', 'pobjt'],
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-                ['FW', 'NN', 'NNP', 'NNPS', 'NNS']),
+                ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only = False),
         PhraseletTemplate("governor-adjective", "A described thing", 2, 1,
                 ['acomp', 'amod', 'advmod', 'npmod', 'advcl'],
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-                ['JJ', 'JJR', 'JJS', 'VBN', 'RB', 'RBR', 'RBS']),
+                ['JJ', 'JJR', 'JJS', 'VBN', 'RB', 'RBR', 'RBS'], reverse_only = False),
         PhraseletTemplate("noun-noun", "A thing thing", 2, 1,
                 ['nmod', 'appos', 'compound', 'nounmod'],
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS'],
-                ['FW', 'NN', 'NNP', 'NNPS', 'NNS']),
+                ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only = False),
         PhraseletTemplate("number-noun", "Seven things", 1, 0,
                 ['nummod'],
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS'],
-                ['CD']),
+                ['CD'], reverse_only = False),
         PhraseletTemplate("possessor-possessed", "A thing's thing", 3, 1,
                 ['poss', 'pobjo'],
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS'],
-                ['FW', 'NN', 'NNP', 'NNPS', 'NNS']),
+                ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only = False),
         PhraseletTemplate("prepgovernor-noun", "A thing in a thing", 1, 4,
                 ['pobjp'],
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-                ['FW', 'NN', 'NNP', 'NNPS', 'NNS']),
+                ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only = False),
+        PhraseletTemplate("prep-noun", "in a thing", 0, 2,
+                ['pobj'],
+                ['IN'], ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only = True),
         PhraseletTemplate("word", "thing", 0, None,
                 None,
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS'],
-                None)
+                None, reverse_only = False)
                 ]
 
     # Lemmas that should be suppressed  within relation phraselets or as words of
@@ -858,15 +876,6 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                                     dependency.child_index, other_dependency.child_index,
                                     'nsubj', True))
 
-    def _lefthand_sibling_recursively(self, token):
-        """If *token* is a righthand sibling, return the token that has a sibling reference
-            to it, otherwise return *token* itself.
-        """
-        if token.dep_ not in self._conjunction_deps:
-            return token
-        else:
-            return self._lefthand_sibling_recursively(token.head)
-
     def _handle_relative_constructions(self, token):
         """Wherever auxiliaries and passives are found, derive the semantic information
             from the syntactic information supplied by spaCy.
@@ -888,7 +897,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                                 whose_pronoun_token.doc[working_index]._.holmes.children
                                 if dependency.label == 'relcl'):
                             working_token = child.doc[working_index]
-                            working_token = self._lefthand_sibling_recursively(working_token)
+                            working_token = self.lefthand_sibling_recursively(working_token)
                             for lefthand_sibling_of_antecedent in \
                                     working_token._.holmes.loop_token_and_righthand_siblings(
                                             token.doc):
@@ -939,7 +948,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                         last_righthand_sibling_of_predicate._.holmes.children if dep.label=='prep'
                         and len(dep.child_token(token.doc)._.holmes.children) == 0
                         and dep.child_token(token.doc)._.holmes.is_matchable]
-                antecedent = self._lefthand_sibling_recursively(token.head)
+                antecedent = self.lefthand_sibling_recursively(token.head)
                 if len(displaced_preposition_dependencies) > 0:
                     displaced_preposition = \
                             displaced_preposition_dependencies[0].child_token(token.doc)
@@ -1055,7 +1064,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
 
         # handle present active participles
         if token.dep_ == 'acl' and token.tag_ == 'VBG':
-            lefthand_sibling = self._lefthand_sibling_recursively(token.head)
+            lefthand_sibling = self.lefthand_sibling_recursively(token.head)
             for antecedent in \
                     lefthand_sibling._.holmes.loop_token_and_righthand_siblings(token.doc):
                 if token.i != antecedent.i:
@@ -1064,7 +1073,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
 
         # handle past passive participles
         if token.dep_ == 'acl' and token.tag_ == 'VBN':
-            lefthand_sibling = self._lefthand_sibling_recursively(token.head)
+            lefthand_sibling = self.lefthand_sibling_recursively(token.head)
             for antecedent in \
                     lefthand_sibling._.holmes.loop_token_and_righthand_siblings(token.doc):
                 if token.i != antecedent.i:
@@ -1206,32 +1215,36 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
         PhraseletTemplate("verb-nom", "Eine Sache tut", 2, 1,
                 ['sb'],
                 ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP'],
-                ['FM', 'NE', 'NNE', 'NN']),
+                ['FM', 'NE', 'NNE', 'NN'], reverse_only = False),
         PhraseletTemplate("verb-acc", "Jemand tut eine Sache", 1, 3,
                 ['oa'],
                 ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP'],
-                ['FM', 'NE', 'NNE', 'NN']),
+                ['FM', 'NE', 'NNE', 'NN'], reverse_only = False),
         PhraseletTemplate("verb-dat", "Jemand gibt einer Sache etwas", 1, 3,
                 ['da'],
                 ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP'],
-                ['FM', 'NE', 'NNE', 'NN']),
+                ['FM', 'NE', 'NNE', 'NN'], reverse_only = False),
         PhraseletTemplate("noun-dependent", "Eine beschriebene Sache", 2, 1,
                 ['nk', 'ag'],
                 ['FM', 'NE', 'NNE', 'NN'],
-                ['FM', 'NE', 'NNE', 'NN', 'ADJA', 'ADJD', 'ADV', 'CARD']),
+                ['FM', 'NE', 'NNE', 'NN', 'ADJA', 'ADJD', 'ADV', 'CARD'], reverse_only = False),
         PhraseletTemplate("verb-adverb", "schnell machen", 1, 0,
                 ['mo', 'oc'],
                 ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP'],
-                ['ADJA', 'ADJD', 'ADV']),
+                ['ADJA', 'ADJD', 'ADV'], reverse_only = False),
         PhraseletTemplate("prepgovernor-noun", "Eine Sache in einer Sache", 1, 4,
                 ['pobjp'],
                 ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
                 'FM', 'NE', 'NNE', 'NN'],
-                ['FM', 'NE', 'NNE', 'NN']),
+                ['FM', 'NE', 'NNE', 'NN'], reverse_only = False),
+        PhraseletTemplate("prep-noun", "in einer Sache", 0, 2,
+                ['nk'],
+                ['APPO', 'APPR', 'APPRART', 'APZR'],
+                ['FM', 'NE', 'NNE', 'NN'], reverse_only = True),
         PhraseletTemplate("word", "Sache", 0, None,
                 None,
                 ['FM', 'NE', 'NNE', 'NN'],
-                None)]
+                None, reverse_only = False)]
 
     phraselet_stop_lemmas = ['sein', 'haben', 'dann', 'danach', 'so']
 

@@ -16,7 +16,8 @@ no_ontology_coref_holmes_manager = holmes.Manager(model='en_core_web_lg',
 class EnglishPhraseletProductionTest(unittest.TestCase):
 
     def _check_equals(self, manager, text_to_match, phraselet_labels,
-            replace_with_hypernym_ancestors = True, match_all_words = False):
+            replace_with_hypernym_ancestors = True, match_all_words = False,
+            include_reverse_only = False):
         manager.remove_all_search_phrases()
         doc = manager.semantic_analyzer.parse(text_to_match)
         phraselet_labels_to_search_phrases = {}
@@ -24,7 +25,8 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                 phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
                 replace_with_hypernym_ancestors=replace_with_hypernym_ancestors,
                 match_all_words=match_all_words,
-                returning_serialized_phraselets=False)
+                returning_serialized_phraselets=False,
+                include_reverse_only=include_reverse_only)
         self.assertEqual(
                 set(phraselet_labels_to_search_phrases.keys()),
                 set(phraselet_labels))
@@ -178,6 +180,14 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                 'prepgovernor-noun: need-year', 'prepgovernor-noun: insurance-year',
                 'word: insurance', 'word: year'], False)
 
+    def test_reverse_only(self):
+        self._check_equals(symmetric_ontology_nocoref_holmes_manager,
+                "He needs insurance for five years",
+                ['predicate-patient: need-insurance', 'number-noun: year-five',
+                'prepgovernor-noun: need-year', 'prepgovernor-noun: insurance-year',
+                'word: insurance', 'word: year', 'prep-noun: for-year'], False,
+                include_reverse_only=True)
+
     def test_coref(self):
         self._check_equals(no_ontology_coref_holmes_manager,
                 "I saw a dog. He was chasing a cat and a cat",
@@ -203,6 +213,7 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                 phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
                 replace_with_hypernym_ancestors=False,
                 match_all_words=False,
+                include_reverse_only=False,
                 returning_serialized_phraselets=True)
         deserialized_phraselet_labels_to_search_phrases = \
                 no_ontology_coref_holmes_manager.structural_matcher.deserialize_phraselets(

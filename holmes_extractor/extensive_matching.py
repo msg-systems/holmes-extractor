@@ -47,15 +47,16 @@ class TopicMatcher:
     """A topic matcher object. See manager.py for details of the properties."""
 
     def __init__(self, holmes, *, maximum_activation_distance, relation_score,
-            single_word_score, single_word_any_tag_score, overlapping_relation_multiplier,
-            overlap_memory_size, maximum_activation_value, sideways_match_extent,
-            only_one_result_per_document, number_of_results):
+            reverse_only_relation_score, single_word_score, single_word_any_tag_score,
+            overlapping_relation_multiplier, overlap_memory_size, maximum_activation_value,
+            sideways_match_extent, only_one_result_per_document, number_of_results):
         self._holmes = holmes
         self._semantic_analyzer = holmes.semantic_analyzer
         self.structural_matcher = holmes.structural_matcher
         self._ontology = holmes.structural_matcher.ontology
         self.maximum_activation_distance = maximum_activation_distance
         self.relation_score = relation_score
+        self.reverse_only_relation_score = reverse_only_relation_score
         self.single_word_score = single_word_score
         self.single_word_any_tag_score = single_word_any_tag_score
         self.overlapping_relation_multiplier = overlapping_relation_multiplier
@@ -76,7 +77,7 @@ class TopicMatcher:
         class DocumentInfo:
             def __init__(self):
                 self.tag_checked_single_word_indexes = set()
-                self.parent_indexes = set()
+                self.parent_indexes_to_matches = {}
                 self.child_indexes_to_matches = {}
 
         def get_document_info(document_label):
@@ -95,7 +96,7 @@ class TopicMatcher:
                     for parent_token_index in \
                             self._semantic_analyzer.token_and_coreference_chain_indexes(
                             doc[parent_dependency[0]]):
-                        if parent_token_index not in document_info.parent_indexes:
+                        if parent_token_index not in document_info.parent_indexes_to_matches:
                             parent_token = doc[parent_token_index]
                             for pt in (pt for pt in self._semantic_analyzer.phraselet_templates if
                                     not pt.single_word() and
@@ -130,7 +131,12 @@ class TopicMatcher:
                     document_info.tag_checked_single_word_indexes.add(match.index_within_document)
                 elif not match.from_single_word_phraselet:
                     parent_word_match = get_word_match_from_two_term_match(match, True)
-                    document_info.parent_indexes.add(parent_word_match.document_token.i)
+                    if parent_word_match.document_token.i in document_info.parent_indexes_to_matches:
+                        document_info.parent_indexes_to_matches[
+                                parent_word_match.document_token.i].append(match)
+                    else:
+                        document_info.parent_indexes_to_matches[
+                                parent_word_match.document_token.i] = [match]
                     child_word_match = get_word_match_from_two_term_match(match, False)
                     if child_word_match.document_token.i in document_info.child_indexes_to_matches:
                         document_info.child_indexes_to_matches[
@@ -139,26 +145,66 @@ class TopicMatcher:
                         document_info.child_indexes_to_matches[
                                 child_word_match.document_token.i] = [match]
 
-        def filter_superfluous_matches_caused_by_coreference(match):
-            """e.g. 'I saw a big dog. The dog was barking' should only match 'big dog' once"""
+        def filter_superfluous_matches(match):
+
+            def check_for_sibling_match_with_higher_similarity(match, other_match,
+                    word_match, other_word_match):
+                if word_match.document_token.i == other_word_match.document_token.i:
+                    return False
+                working_sibling = self._semantic_analyzer.lefthand_sibling_recursively(
+                        word_match.document_token
+                )
+                for sibling in \
+                        working_sibling._.holmes.loop_token_and_righthand_siblings(
+                                word_match.document_token.doc):
+                    if match.search_phrase_label == other_match.search_phrase_label and \
+                            other_word_match.document_token.i == sibling.i and \
+                            other_word_match.similarity_measure > word_match.similarity_measure:
+                        return True
+                return False
+
             if match.from_single_word_phraselet:
                 return True
             child_word_match = get_word_match_from_two_term_match(match, False)
             child_index = child_word_match.document_token.i
             document_info = get_document_info(match.document_label)
-            if len(document_info.child_indexes_to_matches[child_index]) == 1:
-                return True
-            for other_match in document_info.child_indexes_to_matches[child_index]:
-                this_parent_word_match = get_word_match_from_two_term_match(match, True)
-                other_parent_word_match = get_word_match_from_two_term_match(other_match, True)
-                if this_parent_word_match.document_token.i != \
-                        other_parent_word_match.document_token.i and \
-                        other_parent_word_match.document_token.i in \
-                        self._semantic_analyzer.token_and_coreference_chain_indexes(
-                        this_parent_word_match.document_token) \
-                        and abs(other_parent_word_match.document_token.i - child_index) < \
-                        abs(this_parent_word_match.document_token.i - child_index):
-                    return False
+            if len(document_info.child_indexes_to_matches[child_index]) > 1:
+                for other_match in document_info.child_indexes_to_matches[child_index]:
+                    this_parent_word_match = get_word_match_from_two_term_match(match, True)
+                    other_parent_word_match = get_word_match_from_two_term_match(other_match,
+                    True)
+            # e.g. 'Somebody buys a vehicle and a car' should only match
+            # 'Somebody buys a vehicle' once
+                    if this_parent_word_match.document_token.i == \
+                            other_parent_word_match.document_token.i and \
+                            other_parent_word_match.similarity_measure > \
+                            this_parent_word_match.similarity_measure:
+                        return False
+            # e.g. 'I saw a big dog. The dog was barking' should only match 'big dog' once
+                    if this_parent_word_match.document_token.i != \
+                            other_parent_word_match.document_token.i and \
+                            other_parent_word_match.document_token.i in \
+                            self._semantic_analyzer.token_and_coreference_chain_indexes(
+                            this_parent_word_match.document_token) and \
+                            match.search_phrase_label == other_match.search_phrase_label and \
+                            abs(other_parent_word_match.document_token.i - child_index) < \
+                            abs(this_parent_word_match.document_token.i - child_index):
+                        return False
+            # e.g. 'A company is bought and purchased' should only match 'a company is bought' once
+                    if check_for_sibling_match_with_higher_similarity(match, other_match,
+                            this_parent_word_match, other_parent_word_match):
+                        return False
+            parent_word_match = get_word_match_from_two_term_match(match, True)
+            parent_index = parent_word_match.document_token.i
+            if len(document_info.parent_indexes_to_matches[parent_index]) > 1:
+                for other_match in document_info.parent_indexes_to_matches[parent_index]:
+                    this_child_word_match = get_word_match_from_two_term_match(match, False)
+                    other_child_word_match = get_word_match_from_two_term_match(other_match, False)
+            # e.g. 'Somebody buys a vehicle' should only match
+            # 'Somebody buys a vehicle and an automobile' once
+                    if check_for_sibling_match_with_higher_similarity(match, other_match,
+                            this_child_word_match, other_child_word_match):
+                        return False
             return True
 
         doc = self._semantic_analyzer.parse(text_to_match)
@@ -167,13 +213,16 @@ class TopicMatcher:
                 phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
                 replace_with_hypernym_ancestors=False,
                 match_all_words = False,
-                returning_serialized_phraselets = False)
+                returning_serialized_phraselets = False,
+                include_reverse_only = True)
         # now add the single word phraselets whose tags did not match.
         self.structural_matcher.add_phraselets_to_dict(doc,
                 phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
                 replace_with_hypernym_ancestors=False,
                 match_all_words = True,
-                returning_serialized_phraselets = False)
+                returning_serialized_phraselets = False,
+                include_reverse_only = False) # False because we would only pick up the reverse
+                                              # phraselets for a second time
         structural_matches = self.structural_matcher.match_documents_against_search_phrase_list(
                 phraselet_labels_to_search_phrases.values(), False)
         rebuild_document_info_dict(structural_matches)
@@ -192,7 +241,7 @@ class TopicMatcher:
                     phraselet_labels_to_search_phrases.values(), False,
                     document_labels_to_indexes_to_try_matching_sets))
             rebuild_document_info_dict(structural_matches)
-        structural_matches = list(filter(filter_superfluous_matches_caused_by_coreference,
+        structural_matches = list(filter(filter_superfluous_matches,
                 structural_matches))
         position_sorted_structural_matches = \
                     sorted(structural_matches, key=lambda match:
@@ -232,13 +281,19 @@ class TopicMatcher:
                 current_unconstrained_activation_score = current_unconstrained_activation_score * \
                         (1 - tailoff_quotient)
             adjusted_relation_score = self.relation_score * float(match.overall_similarity_measure)
+            adjusted_reverse_only_relation_score = self.reverse_only_relation_score * \
+                    float(match.overall_similarity_measure)
             adjusted_single_word_score = self.single_word_score * \
                     float(match.overall_similarity_measure)
             adjusted_single_word_any_tag_score = self.single_word_any_tag_score * \
                     float(match.overall_similarity_measure)
             if not match.from_single_word_phraselet:
-                current_activation_score += adjusted_relation_score
-                current_unconstrained_activation_score += adjusted_relation_score
+                if match.from_reverse_only_topic_match_phraselet:
+                    current_activation_score += adjusted_reverse_only_relation_score
+                    current_unconstrained_activation_score += adjusted_reverse_only_relation_score
+                else:
+                    current_activation_score += adjusted_relation_score
+                    current_unconstrained_activation_score += adjusted_relation_score
             elif not match.from_topic_match_phraselet_created_without_matching_tags:
                 if last_search_phrase_label != match.search_phrase_label:
                     current_activation_score += adjusted_single_word_score
@@ -641,7 +696,8 @@ class SupervisedTopicTrainingBasis:
                 self.phraselet_labels_to_search_phrases,
                 replace_with_hypernym_ancestors=True,
                 match_all_words=self._match_all_words,
-                returning_serialized_phraselets = True))
+                returning_serialized_phraselets = True,
+                include_reverse_only=False))
         self.structural_matcher.register_document(doc, label)
         self.training_documents_labels_to_classifications_dict[label] = classification
 

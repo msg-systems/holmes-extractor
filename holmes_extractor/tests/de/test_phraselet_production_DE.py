@@ -5,14 +5,16 @@ holmes_manager = holmes.Manager('de_core_news_md')
 
 class GermanPhraseletProductionTest(unittest.TestCase):
 
-    def _check_equals(self, text_to_match, phraselet_labels, match_all_words = False):
+    def _check_equals(self, text_to_match, phraselet_labels, match_all_words = False,
+            include_reverse_only=False):
         doc = holmes_manager.semantic_analyzer.parse(text_to_match)
         phraselet_labels_to_search_phrases = {}
         holmes_manager.structural_matcher.add_phraselets_to_dict(doc,
                 phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
                 replace_with_hypernym_ancestors=False,
                 match_all_words=match_all_words,
-                returning_serialized_phraselets=False)
+                returning_serialized_phraselets=False,
+                include_reverse_only=include_reverse_only)
         self.assertEqual(
                 set(phraselet_labels_to_search_phrases.keys()),
                 set(phraselet_labels))
@@ -59,6 +61,7 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                 phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
                 replace_with_hypernym_ancestors=False,
                 match_all_words=False,
+                include_reverse_only=True,
                 returning_serialized_phraselets=True)
         deserialized_phraselet_labels_to_search_phrases = holmes_manager.structural_matcher.\
                 deserialize_phraselets(serialized_phraselets)
@@ -92,3 +95,10 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                 ['verb-acc: brauchen-versicherung', 'noun-dependent: jahr-fünf',
                 'prepgovernor-noun: brauchen-jahr', 'prepgovernor-noun: versicherung-jahr',
                 'word: jahr', 'word: versicherung'], False)
+
+    def test_reverse_only(self):
+        self._check_equals("Er braucht eine Versicherung für fünf Jahre",
+                ['verb-acc: brauchen-versicherung', 'noun-dependent: jahr-fünf',
+                'prepgovernor-noun: brauchen-jahr', 'prepgovernor-noun: versicherung-jahr',
+                'word: jahr', 'word: versicherung', 'prep-noun: für-jahr'], False,
+                 include_reverse_only=True)
