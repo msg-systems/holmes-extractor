@@ -1214,6 +1214,11 @@ class StructuralMatcher:
                         for document_word in registered_document.words_to_token_indexes_dict.keys():
                             indexes_to_match = registered_document.words_to_token_indexes_dict[
                                     document_word]
+                            if document_labels_to_indexes_to_try_matching_sets != None:
+                                indexes_to_match = [index for index in indexes_to_match if
+                                        index in indexes_to_try_matching_set]
+                                if len(indexes_to_match) == 0:
+                                    continue
                             search_phrase_lexeme = \
                                     search_phrase.matchable_non_entity_tokens_to_lexemes[
                                     search_phrase.root_token.i]
