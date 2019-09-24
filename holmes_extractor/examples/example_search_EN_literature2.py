@@ -24,7 +24,7 @@ def extract_chapters_from_book(book_uri, title):
     chapter_headings = [heading for heading in re.finditer("(?<=((\\n\\n\\n\\n)|(\* \\n\\n)))((?!.*(WEASLEY WILL MAKE SURE)|(DO NOT OPEN THE PARCEL)|(HEADMISTRESS OF HOGWARTS))[A-Z][A-Z\-’., ]+)(\\n{1,2}((?!.*(WHO\-MUST))[A-Z\-’., ]+))?(?=(\\n\\n([^\\n]|(\\n\\n((“Harry!”)|(Harry’s)|(Ron’s)|(“Hagrid)|(Three o’clock))))))", book)]
     chapter_counter = 1
     for chapter_heading in chapter_headings:
-        label = ''.join(('Book ', title, '; Ch ', str(chapter_counter), ': ', chapter_heading.group().replace('\n', '')))
+        label = ''.join(('Book ', title, '; Ch ', str(chapter_counter), ': ', chapter_heading.group().replace('\n', ''))).strip()
         if chapter_counter == len(chapter_headings): # last chapter
             content = book[chapter_heading.end():]
         else:

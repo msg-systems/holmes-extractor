@@ -162,10 +162,14 @@ class HolmesConsoles:
                 print(word_matches_string)
             print()
             print('Performing topic matching ...')
-            topic_matches = self._holmes.topic_match_documents_against(search_phrase,
-                    number_of_results = 5,
-                            only_one_result_per_document=only_one_topic_match_per_document)
-            print()
+            topic_matches = {}
+            try:
+                print()
+                topic_matches = self._holmes.topic_match_documents_against(search_phrase,
+                        number_of_results = 5,
+                        only_one_result_per_document=only_one_topic_match_per_document)
+            except NoSearchPhraseError:
+                pass
             if len(topic_matches) == 0:
                 print('No topic match results were returned.')
             elif only_one_topic_match_per_document:
