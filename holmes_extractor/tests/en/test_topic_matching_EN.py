@@ -162,6 +162,36 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 "with an idea", 29,
                 holmes_manager_coref)
 
+    def test_repeated_single_word_label_tags_matched(self):
+        self._check_equals("dog",
+                "a dog and a dog", 10,
+                holmes_manager_coref)
+
+    def test_repeated_single_word_label_tags_not_matched(self):
+        self._check_equals("in",
+                "in and in", 5,
+                holmes_manager_coref)
+
+    def test_repeated_relation_label_not_reverse_only_no_common_term(self):
+        self._check_equals("a big dog",
+                "a big dog and a big dog", 48,
+                holmes_manager_coref)
+
+    def test_repeated_relation_label_not_reverse_only_common_term(self):
+        self._check_equals("a big dog",
+                "a big and big dog", 34,
+                holmes_manager_coref)
+
+    def test_repeated_relation_label_reverse_only_no_common_term(self):
+        self._check_equals("in Germany",
+                "in Germany and in Germany", 43,
+                holmes_manager_coref)
+
+    def test_repeated_relation_label_reverse_only_common_term(self):
+        self._check_equals("in Germany",
+                "in Germany and Germany", 29,
+                holmes_manager_coref)
+
     def test_coreference_double_match_on_governed(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document(

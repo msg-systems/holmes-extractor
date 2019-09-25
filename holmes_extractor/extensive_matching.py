@@ -255,19 +255,31 @@ class TopicMatcher:
                 position_sorted_structural_matches)
 
     def perform_activation_scoring(self, position_sorted_structural_matches):
+
+        def increase_activation_score(adjusted_increase, this_label, last_label,
+                current_activation_score, current_unconstrained_activation_score):
+            if this_label == last_label:
+                current_activation_score = max(current_activation_score, adjusted_increase)
+                current_unconstrained_activation_score = \
+                        max(current_unconstrained_activation_score, adjusted_increase)
+            else:
+                current_activation_score += adjusted_increase
+                current_unconstrained_activation_score += adjusted_increase
+            return current_activation_score, current_unconstrained_activation_score
+
         """
         Read through the documents measuring the activation based on where
         in the document structural matches were found.
         """
         current_document_label = None
-        last_search_phrase_label = None
         for index, match in enumerate(position_sorted_structural_matches):
             match.original_index_within_list = index # store for later use after resorting
             if match.document_label != current_document_label or index == 0:
                 current_document_label = match.document_label
                 current_activation_score = 0
                 current_unconstrained_activation_score = 0
-                last_search_phrase_label = None
+                last_single_word_search_phrase_label = None
+                last_relation_search_phrase_label = None
                 # The deque has to be twice the size of the topic matches to track because
                 # each topic match under consideration involves two tokens
                 previous_topic_matches = collections.deque(maxlen=self.overlap_memory_size * 2)
@@ -289,43 +301,36 @@ class TopicMatcher:
                     float(match.overall_similarity_measure)
             if not match.from_single_word_phraselet:
                 if match.from_reverse_only_topic_match_phraselet:
-                    current_activation_score += adjusted_reverse_only_relation_score
-                    current_unconstrained_activation_score += adjusted_reverse_only_relation_score
+                    current_activation_score, current_unconstrained_activation_score = \
+                            increase_activation_score(adjusted_reverse_only_relation_score,
+                            match.search_phrase_label, last_relation_search_phrase_label,
+                            current_activation_score, current_unconstrained_activation_score)
                 else:
-                    current_activation_score += adjusted_relation_score
-                    current_unconstrained_activation_score += adjusted_relation_score
-            elif not match.from_topic_match_phraselet_created_without_matching_tags:
-                if last_search_phrase_label != match.search_phrase_label:
-                    current_activation_score += adjusted_single_word_score
-                    current_unconstrained_activation_score += adjusted_single_word_score
-                else:
-                # If the same single word match occurs repeatedly, we do not allow the activation to
-                # increase further.
-                    current_activation_score = max(current_activation_score,
-                            adjusted_single_word_score)
-                    current_unconstrained_activation_score += \
-                            max(current_unconstrained_activation_score,
-                            adjusted_single_word_score)
-            else:
-                if last_search_phrase_label != match.search_phrase_label:
-                    current_activation_score += adjusted_single_word_any_tag_score
-                    current_unconstrained_activation_score += adjusted_single_word_any_tag_score
-                else:
-                # If the same single word match occurs repeatedly, we do not allow the activation to
-                # increase further.
-                    current_activation_score = max(current_activation_score,
-                            adjusted_single_word_any_tag_score)
-                    current_unconstrained_activation_score += \
-                            max(current_unconstrained_activation_score,
-                            adjusted_single_word_any_tag_score)
-            if not match.from_single_word_phraselet:
+                    current_activation_score, current_unconstrained_activation_score = \
+                            increase_activation_score(adjusted_relation_score,
+                            match.search_phrase_label, last_relation_search_phrase_label,
+                            current_activation_score, current_unconstrained_activation_score)
                 for word_match in match.word_matches:
-                    if word_match.document_token.i in previous_topic_matches:
+                    if last_relation_search_phrase_label != match.search_phrase_label \
+                            and word_match.document_token.i in previous_topic_matches:
                         # We have matched a larger structure from the text to match
                         current_activation_score *= self.overlapping_relation_multiplier
                         current_unconstrained_activation_score *= \
                                 self.overlapping_relation_multiplier
                     previous_topic_matches.append(word_match.document_token.i)
+                last_relation_search_phrase_label = match.search_phrase_label
+            else:
+                if match.from_topic_match_phraselet_created_without_matching_tags:
+                    current_activation_score, current_unconstrained_activation_score = \
+                            increase_activation_score(adjusted_single_word_any_tag_score,
+                            match.search_phrase_label, last_single_word_search_phrase_label,
+                            current_activation_score, current_unconstrained_activation_score)
+                else:
+                    current_activation_score, current_unconstrained_activation_score = \
+                            increase_activation_score(adjusted_single_word_score,
+                            match.search_phrase_label, last_single_word_search_phrase_label,
+                            current_activation_score, current_unconstrained_activation_score)
+                last_single_word_search_phrase_label = match.search_phrase_label
             if current_activation_score > self.maximum_activation_value:
                 # We do not allow the activation to get too large. At the same time, we store
                 # 'unconstrained_topic_score' to ensure the correct sorting of topic matches
