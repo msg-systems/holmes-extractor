@@ -558,9 +558,12 @@ class SemanticAnalyzer(ABC):
         """In structures like 'Somebody needs insurance for a period' it seems to be
             mainly language-dependent whether the preposition phrase is analysed as being
             dependent on the preceding noun or the preceding verb. We add an additional, new
-            dependency to whichever of the noun or the verb does not already have one. The new
-            label is defined in *_matching_dep_dict* in such a way that original dependencies
-            in search phrases match new dependencies in documents but not vice versa.
+            dependency to whichever of the noun or the verb does not already have one. In English,
+            the new label is defined in *_matching_dep_dict* in such a way that original
+            dependencies in search phrases match new dependencies in documents but not vice versa.
+            This restriction is not applied in German because the fact the verb can be placed in
+            different positions within the sentence means there is considerable variation around
+            how prepositional phrases are analyzed by spaCy.
         """
 
         def add_dependencies_pointing_to_preposition_and_siblings(parent, label):
@@ -578,7 +581,7 @@ class SemanticAnalyzer(ABC):
                 preceding_noun = token.doc[token.i-1]
                 # and the noun is governed by at least one verb
                 governing_verbs = [working_token for working_token in token.sent
-                        if working_token.i < token.i and working_token.pos_ == 'VERB' and
+                        if working_token.pos_ == 'VERB' and
                         working_token._.holmes.has_dependency_with_child_index(
                         preceding_noun.i)]
                 if len(governing_verbs) == 0:
@@ -1199,8 +1202,8 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
             'oa': ['nk', 'og', 'op', 'ag', 'mnr', 'arg'],
             'og': ['oa', 'da', 'nk', 'op'],
             'nk': ['ag'],
-            'mo': ['moposs', 'op'],
-            'mnr': ['mnrposs', 'op']
+            'mo': ['moposs', 'mnr', 'mnrposs', 'op'],
+            'mnr': ['mnrposs', 'mo', 'moposs', 'op']
             }
 
     _mark_child_dependencies_copied_to_siblings_as_uncertain = False
@@ -1273,7 +1276,9 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
         def correct_auxiliaries_and_passives_recursively(token, processed_auxiliary_indexes):
             if token.i not in processed_auxiliary_indexes:
                 processed_auxiliary_indexes.append(token.i)
-                if token.pos_ == 'AUX' or token.tag_.startswith('VM'):
+                if (token.pos_ == 'AUX' or token.tag_.startswith('VM')) and len([
+                        dependency for dependency in token._.holmes.children if
+                        token.doc[dependency.child_index].tag_ == 'PTKVZ']) == 0: # 'vorhaben'
                     for dependency in (dependency for dependency in token._.holmes.children
                             if token.doc[dependency.child_index].pos_ in ('VERB', 'AUX') and
                             token.doc[dependency.child_index].dep_ in ('oc', 'pd')):
@@ -1370,7 +1375,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
         """Relabel the lemmas of separable verbs in sentences like 'er steht auf' to incorporate
             the entire separable verb to facilitate matching.
         """
-        if token.pos_ == 'VERB' and token.tag_ not in ('VAINF', 'VMINF', 'VVINF', 'VVIZU'):
+        if token.pos_ in ('VERB','AUX') and token.tag_ not in ('VAINF', 'VMINF', 'VVINF', 'VVIZU'):
             for child in token.children:
                 if child.tag_ == 'PTKVZ':
                     child_lemma = child.lemma_.lower()
@@ -1401,7 +1406,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
 
         # Because separable verbs are conflated into a single lemma, remove the dependency
         # from the verb to the preposition
-        if token.tag_ == 'PTKVZ' and token.head.pos_ == 'VERB' and \
+        if token.tag_ == 'PTKVZ' and token.head.pos_ in ('VERB','AUX') and \
                 token.head.tag_ not in ('VAINF', 'VMINF', 'VVINF', 'VVIZU'):
             token.head._.holmes.remove_dependency_with_child_index(token.i)
 
@@ -1425,10 +1430,10 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                         token.i, child_dependency.child_index, 'pobjp',
                         dependency.is_uncertain or child_dependency.is_uncertain))
 
-        # # where a 'moposs' dependency has been added and the preposition is not 'von' or 'vom',
-        # add a corresponding uncertain 'pobjp'
+        # # where a 'moposs' or 'mnrposs' dependency has been added and the preposition is not
+        # 'von' or 'vom' add a corresponding uncertain 'pobjp'
         for dependency in (dependency for dependency in token._.holmes.children
-                if dependency.label == 'moposs'):
+                if dependency.label in ['moposs', 'mnrposs']):
             child = dependency.child_token(token.doc)
             for child_dependency in (child_dependency for child_dependency in
                     child._.holmes.children if child_dependency.label == 'nk' and
@@ -1471,7 +1476,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
         # 'Der Mann hat xxx, es zu yyy' and similar structures
         for dependency in (dependency for dependency in token._.holmes.children
                 if dependency.label in ('oc', 'oa', 'mo', 're') and
-                token.pos_ == 'VERB' and dependency.child_token(token.doc).pos_ in ('VERB', 'AUX')):
+                token.pos_ in ('VERB','AUX') and dependency.child_token(token.doc).pos_ in ('VERB', 'AUX')):
             dependencies_to_add = []
             target_tokens, target_dependency = find_target_tokens_and_dependency_recursively(
                     dependency.child_token(token.doc))

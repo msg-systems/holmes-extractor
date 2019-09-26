@@ -23,6 +23,7 @@ holmes_manager.register_search_phrase("Ein Mann geht aus")
 holmes_manager.register_search_phrase("Ein Mann singt")
 holmes_manager.register_search_phrase("Eine Party in den Bergen")
 holmes_manager.register_search_phrase("Jemand wandert in den Bergen")
+holmes_manager.register_search_phrase("Jemand eröffnet ein Konto für ein Kind")
 holmes_manager_with_variable_search_phrases = holmes.Manager(model='de_core_news_md')
 holmes_manager_with_embeddings = holmes.Manager(model='de_core_news_md',
         overall_similarity_threshold=0.7, perform_coreference_resolution=False)
@@ -510,3 +511,8 @@ class GermanStructuralMatchingTest(unittest.TestCase):
         matches = self._get_matches(holmes_manager,
                 "Mein Freund wandert in den Bergen und den Bergen")
         self.assertEqual(len(matches), 2)
+
+    def test_moposs_before_governing_verb(self):
+        matches = self._get_matches(holmes_manager,
+                "Richard Hudson möchte ein Konto für sein Kind eröffnen")
+        self.assertEqual(len(matches), 1)

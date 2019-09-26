@@ -573,3 +573,13 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = analyzer.parse("Ich glaube, dass eine Pflanze wächst")
         self.assertEqual(doc[6]._.holmes.string_representation_of_children(),
                 '0:sb(U); 3:cp; 5:sb')
+
+    def test_moposs_before_governing_verb(self):
+        doc = analyzer.parse("Ich möchte ein Konto für mein Kind eröffnen")
+        self.assertEqual(doc[7]._.holmes.string_representation_of_children(),
+                '0:sb(U); 3:oa(U); 4:moposs(U); 6:pobjp(U)')
+
+    def test_hat_vor_clause(self):
+        doc = analyzer.parse("Ich habe vor, ein Konto zu eröffnen")
+        self.assertEqual(doc[7]._.holmes.string_representation_of_children(),
+                '0:sb(U); 5:oa; 6:pm')
