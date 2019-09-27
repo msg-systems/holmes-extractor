@@ -223,7 +223,6 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                 set(['predicate-patient: see-dog', 'predicate-actor: chase-dog',
                 'predicate-patient: chase-cat', 'word: dog', 'word: cat']))
 
-
     def test_only_verb(self):
         self._check_equals(ontology_holmes_manager, "jump",
                 ['word: jump'])
@@ -238,3 +237,15 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                 ['predicate-actor: chase-dog', 'predicate-patient: chase-cat',
                 'predicate-patient: see-dog', 'word: dog', 'word: cat',
                 'word: see', 'word: chase', 'word: -pron-'], False, True)
+
+    def test_entity_defined_multiword_not_match_all_words(self):
+        self._check_equals(no_ontology_coref_holmes_manager,
+                "Richard Paul Hudson came",
+                ['predicate-actor: come-richard paul hudson',
+                'word: richard paul hudson'], False, False)
+
+    def test_entity_defined_multiword_match_all_words(self):
+        self._check_equals(no_ontology_coref_holmes_manager,
+                "Richard Paul Hudson came",
+                ['predicate-actor: come-richard paul hudson',
+                'word: richard', 'word: paul', 'word: hudson', 'word: come'], False, True)

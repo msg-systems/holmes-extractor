@@ -80,6 +80,36 @@ class GermanTopicMatchingTest(unittest.TestCase):
                 "mit einer Idee", 29,
                 holmes_manager)
 
+    def test_multiword_in_text_to_search_and_in_document_not_root(self):
+        self._check_equals("Richard Paul Hudson kam",
+                "Ich sah Richard Paul Hudson", 24,
+                holmes_manager)
+
+    def test_multiword_in_text_to_search_single_word_in_document_not_root(self):
+        self._check_equals("Hudson kam",
+                "Ich sah Richard Paul Hudson", 10,
+                holmes_manager)
+
+    def test_multiword_in_text_to_search_dependent_words_in_document_not_root(self):
+        self._check_equals("Richard Paul kam",
+                "Ich sah Richard Paul Hudson", 9,
+                holmes_manager)
+
+    def test_multiword_in_text_to_search_and_in_document_root(self):
+        self._check_equals("der müde Richard Paul Hudson",
+                "Ich sah Richard Paul Hudson", 24,
+                holmes_manager)
+
+    def test_multiword_in_text_to_search_single_word_in_document_root(self):
+        self._check_equals("der müde Hudson",
+                "Ich sah Richard Paul Hudson", 10,
+                holmes_manager)
+
+    def test_multiword_in_text_to_search_dependent_words_in_document_root(self):
+        self._check_equals("Richard Paul kam",
+                "Ich sah Richard Paul Hudson", 9,
+                holmes_manager)
+
     def test_indexes(self):
         holmes_manager.remove_all_documents()
         holmes_manager.parse_and_register_document(

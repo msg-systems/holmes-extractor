@@ -66,7 +66,7 @@ class HolmesDictionary:
     Holmes dictionaries are accessed using the syntax *token._.holmes*.
 
     index -- the index of the token
-    lemma -- the value returned from *_holmes_lemma* for the token.
+    lemma -- the value returned from *._.holmes.lemma* for the token.
     children -- list of *SemanticDependency* objects where this token is the parent.
     righthand_siblings -- list of tokens to the right of this token that stand in a conjunction
         relationship to this token and that share its semantic parents.
@@ -392,6 +392,31 @@ class SemanticAnalyzer(ABC):
                     counter += 1
         return list_to_return
 
+    def belongs_to_entity_defined_multiword(self, token):
+        return token.pos_ in self._entity_defined_multiword_pos and token.ent_type_ in \
+                self._entity_defined_multiword_entity_types
+
+    def get_entity_defined_multiword(self, token):
+        """ If this token is at the head of a multiword recognized by spaCy named entity processing,
+            returns the multiword string in lower case, otherwise *None*.
+        """
+        if not self.belongs_to_entity_defined_multiword(token) or (token.dep_ != 'ROOT' and
+                self.belongs_to_entity_defined_multiword(token.head)) or token.ent_type_ == '' or \
+                token.left_edge.i == token.right_edge.i:
+            return None
+        working_ent = token.ent_type_
+        working_text = ''
+        for counter in range(token.left_edge.i, token.right_edge.i +1):
+            multiword_token = token.doc[counter]
+            if not self.belongs_to_entity_defined_multiword(multiword_token) or \
+                    multiword_token.ent_type_ != working_ent:
+                continue
+            working_text = ' '.join((working_text, multiword_token.text))
+        if len(working_text.split()) > 1:
+            return working_text.strip().lower()
+        else:
+            return None
+
     language_name = NotImplemented
 
     noun_pos = NotImplemented
@@ -437,6 +462,10 @@ class SemanticAnalyzer(ABC):
     _maximum_mentions_in_coreference_chain = NotImplemented
 
     _model_supports_coreference_resolution = NotImplemented
+
+    _entity_defined_multiword_pos = NotImplemented
+
+    _entity_defined_multiword_entity_types = NotImplemented
 
     phraselet_templates = NotImplemented
 
@@ -749,6 +778,12 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
 
     # Presently depends purely on the language
     _model_supports_coreference_resolution = True
+
+    # The part-of-speech labels permitted for elements of an entity-defined multiword.
+    _entity_defined_multiword_pos = ('NOUN', 'PROPN')
+
+    # The entity labels permitted for elements of an entity-defined multiword.
+    _entity_defined_multiword_entity_types = ('PERSON', 'ORG', 'GPE', 'WORK_OF_ART')
 
     # The templates used to generate topic matching phraselets.
     phraselet_templates = [
@@ -1213,6 +1248,12 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
 
     # Presently depends purely on the language
     _model_supports_coreference_resolution = False
+
+    # The part-of-speech labels permitted for elements of an entity-defined multiword.
+    _entity_defined_multiword_pos = ('NOUN', 'PROPN')
+
+    # The entity labels permitted for elements of an entity-defined multiword.
+    _entity_defined_multiword_entity_types = ('PER', 'LOC')
 
     phraselet_templates = [
         PhraseletTemplate("verb-nom", "Eine Sache tut", 2, 1,

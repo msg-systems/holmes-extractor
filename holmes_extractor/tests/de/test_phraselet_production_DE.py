@@ -102,3 +102,13 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                 'prepgovernor-noun: brauchen-jahr', 'prepgovernor-noun: versicherung-jahr',
                 'word: jahr', 'word: versicherung', 'prep-noun: für-jahr'], False,
                  include_reverse_only=True)
+
+    def test_entity_defined_multiword_not_match_all_words(self):
+        self._check_equals("Richard Paul Hudson kam",
+                ['verb-nom: kommen-richard paul hudson',
+                'word: richard paul hudson'], False)
+
+    def test_entity_defined_multiword_match_all_words(self):
+        self._check_equals("Richard Paul Hudson kam",
+                ['verb-nom: kommen-richard paul hudson',
+                'word: richard', 'word: paul', 'word: hudson', 'word: kommen'], True)

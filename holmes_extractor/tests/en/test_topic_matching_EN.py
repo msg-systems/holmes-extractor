@@ -192,6 +192,81 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 "in Germany and Germany", 29,
                 holmes_manager_coref)
 
+    def test_multiword_in_text_to_search_and_in_document_not_root(self):
+        self._check_equals("Richard Paul Hudson came",
+                "I saw Richard Paul Hudson", 24,
+                holmes_manager_coref)
+
+    def test_multiword_in_text_to_search_single_word_in_document_not_root(self):
+        self._check_equals("Hudson came",
+                "I saw Richard Paul Hudson", 10,
+                holmes_manager_coref)
+
+    def test_multiword_in_text_to_search_dependent_words_in_document_not_root(self):
+        self._check_equals("Richard Paul came",
+                "I saw Richard Paul Hudson", 9,
+                holmes_manager_coref)
+
+    def test_multiword_in_text_to_search_multiword_in_document_with_coref_not_root(self):
+        self._check_equals("Richard Paul Hudson came",
+                "I saw Richard Paul Hudson. He came", 48,
+                holmes_manager_coref)
+
+    def test_multiword_in_text_to_search_multiword_in_document_with_noun_coref_not_root(self):
+        self._check_equals("Richard Paul Hudson came",
+                "I saw Richard Paul Hudson. Hudson came", 48,
+                holmes_manager_coref)
+
+    def test_multiword_in_text_to_search_single_in_document_with_coref_not_root(self):
+        self._check_equals("Hudson came",
+                "I saw Richard Paul Hudson. He came", 34,
+                holmes_manager_coref)
+
+    def test_multiword_in_text_to_search_and_in_document_root(self):
+        self._check_equals("the tired Richard Paul Hudson",
+                "I saw Richard Paul Hudson", 24,
+                holmes_manager_coref)
+
+    def test_multiword_in_text_to_search_single_word_in_document_root(self):
+        self._check_equals("the tired Hudson",
+                "I saw Richard Paul Hudson", 10,
+                holmes_manager_coref)
+
+    def test_multiword_in_text_to_search_dependent_words_in_document_root(self):
+        self._check_equals("the tired Richard Paul",
+                "I saw Richard Paul Hudson", 9,
+                holmes_manager_coref)
+
+    def test_multiword_in_text_to_search_multiword_in_document_with_coref_root(self):
+        self._check_equals("the tired Richard Paul Hudson",
+                "I saw Richard Paul Hudson. He came", 24,
+                holmes_manager_coref)
+
+    def test_multiword_in_text_to_search_single_in_document_with_coref_root(self):
+        self._check_equals("the tired Hudson came",
+                "I saw Richard Paul Hudson. He came", 34,
+                holmes_manager_coref)
+
+    def test_multiword_in_text_to_search_and_in_document_not_root_match_on_embeddings(self):
+        self._check_equals("Richard Paul Hudson came",
+                "I saw Richard Paul Hudson", 27,
+                holmes_manager_coref_embedding_on_root)
+
+    def test_multiword_in_text_to_search_and_in_document_root_match_on_embeddings(self):
+        self._check_equals("the tired Richard Paul Hudson",
+                "I saw Richard Paul Hudson", 27,
+                holmes_manager_coref_embedding_on_root)
+
+    def test_multiword_in_text_to_search_and_in_document_not_root_no_embeddings(self):
+        self._check_equals("Richard Paul Hudson came",
+                "I saw Richard Paul Hudson", 27,
+                holmes_manager_coref_embedding_on_root)
+
+    def test_multiword_in_text_to_search_and_in_document_root_no_embeddings(self):
+        self._check_equals("the tired Richard Paul Hudson",
+                "I saw Richard Paul Hudson", 27,
+                holmes_manager_coref_embedding_on_root)
+
     def test_coreference_double_match_on_governed(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document(

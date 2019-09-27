@@ -310,7 +310,8 @@ class StructuralMatcher:
         replace_with_hypernym_ancestors -- if 'True', all words present in the ontology
             are replaced with their most general (highest) ancestors.
         match_all_words -- if 'True', word phraselets are generated for all matchable words
-            rather than just for words whose tags match the phraselet template.
+            rather than just for words whose tags match the phraselet template; and multiwords
+            are ignored for single-word phraselets.
         returning_serialized_phraselets -- if 'True', phraselets ready for serialization are
             returned.
         include_reverse_only -- whether to generate phraselets that are only reverse-matched.
@@ -331,14 +332,18 @@ class StructuralMatcher:
                 # ontology contains text but not lemma, so stick to text
             return word
 
-        def process_single_word_phraselet_templates(token, checking_tags):
+        def process_single_word_phraselet_templates(token, checking_tags,
+                token_indexes_to_multiword_lemmas):
             for phraselet_template in (phraselet_template for phraselet_template in
                     self.semantic_analyzer.phraselet_templates if
                     phraselet_template.single_word() and token._.holmes.is_matchable):
                 if not checking_tags or token.tag_ in phraselet_template.parent_tags:
                     phraselet_doc = self.semantic_analyzer.parse(
                         phraselet_template.template_sentence)
-                    word = get_word_from_token(token)
+                    if token.i in token_indexes_to_multiword_lemmas and not match_all_words:
+                        word = token_indexes_to_multiword_lemmas[token.i]
+                    else:
+                        word = get_word_from_token(token)
                     if self.ontology != None and replace_with_hypernym_ancestors:
                         word = self.ontology.get_most_general_hypernym_ancestor(word)
                     phraselet_doc[phraselet_template.parent_index]._.holmes.lemma = word
@@ -359,14 +364,35 @@ class StructuralMatcher:
         if returning_serialized_phraselets:
             serialized_phraselets = []
         self._redefine_multiwords_on_head_tokens(doc)
+        token_indexes_to_multiword_lemmas = {}
+        token_indexes_within_multiwords_to_ignore = []
         for token in doc:
-            process_single_word_phraselet_templates(token, not match_all_words)
+            entity_defined_multiword = self.semantic_analyzer.get_entity_defined_multiword(token)
+            if entity_defined_multiword != None:
+                for counter in range(token.left_edge.i, token.right_edge.i +1):
+                    multiword_token = doc[counter]
+                    if not self.semantic_analyzer.belongs_to_entity_defined_multiword(
+                            multiword_token):
+                        continue
+                    if counter == token.i:
+                        token_indexes_to_multiword_lemmas[token.i] = entity_defined_multiword
+                    else:
+                        token_indexes_within_multiwords_to_ignore.append(multiword_token.i)
+        for token in doc:
+            if token.i in token_indexes_within_multiwords_to_ignore:
+                if match_all_words:
+                    process_single_word_phraselet_templates(token, not match_all_words,
+                            token_indexes_to_multiword_lemmas)
+                continue
+            process_single_word_phraselet_templates(token, not match_all_words,
+                    token_indexes_to_multiword_lemmas)
             if self.perform_coreference_resolution:
                 parents = self.semantic_analyzer.token_and_coreference_chain_indexes(token)
             else:
                 parents = [token.i]
             for parent in parents:
-                for dependency in doc[parent]._.holmes.children:
+                for dependency in (dependency for dependency in doc[parent]._.holmes.children
+                        if dependency.child_index not in token_indexes_within_multiwords_to_ignore):
                     if self.perform_coreference_resolution:
                         children = self.semantic_analyzer.token_and_coreference_chain_indexes(
                                 dependency.child_token(doc))
@@ -385,12 +411,18 @@ class StructuralMatcher:
                                     doc[child]._.holmes.is_matchable:
                                 phraselet_doc = self.semantic_analyzer.parse(
                                         phraselet_template.template_sentence)
-                                parent_word = get_word_from_token(doc[parent])
+                                if parent in token_indexes_to_multiword_lemmas:
+                                    parent_word = token_indexes_to_multiword_lemmas[parent]
+                                else:
+                                    parent_word = get_word_from_token(doc[parent])
                                 if self.ontology != None and replace_with_hypernym_ancestors:
                                     parent_word = \
                                             self.ontology.get_most_general_hypernym_ancestor(
                                             parent_word)
-                                child_word = get_word_from_token(doc[child])
+                                if child in token_indexes_to_multiword_lemmas:
+                                    child_word = token_indexes_to_multiword_lemmas[child]
+                                else:
+                                    child_word = get_word_from_token(doc[child])
                                 if self.ontology != None and replace_with_hypernym_ancestors:
                                     child_word = \
                                             self.ontology.get_most_general_hypernym_ancestor(
@@ -416,7 +448,8 @@ class StructuralMatcher:
                                                     parent_word, child_word))
         if len(phraselet_labels_to_search_phrases) == 0 and not match_all_words:
             for token in doc:
-                process_single_word_phraselet_templates(token, False)
+                process_single_word_phraselet_templates(token, False,
+                        token_indexes_to_multiword_lemmas)
         if returning_serialized_phraselets:
             return serialized_phraselets
 
@@ -601,6 +634,9 @@ class StructuralMatcher:
                 if multiword != None:
                     add_dict_entry(words_to_token_indexes_dict, multiword, token.i)
                     continue
+            entity_defined_multiword = self.semantic_analyzer.get_entity_defined_multiword(token)
+            if entity_defined_multiword != None:
+                add_dict_entry(words_to_token_indexes_dict, entity_defined_multiword, token.i)
             add_dict_entry(words_to_token_indexes_dict, token._.holmes.lemma, token.i)
             add_dict_entry(words_to_token_indexes_dict, token.text.lower(), token.i)
 
@@ -790,6 +826,16 @@ class StructuralMatcher:
                     return True
 
         # multiword matches
+
+        if search_phrase.topic_match_phraselet and len(search_phrase_word_lemma.split()) > 1:
+            for multiword_span in self._multiword_spans_with_head_token(document_token):
+                if search_phrase_word_lemma.lower() == multiword_span.text.lower():
+                    for working_token in multiword_span.tokens:
+                        search_phrase_and_document_visited_table[search_phrase_token.i].add(
+                                working_token.i)
+                        handle_match(search_phrase_word_lemma, multiword_span.text, 'direct',
+                                0)
+                        return True
         if self.ontology != None:
             for multiword_span in self._multiword_spans_with_head_token(document_token):
                 if search_phrase_word_lemma == multiword_span.text.lower():
