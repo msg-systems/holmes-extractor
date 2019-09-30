@@ -820,4 +820,5 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         doc = coref_holmes_manager.structural_matcher.get_document(
                 'village')
         self.assertTrue(coref_holmes_manager.semantic_analyzer.is_involved_in_coreference(doc[7]))
-        self.assertEqual(doc[10]._.holmes.parent_dependencies, [[6,'pobjp'],[7,'pobjp'],[8,'pobj']])
+        self.assertEqual(doc[10]._.holmes.parent_dependencies,
+                [[3,'pobjp'],[6,'pobjp'],[7,'pobjp'],[8,'pobj']])

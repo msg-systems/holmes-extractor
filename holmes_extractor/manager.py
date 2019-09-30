@@ -221,7 +221,9 @@ class Manager:
             relation_score=30, reverse_only_relation_score = 20,
             single_word_score=5, single_word_any_tag_score=2,
             overlapping_relation_multiplier=1.5, overlap_memory_size=10,
-            maximum_activation_value=1000, sideways_match_extent=100,
+            maximum_activation_value=1000,
+            maximum_number_of_single_word_matches_for_embedding_based_retries = 500,
+            embedding_based_retry_preexisting_match_cutoff=0.2, sideways_match_extent=100,
             only_one_result_per_document=False, number_of_results=10):
         """Returns the results of a topic match between an entered text and the loaded documents.
 
@@ -244,6 +246,14 @@ class Manager:
             word, and the dependent word that overlaps may be removed from the head word by
             some distance within the document text).
         maximum_activation_value -- the maximum permissible activation value.
+        maximum_number_of_single_word_matches_for_embedding_based_retries -- the maximum number
+                of single word matches that are used as the bases for embedding-based
+                retries. If more than this value exist, embedding-based retries are not
+                attempted because the performance hit would be too great.
+        embedding_based_retry_preexisting_match_cutoff -- the maximum quotient of relevant relation
+                matches over single word matches that lead to embedding-based retries being
+                attempted. If the quotient is higher, sufficient direct matches to the phraselet
+                have been found that embedding-based retries are deemed unnecessary.
         sideways_match_extent -- the maximum number of words that may be incorporated into a
             topic match either side of the word where the activation peaked.
         only_one_result_per_document -- if 'True', prevents multiple results from being returned
@@ -259,6 +269,10 @@ class Manager:
                 overlapping_relation_multiplier=overlapping_relation_multiplier,
                 overlap_memory_size=overlap_memory_size,
                 maximum_activation_value=maximum_activation_value,
+                maximum_number_of_single_word_matches_for_embedding_based_retries =
+                        maximum_number_of_single_word_matches_for_embedding_based_retries,
+                embedding_based_retry_preexisting_match_cutoff =
+                        embedding_based_retry_preexisting_match_cutoff,
                 sideways_match_extent=sideways_match_extent,
                 only_one_result_per_document=only_one_result_per_document,
                 number_of_results=number_of_results)
@@ -267,8 +281,10 @@ class Manager:
     def topic_match_documents_returning_dictionaries_against(self, text_to_match, *,
             maximum_activation_distance=75, relation_score=30, reverse_only_relation_score = 20,
             single_word_score=5, single_word_any_tag_score=2, overlapping_relation_multiplier=1.5,
-            overlap_memory_size=10,maximum_activation_value=1000, sideways_match_extent=100,
-            only_one_result_per_document=False, number_of_results=10,tied_result_quotient=0.9):
+            overlap_memory_size=10,maximum_activation_value=1000,
+            maximum_number_of_single_word_matches_for_embedding_based_retries = 500,
+            embedding_based_retry_preexisting_match_cutoff=0.2, sideways_match_extent=100,
+            only_one_result_per_document=False, number_of_results=10, tied_result_quotient=0.9):
         """Returns a list of dictionaries representing the results of a topic match between an
             entered text and the loaded documents. Callers of this method do not have to manage any
             further dependencies on spaCy or Holmes.
@@ -292,6 +308,14 @@ class Manager:
             word, and the dependent word that overlaps may be removed from the head word by
             some distance within the document text).
         maximum_activation_value -- the maximum permissible activation value.
+        maximum_number_of_single_word_matches_for_embedding_based_retries -- the maximum number
+                of single word matches that are used as the bases for embedding-based
+                retries. If more than this value exist, embedding-based retries are not
+                attempted because the performance hit would be too great.
+        embedding_based_retry_preexisting_match_cutoff -- the maximum quotient of relevant relation
+                matches over single word matches that lead to embedding-based retries being
+                attempted. If the quotient is higher, sufficient direct matches to the phraselet
+                have been found that embedding-based retries are deemed unnecessary.
         sideways_match_extent -- the maximum number of words that may be incorporated into a
             topic match either side of the word where the activation peaked.
         only_one_result_per_document -- if 'True', prevents multiple results from being returned
@@ -310,6 +334,10 @@ class Manager:
                 overlapping_relation_multiplier=overlapping_relation_multiplier,
                 overlap_memory_size=overlap_memory_size,
                 maximum_activation_value=maximum_activation_value,
+                maximum_number_of_single_word_matches_for_embedding_based_retries =
+                        maximum_number_of_single_word_matches_for_embedding_based_retries,
+                embedding_based_retry_preexisting_match_cutoff =
+                        embedding_based_retry_preexisting_match_cutoff,
                 sideways_match_extent=sideways_match_extent,
                 only_one_result_per_document=only_one_result_per_document,
                 number_of_results=number_of_results)

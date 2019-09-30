@@ -26,6 +26,7 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                 replace_with_hypernym_ancestors=replace_with_hypernym_ancestors,
                 match_all_words=match_all_words,
                 returning_serialized_phraselets=False,
+                ignore_relation_phraselets=False,
                 include_reverse_only=include_reverse_only)
         self.assertEqual(
                 set(phraselet_labels_to_search_phrases.keys()),
@@ -214,6 +215,7 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                 replace_with_hypernym_ancestors=False,
                 match_all_words=False,
                 include_reverse_only=False,
+                ignore_relation_phraselets=False,
                 returning_serialized_phraselets=True)
         deserialized_phraselet_labels_to_search_phrases = \
                 no_ontology_coref_holmes_manager.structural_matcher.deserialize_phraselets(

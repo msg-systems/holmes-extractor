@@ -89,6 +89,24 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self._check_equals("A car with an engine", "A car with an engine", 79,
                 holmes_manager_coref_no_embeddings)
 
+    def test_reverse_matching_suppressed_with_embedding_based_retries(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.parse_and_register_document("An automobile with an engine")
+        topic_matches = holmes_manager_coref.topic_match_documents_against("A car with an engine",
+                relation_score=20, reverse_only_relation_score=15, single_word_score=10,
+                single_word_any_tag_score=5,
+                maximum_number_of_single_word_matches_for_embedding_based_retries = 0)
+        self.assertEqual(int(topic_matches[0].score), 29)
+
+    def test_reverse_matching_suppressed_with_preexisting_match_cutoff(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.parse_and_register_document("An automobile with an engine")
+        topic_matches = holmes_manager_coref.topic_match_documents_against("A car with an engine",
+                relation_score=20, reverse_only_relation_score=15, single_word_score=10,
+                single_word_any_tag_score=5,
+                embedding_based_retry_preexisting_match_cutoff = 0.0)
+        self.assertEqual(int(topic_matches[0].score), 29)
+
     def test_reverse_matching_noun_coreference_on_governor(self):
         self._check_equals("A car with an engine", "I saw an automobile. I saw it with an engine",
                 60,
@@ -116,7 +134,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     def test_reverse_matching_noun_coreference_on_governed_control_same_word(self):
         self._check_equals(
-                "An engine with a car", "I saw a car. There was an engine with it", 43,
+                "An engine with a car", "I saw a car. There was an engine with it", 85,
                 holmes_manager_coref_no_embeddings)
 
     def test_reverse_matching_verb(self):
@@ -343,6 +361,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 replace_with_hypernym_ancestors=False,
                 match_all_words=False,
                 returning_serialized_phraselets=False,
+                ignore_relation_phraselets=False,
                 include_reverse_only=False)
         holmes_manager_coref.structural_matcher.register_search_phrase("A dog chases a cat", None)
         holmes_manager_coref.structural_matcher.register_search_phrase("beef", None)

@@ -81,8 +81,8 @@ class HolmesDictionary:
         self.is_negated = None
         self.is_matchable = None
         self.parent_dependencies = [] # list of [index, label] specifications of dependencies
-        # where this token is the child. Remains empty until the document is registered with
-        # the manager and is used in topic matching.
+        # where this token is the child. Takes any coreference resolution into account. Remains
+        # empty until the document is registered with the manager. Is used in topic matching.
 
     @property
     def is_uncertain(self):
@@ -100,6 +100,12 @@ class HolmesDictionary:
             if dependency.child_index == index:
                 return True
         return False
+
+    def get_label_of_dependency_with_child_index(self, index):
+        for dependency in self.children:
+            if dependency.child_index == index:
+                return dependency.label
+        return None
 
     def has_dependency_with_label(self, label):
         for dependency in self.children:
