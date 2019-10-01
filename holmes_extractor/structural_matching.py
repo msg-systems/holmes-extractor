@@ -1265,11 +1265,13 @@ class StructuralMatcher:
                     matched_indexes_set = set()
                     if self._is_entity_search_phrase_token(search_phrase.root_token,
                         search_phrase.topic_match_phraselet):
-                        if search_phrase.root_token.text in \
-                                registered_document.words_to_token_indexes_dict.keys():
+                        if search_phrase.topic_match_phraselet:
+                            entity_label = search_phrase.root_token._.holmes.lemma
+                        else:
+                            entity_label = search_phrase.root_token.text
+                        if entity_label in registered_document.words_to_token_indexes_dict.keys():
                             matched_indexes_set.update(
-                                    registered_document.words_to_token_indexes_dict[
-                                    search_phrase.root_token.text])
+                                    registered_document.words_to_token_indexes_dict[entity_label])
                     else:
                         for word_matching_root_token in self._words_matching_root_token(
                                 search_phrase):

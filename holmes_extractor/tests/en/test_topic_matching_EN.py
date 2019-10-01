@@ -106,6 +106,30 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self._check_equals("A car with an engine", "A car with an engine", 79,
                 holmes_manager_coref_no_embeddings)
 
+    def test_reverse_matching_noun_entity_governor_match(self):
+        self._check_equals("An ENTITYPERSON with a car", "Richard Hudson with a vehicle", 29,
+                holmes_manager_coref)
+
+    def test_reverse_matching_noun_entity_governor_no_match(self):
+        self._check_equals("An ENTITYPERSON with a car", "Richard Hudson with a lion", 14,
+                holmes_manager_coref)
+
+    def test_reverse_matching_noun_entity_governed(self):
+        self._check_equals("A car with an ENTITYPERSON", "A vehicle with Richard Hudson", 58,
+                holmes_manager_coref)
+
+    def test_reverse_matching_noun_entitynoun_governor_match(self):
+        self._check_equals("An ENTITYNOUN with a car", "Richard Hudson with a vehicle", 5,
+                holmes_manager_coref)
+
+    def test_reverse_matching_noun_entitynoun_governor_no_match(self):
+        self._check_equals("An ENTITYNOUN with a car", "Richard Hudson with a lion", 5,
+                holmes_manager_coref)
+
+    def test_reverse_matching_noun_entitynoun_governed(self):
+        self._check_equals("A car with an ENTITYNOUN", "A vehicle with Richard Hudson", 20,
+                holmes_manager_coref)
+
     def test_reverse_matching_suppressed_with_embedding_based_retries(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document("An automobile with an engine")
