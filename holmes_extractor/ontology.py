@@ -114,7 +114,8 @@ class Ontology:
             All words are set to lower case.
         """
         if search_phrase_word.lower() in self._match_dict.keys():
-            return set(map(lambda entry: entry.word.lower(), self._match_dict[search_phrase_word]))
+            return set(map(lambda entry: entry.word.lower(),
+                    self._match_dict[search_phrase_word.lower()]))
         else:
             return []
 

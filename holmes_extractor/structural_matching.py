@@ -498,9 +498,9 @@ class StructuralMatcher:
                     if self.ontology.contains_multiword(multiword_span.lemma) or \
                             self.ontology.contains_multiword(multiword_span.text):
                         if self.ontology.contains_multiword(multiword_span.lemma):
-                            token._.holmes.lemma = multiword_span.lemma
+                            token._.holmes.lemma = multiword_span.lemma.lower()
                         else:
-                            token._.holmes.lemma = multiword_span.text
+                            token._.holmes.lemma = multiword_span.text.lower()
                         # mark the dependent tokens as grammatical and non-matchable
                         for multiword_token in (
                                 multiword_token for multiword_token in multiword_span.tokens

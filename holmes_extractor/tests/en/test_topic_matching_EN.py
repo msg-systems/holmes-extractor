@@ -4,7 +4,8 @@ from holmes_extractor.extensive_matching import TopicMatcher
 import os
 
 script_directory = os.path.dirname(os.path.realpath(__file__))
-ontology = holmes.Ontology(os.sep.join((script_directory,'test_ontology.owl')))
+ontology = holmes.Ontology(os.sep.join((script_directory,'test_ontology.owl')),
+        symmetric_matching=True)
 holmes_manager_coref = holmes.Manager(model='en_core_web_lg', ontology=ontology,
         overall_similarity_threshold=0.65, perform_coreference_resolution=True)
 holmes_manager_coref_embedding_on_root = holmes.Manager(model='en_core_web_lg', ontology=ontology,
@@ -47,8 +48,24 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self._check_equals("I saw an animal", "Somebody saw a cat", 34,
                 holmes_manager_coref)
 
+    def test_ontology_matching_multiword_in_document(self):
+        self._check_equals("I saw an animal", "Somebody saw Mimi Momo", 34,
+                holmes_manager_coref)
+
+    def test_ontology_matching_multiword_in_search_text(self):
+        self._check_equals("I saw Mimi Momo", "Somebody saw an animal", 34,
+                holmes_manager_coref)
+
     def test_ontology_matching_word_only(self):
         self._check_equals("I saw an animal", "Somebody chased a cat", 10,
+                holmes_manager_coref)
+
+    def test_ontology_matching_word_only_multiword_in_document(self):
+        self._check_equals("I saw an animal", "Somebody chased Mimi Momo", 10,
+                holmes_manager_coref)
+
+    def test_ontology_matching_word_only_multiword_in_search_text(self):
+        self._check_equals("I saw Mimi Momo", "Somebody chased an animal", 10,
                 holmes_manager_coref)
 
     def test_embedding_matching_not_root(self):
