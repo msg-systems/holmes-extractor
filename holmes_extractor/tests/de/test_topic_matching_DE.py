@@ -60,21 +60,6 @@ class GermanTopicMatchingTest(unittest.TestCase):
         self._check_equals("Ein Kind schrie", "Das Kind schrie", 34,
                 holmes_manager)
 
-    def test_reverse_matching_leading_to_new_forward_matching(self):
-        self._check_equals("Ein König und eine Königin schrieen",
-                "Ein Präsident und eine Königin weinten", 61,
-                holmes_manager_with_embeddings)
-
-    def test_reverse_matching_leading_to_new_forward_matching_link_word_also_similar(self):
-        self._check_equals("Ein König und ein Hund schrieen", # it really is similar!
-                "Ein Präsident und ein Hund weinten", 61,
-                holmes_manager_with_embeddings)
-
-    def test_reverse_matching_leading_to_new_forward_matching_control(self):
-        self._check_equals("Ein König und eine Königin schrieen",
-                "Eine Idee und eine Königin weinten", 27,
-                holmes_manager_with_embeddings)
-
     def test_reverse_matching_only(self):
         self._check_equals("mit einer Idee",
                 "mit einer Idee", 29,

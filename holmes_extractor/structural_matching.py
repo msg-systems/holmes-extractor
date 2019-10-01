@@ -695,7 +695,7 @@ class StructuralMatcher:
 
     def _match_recursively(self, *, search_phrase, search_phrase_token, document, document_token,
         search_phrase_tokens_to_word_matches, search_phrase_and_document_visited_table,
-        is_uncertain, structurally_matched_document_token, overall_similarity_threshold):
+        is_uncertain, structurally_matched_document_token, compare_embeddings_on_non_root_words):
         """Called whenever matching is attempted between a search phrase token and a document
             token."""
 
@@ -764,7 +764,8 @@ class StructuralMatcher:
                                     is_uncertain=(document_dependency.is_uncertain and not
                                             dependency.is_uncertain),
                                     structurally_matched_document_token=document_child,
-                                    overall_similarity_threshold=overall_similarity_threshold):
+                                    compare_embeddings_on_non_root_words=
+                                    compare_embeddings_on_non_root_words):
                                 at_least_one_document_dependency_matched = True
                 if at_least_one_document_dependency_tried and not \
                         at_least_one_document_dependency_matched:
@@ -885,7 +886,8 @@ class StructuralMatcher:
                                 entry.depth)
                         return True
 
-        if overall_similarity_threshold < 1.0 and search_phrase_token.i in \
+        if self.overall_similarity_threshold < 1.0 and (compare_embeddings_on_non_root_words or
+                search_phrase.root_token.i == search_phrase_token.i) and search_phrase_token.i in \
                 search_phrase.matchable_non_entity_tokens_to_lexemes.keys():
             search_phrase_lexeme = \
                     search_phrase.matchable_non_entity_tokens_to_lexemes[search_phrase_token.i]
@@ -1149,7 +1151,7 @@ class StructuralMatcher:
         return matches_to_return
 
     def _get_matches_starting_at_root_word_match(self, search_phrase, document,
-            document_token, document_label, overall_similarity_threshold):
+            document_token, document_label, compare_embeddings_on_non_root_words):
         """Begin recursive matching where a search phrase root token has matched a document
             token.
         """
@@ -1171,7 +1173,7 @@ class StructuralMatcher:
                 search_phrase_and_document_visited_table=search_phrase_and_document_visited_table,
                 is_uncertain=document_token._.holmes.is_uncertain,
                 structurally_matched_document_token=document_token,
-                overall_similarity_threshold=overall_similarity_threshold)
+                compare_embeddings_on_non_root_words=compare_embeddings_on_non_root_words)
         working_matches = self._build_matches(
                 search_phrase=search_phrase,
                 document=document,
@@ -1183,7 +1185,8 @@ class StructuralMatcher:
     def _internal_match(self, indexed_documents, search_phrases,
             output_document_matching_message_to_console,
             document_labels_to_indexes_for_embedding_retry_sets,
-            ignore_embeddings):
+            compare_embeddings_on_root_words,
+            compare_embeddings_on_non_root_words):
         """Finds and returns matches between search phrases and documents.
 
         document_labels_to_indexes_for_embedding_retry_sets -- set during topic matching. Dictionary
@@ -1191,14 +1194,20 @@ class StructuralMatcher:
             has a value, this signals that the method is being called from a specific topic-matching
             context in which:
 
-            - all indexes not included in the dictionary are ignored.
-            - 'embedding_based_matching_on_root_words' is overridden (-> True) if
-                overall_similarity_threshold < 1.0.
+            - All indexes not included in the dictionary are ignored.
             - Single-word phraselets are ignored.
             - Search phrases marked as 'reverse only' are included.
-        ignore_embeddings -- if 'True', the match is carried out with
-            overall_similarity_threshold==1.0.
+        compare_embeddings_on_root_words -- if 'True', embeddings on root words are compared even
+            if embedding_based_matching_on_root_words==False as long as
+            overall_similarity_threshold < 1.0.
+        compare_embeddings_on_non_root_words -- if 'False', embeddings on non-root words are not
+            compared even if overall_similarity_threshold < 1.0.
         """
+        if self.embedding_based_matching_on_root_words:
+            compare_embeddings_on_root_words=True
+        if self.overall_similarity_threshold==1.0:
+            compare_embeddings_on_root_words=False
+            compare_embeddings_on_non_root_words=False
         if len(indexed_documents) == 0:
             raise NoSearchedDocumentError(
                 'At least one searched document is required to match.')
@@ -1220,15 +1229,6 @@ class StructuralMatcher:
             # same indexes in the document will then match all the search phrase root tokens.
             root_lexeme_to_indexes_to_match_dict = {}
             for search_phrase in search_phrases:
-                embedding_based_matching_on_root_words = self.overall_similarity_threshold < 1.0 \
-                        and (self.embedding_based_matching_on_root_words or
-                        document_labels_to_indexes_for_embedding_retry_sets != None) \
-                        and not search_phrase.reverse_only
-                if (ignore_embeddings or search_phrase.reverse_only) and not \
-                        self.embedding_based_matching_on_root_words:
-                    overall_similarity_threshold=1.0
-                else:
-                    overall_similarity_threshold=self.overall_similarity_threshold
                 if document_labels_to_indexes_for_embedding_retry_sets != None and \
                         len(search_phrase.doc) == 1:
                     continue
@@ -1236,7 +1236,7 @@ class StructuralMatcher:
                         search_phrase.reverse_only:
                     continue
                 if search_phrase.topic_match_phraselet and len(search_phrase.doc) == 1 and not \
-                        embedding_based_matching_on_root_words:
+                        compare_embeddings_on_root_words:
                     # We are only matching a single word without embedding, so to improve
                     # performance we avoid entering the subgraph matching code.
                     for word_matching_root_token in self._words_matching_root_token(
@@ -1259,7 +1259,7 @@ class StructuralMatcher:
                                 self.semantic_analyzer.noun_pos:
                             matches.extend(self._get_matches_starting_at_root_word_match(
                                     search_phrase, doc, token, document_label,
-                                    overall_similarity_threshold))
+                                    compare_embeddings_on_non_root_words))
                     continue
                 else:
                     matched_indexes_set = set()
@@ -1280,9 +1280,9 @@ class StructuralMatcher:
                                 matched_indexes_set.update(
                                         registered_document.words_to_token_indexes_dict[
                                         word_matching_root_token])
-                if embedding_based_matching_on_root_words and not \
+                if compare_embeddings_on_root_words and not \
                         self._is_entity_search_phrase_token(search_phrase.root_token,
-                        search_phrase.topic_match_phraselet):
+                        search_phrase.topic_match_phraselet) and not search_phrase.reverse_only:
                     if not search_phrase.topic_match_phraselet:
                         root_token_lemma_to_use = search_phrase.root_token.lemma_
                     else:
@@ -1321,7 +1321,7 @@ class StructuralMatcher:
                 for index_to_match in sorted(matched_indexes_set):
                     matches.extend(self._get_matches_starting_at_root_word_match(
                             search_phrase, doc, doc[index_to_match], document_label,
-                            overall_similarity_threshold))
+                            compare_embeddings_on_non_root_words))
         return sorted(matches, key=lambda match: 1 - float(match.overall_similarity_measure))
 
     def match(self):
@@ -1331,7 +1331,7 @@ class StructuralMatcher:
         with self._lock:
             indexed_documents = self._indexed_documents.copy()
             search_phrases = self.search_phrases.copy()
-        return self._internal_match(indexed_documents, search_phrases, False, None, False)
+        return self._internal_match(indexed_documents, search_phrases, False, None, False, True)
 
     def match_search_phrases_against(self, parsed_document):
         """Matches the registered search phrases against a single document
@@ -1341,7 +1341,7 @@ class StructuralMatcher:
         with self._lock:
             search_phrases = self.search_phrases.copy()
         indexed_documents = {'':self._create_document(parsed_document, '')}
-        return self._internal_match(indexed_documents, search_phrases, False, None, False)
+        return self._internal_match(indexed_documents, search_phrases, False, None, False, True)
 
     def match_documents_against(self, search_phrase_text):
         """Matches the registered documents against a single search phrase text
@@ -1352,11 +1352,12 @@ class StructuralMatcher:
         search_phrase_doc = self.semantic_analyzer.parse(search_phrase_text)
         search_phrases = [self._create_search_phrase(search_phrase_text,
                 search_phrase_doc, search_phrase_text, None, False)]
-        return self._internal_match(indexed_documents, search_phrases, False, None, False)
+        return self._internal_match(indexed_documents, search_phrases, False, None, False, True)
 
     def match_documents_against_search_phrase_list(self, search_phrases, verbose,
             document_labels_to_indexes_for_embedding_retry_sets=None,
-            ignore_embeddings=False):
+            compare_embeddings_on_root_words=False,
+            compare_embeddings_on_non_root_words=True):
         """Matches the registered documents against a list of search phrase
             objects supplied to the method.
         """
@@ -1364,4 +1365,4 @@ class StructuralMatcher:
             indexed_documents = self._indexed_documents.copy()
         return self._internal_match(indexed_documents, search_phrases, verbose,
                 document_labels_to_indexes_for_embedding_retry_sets,
-                ignore_embeddings)
+                compare_embeddings_on_root_words, compare_embeddings_on_non_root_words)

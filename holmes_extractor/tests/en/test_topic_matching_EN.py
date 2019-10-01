@@ -126,8 +126,8 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self._check_equals("An ENTITYNOUN with a car", "Richard Hudson with a lion", 5,
                 holmes_manager_coref)
 
-    def test_reverse_matching_noun_entitynoun_governed(self):
-        self._check_equals("A car with an ENTITYNOUN", "A vehicle with Richard Hudson", 20,
+    def test_reverse_matching_noun_entitynoun_governed_(self):
+        self._check_equals("A car with an ENTITYNOUN", "A vehicle with Richard Hudson", 5,
                 holmes_manager_coref)
 
     def test_reverse_matching_suppressed_with_embedding_based_retries(self):
@@ -192,23 +192,6 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     def test_reverse_matching_verb_with_coreference_and_conjunction(self):
         self._check_equals("A company is bought", "A company is bought and purchased", 34,
-                holmes_manager_coref)
-
-    def test_reverse_matching_leading_to_new_forward_matching(self):
-        self._check_equals("Somebody buys a van and a car",
-                "Somebody purchases a van and an automobile", 59,
-                holmes_manager_coref)
-
-    def test_reverse_matching_leading_to_new_forward_matching_link_word_also_similar(self):
-        self._check_equals("Somebody buys a vehicle and a car",
-                "Somebody purchases a vehicle and an automobile", 84,
-                holmes_manager_coref)
-            # more than in example above because car and vehicle are more similar
-            # than car and automobile
-
-    def test_reverse_matching_leading_to_new_forward_matching_control(self):
-        self._check_equals("Somebody buys a van and a car",
-                "Somebody purchases a van and a pig", 27,
                 holmes_manager_coref)
 
     def test_two_matches_on_same_document_tokens_because_of_embeddings(self):

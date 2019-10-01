@@ -95,6 +95,9 @@ class TopicMatcher:
             def __hash__(self):
                 return hash((self.document_label, self.index))
 
+            def __str__(self):
+                return ':'.join((self.document_label, str(self.index)))
+
         class PhraseletWordMatchInfo:
             def __init__(self):
                 self.single_word_match_corpus_words = set()
@@ -132,10 +135,12 @@ class TopicMatcher:
             raise RuntimeError(''.join(('Word match not found with parent==', str(parent))))
 
         def get_indexes_for_embedding_retry(phraselet,
-                document_labels_to_indexes_for_embedding_retry_sets):
+                parent_document_labels_to_indexes_for_embedding_retry_sets,
+                child_document_labels_to_indexes_for_embedding_retry_sets):
             parent_token = phraselet.root_token
             parent_word = parent_token._.holmes.lemma
-            if parent_word in self._words_to_phraselet_word_match_infos:
+            if parent_word in self._words_to_phraselet_word_match_infos and not \
+                    phraselet.reverse_only:
                 parent_phraselet_word_match_info = self._words_to_phraselet_word_match_infos[
                         parent_word]
                 parent_single_word_match_corpus_words = \
@@ -155,10 +160,10 @@ class TopicMatcher:
                     for corpus_word_position in \
                             parent_single_word_match_corpus_words.difference(
                             parent_relation_match_corpus_words):
-                        add_to_dict_set(document_labels_to_indexes_for_embedding_retry_sets,
+                        add_to_dict_set(child_document_labels_to_indexes_for_embedding_retry_sets,
                                 corpus_word_position.document_label, corpus_word_position.index)
             child_token = [token for token in phraselet.matchable_tokens if token.i !=
-                parent_token.i][0]
+                    parent_token.i][0]
             child_word = child_token._.holmes.lemma
             if child_word in self._words_to_phraselet_word_match_infos:
                 linking_dependency = parent_token._.holmes.get_label_of_dependency_with_child_index(
@@ -189,7 +194,7 @@ class TopicMatcher:
                                     search_phrase_dependency_label=linking_dependency,
                                     document_dependency_label=parent_dependency[1]):
                                 add_to_dict_set(
-                                        document_labels_to_indexes_for_embedding_retry_sets,
+                                        parent_document_labels_to_indexes_for_embedding_retry_sets,
                                         corpus_word_position.document_label,
                                         parent_dependency[0])
 
@@ -311,18 +316,32 @@ class TopicMatcher:
                 include_reverse_only = False) # value is irrelevant with
                                               # ignore_relation_phraselets == True
         structural_matches = self.structural_matcher.match_documents_against_search_phrase_list(
-                phraselet_labels_to_search_phrases.values(), False, ignore_embeddings=True)
+                phraselet_labels_to_search_phrases.values(), False,
+                compare_embeddings_on_root_words=False, compare_embeddings_on_non_root_words=False)
         rebuild_document_info_dict(structural_matches, phraselet_labels_to_search_phrases)
-        document_labels_to_indexes_for_embedding_retry_sets = {}
+        parent_document_labels_to_indexes_for_embedding_retry_sets = {}
+        child_document_labels_to_indexes_for_embedding_retry_sets = {}
         for phraselet in (phraselet for phraselet in phraselet_labels_to_search_phrases.values()
                 if len(phraselet.doc) > 1):
             get_indexes_for_embedding_retry(phraselet,
-                    document_labels_to_indexes_for_embedding_retry_sets)
-        if len(document_labels_to_indexes_for_embedding_retry_sets) > 0:
+                    parent_document_labels_to_indexes_for_embedding_retry_sets,
+                    child_document_labels_to_indexes_for_embedding_retry_sets)
+        if len(parent_document_labels_to_indexes_for_embedding_retry_sets) > 0:
             structural_matches.extend(self.structural_matcher.
                     match_documents_against_search_phrase_list(
                     phraselet_labels_to_search_phrases.values(), False,
-                    document_labels_to_indexes_for_embedding_retry_sets, ignore_embeddings=False))
+                    parent_document_labels_to_indexes_for_embedding_retry_sets,
+                    compare_embeddings_on_root_words=True,
+                    compare_embeddings_on_non_root_words=False))
+        if len(child_document_labels_to_indexes_for_embedding_retry_sets) > 0:
+            structural_matches.extend(self.structural_matcher.
+                    match_documents_against_search_phrase_list(
+                    phraselet_labels_to_search_phrases.values(), False,
+                    child_document_labels_to_indexes_for_embedding_retry_sets,
+                    compare_embeddings_on_root_words=False,
+                    compare_embeddings_on_non_root_words=True))
+        if len(parent_document_labels_to_indexes_for_embedding_retry_sets) > 0 or \
+                len(child_document_labels_to_indexes_for_embedding_retry_sets) > 0:
             rebuild_document_info_dict(structural_matches, phraselet_labels_to_search_phrases)
         structural_matches = list(filter(filter_superfluous_matches,
                 structural_matches))
