@@ -256,8 +256,7 @@ class TopicMatcher:
                     match_dict = phraselet_word_match_info.parent_match_corpus_words_to_matches
                 else:
                     match_dict = phraselet_word_match_info.child_match_corpus_words_to_matches
-                return (other_match for other_match in match_dict[corpus_word_position] if
-                        match.search_phrase_label == other_match.search_phrase_label)
+                return match_dict[corpus_word_position]
 
             def check_for_sibling_match_with_higher_similarity(match, other_match,
                     word_match, other_word_match):

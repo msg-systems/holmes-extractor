@@ -95,6 +95,11 @@ class GermanTopicMatchingTest(unittest.TestCase):
                 "Ich sah Richard Paul Hudson", 9,
                 holmes_manager)
 
+    def test_double_match(self):
+        self._check_equals("vier Ochsen und sechs Ochsen",
+                "vier Ochsen", 34,
+                holmes_manager_with_embeddings)
+
     def test_indexes(self):
         holmes_manager.remove_all_documents()
         holmes_manager.parse_and_register_document(
