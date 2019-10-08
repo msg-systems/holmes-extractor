@@ -307,6 +307,30 @@ class TopicMatcher:
                 return False
             return True
 
+        def remove_duplicates(matches):
+            matches_to_return = []
+            if len(matches) == 0:
+                return
+            else:
+                matches_to_return.append(matches[0])
+            if len(matches) > 1:
+                for counter in range(1, len(matches)):
+                    this_match = matches[counter]
+                    previous_match = matches[counter-1]
+                    if this_match.search_phrase_label != previous_match.search_phrase_label or \
+                            this_match.index_within_document != \
+                            previous_match.index_within_document or \
+                            len(this_match.word_matches) != len(previous_match.word_matches):
+                        matches_to_return.append(this_match)
+                    else:
+                        for word_match_counter in range(len(this_match.word_matches)):
+                            if this_match.word_matches[word_match_counter].document_token.i != \
+                                    previous_match.word_matches[word_match_counter].\
+                                    document_token.i:
+                                matches_to_return.append(this_match)
+                                break
+            return matches_to_return
+
         doc = self._semantic_analyzer.parse(text_to_match)
         phraselet_labels_to_search_phrases = {}
         self.structural_matcher.add_phraselets_to_dict(doc,
@@ -359,6 +383,7 @@ class TopicMatcher:
                     sorted(structural_matches, key=lambda match:
                     (match.document_label, match.index_within_document,
                     match.from_single_word_phraselet))
+        position_sorted_structural_matches = remove_duplicates(position_sorted_structural_matches)
         # Read through the documents measuring the activation based on where
         # in the document structural matches were found
         score_sorted_structural_matches = self.perform_activation_scoring(
@@ -478,17 +503,13 @@ class TopicMatcher:
                     self.sideways_match_extent:
                 start_index = match.index_within_document
             for word_match in match.word_matches:
-                if word_match.first_document_token.i < start_index and \
-                        reference_match_index_within_document - word_match.document_token.i \
-                        < self.sideways_match_extent:
+                if word_match.first_document_token.i < start_index:
                     start_index = word_match.first_document_token.i
             if match.index_within_document > end_index and match.index_within_document - \
                     reference_match_index_within_document < self.sideways_match_extent:
                 end_index = match.index_within_document
             for word_match in match.word_matches:
-                if word_match.last_document_token.i > end_index and \
-                        word_match.last_document_token.i - reference_match_index_within_document \
-                        < self.sideways_match_extent:
+                if word_match.last_document_token.i > end_index:
                     end_index = word_match.last_document_token.i
             return start_index, end_index
 
