@@ -220,7 +220,7 @@ class Manager:
     def topic_match_documents_against(self, text_to_match, *, maximum_activation_distance=75,
             relation_score=30, reverse_only_relation_score = 20,
             single_word_score=5, single_word_any_tag_score=2,
-            overlapping_relation_multiplier=1.5, overlap_memory_size=10,
+            overlapping_relation_multiplier=1.5, embedding_penalty=0.6,
             maximum_activation_value=1000,
             maximum_number_of_single_word_matches_for_embedding_based_retries = 500,
             embedding_based_retry_preexisting_match_cutoff=0.2, sideways_match_extent=100,
@@ -241,10 +241,9 @@ class Manager:
             phraselet specification yielded too few results.
         overlapping_relation_multiplier -- the value by which the activation score is multiplied
             when two relations were matched and the matches involved a common document word.
-        overlap_memory_size -- the size of the memory for previous matches that is taken into
-            consideration when searching for overlaps (matches are sorted according to the head
-            word, and the dependent word that overlaps may be removed from the head word by
-            some distance within the document text).
+        embedding_penalty -- a value between 0 and 1 with which scores are multiplied when the
+            match involved an embedding. The result is additionally multiplied by the overall
+            similarity measure of the match that involved an embedding.
         maximum_activation_value -- the maximum permissible activation value.
         maximum_number_of_single_word_matches_for_embedding_based_retries -- the maximum number
                 of single word matches that are used as the bases for embedding-based
@@ -267,7 +266,7 @@ class Manager:
                 single_word_score=single_word_score,
                 single_word_any_tag_score=single_word_any_tag_score,
                 overlapping_relation_multiplier=overlapping_relation_multiplier,
-                overlap_memory_size=overlap_memory_size,
+                embedding_penalty=embedding_penalty,
                 maximum_activation_value=maximum_activation_value,
                 maximum_number_of_single_word_matches_for_embedding_based_retries =
                         maximum_number_of_single_word_matches_for_embedding_based_retries,
@@ -281,7 +280,7 @@ class Manager:
     def topic_match_documents_returning_dictionaries_against(self, text_to_match, *,
             maximum_activation_distance=75, relation_score=30, reverse_only_relation_score = 20,
             single_word_score=5, single_word_any_tag_score=2, overlapping_relation_multiplier=1.5,
-            overlap_memory_size=10,maximum_activation_value=1000,
+            embedding_penalty=0.6,maximum_activation_value=1000,
             maximum_number_of_single_word_matches_for_embedding_based_retries = 500,
             embedding_based_retry_preexisting_match_cutoff=0.2, sideways_match_extent=100,
             only_one_result_per_document=False, number_of_results=10, tied_result_quotient=0.9):
@@ -303,10 +302,9 @@ class Manager:
             phraselet specification yielded too few results.
         overlapping_relation_multiplier -- the value by which the activation score is multiplied
             when two relations were matched and the matches involved a common document word.
-        overlap_memory_size -- the size of the memory for previous matches that is taken into
-            consideration when searching for overlaps (matches are sorted according to the head
-            word, and the dependent word that overlaps may be removed from the head word by
-            some distance within the document text).
+        embedding_penalty -- a value between 0 and 1 with which scores are multiplied when the
+            match involved an embedding. The result is additionally multiplied by the overall
+            similarity measure of the match that involved an embedding.
         maximum_activation_value -- the maximum permissible activation value.
         maximum_number_of_single_word_matches_for_embedding_based_retries -- the maximum number
                 of single word matches that are used as the bases for embedding-based
@@ -332,7 +330,7 @@ class Manager:
                 single_word_score=single_word_score,
                 single_word_any_tag_score=single_word_any_tag_score,
                 overlapping_relation_multiplier=overlapping_relation_multiplier,
-                overlap_memory_size=overlap_memory_size,
+                embedding_penalty=embedding_penalty,
                 maximum_activation_value=maximum_activation_value,
                 maximum_number_of_single_word_matches_for_embedding_based_retries =
                         maximum_number_of_single_word_matches_for_embedding_based_retries,

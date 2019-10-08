@@ -547,3 +547,80 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
         self.assertEqual(doc[0]._.holmes.string_representation_of_children(),
                 '1:prep; 3:pobjp')
         self.assertEqual(doc[3]._.holmes.parent_dependencies, [[0, 'pobjp'],[1, 'pobj']])
+
+    def test_ontology_multiword_information_in_word_match_objects_at_sentence_boundaries(self):
+        holmes_manager_with_variable_search_phrases.remove_all_documents()
+        holmes_manager_with_variable_search_phrases.parse_and_register_document(
+                "Fido chased Mimi Momo.")
+        holmes_manager_with_variable_search_phrases.remove_all_search_phrases()
+        holmes_manager_with_variable_search_phrases.register_search_phrase(
+                "A dog chases a cat")
+        matches = holmes_manager_with_variable_search_phrases.match()
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_token.i, 0)
+        self.assertEqual(matches[0].word_matches[0].first_document_token.i, 0)
+        self.assertEqual(matches[0].word_matches[0].last_document_token.i, 0)
+        self.assertEqual(matches[0].word_matches[1].document_token.i, 1)
+        self.assertEqual(matches[0].word_matches[1].first_document_token.i, 1)
+        self.assertEqual(matches[0].word_matches[1].last_document_token.i, 1)
+        self.assertEqual(matches[0].word_matches[2].document_token.i, 3)
+        self.assertEqual(matches[0].word_matches[2].first_document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[2].last_document_token.i, 3)
+
+    def test_ontology_multiword_information_in_word_match_objects_not_at_sentence_boundaries(self):
+        holmes_manager_with_variable_search_phrases.remove_all_documents()
+        holmes_manager_with_variable_search_phrases.parse_and_register_document(
+                "Yesterday Fido chased Mimi Momo.")
+        holmes_manager_with_variable_search_phrases.remove_all_search_phrases()
+        holmes_manager_with_variable_search_phrases.register_search_phrase(
+                "A dog chases a cat")
+        matches = holmes_manager_with_variable_search_phrases.match()
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_token.i, 1)
+        self.assertEqual(matches[0].word_matches[0].first_document_token.i, 1)
+        self.assertEqual(matches[0].word_matches[0].last_document_token.i, 1)
+        self.assertEqual(matches[0].word_matches[1].document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[1].first_document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[1].last_document_token.i, 2)
+        print(matches[0].word_matches[2].document_token.i)
+        self.assertEqual(matches[0].word_matches[2].document_token.i, 4)
+        self.assertEqual(matches[0].word_matches[2].first_document_token.i, 3)
+        self.assertEqual(matches[0].word_matches[2].last_document_token.i, 4)
+
+    def test_entity_multiword_information_in_word_match_objects_at_sentence_boundaries(self):
+        holmes_manager_with_variable_search_phrases.remove_all_documents()
+        holmes_manager_with_variable_search_phrases.parse_and_register_document(
+                "Fido chased Richard Paul Hudson.")
+        holmes_manager_with_variable_search_phrases.remove_all_search_phrases()
+        holmes_manager_with_variable_search_phrases.register_search_phrase(
+                "A dog chases an ENTITYPERSON")
+        matches = holmes_manager_with_variable_search_phrases.match()
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_token.i, 0)
+        self.assertEqual(matches[0].word_matches[0].first_document_token.i, 0)
+        self.assertEqual(matches[0].word_matches[0].last_document_token.i, 0)
+        self.assertEqual(matches[0].word_matches[1].document_token.i, 1)
+        self.assertEqual(matches[0].word_matches[1].first_document_token.i, 1)
+        self.assertEqual(matches[0].word_matches[1].last_document_token.i, 1)
+        self.assertEqual(matches[0].word_matches[2].document_token.i, 4)
+        self.assertEqual(matches[0].word_matches[2].first_document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[2].last_document_token.i, 4)
+
+    def test_entity_multiword_information_in_word_match_objects_not_at_sentence_boundaries(self):
+        holmes_manager_with_variable_search_phrases.remove_all_documents()
+        holmes_manager_with_variable_search_phrases.parse_and_register_document(
+                "Yesterday Fido chased Richard Paul Hudson in Prague.")
+        holmes_manager_with_variable_search_phrases.remove_all_search_phrases()
+        holmes_manager_with_variable_search_phrases.register_search_phrase(
+                "A dog chases an ENTITYPERSON")
+        matches = holmes_manager_with_variable_search_phrases.match()
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_token.i, 1)
+        self.assertEqual(matches[0].word_matches[0].first_document_token.i, 1)
+        self.assertEqual(matches[0].word_matches[0].last_document_token.i, 1)
+        self.assertEqual(matches[0].word_matches[1].document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[1].first_document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[1].last_document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[2].document_token.i, 5)
+        self.assertEqual(matches[0].word_matches[2].first_document_token.i, 3)
+        self.assertEqual(matches[0].word_matches[2].last_document_token.i, 5)

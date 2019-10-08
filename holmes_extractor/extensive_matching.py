@@ -13,6 +13,7 @@ class TopicMatch:
     Properties:
 
     document_label -- the document label.
+    index_within_document -- the index within the document where 'score' was achieved.
     start_index -- the start index of the topic match within the document.
     end_index -- the end index of the topic match within the document.
     sentences_start_index -- the start index within the document of the sentence that contains
@@ -23,17 +24,20 @@ class TopicMatch:
     relative_end_index -- the end index of the topic match relative to 'sentences_start_index'
     score -- the similarity score of the topic match
     text -- the text between 'sentences_start_index' and 'sentences_end_index'
+    structural_matches -- the contained structural matches
     """
 
-    def __init__(self, document_label, start_index, end_index, sentences_start_index,
-            sentences_end_index, score, text):
+    def __init__(self, document_label, index_within_document, start_index, end_index,
+            sentences_start_index, sentences_end_index, score, text, structural_matches):
         self.document_label = document_label
+        self.index_within_document = index_within_document
         self.start_index = start_index
         self.end_index = end_index
         self.sentences_start_index = sentences_start_index
         self.sentences_end_index = sentences_end_index
         self.score = score
         self.text = text
+        self.structural_matches = structural_matches
 
     @property
     def relative_start_index(self):
@@ -43,12 +47,18 @@ class TopicMatch:
     def relative_end_index(self):
         return self.end_index - self.sentences_start_index
 
+class PhraseletActivationTracker:
+
+    def __init__(self, position, score):
+        self.position = position
+        self.score = score
+
 class TopicMatcher:
     """A topic matcher object. See manager.py for details of the properties."""
 
     def __init__(self, holmes, *, maximum_activation_distance, relation_score,
             reverse_only_relation_score, single_word_score, single_word_any_tag_score,
-            overlapping_relation_multiplier, overlap_memory_size, maximum_activation_value,
+            overlapping_relation_multiplier, embedding_penalty, maximum_activation_value,
             maximum_number_of_single_word_matches_for_embedding_based_retries=1000,
             embedding_based_retry_preexisting_match_cutoff=0.2,
             sideways_match_extent, only_one_result_per_document, number_of_results):
@@ -62,7 +72,7 @@ class TopicMatcher:
         self.single_word_score = single_word_score
         self.single_word_any_tag_score = single_word_any_tag_score
         self.overlapping_relation_multiplier = overlapping_relation_multiplier
-        self.overlap_memory_size = overlap_memory_size
+        self.embedding_penalty = embedding_penalty
         self.maximum_activation_value = maximum_activation_value
         self.maximum_number_of_single_word_matches_for_embedding_based_retries = \
                 maximum_number_of_single_word_matches_for_embedding_based_retries
@@ -71,6 +81,26 @@ class TopicMatcher:
         self.sideways_match_extent = sideways_match_extent
         self.only_one_result_per_document = only_one_result_per_document
         self.number_of_results = number_of_results
+
+    def _get_word_match_from_match(self, match, parent):
+        ## child if parent==False
+        for word_match in match.word_matches:
+            if parent and word_match.search_phrase_token.dep_ == 'ROOT':
+                return word_match
+            if not parent and word_match.search_phrase_token.dep_ != 'ROOT':
+                return word_match
+        raise RuntimeError(''.join(('Word match not found with parent==', str(parent))))
+
+    def _add_to_dict_list(self, dict, key, value):
+        if key in dict:
+            dict[key].append(value)
+        else:
+            dict[key] = [value]
+
+    def _add_to_dict_set(self, dict, key, value):
+        if not key in dict:
+            dict[key] = set()
+        dict[key].add(value)
 
     def topic_match_documents_against(self, text_to_match):
         """ Performs a topic match against the loaded documents.
@@ -106,17 +136,6 @@ class TopicMatcher:
                 self.child_match_corpus_words_to_matches = {}
                 self.phraselet_labels_to_child_match_corpus_words = {}
 
-        def add_to_dict_list(dict, key, value):
-            if key in dict:
-                dict[key].append(value)
-            else:
-                dict[key] = [value]
-
-        def add_to_dict_set(dict, key, value):
-            if not key in dict:
-                dict[key] = set()
-            dict[key].add(value)
-
         def get_phraselet_word_match_info(word):
             if word in self._words_to_phraselet_word_match_infos:
                 return self._words_to_phraselet_word_match_infos[word]
@@ -124,15 +143,6 @@ class TopicMatcher:
                 phraselet_word_match_info = PhraseletWordMatchInfo()
                 self._words_to_phraselet_word_match_infos[word] = phraselet_word_match_info
                 return phraselet_word_match_info
-
-        def get_word_match_from_match(match, parent):
-            ## child if parent==False
-            for word_match in match.word_matches:
-                if parent and word_match.search_phrase_token.dep_ == 'ROOT':
-                    return word_match
-                if not parent and word_match.search_phrase_token.dep_ != 'ROOT':
-                    return word_match
-            raise RuntimeError(''.join(('Word match not found with parent==', str(parent))))
 
         def get_indexes_for_embedding_retry(phraselet,
                 parent_document_labels_to_indexes_for_embedding_retry_sets,
@@ -160,7 +170,8 @@ class TopicMatcher:
                     for corpus_word_position in \
                             parent_single_word_match_corpus_words.difference(
                             parent_relation_match_corpus_words):
-                        add_to_dict_set(child_document_labels_to_indexes_for_embedding_retry_sets,
+                        self._add_to_dict_set(
+                                child_document_labels_to_indexes_for_embedding_retry_sets,
                                 corpus_word_position.document_label, corpus_word_position.index)
             child_token = [token for token in phraselet.matchable_tokens if token.i !=
                     parent_token.i][0]
@@ -193,7 +204,7 @@ class TopicMatcher:
                             if self._semantic_analyzer.dependency_labels_match(
                                     search_phrase_dependency_label=linking_dependency,
                                     document_dependency_label=parent_dependency[1]):
-                                add_to_dict_set(
+                                self._add_to_dict_set(
                                         parent_document_labels_to_indexes_for_embedding_retry_sets,
                                         corpus_word_position.document_label,
                                         parent_dependency[0])
@@ -201,23 +212,23 @@ class TopicMatcher:
         def rebuild_document_info_dict(matches, phraselet_labels_to_search_phrases):
 
             def process_word_match(match, parent): # 'True' -> parent, 'False' -> child
-                word_match = get_word_match_from_match(match, parent)
+                word_match = self._get_word_match_from_match(match, parent)
                 word = word_match.search_phrase_word
                 phraselet_word_match_info = get_phraselet_word_match_info(word)
                 corpus_word_position = CorpusWordPosition(match.document_label,
                         word_match.document_token.i)
                 if parent:
-                    add_to_dict_list(
+                    self._add_to_dict_list(
                             phraselet_word_match_info.parent_match_corpus_words_to_matches,
                             corpus_word_position, match)
-                    add_to_dict_list(
+                    self._add_to_dict_list(
                             phraselet_word_match_info.phraselet_labels_to_parent_match_corpus_words,
                             match.search_phrase_label, corpus_word_position)
                 else:
-                    add_to_dict_list(
+                    self._add_to_dict_list(
                             phraselet_word_match_info.child_match_corpus_words_to_matches,
                             corpus_word_position, match)
-                    add_to_dict_list(
+                    self._add_to_dict_list(
                             phraselet_word_match_info.phraselet_labels_to_child_match_corpus_words,
                             match.search_phrase_label, corpus_word_position)
 
@@ -236,7 +247,7 @@ class TopicMatcher:
         def filter_superfluous_matches(match):
 
             def get_other_matches_at_same_word(match, parent):  # 'True' -> parent, 'False' -> child
-                word_match = get_word_match_from_match(match, parent)
+                word_match = self._get_word_match_from_match(match, parent)
                 word = word_match.search_phrase_word
                 phraselet_word_match_info = get_phraselet_word_match_info(word)
                 corpus_word_position = CorpusWordPosition(match.document_label,
@@ -264,12 +275,12 @@ class TopicMatcher:
                 return True
 
             def perform_checks_at_pole(match, parent): # pole is 'True' -> parent, 'False' -> child
-                this_this_pole_word_match = get_word_match_from_match(match, parent)
+                this_this_pole_word_match = self._get_word_match_from_match(match, parent)
                 this_pole_index = this_this_pole_word_match.document_token.i
-                this_other_pole_word_match = get_word_match_from_match(match, not parent)
+                this_other_pole_word_match = self._get_word_match_from_match(match, not parent)
                 for other_this_pole_match in get_other_matches_at_same_word(match, parent):
                     other_other_pole_word_match = \
-                            get_word_match_from_match(other_this_pole_match, not parent)
+                            self._get_word_match_from_match(other_this_pole_match, not parent)
                     if this_other_pole_word_match.document_token.i == other_other_pole_word_match.\
                             document_token.i and other_other_pole_word_match.similarity_measure > \
                             this_other_pole_word_match.similarity_measure:
@@ -357,92 +368,95 @@ class TopicMatcher:
                 position_sorted_structural_matches)
 
     def perform_activation_scoring(self, position_sorted_structural_matches):
-
-        def increase_activation_score(adjusted_increase, this_label, last_label,
-                current_activation_score, current_unconstrained_activation_score):
-            if this_label == last_label:
-                current_activation_score = max(current_activation_score, adjusted_increase)
-                current_unconstrained_activation_score = \
-                        max(current_unconstrained_activation_score, adjusted_increase)
-            else:
-                current_activation_score += adjusted_increase
-                current_unconstrained_activation_score += adjusted_increase
-            return current_activation_score, current_unconstrained_activation_score
-
         """
         Read through the documents measuring the activation based on where
         in the document structural matches were found.
         """
+        def get_set_from_dict(dict, key):
+            if key in dict:
+                return dict[key]
+            else:
+                return set()
+
+        def get_current_activation(phraselet_activation_tracker, current_index):
+            distance_to_last_match = current_index - phraselet_activation_tracker.position
+            tailoff_quotient = distance_to_last_match / self.maximum_activation_distance
+            if tailoff_quotient > 1.0:
+                tailoff_quotient = 1.0
+            return (1-tailoff_quotient) * phraselet_activation_tracker.score
+
+        document_labels_to_indexes_to_phraselet_labels = {}
+        for match in (match for match in position_sorted_structural_matches if not
+                match.from_single_word_phraselet):
+            if match.document_label in document_labels_to_indexes_to_phraselet_labels:
+                inner_dict = document_labels_to_indexes_to_phraselet_labels[match.document_label]
+            else:
+                inner_dict = {}
+                document_labels_to_indexes_to_phraselet_labels[match.document_label] = inner_dict
+            index = self._get_word_match_from_match(match, True).document_token.i
+            self._add_to_dict_set(inner_dict, index, match.search_phrase_label)
+            index = self._get_word_match_from_match(match, False).document_token.i
+            self._add_to_dict_set(inner_dict, index, match.search_phrase_label)
         current_document_label = None
         for index, match in enumerate(position_sorted_structural_matches):
             match.original_index_within_list = index # store for later use after resorting
             if match.document_label != current_document_label or index == 0:
                 current_document_label = match.document_label
                 current_activation_score = 0
-                current_unconstrained_activation_score = 0
-                last_single_word_search_phrase_label = None
-                last_relation_search_phrase_label = None
-                # The deque has to be twice the size of the topic matches to track because
-                # each topic match under consideration involves two tokens
-                previous_topic_matches = collections.deque(maxlen=self.overlap_memory_size * 2)
-            else:
-                distance_to_last_match = match.index_within_document - \
-                        position_sorted_structural_matches[index-1].index_within_document
-                tailoff_quotient = distance_to_last_match / self.maximum_activation_distance
-                if tailoff_quotient > 1.0:
-                    tailoff_quotient = 1.0
-                current_activation_score = current_activation_score * (1 - tailoff_quotient)
-                current_unconstrained_activation_score = current_unconstrained_activation_score * \
-                        (1 - tailoff_quotient)
-            adjusted_relation_score = self.relation_score * float(match.overall_similarity_measure)
-            adjusted_reverse_only_relation_score = self.reverse_only_relation_score * \
-                    float(match.overall_similarity_measure)
-            adjusted_single_word_score = self.single_word_score * \
-                    float(match.overall_similarity_measure)
-            adjusted_single_word_any_tag_score = self.single_word_any_tag_score * \
-                    float(match.overall_similarity_measure)
-            if not match.from_single_word_phraselet:
-                if match.from_reverse_only_topic_match_phraselet:
-                    current_activation_score, current_unconstrained_activation_score = \
-                            increase_activation_score(adjusted_reverse_only_relation_score,
-                            match.search_phrase_label, last_relation_search_phrase_label,
-                            current_activation_score, current_unconstrained_activation_score)
+                phraselet_labels_to_phraselet_activation_trackers = {}
+                if current_document_label in document_labels_to_indexes_to_phraselet_labels:
+                    indexes_to_phraselet_labels = \
+                            document_labels_to_indexes_to_phraselet_labels[current_document_label]
                 else:
-                    current_activation_score, current_unconstrained_activation_score = \
-                            increase_activation_score(adjusted_relation_score,
-                            match.search_phrase_label, last_relation_search_phrase_label,
-                            current_activation_score, current_unconstrained_activation_score)
-                for word_match in match.word_matches:
-                    if last_relation_search_phrase_label != match.search_phrase_label \
-                            and word_match.document_token.i in previous_topic_matches:
-                        # We have matched a larger structure from the text to match
-                        current_activation_score *= self.overlapping_relation_multiplier
-                        current_unconstrained_activation_score *= \
-                                self.overlapping_relation_multiplier
-                    previous_topic_matches.append(word_match.document_token.i)
-                last_relation_search_phrase_label = match.search_phrase_label
-            else:
+                    indexes_to_phraselet_labels = {}
+            match.is_overlapping_relation = False
+            if match.from_single_word_phraselet:
                 if match.from_topic_match_phraselet_created_without_matching_tags:
-                    current_activation_score, current_unconstrained_activation_score = \
-                            increase_activation_score(adjusted_single_word_any_tag_score,
-                            match.search_phrase_label, last_single_word_search_phrase_label,
-                            current_activation_score, current_unconstrained_activation_score)
+                    this_match_score = self.single_word_any_tag_score
                 else:
-                    current_activation_score, current_unconstrained_activation_score = \
-                            increase_activation_score(adjusted_single_word_score,
-                            match.search_phrase_label, last_single_word_search_phrase_label,
-                            current_activation_score, current_unconstrained_activation_score)
-                last_single_word_search_phrase_label = match.search_phrase_label
-            if current_activation_score > self.maximum_activation_value:
-                # We do not allow the activation to get too large. At the same time, we store
-                # 'unconstrained_topic_score' to ensure the correct sorting of topic matches
-                # where there are several with the maximum score.
-                current_activation_score = self.maximum_activation_value
-            last_search_phrase_label = match.search_phrase_label
-            match.topic_score = current_activation_score
-            match.unconstrained_topic_score = current_unconstrained_activation_score
-        return sorted(position_sorted_structural_matches, key=lambda match: (0-match.topic_score,
-                0-match.unconstrained_topic_score))
+                    this_match_score = self.single_word_score
+            else:
+                if match.from_reverse_only_topic_match_phraselet:
+                    this_match_score = self.reverse_only_relation_score
+                else:
+                    this_match_score = self.relation_score
+                this_match_parent_index = match.index_within_document
+                this_match_child_index = self._get_word_match_from_match(match, False).\
+                        document_token.i
+                other_relevant_phraselet_labels = get_set_from_dict(indexes_to_phraselet_labels,
+                        this_match_parent_index) | get_set_from_dict(indexes_to_phraselet_labels,
+                        this_match_child_index)
+                other_relevant_phraselet_labels.remove(match.search_phrase_label)
+                if len(other_relevant_phraselet_labels) > 0:
+                    match.is_overlapping_relation=True
+                    this_match_score *= self.overlapping_relation_multiplier
+            overall_similarity_measure = float(match.overall_similarity_measure)
+            if overall_similarity_measure < 1.0:
+                this_match_score *= self.embedding_penalty * overall_similarity_measure
+            if match.search_phrase_label in phraselet_labels_to_phraselet_activation_trackers:
+                phraselet_activation_tracker = phraselet_labels_to_phraselet_activation_trackers[
+                        match.search_phrase_label]
+                current_score = get_current_activation(phraselet_activation_tracker,
+                        match.index_within_document)
+                if this_match_score > current_score:
+                    phraselet_activation_tracker.score = this_match_score
+                else:
+                    phraselet_activation_tracker.score = current_score
+                phraselet_activation_tracker.position = match.index_within_document
+            else:
+                phraselet_labels_to_phraselet_activation_trackers[match.search_phrase_label] =\
+                        PhraseletActivationTracker(match.index_within_document, this_match_score)
+            match.topic_score = 0
+            for phraselet_label in list(phraselet_labels_to_phraselet_activation_trackers):
+                phraselet_activation_tracker = phraselet_labels_to_phraselet_activation_trackers[
+                        phraselet_label]
+                current_activation = get_current_activation(phraselet_activation_tracker,
+                        match.index_within_document)
+                if current_activation <= 0:
+                    del phraselet_labels_to_phraselet_activation_trackers[phraselet_label]
+                else:
+                    match.topic_score += current_activation
+        return sorted(position_sorted_structural_matches, key=lambda match: 0-match.topic_score)
 
     def get_topic_matches(self, score_sorted_structural_matches,
             position_sorted_structural_matches):
@@ -465,18 +479,18 @@ class TopicMatcher:
                     self.sideways_match_extent:
                 start_index = match.index_within_document
             for word_match in match.word_matches:
-                if word_match.document_token.i < start_index and \
+                if word_match.first_document_token.i < start_index and \
                         reference_match_index_within_document - word_match.document_token.i \
                         < self.sideways_match_extent:
-                    start_index = word_match.document_token.i
+                    start_index = word_match.first_document_token.i
             if match.index_within_document > end_index and match.index_within_document - \
                     reference_match_index_within_document < self.sideways_match_extent:
                 end_index = match.index_within_document
             for word_match in match.word_matches:
-                if word_match.document_token.i > end_index and \
-                        word_match.document_token.i - reference_match_index_within_document \
+                if word_match.last_document_token.i > end_index and \
+                        word_match.last_document_token.i - reference_match_index_within_document \
                         < self.sideways_match_extent:
-                    end_index = word_match.document_token.i
+                    end_index = word_match.last_document_token.i
             return start_index, end_index
 
         if self.only_one_result_per_document:
@@ -496,47 +510,48 @@ class TopicMatcher:
                     score_sorted_match.index_within_document,
                     score_sorted_match.index_within_document,
                     score_sorted_match, score_sorted_match.index_within_document)
-            index_within_list = score_sorted_match.original_index_within_list - 1
-            while index_within_list >= 0 and position_sorted_structural_matches[
-                    index_within_list].document_label == score_sorted_match.document_label \
-                    and position_sorted_structural_matches[index_within_list + 1].topic_score > \
-                    self.single_word_score:
-                    # index_within_list + 1: when a complex structure is matched, it will often
-                    # begin with a single noun that should be included within the topic match
-                    # indexes
+            previous_index_within_list = score_sorted_match.original_index_within_list
+            while previous_index_within_list > 0 and position_sorted_structural_matches[
+                    previous_index_within_list-1].document_label == \
+                    score_sorted_match.document_label and position_sorted_structural_matches[
+                    previous_index_within_list].topic_score > self.single_word_score:
+                    # index_within_list rather than index_within_list -1 : when a complex structure
+                    # is matched, it will often begin with a single noun that should be included
+                    # within the topic match indexes
                 if match_contained_within_existing_topic_match(topic_matches,
                         position_sorted_structural_matches[
-                        index_within_list]):
+                        previous_index_within_list-1]):
                     break
                 if score_sorted_match.index_within_document - position_sorted_structural_matches[
-                        index_within_list].index_within_document > self.sideways_match_extent:
+                        previous_index_within_list-1].index_within_document > \
+                        self.sideways_match_extent:
                     break
+                previous_index_within_list -=1
                 start_index, end_index = alter_start_and_end_indexes_for_match(
                         start_index, end_index,
-                        position_sorted_structural_matches[index_within_list],
+                        position_sorted_structural_matches[previous_index_within_list],
                         score_sorted_match.index_within_document
                 )
-                index_within_list -= 1
-            index_within_list = score_sorted_match.original_index_within_list + 1
-            while index_within_list + 1 <= len(score_sorted_structural_matches) and \
-                    position_sorted_structural_matches[index_within_list].document_label == \
+            next_index_within_list = score_sorted_match.original_index_within_list
+            while next_index_within_list + 1 < len(score_sorted_structural_matches) and \
+                    position_sorted_structural_matches[next_index_within_list+1].document_label == \
                     score_sorted_match.document_label and \
-                    position_sorted_structural_matches[index_within_list].topic_score > \
+                    position_sorted_structural_matches[next_index_within_list+1].topic_score >= \
                     self.single_word_score:
                 if match_contained_within_existing_topic_match(topic_matches,
                         position_sorted_structural_matches[
-                        index_within_list]):
+                        next_index_within_list+1]):
                     break
                 if position_sorted_structural_matches[
-                        index_within_list].index_within_document - \
+                        next_index_within_list+1].index_within_document - \
                         score_sorted_match.index_within_document > self.sideways_match_extent:
                     break
+                next_index_within_list += 1
                 start_index, end_index = alter_start_and_end_indexes_for_match(
                         start_index, end_index,
-                        position_sorted_structural_matches[index_within_list],
+                        position_sorted_structural_matches[next_index_within_list],
                         score_sorted_match.index_within_document
                 )
-                index_within_list += 1
             working_document = \
                     self.structural_matcher.get_document(score_sorted_match.document_label)
             relevant_sentences = [sentence for sentence in working_document.sents
@@ -545,8 +560,10 @@ class TopicMatcher:
             sentences_end_index = relevant_sentences[-1].end - 1
             text = working_document[sentences_start_index: sentences_end_index + 1].text
             topic_matches.append(TopicMatch(score_sorted_match.document_label,
+                    score_sorted_match.index_within_document,
                     start_index, end_index, sentences_start_index, sentences_end_index,
-                    score_sorted_match.topic_score, text))
+                    score_sorted_match.topic_score, text, position_sorted_structural_matches[
+                    previous_index_within_list:next_index_within_list+1]))
             if self.only_one_result_per_document:
                 existing_document_labels.append(score_sorted_match.document_label)
             counter += 1
@@ -566,6 +583,36 @@ class TopicMatcher:
         tied_result_quotient -- the quotient between a result and following results above which
             the results are interpreted as tied
         """
+
+        class WordInfo:
+
+            def __init__(self, relative_start_index, relative_end_index, type):
+                self.relative_start_index = relative_start_index
+                self.relative_end_index = relative_end_index
+                self.type = type
+                self.is_highest_activation = False
+
+            def __eq__(self, other):
+                return type(other) == WordInfo and self.relative_start_index == \
+                        other.relative_start_index and self.relative_end_index == \
+                        other.relative_end_index
+
+            def __ne__(self, other):
+                return not self.__eq__(other)
+
+            def __hash__(self):
+                return hash((self.relative_start_index, self.relative_end_index))
+
+        def get_containing_word_info_key(word_infos_to_word_infos, this_word_info):
+            for other_word_info in word_infos_to_word_infos:
+                if this_word_info.relative_start_index > other_word_info.relative_start_index and \
+                        this_word_info.relative_end_index <= other_word_info.relative_end_index:
+                    return other_word_info
+                if this_word_info.relative_start_index >= other_word_info.relative_start_index and\
+                        this_word_info.relative_end_index < other_word_info.relative_end_index:
+                    return other_word_info
+            return None
+
         topic_matches = self.topic_match_documents_against(text_to_match)
         topic_match_dicts = []
         for topic_match_counter in range(0, len(topic_matches)):
@@ -574,24 +621,73 @@ class TopicMatcher:
             sentences_character_start_index_in_document = doc[topic_match.sentences_start_index].idx
             sentences_character_end_index_in_document = doc[topic_match.sentences_end_index].idx + \
                     len(doc[topic_match.sentences_end_index].text)
-            finding_character_start_index_in_sentences = doc[topic_match.start_index].idx - \
+            word_infos_to_word_infos = {}
+            for match in topic_match.structural_matches:
+                if len(match.word_matches) == 0: # single word phraselets can have word matches
+                                                 # if the search phrase token is a multiword
+                    relative_start_index = doc[match.index_within_document].idx - \
+                            sentences_character_start_index_in_document
+                    relative_end_index = doc[match.index_within_document].idx + \
+                            len(doc[match.index_within_document].text) - \
+                            sentences_character_start_index_in_document
+                    word_info = WordInfo(relative_start_index, relative_end_index, 'single')
+                    if not word_info in word_infos_to_word_infos:
+                        word_infos_to_word_infos[word_info] = word_info
+                else:
+                    for word_match in match.word_matches:
+                        relative_start_index = word_match.first_document_token.idx - \
+                                sentences_character_start_index_in_document
+                        relative_end_index = word_match.last_document_token.idx + \
+                                len(word_match.last_document_token.text) - \
+                                sentences_character_start_index_in_document
+                        if match.is_overlapping_relation:
+                            word_info = WordInfo(relative_start_index, relative_end_index,
+                                    'overlapping_relation')
+                        elif match.from_single_word_phraselet:
+                            word_info = WordInfo(relative_start_index, relative_end_index,
+                                    'single')
+                        else:
+                            word_info = WordInfo(relative_start_index, relative_end_index,
+                                    'relation')
+                        if word_info in word_infos_to_word_infos:
+                            existing_word_info = word_infos_to_word_infos[word_info]
+                            if not existing_word_info.type == 'overlapping_relation':
+                                if match.is_overlapping_relation:
+                                    existing_word_info.type = 'overlapping_relation'
+                                elif not match.from_single_word_phraselet:
+                                    existing_word_info.type = 'relation'
+                        else:
+                            word_infos_to_word_infos[word_info] = word_info
+            for word_info in list(word_infos_to_word_infos.keys()):
+                if get_containing_word_info_key(word_infos_to_word_infos, word_info) != None:
+                    del word_infos_to_word_infos[word_info]
+            highest_activation_relative_start_index = doc[topic_match.index_within_document].idx - \
                     sentences_character_start_index_in_document
-            finding_character_end_index_in_sentences = doc[topic_match.end_index].idx + \
-                    len(doc[topic_match.end_index].text) - \
+            highest_activation_relative_end_index = doc[topic_match.index_within_document].idx + \
+                    len(doc[topic_match.index_within_document].text) - \
                     sentences_character_start_index_in_document
+            highest_activation_word_info = WordInfo(highest_activation_relative_start_index,
+                    highest_activation_relative_end_index, 'temp')
+            containing_word_info = get_containing_word_info_key(word_infos_to_word_infos,
+                    highest_activation_word_info)
+            if containing_word_info != None:
+                highest_activation_word_info = containing_word_info
+            word_infos_to_word_infos[highest_activation_word_info].is_highest_activation=True
+            word_infos = sorted(word_infos_to_word_infos.values(), key=lambda
+                    word_info:(word_info.relative_start_index, word_info.relative_end_index))
             topic_match_dict = {
                 'document_label': topic_match.document_label,
                 'text': topic_match.text,
+                'text_to_match': text_to_match,
                 'rank': str(topic_match_counter + 1),
                 'sentences_character_start_index_in_document':
                         sentences_character_start_index_in_document,
                 'sentences_character_end_index_in_document':
                         sentences_character_end_index_in_document,
-                'finding_character_start_index_in_sentences':
-                        finding_character_start_index_in_sentences,
-                'finding_character_end_index_in_sentences':
-                        finding_character_end_index_in_sentences,
                 'score': topic_match.score,
+                'word_infos': [[word_info.relative_start_index, word_info.relative_end_index,
+                        word_info.type, word_info.is_highest_activation] for word_info
+                        in word_infos]
             }
             topic_match_dicts.append(topic_match_dict)
         topic_match_counter = 0

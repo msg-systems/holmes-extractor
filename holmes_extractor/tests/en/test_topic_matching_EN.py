@@ -69,15 +69,15 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 holmes_manager_coref)
 
     def test_embedding_matching_not_root(self):
-        self._check_equals("I saw a king", "Somebody saw a queen", 22,
+        self._check_equals("I saw a king", "Somebody saw a queen", 15,
                 holmes_manager_coref)
 
     def test_embedding_matching_root(self):
-        self._check_equals("I saw a king", "Somebody saw a queen", 28,
+        self._check_equals("I saw a king", "Somebody saw a queen", 19,
                 holmes_manager_coref_embedding_on_root)
 
     def test_embedding_matching_root_word_only(self):
-        self._check_equals("king", "queen", 7,
+        self._check_equals("king", "queen", 4,
                 holmes_manager_coref_embedding_on_root)
 
     def test_matching_only_adjective(self):
@@ -91,11 +91,11 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 holmes_manager_coref)
 
     def test_stopwords_control(self):
-        self._check_equals("The donkey paints a roof", "The donkey paints a roof", 87,
+        self._check_equals("The donkey paints a roof", "The donkey paints a roof", 82,
                 holmes_manager_coref)
 
     def test_reverse_matching_noun_no_coreference(self):
-        self._check_equals("A car with an engine", "An automobile with an engine", 61,
+        self._check_equals("A car with an engine", "An automobile with an engine", 51,
                 holmes_manager_coref)
 
     def test_reverse_matching_noun_no_coreference_control_no_embeddings(self):
@@ -103,26 +103,26 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 holmes_manager_coref_no_embeddings)
 
     def test_reverse_matching_noun_no_coreference_control_same_word(self):
-        self._check_equals("A car with an engine", "A car with an engine", 79,
+        self._check_equals("A car with an engine", "A car with an engine", 75,
                 holmes_manager_coref_no_embeddings)
 
-    def test_reverse_matching_noun_entity_governor_match(self):
-        self._check_equals("An ENTITYPERSON with a car", "Richard Hudson with a vehicle", 29,
+    def test_forward_matching_noun_entity_governor_match(self):
+        self._check_equals("An ENTITYPERSON with a car", "Richard Hudson with a vehicle", 23,
                 holmes_manager_coref)
 
-    def test_reverse_matching_noun_entity_governor_no_match(self):
+    def test_forward_matching_noun_entity_governor_no_match(self):
         self._check_equals("An ENTITYPERSON with a car", "Richard Hudson with a lion", 14,
                 holmes_manager_coref)
 
     def test_reverse_matching_noun_entity_governed(self):
-        self._check_equals("A car with an ENTITYPERSON", "A vehicle with Richard Hudson", 58,
+        self._check_equals("A car with an ENTITYPERSON", "A vehicle with Richard Hudson", 50,
                 holmes_manager_coref)
 
-    def test_reverse_matching_noun_entitynoun_governor_match(self):
+    def test_forward_matching_noun_entitynoun_governor_match(self):
         self._check_equals("An ENTITYNOUN with a car", "Richard Hudson with a vehicle", 5,
                 holmes_manager_coref)
 
-    def test_reverse_matching_noun_entitynoun_governor_no_match(self):
+    def test_forward_matching_noun_entitynoun_governor_no_match(self):
         self._check_equals("An ENTITYNOUN with a car", "Richard Hudson with a lion", 5,
                 holmes_manager_coref)
 
@@ -150,7 +150,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     def test_reverse_matching_noun_coreference_on_governor(self):
         self._check_equals("A car with an engine", "I saw an automobile. I saw it with an engine",
-                60,
+                50,
                 holmes_manager_coref)
 
     def test_reverse_matching_noun_coreference_on_governor_control_no_embeddings(self):
@@ -160,12 +160,12 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     def test_reverse_matching_noun_coreference_on_governor_control_same_word(self):
         self._check_equals("A car with an engine", "I saw a car. I saw it with an engine",
-                77,
+                73,
                 holmes_manager_coref_no_embeddings)
 
     def test_reverse_matching_noun_coreference_on_governed(self):
         self._check_equals(
-                "An engine with a car", "I saw an automobile. There was an engine with it", 31,
+                "An engine with a car", "I saw an automobile. There was an engine with it", 25,
                 holmes_manager_coref)
 
     def test_reverse_matching_noun_coreference_on_governed_control_no_embeddings(self):
@@ -175,11 +175,11 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     def test_reverse_matching_noun_coreference_on_governed_control_same_word(self):
         self._check_equals(
-                "An engine with a car", "I saw a car. There was an engine with it", 85,
+                "An engine with a car", "I saw a car. There was an engine with it", 76,
                 holmes_manager_coref_no_embeddings)
 
     def test_reverse_matching_verb(self):
-        self._check_equals("A company is bought", "A company is purchased", 27,
+        self._check_equals("A company is bought", "A company is purchased", 20,
                 holmes_manager_coref)
 
     def test_reverse_matching_verb_control_no_embeddings(self):
@@ -216,7 +216,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     def test_repeated_relation_label_not_reverse_only_no_common_term(self):
         self._check_equals("a big dog",
-                "a big dog and a big dog", 48,
+                "a big dog and a big dog", 34,
                 holmes_manager_coref)
 
     def test_repeated_relation_label_not_reverse_only_common_term(self):
@@ -226,7 +226,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     def test_repeated_relation_label_reverse_only_no_common_term(self):
         self._check_equals("in Germany",
-                "in Germany and in Germany", 43,
+                "in Germany and in Germany", 29,
                 holmes_manager_coref)
 
     def test_repeated_relation_label_reverse_only_common_term(self):
@@ -291,22 +291,22 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     def test_multiword_in_text_to_search_and_in_document_not_root_match_on_embeddings(self):
         self._check_equals("Richard Paul Hudson came",
-                "I saw Richard Paul Hudson", 27,
+                "I saw Richard Paul Hudson", 24,
                 holmes_manager_coref_embedding_on_root)
 
     def test_multiword_in_text_to_search_and_in_document_root_match_on_embeddings(self):
         self._check_equals("the tired Richard Paul Hudson",
-                "I saw Richard Paul Hudson", 27,
+                "I saw Richard Paul Hudson", 24,
                 holmes_manager_coref_embedding_on_root)
 
     def test_multiword_in_text_to_search_and_in_document_not_root_no_embeddings(self):
         self._check_equals("Richard Paul Hudson came",
-                "I saw Richard Paul Hudson", 27,
+                "I saw Richard Paul Hudson", 24,
                 holmes_manager_coref_embedding_on_root)
 
     def test_multiword_in_text_to_search_and_in_document_root_no_embeddings(self):
         self._check_equals("the tired Richard Paul Hudson",
-                "I saw Richard Paul Hudson", 27,
+                "I saw Richard Paul Hudson", 24,
                 holmes_manager_coref_embedding_on_root)
 
     def test_coreference_double_match_on_governed(self):
@@ -401,7 +401,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 single_word_score=5,
                 single_word_any_tag_score=2,
                 overlapping_relation_multiplier=1.5,
-                overlap_memory_size=10,
+                embedding_penalty=0.5,
                 maximum_activation_value=1000,
                 sideways_match_extent=100,
                 only_one_result_per_document=False,
@@ -477,12 +477,32 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
                 "The dog chased the cat")
         self.assertEqual(topic_match_dictionaries,
-        [{'document_label': '', 'text': 'A dog chased a cat. A cat.', 'rank': '1=', 'sentences_character_start_index_in_document': 515, 'sentences_character_end_index_in_document': 541, 'finding_character_start_index_in_sentences': 2, 'finding_character_end_index_in_sentences': 25, 'score': 101.74933333333334}, {'document_label': '', 'text': 'A dog chased a cat.', 'rank': '1=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'finding_character_start_index_in_sentences': 2, 'finding_character_end_index_in_sentences': 18, 'score': 101.74933333333334}, {'document_label': 'animals', 'text': 'Dogs and cats.', 'rank': '3', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 14, 'finding_character_start_index_in_sentences': 0, 'finding_character_end_index_in_sentences': 13, 'score': 9.866666666666667}])
+        [{'document_label': '', 'text': 'A dog chased a cat. A cat.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'sentences_character_start_index_in_document': 515, 'sentences_character_end_index_in_document': 541, 'score': 99.34666666666668, 'word_infos': [[2, 5, 'overlapping_relation', False], [6, 12, 'overlapping_relation', False], [15, 18, 'overlapping_relation', True], [22, 25, 'single', False]]}, {'document_label': '', 'text': 'A dog chased a cat.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'score': 99.34666666666668, 'word_infos': [[2, 5, 'overlapping_relation', False], [6, 12, 'overlapping_relation', False], [15, 18, 'overlapping_relation', True]]}, {'document_label': 'animals', 'text': 'Dogs and cats.', 'text_to_match': 'The dog chased the cat', 'rank': '3', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 14, 'score': 9.866666666666667, 'word_infos': [[0, 4, 'single', False], [9, 13, 'single', True]]}])
         topic_match_dictionaries = \
                 holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
                 "The dog chased the cat", tied_result_quotient=0.01)
         self.assertEqual(topic_match_dictionaries,
-        [{'document_label': '', 'text': 'A dog chased a cat. A cat.', 'rank': '1=', 'sentences_character_start_index_in_document': 515, 'sentences_character_end_index_in_document': 541, 'finding_character_start_index_in_sentences': 2, 'finding_character_end_index_in_sentences': 25, 'score': 101.74933333333334}, {'document_label': '', 'text': 'A dog chased a cat.', 'rank': '1=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'finding_character_start_index_in_sentences': 2, 'finding_character_end_index_in_sentences': 18, 'score': 101.74933333333334}, {'document_label': 'animals', 'text': 'Dogs and cats.', 'rank': '1=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 14, 'finding_character_start_index_in_sentences': 0, 'finding_character_end_index_in_sentences': 13, 'score': 9.866666666666667}])
+        [{'document_label': '', 'text': 'A dog chased a cat. A cat.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'sentences_character_start_index_in_document': 515, 'sentences_character_end_index_in_document': 541, 'score': 99.34666666666668, 'word_infos': [[2, 5, 'overlapping_relation', False], [6, 12, 'overlapping_relation', False], [15, 18, 'overlapping_relation', True], [22, 25, 'single', False]]}, {'document_label': '', 'text': 'A dog chased a cat.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'score': 99.34666666666668, 'word_infos': [[2, 5, 'overlapping_relation', False], [6, 12, 'overlapping_relation', False], [15, 18, 'overlapping_relation', True]]}, {'document_label': 'animals', 'text': 'Dogs and cats.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 14, 'score': 9.866666666666667, 'word_infos': [[0, 4, 'single', False], [9, 13, 'single', True]]}])
+
+    def test_dictionaries_with_multiword_in_relation_not_final(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.remove_all_search_phrases()
+        holmes_manager_coref.parse_and_register_document("Richard Paul Hudson came home")
+        topic_match_dictionaries = \
+                holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
+                "Richard Paul Hudson was coming")
+        self.assertEqual(topic_match_dictionaries,
+        [{'document_label': '', 'text': 'Richard Paul Hudson came home', 'text_to_match': 'Richard Paul Hudson was coming', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 29, 'score': 42.77333333333333, 'word_infos': [[0, 19, 'relation', False], [20, 24, 'relation', True]]}])
+
+    def test_dictionaries_with_multiword_alone(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.remove_all_search_phrases()
+        holmes_manager_coref.parse_and_register_document("Richard Paul Hudson")
+        topic_match_dictionaries = \
+                holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
+                "Richard Paul Hudson")
+        self.assertEqual(topic_match_dictionaries,
+        [{'document_label': '', 'text': 'Richard Paul Hudson', 'text_to_match': 'Richard Paul Hudson', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'score': 10.92, 'word_infos': [[0, 19, 'single', True]]}])
 
     def test_result_ordering_by_match_length_different_documents(self):
         holmes_manager_coref.remove_all_documents()

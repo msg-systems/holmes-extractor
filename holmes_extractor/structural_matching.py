@@ -11,7 +11,11 @@ class WordMatch:
     search_phrase_token -- the spaCy token from the search phrase.
     search_phrase_word -- the word that matched from the search phrase.
     document_token -- the spaCy token from the document.
-    document_word -- the word that matched from the document.
+    first_document_token -- the first token that matched from the document, which will equal
+        *document_token* except with multiword matches.
+    last_document_token -- the lst token that matched from the document, which will equal
+        *document_token* except with multiword matches.
+    document_word -- the word that matched structurally from the document.
     type -- *direct*, *entity*, *embedding* or *ontology*.
     similarity_measure -- for type *embedding*, the similarity between the two tokens,
         otherwise 1.0.
@@ -30,13 +34,16 @@ class WordMatch:
         *extracted_word*, or *0* if ontology-based matching is not active.
     """
 
-    def __init__(self, search_phrase_token, search_phrase_word, document_token, document_word,
+    def __init__(self, search_phrase_token, search_phrase_word, document_token,
+            first_document_token, last_document_token, document_word,
             type, similarity_measure, is_negated, is_uncertain,
             structurally_matched_document_token, extracted_word, depth):
 
         self.search_phrase_token = search_phrase_token
         self.search_phrase_word = search_phrase_word
         self.document_token = document_token
+        self.first_document_token = first_document_token
+        self.last_document_token = last_document_token
         self.document_word = document_word
         self.type = type
         self.similarity_measure = similarity_measure
@@ -700,7 +707,8 @@ class StructuralMatcher:
             token."""
 
         def handle_match(search_phrase_word, document_word, match_type, depth,
-                similarity_measure=1.0):
+                *, similarity_measure=1.0, first_document_token=document_token,
+                last_document_token=document_token):
             """Most of the variables are set from the outer call.
 
             Args:
@@ -773,7 +781,8 @@ class StructuralMatcher:
             # store this search sentence token as matching the search_phrase token
             search_phrase_tokens_to_word_matches[search_phrase_token.i].append(WordMatch(
                     search_phrase_token, search_phrase_word, document_token,
-                    document_word, match_type, similarity_measure, is_negated, is_uncertain,
+                    first_document_token, last_document_token, document_word, match_type,
+                    similarity_measure, is_negated, is_uncertain,
                     structurally_matched_document_token, document_word, depth))
 
         search_phrase_and_document_visited_table[search_phrase_token.i].add(document_token.i)
@@ -799,7 +808,9 @@ class StructuralMatcher:
                     for working_token in multiword_span.tokens:
                         search_phrase_and_document_visited_table[search_phrase_token.i].add(
                                 working_token.i)
-                    handle_match(search_phrase_token.text, multiword_span.text, 'entity', 0)
+                    handle_match(search_phrase_token.text, multiword_span.text, 'entity', 0,
+                            first_document_token=multiword_span.tokens[0],
+                            last_document_token=multiword_span.tokens[-1])
                     return True
                 search_phrase_and_document_visited_table[search_phrase_token.i].add(
                         document_token.i)
@@ -856,7 +867,8 @@ class StructuralMatcher:
                         search_phrase_and_document_visited_table[search_phrase_token.i].add(
                                 working_token.i)
                         handle_match(search_phrase_word_lemma, multiword_span.text, 'direct',
-                                0)
+                                0, first_document_token=multiword_span.tokens[0],
+                                last_document_token=multiword_span.tokens[-1])
                         return True
         if self.ontology != None:
             for multiword_span in self._multiword_spans_with_head_token(document_token):
@@ -865,7 +877,8 @@ class StructuralMatcher:
                         search_phrase_and_document_visited_table[search_phrase_token.i].add(
                                 working_token.i)
                         handle_match(search_phrase_word_lemma, multiword_span.text, 'ontology',
-                                0)
+                                0, first_document_token=multiword_span.tokens[0],
+                                last_document_token=multiword_span.tokens[-1])
                         return True
                 entry = self.ontology.matches(search_phrase_word_lemma, multiword_span.text.lower())
                 if entry != None:
@@ -873,7 +886,8 @@ class StructuralMatcher:
                         search_phrase_and_document_visited_table[search_phrase_token.i].add(
                                 working_token.i)
                     handle_match(search_phrase_word_lemma, entry.word, 'ontology',
-                            entry.depth)
+                            entry.depth, first_document_token=multiword_span.tokens[0],
+                            last_document_token=multiword_span.tokens[-1])
                     return True
                 if not search_phrase.topic_match_phraselet:
                     entry = self.ontology.matches(search_phrase_word_text,
@@ -883,7 +897,8 @@ class StructuralMatcher:
                             search_phrase_and_document_visited_table[search_phrase_token.i].add(
                                     working_token.i)
                         handle_match(search_phrase_token.text, entry.word, 'ontology',
-                                entry.depth)
+                                entry.depth, first_document_token=multiword_span.tokens[0],
+                                last_document_token=multiword_span.tokens[-1])
                         return True
 
         if self.overall_similarity_threshold < 1.0 and (compare_embeddings_on_non_root_words or
@@ -1236,7 +1251,8 @@ class StructuralMatcher:
                         search_phrase.reverse_only:
                     continue
                 if search_phrase.topic_match_phraselet and len(search_phrase.doc) == 1 and not \
-                        compare_embeddings_on_root_words:
+                        compare_embeddings_on_root_words and \
+                        len(search_phrase.doc[0]._.holmes.lemma.split()) == 1:
                     # We are only matching a single word without embedding, so to improve
                     # performance we avoid entering the subgraph matching code.
                     for word_matching_root_token in self._words_matching_root_token(

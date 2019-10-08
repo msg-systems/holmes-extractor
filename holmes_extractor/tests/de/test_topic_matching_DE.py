@@ -37,7 +37,7 @@ class GermanTopicMatchingTest(unittest.TestCase):
         self._check_equals("Eine beschriebene Sache", "Eine beschriebene Sache", 34)
 
     def test_reverse_matching_noun(self):
-        self._check_equals("Ein König mit einem Land", "Ein Präsident mit einem Land", 58,
+        self._check_equals("Ein König mit einem Land", "Ein Präsident mit einem Land", 49,
                 holmes_manager_with_embeddings)
 
     def test_reverse_matching_noun_control_no_embeddings(self):
@@ -45,11 +45,11 @@ class GermanTopicMatchingTest(unittest.TestCase):
                 holmes_manager)
 
     def test_reverse_matching_noun_control_same_word(self):
-        self._check_equals("Ein König mit einem Land", "Ein König mit einem Land", 79,
+        self._check_equals("Ein König mit einem Land", "Ein König mit einem Land", 75,
                 holmes_manager)
 
     def test_reverse_matching_verb(self):
-        self._check_equals("Ein Kind schrie", "Das Kind weinte", 27,
+        self._check_equals("Ein Kind schrie", "Das Kind weinte", 20,
                 holmes_manager_with_embeddings)
 
     def test_reverse_matching_verb_control_no_embeddings(self):
