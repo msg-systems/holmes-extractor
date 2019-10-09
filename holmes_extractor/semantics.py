@@ -523,7 +523,8 @@ class SemanticAnalyzer(ABC):
         if token._.holmes.is_involved_in_or_conjunction:
             for righthand_sibling in token._.holmes.righthand_siblings:
                 token.doc[righthand_sibling]._.holmes.is_involved_in_or_conjunction = True
-        for dependency in token._.holmes.children.copy():
+        for dependency in (dependency for dependency in token._.holmes.children
+                if dependency.child_index >= 0):
             # where a token has a dependent token and the dependent token has righthand siblings,
             # add dependencies from the parent token to the siblings
             for child_righthand_sibling in \
@@ -638,7 +639,7 @@ class SemanticAnalyzer(ABC):
                         token.i, self._spacy_noun_to_preposition_dep):
                     # check the preposition is not pointing back to a relative clause
                     for preposition_dep_index in (dep.child_index for dep in
-                            token._.holmes.children):
+                            token._.holmes.children if dep.child_index >= 0):
                         if token.doc[preposition_dep_index]._.holmes.\
                                 has_dependency_with_label('relcl'):
                             return
@@ -930,7 +931,8 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                 child = dependency.child_token(token.doc)
                 # handle 'whose' clauses
                 for child_dependency in (child_dependency for child_dependency in
-                        child._.holmes.children if child_dependency.label == 'poss' and
+                        child._.holmes.children if child_dependency.child_index >= 0
+                        and child_dependency.label == 'poss' and
                         child_dependency.child_token(token.doc).tag_ == 'WP$'):
                     whose_pronoun_token = child_dependency.child_token(
                             token.doc)
