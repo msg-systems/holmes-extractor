@@ -583,3 +583,19 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = analyzer.parse("Ich habe vor, ein Konto zu eröffnen")
         self.assertEqual(doc[7]._.holmes.string_representation_of_children(),
                 '0:sb(U); 5:oa; 6:pm')
+
+    def test_simple_relative_prepositional_phrase(self):
+        doc = analyzer.parse("Der Tisch, von welchem wir aßen.")
+        self.assertEqual(doc[4]._.holmes.string_representation_of_children(),
+                '-2:None')
+        self.assertEqual(doc[6]._.holmes.string_representation_of_children(),
+                '1:pobjp; 3:mo; 5:sb')
+
+    def test_conjunction_relative_prepositional_phrase(self):
+        doc = analyzer.parse("Der Tisch und der Stuhl, von denen du und ich aßen und tranken.")
+        self.assertEqual(doc[7]._.holmes.string_representation_of_children(),
+                '-5:None')
+        self.assertEqual(doc[11]._.holmes.string_representation_of_children(),
+                '1:pobjp(U); 4:pobjp; 6:mo; 8:sb; 10:sb; 12:cd')
+        self.assertEqual(doc[13]._.holmes.string_representation_of_children(),
+                '1:pobjp(U); 4:pobjp; 6:mo; 8:sb; 10:sb')

@@ -707,3 +707,19 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         doc = analyzer.parse("Houses in the village and the town.")
         self.assertEqual(doc[0]._.holmes.string_representation_of_children(),
                 '1:prep; 3:pobjp; 6:pobjp')
+
+    def test_simple_relative_prepositional_phrase(self):
+        doc = analyzer.parse("The table from which we ate.")
+        self.assertEqual(doc[3]._.holmes.string_representation_of_children(),
+                '-2:None')
+        self.assertEqual(doc[5]._.holmes.string_representation_of_children(),
+                '1:pobjp; 2:prep; 4:nsubj')
+
+    def test_simple_relative_prepositional_phrase(self):
+        doc = analyzer.parse("The table and the chair from which you and I ate and drank.")
+        self.assertEqual(doc[6]._.holmes.string_representation_of_children(),
+                '-5:None')
+        self.assertEqual(doc[10]._.holmes.string_representation_of_children(),
+                '1:pobjp(U); 4:pobjp(U); 5:prep(U); 7:nsubj; 9:nsubj; 11:cc; 12:conj')
+        self.assertEqual(doc[12]._.holmes.string_representation_of_children(),
+                '1:pobjp(U); 4:pobjp; 5:prep; 7:nsubj(U); 9:nsubj(U)')

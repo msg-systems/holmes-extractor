@@ -964,7 +964,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                             return
                         working_index -= 1
                     return
-                if child.tag_ in ('WP', 'WRB', 'WDT', 'IN'):  # 'that' or 'which'
+                if child.tag_ in ('WP', 'WRB', 'WDT'):  # 'that' or 'which'
                     working_dependency_label = dependency.label
                     child._.holmes.children = [SemanticDependency(child.i, 0 - (token.head.i + 1),
                             None)]
@@ -979,8 +979,8 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                     preposition = preposition_dependency.child_token(token.doc)
                     for grandchild_dependency in (dep for dep in
                             preposition._.holmes.children if
-                            dep.child_token(token.doc).tag_ in ('WP', 'WRB', 'WDT', 'IN')
-                            and dep.child_token(token.doc).i > 0):
+                            dep.child_token(token.doc).tag_ in ('WP', 'WRB', 'WDT')
+                            and dep.child_token(token.doc).i >= 0):
                             # 'that' or 'which'
                         complementizer = grandchild_dependency.child_token(token.doc)
                         preposition._.holmes.remove_dependency_with_child_index(
@@ -989,7 +989,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                         # will be added in the section below
                         complementizer._.holmes.children = \
                                 [SemanticDependency(grandchild_dependency.child_index,
-                                0-(grandchild_dependency.child_index + 1), None)]
+                                0-(token.head.i + 1), None)]
                 displaced_preposition_dependencies = [dep for dep in
                         last_righthand_sibling_of_predicate._.holmes.children if dep.label=='prep'
                         and len(dep.child_token(token.doc)._.holmes.children) == 0
@@ -1327,6 +1327,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                 processed_auxiliary_indexes.append(token.i)
                 if (token.pos_ == 'AUX' or token.tag_.startswith('VM')) and len([
                         dependency for dependency in token._.holmes.children if
+                        dependency.child_index >= 0 and
                         token.doc[dependency.child_index].tag_ == 'PTKVZ']) == 0: # 'vorhaben'
                     for dependency in (dependency for dependency in token._.holmes.children
                             if token.doc[dependency.child_index].pos_ in ('VERB', 'AUX') and
@@ -1361,7 +1362,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                                 #mark syntactic object as synctactic subject, removing the
                                 #preposition 'von' or 'durch' from the construction and marking
                                 #it as non-matchable
-                                for grandchild_dependency in child_or_sib._.holmes.children:
+                                for grandchild_dependency in (gd for gd in child_or_sib._.holmes.children if gd.child_index >= 0):
                                     grandchild = token.doc[grandchild_dependency.child_index]
                                     if (grandchild_dependency.label == 'sbp' and
                                             grandchild._.holmes.lemma in ('von', 'vom')) or \
@@ -1390,6 +1391,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
             from the syntactic information supplied by spaCy.
         """
         for dependency in (dependency for dependency in token._.holmes.children if
+                dependency.child_index >= 0 and
                 dependency.child_token(token.doc).tag_ in ('PRELS', 'PRELAT') and
                 dependency.child_token(token.doc).dep_ != 'par'):
             counter = dependency.child_index
@@ -1464,12 +1466,12 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
         # add a new dependency spanning the preposition to facilitate topic matching and supervised
         # document classification
         for dependency in (dependency for dependency in token._.holmes.children
-                if dependency.label in ('mo', 'mnr','pg')):
+                if dependency.label in ('mo', 'mnr','pg', 'op')):
             child = dependency.child_token(token.doc)
             for child_dependency in (child_dependency for child_dependency in
                     child._.holmes.children if child_dependency.label == 'nk' and
                     token.i != child_dependency.child_index and child.pos_ == 'ADP'):
-                if dependency.label != 'mo' and \
+                if dependency.label in ('mnr', 'pg') and \
                         dependency.child_token(token.doc)._.holmes.lemma in ('von', 'vom'):
                     token._.holmes.children.append(SemanticDependency(
                         token.i, child_dependency.child_index, 'nk'))
