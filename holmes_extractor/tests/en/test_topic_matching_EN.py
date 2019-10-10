@@ -373,46 +373,6 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self.assertEqual(topic_matches[0].relative_start_index, 1)
         self.assertEqual(topic_matches[0].relative_end_index, 5)
 
-    def test_additional_search_phrases(self):
-        holmes_manager_coref.remove_all_documents()
-        holmes_manager_coref.remove_all_search_phrases()
-        holmes_manager_coref.parse_and_register_document(
-                "Peter visited Paris and a dog chased a cat. Beef and lamb and pork.")
-        doc = holmes_manager_coref.semantic_analyzer.parse("My friend visited ENTITYGPE")
-        phraselet_labels_to_search_phrases = {}
-        holmes_manager_coref.structural_matcher.add_phraselets_to_dict(doc,
-                phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
-                replace_with_hypernym_ancestors=False,
-                match_all_words=False,
-                returning_serialized_phraselets=False,
-                ignore_relation_phraselets=False,
-                include_reverse_only=False)
-        holmes_manager_coref.structural_matcher.register_search_phrase("A dog chases a cat", None)
-        holmes_manager_coref.structural_matcher.register_search_phrase("beef", None)
-        holmes_manager_coref.structural_matcher.register_search_phrase("lamb", None)
-        position_sorted_structural_matches = sorted(holmes_manager_coref.structural_matcher.
-                        match_documents_against_search_phrase_list(
-                        phraselet_labels_to_search_phrases.values(),False),
-                        key=lambda match: (match.document_label, match.index_within_document))
-        topic_matcher = TopicMatcher(holmes_manager_coref,
-                maximum_activation_distance=75,
-                relation_score=20,
-                reverse_only_relation_score=15,
-                single_word_score=5,
-                single_word_any_tag_score=2,
-                overlapping_relation_multiplier=1.5,
-                embedding_penalty=0.5,
-                maximum_activation_value=1000,
-                sideways_match_extent=100,
-                only_one_result_per_document=False,
-                number_of_results=1)
-        score_sorted_structural_matches = topic_matcher.perform_activation_scoring(
-                position_sorted_structural_matches)
-        topic_matches = topic_matcher.get_topic_matches(score_sorted_structural_matches,
-                position_sorted_structural_matches)
-        self.assertEqual(topic_matches[0].start_index, 1)
-        self.assertEqual(topic_matches[0].end_index, 2)
-
     def test_only_one_result_per_document(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.remove_all_search_phrases()

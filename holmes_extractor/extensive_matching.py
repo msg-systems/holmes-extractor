@@ -65,6 +65,7 @@ class TopicMatcher:
         self._holmes = holmes
         self._semantic_analyzer = holmes.semantic_analyzer
         self.structural_matcher = holmes.structural_matcher
+        self.threadsafe_container = holmes.threadsafe_container
         self._ontology = holmes.structural_matcher.ontology
         self.maximum_activation_distance = maximum_activation_distance
         self.relation_score = relation_score
@@ -197,7 +198,7 @@ class TopicMatcher:
                         phraselet.reverse_only: # reverse only are matched without embeddings
                     for corpus_word_position in child_single_word_match_corpus_words.difference(
                             child_relation_match_corpus_words):
-                        doc = self.structural_matcher.get_document(
+                        doc = self.threadsafe_container.get_document(
                                 corpus_word_position.document_label)
                         working_token = doc[corpus_word_position.index]
                         for parent_dependency in working_token._.holmes.parent_dependencies:
@@ -349,8 +350,9 @@ class TopicMatcher:
                 ignore_relation_phraselets = True,
                 include_reverse_only = False) # value is irrelevant with
                                               # ignore_relation_phraselets == True
-        structural_matches = self.structural_matcher.match_documents_against_search_phrase_list(
-                phraselet_labels_to_search_phrases.values(), False,
+        indexed_documents = self.threadsafe_container.get_indexed_documents()
+        structural_matches = self.structural_matcher.match(indexed_documents,
+                phraselet_labels_to_search_phrases.values(), False, None,
                 compare_embeddings_on_root_words=False, compare_embeddings_on_non_root_words=False)
         rebuild_document_info_dict(structural_matches, phraselet_labels_to_search_phrases)
         parent_document_labels_to_indexes_for_embedding_retry_sets = {}
@@ -361,15 +363,12 @@ class TopicMatcher:
                     parent_document_labels_to_indexes_for_embedding_retry_sets,
                     child_document_labels_to_indexes_for_embedding_retry_sets)
         if len(parent_document_labels_to_indexes_for_embedding_retry_sets) > 0:
-            structural_matches.extend(self.structural_matcher.
-                    match_documents_against_search_phrase_list(
-                    phraselet_labels_to_search_phrases.values(), False,
+            structural_matches.extend(self.structural_matcher.match(indexed_documents, phraselet_labels_to_search_phrases.values(), False,
                     parent_document_labels_to_indexes_for_embedding_retry_sets,
                     compare_embeddings_on_root_words=True,
                     compare_embeddings_on_non_root_words=False))
         if len(child_document_labels_to_indexes_for_embedding_retry_sets) > 0:
-            structural_matches.extend(self.structural_matcher.
-                    match_documents_against_search_phrase_list(
+            structural_matches.extend(self.structural_matcher.match(indexed_documents,
                     phraselet_labels_to_search_phrases.values(), False,
                     child_document_labels_to_indexes_for_embedding_retry_sets,
                     compare_embeddings_on_root_words=False,
@@ -573,7 +572,7 @@ class TopicMatcher:
                         score_sorted_match.index_within_document
                 )
             working_document = \
-                    self.structural_matcher.get_document(score_sorted_match.document_label)
+                    self.threadsafe_container.get_document(score_sorted_match.document_label)
             relevant_sentences = [sentence for sentence in working_document.sents
                     if sentence.end >= start_index and sentence.start <= end_index]
             sentences_start_index = relevant_sentences[0].start
@@ -637,7 +636,7 @@ class TopicMatcher:
         topic_match_dicts = []
         for topic_match_counter in range(0, len(topic_matches)):
             topic_match = topic_matches[topic_match_counter]
-            doc = self.structural_matcher.get_document(topic_match.document_label)
+            doc = self.threadsafe_container.get_document(topic_match.document_label)
             sentences_character_start_index_in_document = doc[topic_match.sentences_start_index].idx
             sentences_character_end_index_in_document = doc[topic_match.sentences_end_index].idx + \
                     len(doc[topic_match.sentences_end_index].text)
@@ -812,32 +811,29 @@ class SupervisedTopicTrainingUtils:
         return labels_to_frequencies_dict
 
     def record_matches(self, *, phraselet_labels_to_search_phrases, structural_matcher,
-            sorted_label_dict, doc, doc_label, matrix, row_index, verbose):
+            sorted_label_dict, doc, matrix, row_index, verbose):
         """ Matches a document against the currently stored phraselets and records the matches
             in a matrix.
 
             Parameters:
 
-            structural_matcher -- the structural matcher object on which the phraselets are stored.
+            structural_matcher -- the structural matcher to use for comparisons.
             phraselet_labels_to_search_phrases -- a dictionary from search phrase (phraselet)
                 labels to search phrase objects.
             sorted_label_dict -- a dictionary from search phrase (phraselet) labels to their own
                 alphabetic sorting indexes.
             doc -- the document to be matched.
-            doc_label - the label of 'doc'.
             matrix -- the matrix within which to record the matches.
             row_index -- the row number within the matrix corresponding to the document.
             verbose -- if 'True', matching information is outputted to the console.
         """
-
-        structural_matcher.remove_all_documents()
-        structural_matcher.register_document(doc, doc_label)
+        indexed_document = structural_matcher.index_document(doc)
+        indexed_documents = {'':indexed_document}
         found = False
         for label, occurrences in \
                 self.get_labels_to_classification_frequencies_dict(
-                matches=structural_matcher.match_documents_against_search_phrase_list(
-                        phraselet_labels_to_search_phrases.values(), verbose
-                ),
+                matches=structural_matcher.match(indexed_documents,
+                        phraselet_labels_to_search_phrases.values(), verbose, None, False, True),
                 labels_to_classifications_dict=None).items():
             if self.oneshot:
                 occurrences = 1
@@ -912,7 +908,8 @@ class SupervisedTopicTrainingBasis:
             raise DuplicateDocumentError(label)
         if self.verbose:
             print('Registering document', label)
-        self.training_documents[label] = doc
+        indexed_document = self.structural_matcher.index_document(doc)
+        self.training_documents[label] = indexed_document
         self.serialized_phraselets.extend(
                 self.structural_matcher.add_phraselets_to_dict(doc,
                 phraselet_labels_to_search_phrases=
@@ -922,7 +919,6 @@ class SupervisedTopicTrainingBasis:
                 returning_serialized_phraselets = True,
                 ignore_relation_phraselets=False,
                 include_reverse_only=False))
-        self.structural_matcher.register_document(doc, label)
         self.training_documents_labels_to_classifications_dict[label] = classification
 
     def register_additional_classification_label(self, label):
@@ -952,8 +948,8 @@ class SupervisedTopicTrainingBasis:
             print('Matching documents against all phraselets')
         self.labels_to_classification_frequencies = self._utils.\
                 get_labels_to_classification_frequencies_dict(
-                matches=self.structural_matcher.match_documents_against_search_phrase_list(
-                self.phraselet_labels_to_search_phrases.values(), self.verbose),
+                matches=self.structural_matcher.match(self.training_documents,
+                self.phraselet_labels_to_search_phrases.values(), self.verbose, None, False, True),
                 labels_to_classifications_dict=
                 self.training_documents_labels_to_classifications_dict)
         self.classifications = \
@@ -1057,8 +1053,7 @@ class SupervisedTopicModelTrainer:
                     phraselet_labels_to_search_phrases =
                             phraselet_labels_to_search_phrases,
                     sorted_label_dict = self._sorted_label_dict,
-                    doc=self._training_basis.training_documents[document_label],
-                    doc_label=document_label,
+                    doc=self._training_basis.training_documents[document_label].doc,
                     matrix=self._input_matrix,
                     row_index=index,
                     verbose=self._training_basis.verbose)
@@ -1153,7 +1148,6 @@ class SupervisedTopicModelTrainer:
         """ Returns a supervised topic classifier which contains no explicit references to the
             training data and that can be serialized.
         """
-        self._structural_matcher.output_document_matching_message_to_console = False
         self._mlp.verbose=False # we no longer require output once we are using the model
                                 # to classify new documents
         model = SupervisedTopicClassifierModel(
@@ -1244,7 +1238,6 @@ class SupervisedTopicClassifier:
                 phraselet_labels_to_search_phrases=self._phraselet_labels_to_search_phrases,
                 sorted_label_dict=self._model.sorted_label_dict,
                 doc=doc,
-                doc_label=None,
                 matrix=new_document_matrix,
                 row_index=0,
                 verbose=self._verbose):

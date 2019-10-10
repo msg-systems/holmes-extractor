@@ -53,7 +53,7 @@ class MatchingModesTest(unittest.TestCase):
 
     def test_get_labels(self):
         self._register_multiple_documents_and_search_phrases()
-        self.assertEqual(holmes_manager.structural_matcher.list_search_phrase_labels(),
+        self.assertEqual(holmes_manager.threadsafe_container.list_search_phrase_labels(),
                 ['test'])
 
     def test_remove_all_search_phrases_with_label(self):
@@ -64,7 +64,7 @@ class MatchingModesTest(unittest.TestCase):
         holmes_manager.register_search_phrase("testd", label="test2")
         holmes_manager.remove_all_search_phrases_with_label("test2")
         holmes_manager.remove_all_search_phrases_with_label("testb")
-        self.assertEqual(holmes_manager.structural_matcher.list_search_phrase_labels(),
+        self.assertEqual(holmes_manager.threadsafe_container.list_search_phrase_labels(),
                 ['test1'])
         self.assertEqual(len(holmes_manager.match_search_phrases_against(
                 "testa")), 1)

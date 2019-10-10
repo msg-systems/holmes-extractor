@@ -539,15 +539,6 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
         for match in matches:
             self.assertFalse(match.is_uncertain)
 
-    def test_parent_token_indexes(self):
-        holmes_manager_with_variable_search_phrases.remove_all_documents()
-        holmes_manager_with_variable_search_phrases.parse_and_register_document("Houses in the village.", 'village')
-        doc = holmes_manager_with_variable_search_phrases.structural_matcher.get_document(
-                'village')
-        self.assertEqual(doc[0]._.holmes.string_representation_of_children(),
-                '1:prep; 3:pobjp')
-        self.assertEqual(doc[3]._.holmes.parent_dependencies, [[0, 'pobjp'],[1, 'pobj']])
-
     def test_ontology_multiword_information_in_word_match_objects_at_sentence_boundaries(self):
         holmes_manager_with_variable_search_phrases.remove_all_documents()
         holmes_manager_with_variable_search_phrases.parse_and_register_document(
@@ -582,7 +573,6 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
         self.assertEqual(matches[0].word_matches[1].document_token.i, 2)
         self.assertEqual(matches[0].word_matches[1].first_document_token.i, 2)
         self.assertEqual(matches[0].word_matches[1].last_document_token.i, 2)
-        print(matches[0].word_matches[2].document_token.i)
         self.assertEqual(matches[0].word_matches[2].document_token.i, 4)
         self.assertEqual(matches[0].word_matches[2].first_document_token.i, 3)
         self.assertEqual(matches[0].word_matches[2].last_document_token.i, 4)

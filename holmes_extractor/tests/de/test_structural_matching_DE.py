@@ -516,10 +516,3 @@ class GermanStructuralMatchingTest(unittest.TestCase):
         matches = self._get_matches(holmes_manager,
                 "Richard Hudson möchte ein Konto für sein Kind eröffnen")
         self.assertEqual(len(matches), 1)
-
-    def test_parent_token_indexes(self):
-        holmes_manager_with_variable_search_phrases.remove_all_documents()
-        holmes_manager_with_variable_search_phrases.parse_and_register_document("Häuser im Dorf.", 'village')
-        doc = holmes_manager_with_variable_search_phrases.structural_matcher.get_document(
-                'village')
-        self.assertEqual(doc[2]._.holmes.parent_dependencies, [[0, 'pobjp'],[1, 'nk']])

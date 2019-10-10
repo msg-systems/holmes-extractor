@@ -48,8 +48,8 @@ class SerializationTest(unittest.TestCase):
         nocoref_holmes_manager.parse_and_register_document("Houses in the village.", 'village')
         serialized_doc = nocoref_holmes_manager.serialize_document('village')
         nocoref_holmes_manager.deserialize_and_register_document(serialized_doc, 'village2')
-        old_doc = nocoref_holmes_manager.structural_matcher.get_document('village')
-        new_doc = nocoref_holmes_manager.structural_matcher.get_document('village2')
+        old_doc = nocoref_holmes_manager.threadsafe_container.get_document('village')
+        new_doc = nocoref_holmes_manager.threadsafe_container.get_document('village2')
         self.assertEqual(old_doc[0]._.holmes.string_representation_of_children(),
                 '1:prep; 3:pobjp')
         self.assertEqual(old_doc[3]._.holmes.parent_dependencies, [[0, 'pobjp'],[1, 'pobj']])

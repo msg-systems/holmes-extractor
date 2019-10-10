@@ -1,7 +1,7 @@
 import copy
 import sys
 from .errors import *
-from .structural_matching import StructuralMatcher
+from .structural_matching import StructuralMatcher, ThreadsafeContainer
 from .semantics import SemanticAnalyzerFactory
 from .extensive_matching import *
 from .consoles import HolmesConsoles
@@ -42,7 +42,7 @@ class Manager:
         self.structural_matcher = StructuralMatcher(self.semantic_analyzer, ontology,
                 overall_similarity_threshold, embedding_based_matching_on_root_words,
                 perform_coreference_resolution)
-        self.documents = {}
+        self.threadsafe_container = ThreadsafeContainer()
 
     def _validate_options(self, overall_similarity_threshold,
             embedding_based_matching_on_root_words, perform_coreference_resolution):
@@ -70,10 +70,10 @@ class Manager:
             matched to predefined search phrases.
         """
 
-        self.structural_matcher.register_document(self.semantic_analyzer.parse(document_text),
-                label)
+        doc = self.semantic_analyzer.parse(document_text)
+        self.register_parsed_document(doc, label)
 
-    def register_parsed_document(self, document, label=''):
+    def register_parsed_document(self, doc, label=''):
         """Parameters:
 
         document -- a preparsed Holmes document.
@@ -81,7 +81,8 @@ class Manager:
             which is intended for use cases where single documents (user entries) are
             matched to predefined search phrases.
         """
-        self.structural_matcher.register_document(document, label)
+        indexed_document = self.structural_matcher.index_document(doc)
+        self.threadsafe_container.register_document(indexed_document, label)
 
     def deserialize_and_register_document(self, document, label=''):
         """Parameters:
@@ -95,21 +96,22 @@ class Manager:
             raise SerializationNotSupportedError(self.semantic_analyzer.model)
         doc = self.semantic_analyzer.from_serialized_string(document)
         self.semantic_analyzer.debug_structures(doc) # only has effect when debug=True
-        self.structural_matcher.register_document(doc, label, True)
+        indexed_document = self.structural_matcher.index_document(doc)
+        self.threadsafe_container.register_document(indexed_document, label)
 
     def remove_document(self, label):
         """Parameters:
 
         label -- the label of the document to be removed.
         """
-        self.structural_matcher.remove_document(label)
+        self.threadsafe_container.remove_document(label)
 
     def remove_all_documents(self):
-        self.structural_matcher.remove_all_documents()
+        self.threadsafe_container.remove_all_documents()
 
     def document_labels(self):
         """Returns a list of the labels of the currently registered documents."""
-        return self.structural_matcher.document_labels()
+        return self.threadsafe_container.document_labels()
 
     def serialize_document(self, label):
         """Returns a serialized representation of a Holmes document that can be persisted to
@@ -123,7 +125,7 @@ class Manager:
 
         if self.perform_coreference_resolution:
             raise SerializationNotSupportedError(self.semantic_analyzer.model)
-        doc = self.structural_matcher.get_document(label)
+        doc = self.threadsafe_container.get_document(label)
         if doc != None:
             return self.semantic_analyzer.to_serialized_string(doc)
         else:
@@ -138,13 +140,16 @@ class Manager:
         """
         if label==None:
             label=search_phrase_text
-        self.structural_matcher.register_search_phrase(search_phrase_text, label)
+        search_phrase_doc = self.semantic_analyzer.parse(search_phrase_text)
+        search_phrase = self.structural_matcher.create_search_phrase(search_phrase_text,
+                search_phrase_doc, label, None, False)
+        self.threadsafe_container.register_search_phrase(search_phrase)
 
     def remove_all_search_phrases(self):
-        self.structural_matcher.remove_all_search_phrases()
+        self.threadsafe_container.remove_all_search_phrases()
 
     def remove_all_search_phrases_with_label(self, label):
-        self.structural_matcher.remove_all_search_phrases_with_label(label)
+        self.threadsafe_container.remove_all_search_phrases_with_label(label)
 
     def match(self):
         """Matches the registered search phrases to the registered documents. Returns a list
@@ -152,7 +157,10 @@ class Manager:
             Should be called by applications wishing to retain references to the spaCy and
             Holmes information that was used to derive the matches.
         """
-        return self.structural_matcher.match()
+        indexed_documents = self.threadsafe_container.get_indexed_documents()
+        search_phrases = self.threadsafe_container.get_search_phrases()
+        return self.structural_matcher.match(indexed_documents, search_phrases,
+                False, None, False, True)
 
     def _build_match_dictionaries(self, matches):
         """Builds and returns a list of dictionaries describing matches."""
@@ -206,16 +214,24 @@ class Manager:
         """Matches the registered search phrases against a single document
             supplied to the method and returns dictionaries describing any matches.
         """
+        search_phrases = self.threadsafe_container.get_search_phrases()
         doc = self.semantic_analyzer.parse(entry)
-        return self._build_match_dictionaries(
-                self.structural_matcher.match_search_phrases_against(doc))
+        indexed_documents = {'':self.structural_matcher.index_document(doc)}
+        matches = self.structural_matcher.match(indexed_documents, search_phrases, False, None,
+                False, True)
+        return self._build_match_dictionaries(matches)
 
-    def match_documents_against(self, search_phrase):
+    def match_documents_against(self, search_phrase_text):
         """Matches the registered documents against a single search phrase
             supplied to the method and returns dictionaries describing any matches.
         """
-        return self._build_match_dictionaries(
-                self.structural_matcher.match_documents_against(search_phrase))
+        indexed_documents = self.threadsafe_container.get_indexed_documents()
+        search_phrase_doc = self.semantic_analyzer.parse(search_phrase_text)
+        search_phrases = [self.structural_matcher.create_search_phrase(search_phrase_text,
+                search_phrase_doc, search_phrase_text, None, False)]
+        matches = self.structural_matcher.match(indexed_documents, search_phrases, False, None,
+                False, True)
+        return self._build_match_dictionaries(matches)
 
     def topic_match_documents_against(self, text_to_match, *, maximum_activation_distance=75,
             relation_score=30, reverse_only_relation_score = 20,

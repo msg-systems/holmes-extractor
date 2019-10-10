@@ -146,6 +146,74 @@ class SerializedPhraselet:
         return hash((self.template_label, self.parent_word, self.child_word,
                 self.created_without_matching_tags))
 
+class ThreadsafeContainer:
+
+    def __init__(self):
+        self._search_phrase_labels = set()
+        self._search_phrases = []
+        # Dict from document labels to IndexedDocument objects
+        self._indexed_documents = {}
+        self._lock = Lock()
+
+    def remove_all_search_phrases(self):
+        with self._lock:
+            self._search_phrases = []
+            self._search_phrase_labels = set()
+
+    def remove_all_search_phrases_with_label(self, label):
+        with self._lock:
+            self._search_phrases = [search_phrase for search_phrase in self._search_phrases if
+                    search_phrase.label != label]
+            if label in self._search_phrase_labels:
+                self._search_phrase_labels.remove(label)
+
+    def register_search_phrase(self, search_phrase):
+        with self._lock:
+            self._search_phrases.append(search_phrase)
+            self._search_phrase_labels.add(search_phrase.label)
+
+    def list_search_phrase_labels(self):
+        with self._lock:
+            search_phrase_labels = sorted(self._search_phrase_labels)
+        return search_phrase_labels
+
+    def register_document(self, indexed_document, label):
+        with self._lock:
+            if label in self._indexed_documents.keys():
+                raise DuplicateDocumentError(label)
+            self._indexed_documents[label] = indexed_document
+
+    def remove_document(self, label):
+        with self._lock:
+            self._indexed_documents.pop(label)
+
+    def remove_all_documents(self):
+        with self._lock:
+            self._indexed_documents = {}
+
+    def document_labels(self):
+        """Returns a list of the labels of the currently registered documents."""
+
+        with self._lock:
+            document_labels = self._indexed_documents.keys()
+        return document_labels
+
+    def get_document(self, label):
+        with self._lock:
+            if label in self._indexed_documents.keys():
+                document = self._indexed_documents[label].doc
+            else:
+                document = None
+        return document
+
+    def get_indexed_documents(self):
+        with self._lock:
+            return self._indexed_documents.copy()
+
+    def get_search_phrases(self):
+        with self._lock:
+            return self._search_phrases.copy()
+
 class StructuralMatcher:
     """The class responsible for matching search phrases with documents."""
 
@@ -170,12 +238,7 @@ class StructuralMatcher:
         self.ontology = ontology
         self.overall_similarity_threshold = overall_similarity_threshold
         self.embedding_based_matching_on_root_words = embedding_based_matching_on_root_words
-        self.search_phrase_labels = set()
-        self.search_phrases = []
-        # Dict from document labels to *_IndexedDocument* objects
-        self._indexed_documents = {}
         self.perform_coreference_resolution = perform_coreference_resolution
-        self._lock = Lock()
 
     class _SearchPhrase:
 
@@ -202,8 +265,8 @@ class StructuralMatcher:
             reverse_only -- 'True' if a phraselet that should only be reverse-matched
             """
             self.doc = doc
-            self.matchable_tokens = matchable_tokens
-            self.root_token = root_token
+            self._matchable_token_indexes = [token.i for token in matchable_tokens]
+            self._root_token_index = root_token.i
             self.matchable_non_entity_tokens_to_lexemes = matchable_non_entity_tokens_to_lexemes
             self.single_token_similarity_threshold = single_token_similarity_threshold
             self.label = label
@@ -212,6 +275,14 @@ class StructuralMatcher:
             self.topic_match_phraselet_created_without_matching_tags = \
                     topic_match_phraselet_created_without_matching_tags
             self.reverse_only = reverse_only
+
+        @property
+        def matchable_tokens(self):
+            return [self.doc[index] for index in self._matchable_token_indexes]
+
+        @property
+        def root_token(self):
+            return self.doc[self._root_token_index]
 
     class _IndexedDocument:
         """Args:
@@ -285,25 +356,6 @@ class StructuralMatcher:
                             working_tokens)
             pointer += 1
 
-    def remove_all_search_phrases(self):
-        with self._lock:
-            self.search_phrases = []
-            self.search_phrase_labels = set()
-
-    def remove_all_search_phrases_with_label(self, label):
-        with self._lock:
-            self.search_phrases = [search_phrase for search_phrase in self.search_phrases if
-                    search_phrase.label != label]
-            if label in self.search_phrase_labels:
-                self.search_phrase_labels.remove(label)
-
-    def register_search_phrase(self, search_phrase_text, label):
-        search_phrase_doc = self.semantic_analyzer.parse(search_phrase_text)
-        with self._lock:
-            self.search_phrases.append(self._create_search_phrase(search_phrase_text,
-                    search_phrase_doc, label, None, False))
-            self.search_phrase_labels.add(label)
-
     def add_phraselets_to_dict(self, doc, *, phraselet_labels_to_search_phrases,
             replace_with_hypernym_ancestors, match_all_words, returning_serialized_phraselets,
             ignore_relation_phraselets, include_reverse_only):
@@ -362,7 +414,7 @@ class StructuralMatcher:
                             # permitted as the child of a relation phraselet template
                         if phraselet_label not in phraselet_labels_to_search_phrases:
                             phraselet_labels_to_search_phrases[phraselet_label] = \
-                                    self._create_search_phrase('topic match phraselet',
+                                    self.create_search_phrase('topic match phraselet',
                                     phraselet_doc, phraselet_label, phraselet_template,
                                     not checking_tags)
                         if returning_serialized_phraselets:
@@ -449,7 +501,7 @@ class StructuralMatcher:
                                         self.semantic_analyzer.phraselet_stop_lemmas:
                                     if phraselet_label not in phraselet_labels_to_search_phrases:
                                         phraselet_labels_to_search_phrases[phraselet_label] = \
-                                                self._create_search_phrase('topic match phraselet',
+                                                self.create_search_phrase('topic match phraselet',
                                                 phraselet_doc, phraselet_label, phraselet_template,
                                                 match_all_words)
                                         if returning_serialized_phraselets:
@@ -486,7 +538,7 @@ class StructuralMatcher:
                                 serialized_phraselet.parent_word))
                     if phraselet_label not in phraselet_labels_to_search_phrases:
                         phraselet_labels_to_search_phrases[phraselet_label] = \
-                                self._create_search_phrase('topic match phraselet',
+                                self.create_search_phrase('topic match phraselet',
                                 phraselet_doc, phraselet_label, phraselet_template,
                                 serialized_phraselet.created_without_matching_tags)
                     return
@@ -516,7 +568,7 @@ class StructuralMatcher:
                                     multiword_token.i, 0 - (token.i + 1), None)]
                             multiword_token._.holmes.is_matchable = False
 
-    def _create_search_phrase(self, search_phrase_text, search_phrase_doc,
+    def create_search_phrase(self, search_phrase_text, search_phrase_doc,
             label, phraselet_template, topic_match_phraselet_created_without_matching_tags):
         """phraselet_template -- 'None' if this search phrase is not a topic match phraselet"""
 
@@ -605,20 +657,7 @@ class StructuralMatcher:
                 phraselet_template != None, topic_match_phraselet_created_without_matching_tags,
                 reverse_only)
 
-    def list_search_phrase_labels(self):
-        with self._lock:
-            search_phrase_labels = sorted(self.search_phrase_labels)
-        return search_phrase_labels
-
-    def register_document(self, parsed_document, label, from_serialized = False):
-
-        working_document = self._create_document(parsed_document, label, from_serialized)
-        with self._lock:
-            if label in self._indexed_documents.keys():
-                raise DuplicateDocumentError(label)
-            self._indexed_documents[label] = working_document
-
-    def _create_document(self, parsed_document, label, from_serialized = False):
+    def index_document(self, parsed_document):
 
         def add_dict_entry(dict, word, token_index):
             if word in dict.keys():
@@ -635,26 +674,6 @@ class StructuralMatcher:
 
         words_to_token_indexes_dict = {}
         for token in parsed_document:
-            if not from_serialized: # serialized document already has parent dependencies marked
-                if self.perform_coreference_resolution:
-                    for linked_parent_index in \
-                            self.semantic_analyzer.token_and_coreference_chain_indexes(
-                            token):
-                        linked_parent = token.doc[linked_parent_index]
-                        for child_dependency in linked_parent._.holmes.children:
-                            child_token = child_dependency.child_token(token.doc)
-                            for linked_child_index in \
-                                    self.semantic_analyzer.token_and_coreference_chain_indexes(
-                                    child_token):
-                                linked_child = token.doc[linked_child_index]
-                                linked_child._.holmes.parent_dependencies.append([token.i,
-                                        child_dependency.label])
-                else:
-                    for child_dependency in token._.holmes.children:
-                        child_token = child_dependency.child_token(token.doc)
-                        child_token._.holmes.parent_dependencies.append([token.i,
-                                child_dependency.label])
-
             if self.ontology != None:
                 multiword = get_multiword(token)
                 if multiword != None:
@@ -676,29 +695,6 @@ class StructuralMatcher:
                 entity_label = ''.join(('ENTITY', token.ent_type_))
                 add_dict_entry(words_to_token_indexes_dict, entity_label, token.i)
         return self._IndexedDocument(parsed_document, words_to_token_indexes_dict)
-
-    def remove_document(self, label):
-        with self._lock:
-            self._indexed_documents.pop(label)
-
-    def remove_all_documents(self):
-        with self._lock:
-            self._indexed_documents = {}
-
-    def document_labels(self):
-        """Returns a list of the labels of the currently registered documents."""
-
-        with self._lock:
-            document_labels = self._indexed_documents.keys()
-        return document_labels
-
-    def get_document(self, label):
-        with self._lock:
-            if label in self._indexed_documents.keys():
-                document = self._indexed_documents[label].doc
-            else:
-                document = None
-        return document
 
     def _match_recursively(self, *, search_phrase, search_phrase_token, document, document_token,
         search_phrase_tokens_to_word_matches, search_phrase_and_document_visited_table,
@@ -1197,7 +1193,114 @@ class StructuralMatcher:
         matches_to_return.extend(working_matches)
         return matches_to_return
 
-    def _internal_match(self, indexed_documents, search_phrases,
+    def _internal_match_against_single_document(self, document_label, registered_document,
+            search_phrases, indexes_to_consider, compare_embeddings_on_root_words,
+            compare_embeddings_on_non_root_words, output_document_matching_message_to_console):
+        if output_document_matching_message_to_console:
+            print('Processing document', document_label)
+        doc = registered_document.doc
+        matches = []
+        # Dictionary used to improve performance when embedding-based matching for root tokens
+        # is active and there are multiple search phrases with the same root token word: the
+        # same indexes in the document will then match all the search phrase root tokens.
+        root_lexeme_to_indexes_to_match_dict = {}
+        for search_phrase in search_phrases:
+            if len(indexes_to_consider) > 0 and len(search_phrase.doc) == 1:
+                continue
+            if len(indexes_to_consider) == 0 and \
+                    search_phrase.reverse_only:
+                continue
+            if search_phrase.topic_match_phraselet and len(search_phrase.doc) == 1 and not \
+                    compare_embeddings_on_root_words and \
+                    len(search_phrase.doc[0]._.holmes.lemma.split()) == 1:
+                # We are only matching a single word without embedding, so to improve
+                # performance we avoid entering the subgraph matching code.
+                for word_matching_root_token in self._words_matching_root_token(
+                        search_phrase):
+                    if word_matching_root_token in \
+                            registered_document.words_to_token_indexes_dict.keys():
+                        for index in registered_document.words_to_token_indexes_dict[
+                                word_matching_root_token]:
+                            minimal_match = Match(search_phrase.label, document_label, True,
+                            search_phrase.topic_match_phraselet_created_without_matching_tags,
+                            search_phrase.reverse_only)
+                            minimal_match.index_within_document = index
+                            matches.append(minimal_match)
+                continue
+            if self._is_entitynoun_search_phrase_token(search_phrase.root_token,
+                    search_phrase.topic_match_phraselet):
+                for token in doc:
+                    if (len(indexes_to_consider) == 0 or token.i
+                            in indexes_to_try_matching_set) and token.pos_ in \
+                            self.semantic_analyzer.noun_pos:
+                        matches.extend(self._get_matches_starting_at_root_word_match(
+                                search_phrase, doc, token, document_label,
+                                compare_embeddings_on_non_root_words))
+                continue
+            else:
+                matched_indexes_set = set()
+                if self._is_entity_search_phrase_token(search_phrase.root_token,
+                    search_phrase.topic_match_phraselet):
+                    if search_phrase.topic_match_phraselet:
+                        entity_label = search_phrase.root_token._.holmes.lemma
+                    else:
+                        entity_label = search_phrase.root_token.text
+                    if entity_label in registered_document.words_to_token_indexes_dict.keys():
+                        matched_indexes_set.update(
+                                registered_document.words_to_token_indexes_dict[entity_label])
+                else:
+                    for word_matching_root_token in self._words_matching_root_token(
+                            search_phrase):
+                        if word_matching_root_token in \
+                                registered_document.words_to_token_indexes_dict.keys():
+                            matched_indexes_set.update(
+                                    registered_document.words_to_token_indexes_dict[
+                                    word_matching_root_token])
+            if compare_embeddings_on_root_words and not \
+                    self._is_entity_search_phrase_token(search_phrase.root_token,
+                    search_phrase.topic_match_phraselet) and not search_phrase.reverse_only:
+                if not search_phrase.topic_match_phraselet:
+                    root_token_lemma_to_use = search_phrase.root_token.lemma_
+                else:
+                    root_token_lemma_to_use = search_phrase.root_token._.holmes.lemma
+                if root_token_lemma_to_use in root_lexeme_to_indexes_to_match_dict:
+                    matched_indexes_set.update(root_lexeme_to_indexes_to_match_dict[
+                            root_token_lemma_to_use])
+                else:
+                    working_indexes_to_match_for_cache_set = set()
+                    for document_word in registered_document.words_to_token_indexes_dict.keys():
+                        indexes_to_match = registered_document.words_to_token_indexes_dict[
+                                document_word]
+                        if len(indexes_to_consider) > 0:
+                            indexes_to_match = [index for index in indexes_to_match if
+                                    index in indexes_to_consider]
+                            if len(indexes_to_match) == 0:
+                                continue
+                        search_phrase_lexeme = \
+                                search_phrase.matchable_non_entity_tokens_to_lexemes[
+                                search_phrase.root_token.i]
+                        document_lexeme = self.semantic_analyzer.nlp.vocab[
+                                doc[indexes_to_match[0]].lemma_]
+                        if search_phrase_lexeme.vector_norm > 0 and \
+                                document_lexeme.vector_norm > 0:
+                            similarity_measure = search_phrase_lexeme.similarity(
+                                    document_lexeme)
+                            if similarity_measure >= \
+                                    search_phrase.single_token_similarity_threshold:
+                                matched_indexes_set.update(indexes_to_match)
+                                working_indexes_to_match_for_cache_set.update(indexes_to_match)
+                    root_lexeme_to_indexes_to_match_dict[root_token_lemma_to_use] = \
+                            working_indexes_to_match_for_cache_set
+            if len(indexes_to_consider) > 0:
+                matched_indexes_set = matched_indexes_set.intersection(
+                        indexes_to_consider)
+            for index_to_match in sorted(matched_indexes_set):
+                matches.extend(self._get_matches_starting_at_root_word_match(
+                        search_phrase, doc, doc[index_to_match], document_label,
+                        compare_embeddings_on_non_root_words))
+        return matches
+
+    def match(self, indexed_documents, search_phrases,
             output_document_matching_message_to_console,
             document_labels_to_indexes_for_embedding_retry_sets,
             compare_embeddings_on_root_words,
@@ -1218,6 +1321,14 @@ class StructuralMatcher:
         compare_embeddings_on_non_root_words -- if 'False', embeddings on non-root words are not
             compared even if overall_similarity_threshold < 1.0.
         """
+
+        def get_indexes_to_consider(document_label):
+            if document_labels_to_indexes_for_embedding_retry_sets == None or document_label not \
+                    in document_labels_to_indexes_for_embedding_retry_sets:
+                return set()
+            else:
+                return document_labels_to_indexes_for_embedding_retry_sets[document_label]
+
         if self.embedding_based_matching_on_root_words:
             compare_embeddings_on_root_words=True
         if self.overall_similarity_threshold==1.0:
@@ -1230,155 +1341,9 @@ class StructuralMatcher:
             raise NoSearchPhraseError('At least one search_phrase is required to match.')
         matches = []
         for document_label, registered_document in indexed_documents.items():
-            doc = registered_document.doc
-            if document_labels_to_indexes_for_embedding_retry_sets == None or document_label not \
-                    in document_labels_to_indexes_for_embedding_retry_sets:
-                indexes_to_try_matching_set = set()
-            else:
-                indexes_to_try_matching_set = document_labels_to_indexes_for_embedding_retry_sets[
-                        document_label]
-            if output_document_matching_message_to_console:
-                print('Processing document', document_label)
-            # Dictionary used to improve performance when embedding-based matching for root tokens
-            # is active and there are multiple search phrases with the same root token word: the
-            # same indexes in the document will then match all the search phrase root tokens.
-            root_lexeme_to_indexes_to_match_dict = {}
-            for search_phrase in search_phrases:
-                if document_labels_to_indexes_for_embedding_retry_sets != None and \
-                        len(search_phrase.doc) == 1:
-                    continue
-                if document_labels_to_indexes_for_embedding_retry_sets == None and \
-                        search_phrase.reverse_only:
-                    continue
-                if search_phrase.topic_match_phraselet and len(search_phrase.doc) == 1 and not \
-                        compare_embeddings_on_root_words and \
-                        len(search_phrase.doc[0]._.holmes.lemma.split()) == 1:
-                    # We are only matching a single word without embedding, so to improve
-                    # performance we avoid entering the subgraph matching code.
-                    for word_matching_root_token in self._words_matching_root_token(
-                            search_phrase):
-                        if word_matching_root_token in \
-                                registered_document.words_to_token_indexes_dict.keys():
-                            for index in registered_document.words_to_token_indexes_dict[
-                                    word_matching_root_token]:
-                                minimal_match = Match(search_phrase.label, document_label, True,
-                                search_phrase.topic_match_phraselet_created_without_matching_tags,
-                                search_phrase.reverse_only)
-                                minimal_match.index_within_document = index
-                                matches.append(minimal_match)
-                    continue
-                if self._is_entitynoun_search_phrase_token(search_phrase.root_token,
-                        search_phrase.topic_match_phraselet):
-                    for token in doc:
-                        if (document_labels_to_indexes_for_embedding_retry_sets == None or token.i
-                                in indexes_to_try_matching_set) and token.pos_ in \
-                                self.semantic_analyzer.noun_pos:
-                            matches.extend(self._get_matches_starting_at_root_word_match(
-                                    search_phrase, doc, token, document_label,
-                                    compare_embeddings_on_non_root_words))
-                    continue
-                else:
-                    matched_indexes_set = set()
-                    if self._is_entity_search_phrase_token(search_phrase.root_token,
-                        search_phrase.topic_match_phraselet):
-                        if search_phrase.topic_match_phraselet:
-                            entity_label = search_phrase.root_token._.holmes.lemma
-                        else:
-                            entity_label = search_phrase.root_token.text
-                        if entity_label in registered_document.words_to_token_indexes_dict.keys():
-                            matched_indexes_set.update(
-                                    registered_document.words_to_token_indexes_dict[entity_label])
-                    else:
-                        for word_matching_root_token in self._words_matching_root_token(
-                                search_phrase):
-                            if word_matching_root_token in \
-                                    registered_document.words_to_token_indexes_dict.keys():
-                                matched_indexes_set.update(
-                                        registered_document.words_to_token_indexes_dict[
-                                        word_matching_root_token])
-                if compare_embeddings_on_root_words and not \
-                        self._is_entity_search_phrase_token(search_phrase.root_token,
-                        search_phrase.topic_match_phraselet) and not search_phrase.reverse_only:
-                    if not search_phrase.topic_match_phraselet:
-                        root_token_lemma_to_use = search_phrase.root_token.lemma_
-                    else:
-                        root_token_lemma_to_use = search_phrase.root_token._.holmes.lemma
-                    if root_token_lemma_to_use in root_lexeme_to_indexes_to_match_dict:
-                        matched_indexes_set.update(root_lexeme_to_indexes_to_match_dict[
-                                root_token_lemma_to_use])
-                    else:
-                        working_indexes_to_match_for_cache_set = set()
-                        for document_word in registered_document.words_to_token_indexes_dict.keys():
-                            indexes_to_match = registered_document.words_to_token_indexes_dict[
-                                    document_word]
-                            if document_labels_to_indexes_for_embedding_retry_sets != None:
-                                indexes_to_match = [index for index in indexes_to_match if
-                                        index in indexes_to_try_matching_set]
-                                if len(indexes_to_match) == 0:
-                                    continue
-                            search_phrase_lexeme = \
-                                    search_phrase.matchable_non_entity_tokens_to_lexemes[
-                                    search_phrase.root_token.i]
-                            document_lexeme = self.semantic_analyzer.nlp.vocab[
-                                    doc[indexes_to_match[0]].lemma_]
-                            if search_phrase_lexeme.vector_norm > 0 and \
-                                    document_lexeme.vector_norm > 0:
-                                similarity_measure = search_phrase_lexeme.similarity(
-                                        document_lexeme)
-                                if similarity_measure >= \
-                                        search_phrase.single_token_similarity_threshold:
-                                    matched_indexes_set.update(indexes_to_match)
-                                    working_indexes_to_match_for_cache_set.update(indexes_to_match)
-                        root_lexeme_to_indexes_to_match_dict[root_token_lemma_to_use] = \
-                                working_indexes_to_match_for_cache_set
-                if document_labels_to_indexes_for_embedding_retry_sets != None:
-                    matched_indexes_set = matched_indexes_set.intersection(
-                            indexes_to_try_matching_set)
-                for index_to_match in sorted(matched_indexes_set):
-                    matches.extend(self._get_matches_starting_at_root_word_match(
-                            search_phrase, doc, doc[index_to_match], document_label,
-                            compare_embeddings_on_non_root_words))
+            indexes_to_consider = get_indexes_to_consider(document_label)
+            matches.extend(self._internal_match_against_single_document(document_label,
+                    registered_document, search_phrases, indexes_to_consider,
+                    compare_embeddings_on_root_words, compare_embeddings_on_non_root_words,
+                    output_document_matching_message_to_console))
         return sorted(matches, key=lambda match: 1 - float(match.overall_similarity_measure))
-
-    def match(self):
-        """Finds and returns matches between the search phrases and the documents
-        managed by this object.
-        """
-        with self._lock:
-            indexed_documents = self._indexed_documents.copy()
-            search_phrases = self.search_phrases.copy()
-        return self._internal_match(indexed_documents, search_phrases, False, None, False, True)
-
-    def match_search_phrases_against(self, parsed_document):
-        """Matches the registered search phrases against a single document
-            supplied to the method.
-        """
-
-        with self._lock:
-            search_phrases = self.search_phrases.copy()
-        indexed_documents = {'':self._create_document(parsed_document, '')}
-        return self._internal_match(indexed_documents, search_phrases, False, None, False, True)
-
-    def match_documents_against(self, search_phrase_text):
-        """Matches the registered documents against a single search phrase text
-            supplied to the method.
-        """
-        with self._lock:
-            indexed_documents = self._indexed_documents.copy()
-        search_phrase_doc = self.semantic_analyzer.parse(search_phrase_text)
-        search_phrases = [self._create_search_phrase(search_phrase_text,
-                search_phrase_doc, search_phrase_text, None, False)]
-        return self._internal_match(indexed_documents, search_phrases, False, None, False, True)
-
-    def match_documents_against_search_phrase_list(self, search_phrases, verbose,
-            document_labels_to_indexes_for_embedding_retry_sets=None,
-            compare_embeddings_on_root_words=False,
-            compare_embeddings_on_non_root_words=True):
-        """Matches the registered documents against a list of search phrase
-            objects supplied to the method.
-        """
-        with self._lock:
-            indexed_documents = self._indexed_documents.copy()
-        return self._internal_match(indexed_documents, search_phrases, verbose,
-                document_labels_to_indexes_for_embedding_retry_sets,
-                compare_embeddings_on_root_words, compare_embeddings_on_non_root_words)

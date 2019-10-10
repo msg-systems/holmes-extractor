@@ -599,3 +599,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
                 '1:pobjp(U); 4:pobjp; 6:mo; 8:sb; 10:sb; 12:cd')
         self.assertEqual(doc[13]._.holmes.string_representation_of_children(),
                 '1:pobjp(U); 4:pobjp; 6:mo; 8:sb; 10:sb')
+
+    def test_parent_token_indexes(self):
+        doc = analyzer.parse("Häuser im Dorf.")
+        self.assertEqual(doc[2]._.holmes.parent_dependencies, [[0, 'pobjp'],[1, 'nk']])

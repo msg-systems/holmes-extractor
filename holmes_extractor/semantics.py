@@ -81,8 +81,8 @@ class HolmesDictionary:
         self.is_negated = None
         self.is_matchable = None
         self.parent_dependencies = [] # list of [index, label] specifications of dependencies
-        # where this token is the child. Takes any coreference resolution into account. Remains
-        # empty until the document is registered with the manager. Is used in topic matching.
+        # where this token is the child. Takes any coreference resolution into account. Used in
+        # topic matching.
 
     @property
     def is_uncertain(self):
@@ -279,6 +279,8 @@ class SemanticAnalyzer(ABC):
             self._create_additional_preposition_phrase_semantic_dependencies(token)
         for token in spacy_doc:
             self._perform_language_specific_tasks(token)
+        for token in spacy_doc:
+            self._create_parent_dependencies(token)
         self.debug_structures(spacy_doc)
         return spacy_doc
 
@@ -692,6 +694,25 @@ class SemanticAnalyzer(ABC):
                 if token.i != to_token.i:
                     token._.holmes.righthand_siblings.append(to_token.i)
 
+    def _create_parent_dependencies(self, token):
+        if self.perform_coreference_resolution:
+            for linked_parent_index in \
+                    self.token_and_coreference_chain_indexes(token):
+                linked_parent = token.doc[linked_parent_index]
+                for child_dependency in (child_dependency for child_dependency in
+                        linked_parent._.holmes.children if child_dependency.child_index >= 0):
+                    child_token = child_dependency.child_token(token.doc)
+                    for linked_child_index in self.token_and_coreference_chain_indexes(child_token):
+                        linked_child = token.doc[linked_child_index]
+                        linked_child._.holmes.parent_dependencies.append([token.i,
+                                child_dependency.label])
+        else:
+            for child_dependency in (child_dependency for child_dependency in
+                    token._.holmes.children if child_dependency.child_index >= 0):
+                child_token = child_dependency.child_token(token.doc)
+                child_token._.holmes.parent_dependencies.append([token.i,
+                        child_dependency.label])
+
 class EnglishSemanticAnalyzer(SemanticAnalyzer):
 
     language_name = 'English'
@@ -922,10 +943,6 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                                     'nsubj', True))
 
     def _handle_relative_constructions(self, token):
-        """Wherever auxiliaries and passives are found, derive the semantic information
-            from the syntactic information supplied by spaCy.
-        """
-
         if token.dep_ == 'relcl':
             for dependency in token._.holmes.children:
                 child = dependency.child_token(token.doc)
@@ -1387,9 +1404,6 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
             correct_auxiliaries_and_passives_recursively(token, [])
 
     def _handle_relative_constructions(self, token):
-        """Wherever auxiliaries and passives are found, derive the semantic information
-            from the syntactic information supplied by spaCy.
-        """
         for dependency in (dependency for dependency in token._.holmes.children if
                 dependency.child_index >= 0 and
                 dependency.child_token(token.doc).tag_ in ('PRELS', 'PRELAT') and
