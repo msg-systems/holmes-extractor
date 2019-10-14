@@ -1193,113 +1193,6 @@ class StructuralMatcher:
         matches_to_return.extend(working_matches)
         return matches_to_return
 
-    def _internal_match_against_single_document(self, document_label, registered_document,
-            search_phrases, indexes_to_consider, compare_embeddings_on_root_words,
-            compare_embeddings_on_non_root_words, output_document_matching_message_to_console):
-        if output_document_matching_message_to_console:
-            print('Processing document', document_label)
-        doc = registered_document.doc
-        matches = []
-        # Dictionary used to improve performance when embedding-based matching for root tokens
-        # is active and there are multiple search phrases with the same root token word: the
-        # same indexes in the document will then match all the search phrase root tokens.
-        root_lexeme_to_indexes_to_match_dict = {}
-        for search_phrase in search_phrases:
-            if len(indexes_to_consider) > 0 and len(search_phrase.doc) == 1:
-                continue
-            if len(indexes_to_consider) == 0 and \
-                    search_phrase.reverse_only:
-                continue
-            if search_phrase.topic_match_phraselet and len(search_phrase.doc) == 1 and not \
-                    compare_embeddings_on_root_words and \
-                    len(search_phrase.doc[0]._.holmes.lemma.split()) == 1:
-                # We are only matching a single word without embedding, so to improve
-                # performance we avoid entering the subgraph matching code.
-                for word_matching_root_token in self._words_matching_root_token(
-                        search_phrase):
-                    if word_matching_root_token in \
-                            registered_document.words_to_token_indexes_dict.keys():
-                        for index in registered_document.words_to_token_indexes_dict[
-                                word_matching_root_token]:
-                            minimal_match = Match(search_phrase.label, document_label, True,
-                            search_phrase.topic_match_phraselet_created_without_matching_tags,
-                            search_phrase.reverse_only)
-                            minimal_match.index_within_document = index
-                            matches.append(minimal_match)
-                continue
-            if self._is_entitynoun_search_phrase_token(search_phrase.root_token,
-                    search_phrase.topic_match_phraselet):
-                for token in doc:
-                    if (len(indexes_to_consider) == 0 or token.i
-                            in indexes_to_try_matching_set) and token.pos_ in \
-                            self.semantic_analyzer.noun_pos:
-                        matches.extend(self._get_matches_starting_at_root_word_match(
-                                search_phrase, doc, token, document_label,
-                                compare_embeddings_on_non_root_words))
-                continue
-            else:
-                matched_indexes_set = set()
-                if self._is_entity_search_phrase_token(search_phrase.root_token,
-                    search_phrase.topic_match_phraselet):
-                    if search_phrase.topic_match_phraselet:
-                        entity_label = search_phrase.root_token._.holmes.lemma
-                    else:
-                        entity_label = search_phrase.root_token.text
-                    if entity_label in registered_document.words_to_token_indexes_dict.keys():
-                        matched_indexes_set.update(
-                                registered_document.words_to_token_indexes_dict[entity_label])
-                else:
-                    for word_matching_root_token in self._words_matching_root_token(
-                            search_phrase):
-                        if word_matching_root_token in \
-                                registered_document.words_to_token_indexes_dict.keys():
-                            matched_indexes_set.update(
-                                    registered_document.words_to_token_indexes_dict[
-                                    word_matching_root_token])
-            if compare_embeddings_on_root_words and not \
-                    self._is_entity_search_phrase_token(search_phrase.root_token,
-                    search_phrase.topic_match_phraselet) and not search_phrase.reverse_only:
-                if not search_phrase.topic_match_phraselet:
-                    root_token_lemma_to_use = search_phrase.root_token.lemma_
-                else:
-                    root_token_lemma_to_use = search_phrase.root_token._.holmes.lemma
-                if root_token_lemma_to_use in root_lexeme_to_indexes_to_match_dict:
-                    matched_indexes_set.update(root_lexeme_to_indexes_to_match_dict[
-                            root_token_lemma_to_use])
-                else:
-                    working_indexes_to_match_for_cache_set = set()
-                    for document_word in registered_document.words_to_token_indexes_dict.keys():
-                        indexes_to_match = registered_document.words_to_token_indexes_dict[
-                                document_word]
-                        if len(indexes_to_consider) > 0:
-                            indexes_to_match = [index for index in indexes_to_match if
-                                    index in indexes_to_consider]
-                            if len(indexes_to_match) == 0:
-                                continue
-                        search_phrase_lexeme = \
-                                search_phrase.matchable_non_entity_tokens_to_lexemes[
-                                search_phrase.root_token.i]
-                        document_lexeme = self.semantic_analyzer.nlp.vocab[
-                                doc[indexes_to_match[0]].lemma_]
-                        if search_phrase_lexeme.vector_norm > 0 and \
-                                document_lexeme.vector_norm > 0:
-                            similarity_measure = search_phrase_lexeme.similarity(
-                                    document_lexeme)
-                            if similarity_measure >= \
-                                    search_phrase.single_token_similarity_threshold:
-                                matched_indexes_set.update(indexes_to_match)
-                                working_indexes_to_match_for_cache_set.update(indexes_to_match)
-                    root_lexeme_to_indexes_to_match_dict[root_token_lemma_to_use] = \
-                            working_indexes_to_match_for_cache_set
-            if len(indexes_to_consider) > 0:
-                matched_indexes_set = matched_indexes_set.intersection(
-                        indexes_to_consider)
-            for index_to_match in sorted(matched_indexes_set):
-                matches.extend(self._get_matches_starting_at_root_word_match(
-                        search_phrase, doc, doc[index_to_match], document_label,
-                        compare_embeddings_on_non_root_words))
-        return matches
-
     def match(self, indexed_documents, search_phrases,
             output_document_matching_message_to_console,
             document_labels_to_indexes_for_embedding_retry_sets,
@@ -1342,8 +1235,105 @@ class StructuralMatcher:
         matches = []
         for document_label, registered_document in indexed_documents.items():
             indexes_to_consider = get_indexes_to_consider(document_label)
-            matches.extend(self._internal_match_against_single_document(document_label,
-                    registered_document, search_phrases, indexes_to_consider,
-                    compare_embeddings_on_root_words, compare_embeddings_on_non_root_words,
-                    output_document_matching_message_to_console))
+            if output_document_matching_message_to_console:
+                print('Processing document', document_label)
+            doc = registered_document.doc
+            # Dictionary used to improve performance when embedding-based matching for root tokens
+            # is active and there are multiple search phrases with the same root token word: the
+            # same indexes in the document will then match all the search phrase root tokens.
+            root_lexeme_to_indexes_to_match_dict = {}
+            for search_phrase in search_phrases:
+                if len(indexes_to_consider) > 0 and len(search_phrase.doc) == 1:
+                    continue
+                if len(indexes_to_consider) == 0 and \
+                        search_phrase.reverse_only:
+                    continue
+                if search_phrase.topic_match_phraselet and len(search_phrase.doc) == 1 and not \
+                        compare_embeddings_on_root_words and \
+                        len(search_phrase.doc[0]._.holmes.lemma.split()) == 1:
+                    # We are only matching a single word without embedding, so to improve
+                    # performance we avoid entering the subgraph matching code.
+                    for word_matching_root_token in self._words_matching_root_token(
+                            search_phrase):
+                        if word_matching_root_token in \
+                                registered_document.words_to_token_indexes_dict.keys():
+                            for index in registered_document.words_to_token_indexes_dict[
+                                    word_matching_root_token]:
+                                minimal_match = Match(search_phrase.label, document_label, True,
+                                search_phrase.topic_match_phraselet_created_without_matching_tags,
+                                search_phrase.reverse_only)
+                                minimal_match.index_within_document = index
+                                matches.append(minimal_match)
+                    continue
+                if self._is_entitynoun_search_phrase_token(search_phrase.root_token,
+                        search_phrase.topic_match_phraselet):
+                    for token in doc:
+                        if (len(indexes_to_consider) == 0 or token.i
+                                in indexes_to_try_matching_set) and token.pos_ in \
+                                self.semantic_analyzer.noun_pos:
+                            matches.extend(self._get_matches_starting_at_root_word_match(
+                                    search_phrase, doc, token, document_label,
+                                    compare_embeddings_on_non_root_words))
+                    continue
+                else:
+                    matched_indexes_set = set()
+                    if self._is_entity_search_phrase_token(search_phrase.root_token,
+                        search_phrase.topic_match_phraselet):
+                        if search_phrase.topic_match_phraselet:
+                            entity_label = search_phrase.root_token._.holmes.lemma
+                        else:
+                            entity_label = search_phrase.root_token.text
+                        if entity_label in registered_document.words_to_token_indexes_dict.keys():
+                            matched_indexes_set.update(
+                                    registered_document.words_to_token_indexes_dict[entity_label])
+                    else:
+                        for word_matching_root_token in self._words_matching_root_token(
+                                search_phrase):
+                            if word_matching_root_token in \
+                                    registered_document.words_to_token_indexes_dict.keys():
+                                matched_indexes_set.update(
+                                        registered_document.words_to_token_indexes_dict[
+                                        word_matching_root_token])
+                if compare_embeddings_on_root_words and not \
+                        self._is_entity_search_phrase_token(search_phrase.root_token,
+                        search_phrase.topic_match_phraselet) and not search_phrase.reverse_only:
+                    if not search_phrase.topic_match_phraselet:
+                        root_token_lemma_to_use = search_phrase.root_token.lemma_
+                    else:
+                        root_token_lemma_to_use = search_phrase.root_token._.holmes.lemma
+                    if root_token_lemma_to_use in root_lexeme_to_indexes_to_match_dict:
+                        matched_indexes_set.update(root_lexeme_to_indexes_to_match_dict[
+                                root_token_lemma_to_use])
+                    else:
+                        working_indexes_to_match_for_cache_set = set()
+                        for document_word in registered_document.words_to_token_indexes_dict.keys():
+                            indexes_to_match = registered_document.words_to_token_indexes_dict[
+                                    document_word]
+                            if len(indexes_to_consider) > 0:
+                                indexes_to_match = [index for index in indexes_to_match if
+                                        index in indexes_to_consider]
+                                if len(indexes_to_match) == 0:
+                                    continue
+                            search_phrase_lexeme = \
+                                    search_phrase.matchable_non_entity_tokens_to_lexemes[
+                                    search_phrase.root_token.i]
+                            document_lexeme = self.semantic_analyzer.nlp.vocab[
+                                    doc[indexes_to_match[0]].lemma_]
+                            if search_phrase_lexeme.vector_norm > 0 and \
+                                    document_lexeme.vector_norm > 0:
+                                similarity_measure = search_phrase_lexeme.similarity(
+                                        document_lexeme)
+                                if similarity_measure >= \
+                                        search_phrase.single_token_similarity_threshold:
+                                    matched_indexes_set.update(indexes_to_match)
+                                    working_indexes_to_match_for_cache_set.update(indexes_to_match)
+                        root_lexeme_to_indexes_to_match_dict[root_token_lemma_to_use] = \
+                                working_indexes_to_match_for_cache_set
+                if len(indexes_to_consider) > 0:
+                    matched_indexes_set = matched_indexes_set.intersection(
+                            indexes_to_consider)
+                for index_to_match in sorted(matched_indexes_set):
+                    matches.extend(self._get_matches_starting_at_root_word_match(
+                            search_phrase, doc, doc[index_to_match], document_label,
+                            compare_embeddings_on_non_root_words))
         return sorted(matches, key=lambda match: 1 - float(match.overall_similarity_measure))

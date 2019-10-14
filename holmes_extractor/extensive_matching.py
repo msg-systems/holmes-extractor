@@ -56,17 +56,17 @@ class PhraseletActivationTracker:
 class TopicMatcher:
     """A topic matcher object. See manager.py for details of the properties."""
 
-    def __init__(self, holmes, *, maximum_activation_distance, relation_score,
-            reverse_only_relation_score, single_word_score, single_word_any_tag_score,
-            overlapping_relation_multiplier, embedding_penalty, maximum_activation_value,
+    def __init__(self, *, semantic_analyzer, structural_matcher, indexed_documents,
+            maximum_activation_distance, relation_score, reverse_only_relation_score,
+            single_word_score, single_word_any_tag_score, overlapping_relation_multiplier,
+            embedding_penalty, maximum_activation_value,
             maximum_number_of_single_word_matches_for_embedding_based_retries=1000,
             embedding_based_retry_preexisting_match_cutoff=0.2,
             sideways_match_extent, only_one_result_per_document, number_of_results):
-        self._holmes = holmes
-        self._semantic_analyzer = holmes.semantic_analyzer
-        self.structural_matcher = holmes.structural_matcher
-        self.threadsafe_container = holmes.threadsafe_container
-        self._ontology = holmes.structural_matcher.ontology
+        self._semantic_analyzer = semantic_analyzer
+        self.structural_matcher = structural_matcher
+        self.indexed_documents = indexed_documents
+        self._ontology = structural_matcher.ontology
         self.maximum_activation_distance = maximum_activation_distance
         self.relation_score = relation_score
         self.reverse_only_relation_score = reverse_only_relation_score
@@ -198,8 +198,7 @@ class TopicMatcher:
                         phraselet.reverse_only: # reverse only are matched without embeddings
                     for corpus_word_position in child_single_word_match_corpus_words.difference(
                             child_relation_match_corpus_words):
-                        doc = self.threadsafe_container.get_document(
-                                corpus_word_position.document_label)
+                        doc = self.indexed_documents[corpus_word_position.document_label].doc
                         working_token = doc[corpus_word_position.index]
                         for parent_dependency in working_token._.holmes.parent_dependencies:
                             if self._semantic_analyzer.dependency_labels_match(
@@ -350,8 +349,7 @@ class TopicMatcher:
                 ignore_relation_phraselets = True,
                 include_reverse_only = False) # value is irrelevant with
                                               # ignore_relation_phraselets == True
-        indexed_documents = self.threadsafe_container.get_indexed_documents()
-        structural_matches = self.structural_matcher.match(indexed_documents,
+        structural_matches = self.structural_matcher.match(self.indexed_documents,
                 phraselet_labels_to_search_phrases.values(), False, None,
                 compare_embeddings_on_root_words=False, compare_embeddings_on_non_root_words=False)
         rebuild_document_info_dict(structural_matches, phraselet_labels_to_search_phrases)
@@ -363,12 +361,13 @@ class TopicMatcher:
                     parent_document_labels_to_indexes_for_embedding_retry_sets,
                     child_document_labels_to_indexes_for_embedding_retry_sets)
         if len(parent_document_labels_to_indexes_for_embedding_retry_sets) > 0:
-            structural_matches.extend(self.structural_matcher.match(indexed_documents, phraselet_labels_to_search_phrases.values(), False,
+            structural_matches.extend(self.structural_matcher.match(self.indexed_documents,
+                    phraselet_labels_to_search_phrases.values(), False,
                     parent_document_labels_to_indexes_for_embedding_retry_sets,
                     compare_embeddings_on_root_words=True,
                     compare_embeddings_on_non_root_words=False))
         if len(child_document_labels_to_indexes_for_embedding_retry_sets) > 0:
-            structural_matches.extend(self.structural_matcher.match(indexed_documents,
+            structural_matches.extend(self.structural_matcher.match(self.indexed_documents,
                     phraselet_labels_to_search_phrases.values(), False,
                     child_document_labels_to_indexes_for_embedding_retry_sets,
                     compare_embeddings_on_root_words=False,
@@ -572,7 +571,7 @@ class TopicMatcher:
                         score_sorted_match.index_within_document
                 )
             working_document = \
-                    self.threadsafe_container.get_document(score_sorted_match.document_label)
+                    self.indexed_documents[score_sorted_match.document_label].doc
             relevant_sentences = [sentence for sentence in working_document.sents
                     if sentence.end >= start_index and sentence.start <= end_index]
             sentences_start_index = relevant_sentences[0].start
@@ -636,7 +635,7 @@ class TopicMatcher:
         topic_match_dicts = []
         for topic_match_counter in range(0, len(topic_matches)):
             topic_match = topic_matches[topic_match_counter]
-            doc = self.threadsafe_container.get_document(topic_match.document_label)
+            doc = self.indexed_documents[topic_match.document_label].doc
             sentences_character_start_index_in_document = doc[topic_match.sentences_start_index].idx
             sentences_character_end_index_in_document = doc[topic_match.sentences_end_index].idx + \
                     len(doc[topic_match.sentences_end_index].text)
@@ -709,22 +708,31 @@ class TopicMatcher:
                         in word_infos]
             }
             topic_match_dicts.append(topic_match_dict)
+        return TopicMatchDictionaryOrderer().order(topic_match_dicts, self.number_of_results,
+                tied_result_quotient)
+
+class TopicMatchDictionaryOrderer:
+    # extracted into its own class to facilite use by MultiprocessingManager
+
+    def order(self, topic_match_dicts, number_of_results, tied_result_quotient):
+
+        topic_match_dicts = sorted(topic_match_dicts, key=lambda dict: (0-dict['score'],
+        0-len(dict['text'].split()), dict['document_label'], dict['word_infos'][0][0]))
+        topic_match_dicts = topic_match_dicts[0:number_of_results]
         topic_match_counter = 0
-        while topic_match_counter < len(topic_matches) -1:
-            for following_topic_match_counter in range(topic_match_counter + 1,
-                    len(topic_matches)):
-                if topic_match_dicts[following_topic_match_counter]['score'] / topic_match_dicts[
-                        topic_match_counter]['score'] > tied_result_quotient:
-                    working_rank = topic_match_dicts[topic_match_counter]['rank']
-                    if not working_rank.endswith('='):
-                        working_rank = ''.join((working_rank, '='))
-                    topic_match_dicts[topic_match_counter]['rank'] = working_rank
-                    topic_match_dicts[following_topic_match_counter]['rank'] = working_rank
-                else:
-                    topic_match_counter = following_topic_match_counter - 1
-                    break
-            topic_match_counter += 1
+        while topic_match_counter < len(topic_match_dicts):
+            topic_match_dicts[topic_match_counter]['rank'] = str(topic_match_counter + 1)
+            following_topic_match_counter = topic_match_counter + 1
+            while following_topic_match_counter < len(topic_match_dicts) and \
+                    topic_match_dicts[following_topic_match_counter]['score'] / topic_match_dicts[
+                    topic_match_counter]['score'] > tied_result_quotient:
+                working_rank = ''.join((str(topic_match_counter + 1), '='))
+                topic_match_dicts[topic_match_counter]['rank'] = working_rank
+                topic_match_dicts[following_topic_match_counter]['rank'] = working_rank
+                following_topic_match_counter += 1
+            topic_match_counter = following_topic_match_counter
         return topic_match_dicts
+
 
 class SupervisedTopicTrainingUtils:
 

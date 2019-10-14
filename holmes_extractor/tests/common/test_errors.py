@@ -29,60 +29,77 @@ class ErrorsTest(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             holmes.Manager(model='de_core_news_md', perform_coreference_resolution=True)
 
+    def test_coreference_resolution_not_supported_multiprocessing_manager_error(self):
+        with self.assertRaises(ValueError) as context:
+            holmes.MultiprocessingManager(model='de_core_news_md',
+                    perform_coreference_resolution=True)
+
     def test_search_phrase_contains_conjunction(self):
         with self.assertRaises(SearchPhraseContainsConjunctionError) as context:
+            nocoref_holmes_manager.remove_all_search_phrases()
             nocoref_holmes_manager.register_search_phrase("A dog and a lion chase a cat")
 
     def test_search_phrase_contains_negation(self):
         with self.assertRaises(SearchPhraseContainsNegationError) as context:
+            nocoref_holmes_manager.remove_all_search_phrases()
             nocoref_holmes_manager.register_search_phrase("A dog does not chase a cat")
 
     def test_search_phrase_contains_non_coreferring_pronoun(self):
+        nocoref_holmes_manager.remove_all_search_phrases()
         nocoref_holmes_manager.register_search_phrase(
                 "A cat has a dog chasing it")
 
     def test_search_phrase_contains_pronoun_coreference_switched_off(self):
+        nocoref_holmes_manager.remove_all_search_phrases()
         nocoref_holmes_manager.register_search_phrase(
                 "A cat has a dog chasing it")
 
     def test_search_phrase_contains_coreferring_pronoun(self):
         with self.assertRaises(SearchPhraseContainsCoreferringPronounError) as context:
-            print('Value:', coref_holmes_manager.perform_coreference_resolution)
+            coref_holmes_manager.remove_all_search_phrases()
             coref_holmes_manager.register_search_phrase(
                     "A cat has a dog chasing it")
 
     def test_search_phrase_contains_only_generic_pronoun(self):
         with self.assertRaises(SearchPhraseWithoutMatchableWordsError) as context:
+            nocoref_holmes_manager.remove_all_search_phrases()
             nocoref_holmes_manager.register_search_phrase("Somebody")
 
     def test_search_phrase_contains_only_interrogative_pronoun(self):
         with self.assertRaises(SearchPhraseWithoutMatchableWordsError) as context:
+            nocoref_holmes_manager.remove_all_search_phrases()
             nocoref_holmes_manager.register_search_phrase("Who")
 
     def test_search_phrase_contains_only_grammatical_word(self):
         with self.assertRaises(SearchPhraseWithoutMatchableWordsError) as context:
+            nocoref_holmes_manager.remove_all_search_phrases()
             nocoref_holmes_manager.register_search_phrase("A")
 
     def test_search_phrase_contains_two_normal_clauses(self):
         with self.assertRaises(SearchPhraseContainsMultipleClausesError) as context:
+            nocoref_holmes_manager.remove_all_search_phrases()
             nocoref_holmes_manager.register_search_phrase(
                     "The dog chased the cat. The cat chased the dog.")
 
     def test_search_phrase_contains_two_entity_clauses(self):
         with self.assertRaises(SearchPhraseContainsMultipleClausesError) as context:
+            nocoref_holmes_manager.remove_all_search_phrases()
             nocoref_holmes_manager.register_search_phrase("An ENTITYPERSON. An ENTITYPERSON")
 
     def test_search_phrase_contains_one_normal_and_one_entity_clause(self):
         with self.assertRaises(SearchPhraseContainsMultipleClausesError) as context:
+            nocoref_holmes_manager.remove_all_search_phrases()
             nocoref_holmes_manager.register_search_phrase("The dog chased the cat. An ENTITYPERSON")
 
     def test_duplicate_document_with_parse_and_register_document(self):
         with self.assertRaises(DuplicateDocumentError) as context:
+            nocoref_holmes_manager.remove_all_documents()
             nocoref_holmes_manager.parse_and_register_document("A", "A")
             nocoref_holmes_manager.parse_and_register_document("A", "A")
 
     def test_duplicate_document_with_register_parsed_document(self):
         with self.assertRaises(DuplicateDocumentError) as context:
+            nocoref_holmes_manager.remove_all_documents()
             holmes_doc = nocoref_holmes_manager.semantic_analyzer.parse("A")
             holmes_doc2 = nocoref_holmes_manager.semantic_analyzer.parse("B")
             nocoref_holmes_manager.register_parsed_document(holmes_doc, 'C')
@@ -90,17 +107,47 @@ class ErrorsTest(unittest.TestCase):
 
     def test_duplicate_document_with_deserialize_and_register_document(self):
         with self.assertRaises(DuplicateDocumentError) as context:
+            nocoref_holmes_manager.remove_all_documents()
             nocoref_holmes_manager.parse_and_register_document("A", '')
             deserialized_doc = nocoref_holmes_manager.serialize_document('')
             nocoref_holmes_manager.deserialize_and_register_document(deserialized_doc, '')
 
+    def test_duplicate_document_with_parse_and_register_documents_multiprocessing(self):
+        with self.assertRaises(DuplicateDocumentError) as context:
+            m = holmes.MultiprocessingManager('en_core_web_sm', number_of_workers=2)
+            m.parse_and_register_documents({'A':"A"})
+            m.parse_and_register_documents({'A':"A"})
+
+    def test_duplicate_document_with_deserialize_and_register_document_multiprocessing(self):
+        with self.assertRaises(DuplicateDocumentError) as context:
+            m_normal = holmes.Manager('en_core_web_sm', perform_coreference_resolution=False)
+            m_normal.remove_all_documents()
+            m_normal.parse_and_register_document("A", '')
+            deserialized_doc = m_normal.serialize_document('')
+            m = holmes.MultiprocessingManager('en_core_web_sm',
+                    perform_coreference_resolution=False, number_of_workers=2)
+            m.deserialize_and_register_documents({'A':deserialized_doc})
+            m.deserialize_and_register_documents({'A':deserialized_doc})
+
     def test_serialization_not_supported_on_serialization(self):
         with self.assertRaises(SerializationNotSupportedError) as context:
+            coref_holmes_manager.remove_all_documents()
             coref_holmes_manager.parse_and_register_document("A", '')
             deserialized_doc = coref_holmes_manager.serialize_document('')
 
+    def test_serialization_not_supported_on_serialization_multiprocessing(self):
+        with self.assertRaises(SerializationNotSupportedError) as context:
+            m_normal = holmes.Manager('en_core_web_sm', perform_coreference_resolution=False)
+            m_normal.remove_all_documents()
+            m_normal.parse_and_register_document("A", '')
+            deserialized_doc = m_normal.serialize_document('')
+            m = holmes.MultiprocessingManager('en_core_web_sm', number_of_workers=2)
+            m.deserialize_and_register_documents({'A':deserialized_doc})
+
     def test_serialization_not_supported_on_deserialization(self):
         with self.assertRaises(SerializationNotSupportedError) as context:
+            nocoref_holmes_manager.remove_all_documents()
+            coref_holmes_manager.remove_all_documents()
             coref_holmes_manager.deserialize_and_register_document("A", '')
             nocoref_holmes_manager.parse_and_register_document("A", '')
             deserialized_doc = nocoref_holmes_manager.serialize_document('')
