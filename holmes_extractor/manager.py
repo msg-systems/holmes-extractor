@@ -1,5 +1,6 @@
 import copy
 import sys
+import thinc
 from .errors import *
 from .structural_matching import StructuralMatcher, ThreadsafeContainer
 from .semantics import SemanticAnalyzerFactory
@@ -643,7 +644,8 @@ class Worker:
         pass
 
     def listen(self, semantic_analyzer, structural_matcher, input_queue, worker_label):
-        semantic_analyzer.reload_model()
+        if thinc.extra.load_nlp.VECTORS == {}: # see https://github.com/explosion/spaCy/issues/3552
+            semantic_analyzer.reload_model()
         indexed_documents = {}
         while(True):
             method, args, reply_queue = input_queue.get()
