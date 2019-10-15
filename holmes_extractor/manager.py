@@ -1,6 +1,5 @@
 import copy
 import sys
-import thinc
 from .errors import *
 from .structural_matching import StructuralMatcher, ThreadsafeContainer
 from .semantics import SemanticAnalyzerFactory
@@ -512,15 +511,12 @@ class MultiprocessingManager:
                 print('Exception', type(return_value), worker_label, return_value)
             return return_value
         elif self._verbose:
-            if type(return_value) is list:
-                with self._lock:
-                    print(': '.join((worker_label, 'Topic match dict returned')))
-            else:
+            if not type(return_value) is list:
                 with self._lock:
                     print(': '.join((worker_label, return_value)))
             return None
 
-    def _internal_register_document(self, dict, worker_method):
+    def _internal_register_documents(self, dict, worker_method):
         reply_queue = self._multiprocessor_manager.Queue()
         for label, value in dict.items():
             self._add_document_label(label)
@@ -540,7 +536,7 @@ class MultiprocessingManager:
 
         document_dictionary -- a dictionary from unique document labels to raw document texts.
         """
-        self._internal_register_document(document_dictionary,
+        self._internal_register_documents(document_dictionary,
                 self._worker.worker_parse_and_register_document)
 
     def deserialize_and_register_documents(self, serialized_document_dictionary):
@@ -551,7 +547,7 @@ class MultiprocessingManager:
         """
         if self._perform_coreference_resolution:
             raise SerializationNotSupportedError(self.semantic_analyzer.model)
-        self._internal_register_document(serialized_document_dictionary,
+        self._internal_register_documents(serialized_document_dictionary,
                 self._worker.worker_deserialize_and_register_document)
 
     def document_labels(self):
@@ -647,8 +643,7 @@ class Worker:
         pass
 
     def listen(self, semantic_analyzer, structural_matcher, input_queue, worker_label):
-        if thinc.extra.load_nlp.VECTORS == {}:
-            semantic_analyzer.reload_model()
+        semantic_analyzer.reload_model()
         indexed_documents = {}
         while(True):
             method, args, reply_queue = input_queue.get()

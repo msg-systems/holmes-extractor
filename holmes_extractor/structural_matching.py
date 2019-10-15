@@ -1234,7 +1234,6 @@ class StructuralMatcher:
             raise NoSearchPhraseError('At least one search_phrase is required to match.')
         matches = []
         for document_label, registered_document in indexed_documents.items():
-            indexes_to_consider = get_indexes_to_consider(document_label)
             if output_document_matching_message_to_console:
                 print('Processing document', document_label)
             doc = registered_document.doc
@@ -1243,9 +1242,12 @@ class StructuralMatcher:
             # same indexes in the document will then match all the search phrase root tokens.
             root_lexeme_to_indexes_to_match_dict = {}
             for search_phrase in search_phrases:
-                if len(indexes_to_consider) > 0 and len(search_phrase.doc) == 1:
-                    continue
-                if len(indexes_to_consider) == 0 and \
+                if document_labels_to_indexes_for_embedding_retry_sets != None:
+                    if len(search_phrase.doc) == 1:
+                        continue
+                    else:
+                        indexes_to_consider = get_indexes_to_consider(document_label)
+                if document_labels_to_indexes_for_embedding_retry_sets == None and \
                         search_phrase.reverse_only:
                     continue
                 if search_phrase.topic_match_phraselet and len(search_phrase.doc) == 1 and not \
@@ -1266,11 +1268,10 @@ class StructuralMatcher:
                                 matches.append(minimal_match)
                     continue
                 if self._is_entitynoun_search_phrase_token(search_phrase.root_token,
-                        search_phrase.topic_match_phraselet):
+                        search_phrase.topic_match_phraselet): # phraselets are not generated for
+                                                              # ENTITYNOUN roots
                     for token in doc:
-                        if (len(indexes_to_consider) == 0 or token.i
-                                in indexes_to_try_matching_set) and token.pos_ in \
-                                self.semantic_analyzer.noun_pos:
+                        if token.pos_ in self.semantic_analyzer.noun_pos:
                             matches.extend(self._get_matches_starting_at_root_word_match(
                                     search_phrase, doc, token, document_label,
                                     compare_embeddings_on_non_root_words))
@@ -1309,7 +1310,7 @@ class StructuralMatcher:
                         for document_word in registered_document.words_to_token_indexes_dict.keys():
                             indexes_to_match = registered_document.words_to_token_indexes_dict[
                                     document_word]
-                            if len(indexes_to_consider) > 0:
+                            if document_labels_to_indexes_for_embedding_retry_sets != None:
                                 indexes_to_match = [index for index in indexes_to_match if
                                         index in indexes_to_consider]
                                 if len(indexes_to_match) == 0:
@@ -1329,7 +1330,7 @@ class StructuralMatcher:
                                     working_indexes_to_match_for_cache_set.update(indexes_to_match)
                         root_lexeme_to_indexes_to_match_dict[root_token_lemma_to_use] = \
                                 working_indexes_to_match_for_cache_set
-                if len(indexes_to_consider) > 0:
+                if document_labels_to_indexes_for_embedding_retry_sets != None:
                     matched_indexes_set = matched_indexes_set.intersection(
                             indexes_to_consider)
                 for index_to_match in sorted(matched_indexes_set):

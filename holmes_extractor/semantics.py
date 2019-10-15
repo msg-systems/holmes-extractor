@@ -236,7 +236,7 @@ class SemanticAnalyzer(ABC):
     Token.set_extension('holmes', default='')
 
     def reload_model(self):
-        spacy.load(self.model) # see https://github.com/explosion/spaCy/issues/3552
+        spacy.load(self.model)
 
     def parse(self, text):
         """Performs a full spaCy and Holmes parse on a string.
