@@ -195,13 +195,24 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                 ['predicate-patient: see-dog', 'predicate-actor: chase-dog',
                 'predicate-patient: chase-cat', 'word: dog', 'word: cat'])
 
-    def test_phraselet_stop_words_governor(self):
+    def test_reverse_only_parent_lemma(self):
         self._check_equals(no_ontology_coref_holmes_manager,
-                "Always he had it", ['word: always'])
+                "Always he had it", ['governor-adjective: have-always'], include_reverse_only=True)
+
+    def test_reverse_only_parent_lemma_suppressed(self):
+        self._check_equals(no_ontology_coref_holmes_manager,
+                "Always he had it", ['word: have', 'word: always'], include_reverse_only=False)
 
     def test_phraselet_stop_words_governed(self):
         self._check_equals(no_ontology_coref_holmes_manager,
-                "So he did it at home", ['word: home', 'prepgovernor-noun: do-home'])
+                "So he did it at home", ['word: home', 'prepgovernor-noun: do-home',
+                        'prep-noun: at-home'],
+                include_reverse_only=True)
+
+    def test_phraselet_stop_words_governed_suppressed(self):
+        self._check_equals(no_ontology_coref_holmes_manager,
+                "So he did it at home", ['word: home'],
+                include_reverse_only=False)
 
     def test_coref_and_serialization(self):
         no_ontology_coref_holmes_manager.remove_all_search_phrases()

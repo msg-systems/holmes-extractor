@@ -70,10 +70,10 @@ class HolmesConsoles:
         self._common()
         print('Chatbot mode')
         print()
-        if len(self._structural_matcher.search_phrases) == 0:
+        if len(self._holmes.threadsafe_container._search_phrases) == 0:
             raise RuntimeError('No search_phrases registered.')
         # Display search phrases
-        for search_phrase in self._structural_matcher.search_phrases:
+        for search_phrase in self._holmes.threadsafe_container._search_phrases:
             print(''.join(("Search phrase '", search_phrase.doc.text, "'")))
             # only has an effect when debug==True
             self._semantic_analyzer.debug_structures(search_phrase.doc)
@@ -190,7 +190,6 @@ class HolmesConsoles:
             print()
             print('Performing topic matching ...')
             topic_matches = {}
-            topic_match_dicts = []
             try:
                 print()
                 topic_match_dicts = \
@@ -200,8 +199,10 @@ class HolmesConsoles:
                         only_one_result_per_document=only_one_topic_match_per_document)
             except NoSearchPhraseError:
                 pass
-            if len(topic_match_dicts) == 0:
+            if topic_match_dicts == None or len(topic_match_dicts) == 0:
                 print('No topic match results were returned.')
+                print()
+                continue
             elif only_one_topic_match_per_document:
                 print('Topic matching results (maximum one per document):')
             else:

@@ -30,6 +30,14 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 single_word_any_tag_score=5)
         self.assertEqual(topic_matches, [])
 
+    def test_no_match_stopwords(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.parse_and_register_document("then")
+        topic_matches = holmes_manager_coref.topic_match_documents_against("then",
+                relation_score=20, reverse_only_relation_score=15, single_word_score=10,
+                single_word_any_tag_score=5)
+        self.assertEqual(topic_matches, [])
+
     def test_direct_matching(self):
         self._check_equals("A plant grows", "A plant grows", 34, holmes_manager_coref)
 
@@ -94,12 +102,40 @@ class EnglishTopicMatchingTest(unittest.TestCase):
     def test_matching_only_adjective_where_noun(self):
         self._check_equals("nice place", "nice", 5, holmes_manager_coref)
 
-    def test_stopwords(self):
-        self._check_equals("The donkey has a roof", "The donkey has a roof", 19,
+    def test_reverse_only_parent_lemma_threeway(self):
+        self._check_equals("The donkey has a roof", "The donkey has a roof", 68,
                 holmes_manager_coref)
 
-    def test_stopwords_control(self):
+    def test_reverse_only_parent_lemma_threeway_coreference(self):
+        self._check_equals("A friend has a roof", "I saw a friend and I saw a roof. He had it.", 68,
+                holmes_manager_coref)
+
+    def test_reverse_only_parent_lemma_twoway(self):
+        self._check_equals("The donkey has a roof", "The donkey has a house", 29,
+                holmes_manager_coref)
+
+    def test_reverse_only_parent_lemma_threeway_control(self):
         self._check_equals("The donkey paints a roof", "The donkey paints a roof", 82,
+                holmes_manager_coref)
+
+    def test_reverse_only_parent_lemma_twoway_control(self):
+        self._check_equals("The donkey paints a roof", "The donkey paints a house", 58,
+                holmes_manager_coref)
+
+    def test_reverse_only_parent_lemma_twoway_control_no_embedding_based_match(self):
+        self._check_equals("The donkey paints a roof", "The donkey paints a mouse", 34,
+                holmes_manager_coref)
+
+    def test_reverse_only_parent_lemma_be(self):
+        self._check_equals("A president is a politician", "A president is a politician", 68,
+                holmes_manager_coref)
+
+    def test_reverse_only_parent_lemma_be_reversed(self):
+        self._check_equals("A president is a politician", "A politician is a president", 24,
+                holmes_manager_coref)
+
+    def test_reverse_only_parent_lemma_aux_in_document(self):
+        self._check_equals("A donkey has a roof", "A donkey has painted a roof", 24,
                 holmes_manager_coref)
 
     def test_reverse_matching_noun_no_coreference(self):

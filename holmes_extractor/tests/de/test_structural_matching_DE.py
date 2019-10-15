@@ -8,6 +8,7 @@ holmes_manager.register_search_phrase("Ein Hund frisst einen Knochen")
 holmes_manager.register_search_phrase("Ein Mann ist schlau")
 holmes_manager.register_search_phrase("Der reiche Mann")
 holmes_manager.register_search_phrase("Jemand hat einen Berg gesehen")
+holmes_manager.register_search_phrase("Jemand soll einen Fluss sehen")
 holmes_manager.register_search_phrase("Ein Student geht aus", "excursion")
 holmes_manager.register_search_phrase("Der Abschluss einer Versicherung")
 holmes_manager.register_search_phrase("Die Kündigung von einer Versicherung")
@@ -117,8 +118,12 @@ class GermanStructuralMatchingTest(unittest.TestCase):
         for text_match in matches:
             self.assertTrue(text_match.is_uncertain)
 
-    def test_generic_pronoun(self):
+    def test_generic_pronoun_with_auxiliary(self):
         matches = self._get_matches(holmes_manager, "Ein Berg wurde gesehen")
+        self.assertEqual(len(matches), 1)
+
+    def test_generic_pronoun_with_modal(self):
+        matches = self._get_matches(holmes_manager, "Ein Fluss wurde gesehen")
         self.assertEqual(len(matches), 1)
 
     def test_active(self):

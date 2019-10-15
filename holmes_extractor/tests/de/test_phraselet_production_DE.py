@@ -72,12 +72,38 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                 'verb-dat: geben-frau', 'noun-dependent: frau-nett',
                 'word: gärtnern', 'word: frau', 'word: mittagessen']))
 
-    def test_phraselet_stop_words_governor(self):
-        self._check_equals("Immer hatte er es", ['word: immer'])
+    def test_reverse_only_parent_lemma(self):
+        self._check_equals("Immer hat er es",
+                ['verb-adverb: haben-immer'], include_reverse_only=True)
+
+    def test_reverse_only_parent_lemma_auxiliary(self):
+        self._check_equals("Immer hat er es gehabt",
+                ['verb-adverb: haben-immer'], include_reverse_only=True)
+
+    def test_reverse_only_parent_lemma_modal(self):
+        self._check_equals("Immer soll er es haben",
+                ['verb-adverb: haben-immer'], include_reverse_only=True)
+
+    def test_reverse_only_parent_lemma_suppressed(self):
+        self._check_equals("Immer hat er es",
+                ['word: haben', 'word: immer'], include_reverse_only=False)
+
+    def test_reverse_only_parent_lemma_suppressed_auxiliary(self):
+        self._check_equals("Immer hat er es gehabt",
+                ['word: haben', 'word: immer'], include_reverse_only=False)
+
+    def test_reverse_only_parent_lemma_suppressed_modal(self):
+        self._check_equals("Immer soll er es haben",
+                ['word: haben', 'word: immer'], include_reverse_only=False)
 
     def test_phraselet_stop_words_governed(self):
-        self._check_equals("Dann machte er es zu Hause", ['word: hausen',
-                'prepgovernor-noun: machen-hausen'])
+        self._check_equals("Dann tat er es zu Hause",
+                ['word: hausen', 'prepgovernor-noun: tun-hausen',
+                        'prep-noun: zu-hausen'], include_reverse_only=True)
+
+    def test_phraselet_stop_words_governed_suppressed(self):
+        self._check_equals("Dann tat er es zu Hause",
+                ['word: hausen'], include_reverse_only=False)
 
     def test_only_verb(self):
         self._check_equals("springen", ['word: springen'])

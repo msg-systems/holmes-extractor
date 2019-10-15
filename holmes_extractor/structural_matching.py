@@ -495,15 +495,20 @@ class StructuralMatcher:
                                         child_word
                                 phraselet_label = ''.join((phraselet_template.label, ': ',
                                         parent_word, '-', child_word))
+                                is_reverse_only_parent_lemma = False
+                                for entry in self.semantic_analyzer.reverse_only_parent_lemmas:
+                                    if entry[0] == parent_word and entry[1] == doc[parent].pos_:
+                                        is_reverse_only_parent_lemma = True
                                 if parent_word not in \
                                         self.semantic_analyzer.phraselet_stop_lemmas and \
                                         child_word not in \
-                                        self.semantic_analyzer.phraselet_stop_lemmas:
+                                        self.semantic_analyzer.phraselet_stop_lemmas and not (
+                                        is_reverse_only_parent_lemma and not include_reverse_only):
                                     if phraselet_label not in phraselet_labels_to_search_phrases:
                                         phraselet_labels_to_search_phrases[phraselet_label] = \
                                                 self.create_search_phrase('topic match phraselet',
                                                 phraselet_doc, phraselet_label, phraselet_template,
-                                                match_all_words)
+                                                match_all_words, is_reverse_only_parent_lemma)
                                         if returning_serialized_phraselets:
                                             serialized_phraselets.append(SerializedPhraselet(
                                                     phraselet_label, phraselet_template.label,
@@ -569,7 +574,8 @@ class StructuralMatcher:
                             multiword_token._.holmes.is_matchable = False
 
     def create_search_phrase(self, search_phrase_text, search_phrase_doc,
-            label, phraselet_template, topic_match_phraselet_created_without_matching_tags):
+            label, phraselet_template, topic_match_phraselet_created_without_matching_tags,
+            is_reverse_only_parent_lemma = False):
         """phraselet_template -- 'None' if this search phrase is not a topic match phraselet"""
 
         def replace_grammatical_root_token_recursively(token):
@@ -650,7 +656,7 @@ class StructuralMatcher:
         if phraselet_template == None:
             reverse_only = False
         else:
-            reverse_only = phraselet_template.reverse_only
+            reverse_only = is_reverse_only_parent_lemma or phraselet_template.reverse_only
         return self._SearchPhrase(search_phrase_doc, tokens_to_match,
                 root_tokens[0], matchable_non_entity_tokens_to_lexemes,
                 single_token_similarity_threshold, label, self.ontology,

@@ -36,6 +36,66 @@ class GermanTopicMatchingTest(unittest.TestCase):
     def test_matching_no_change_from_template_words(self):
         self._check_equals("Eine beschriebene Sache", "Eine beschriebene Sache", 34)
 
+    def test_reverse_only_parent_lemma_aux_threeway(self):
+        self._check_equals("Der Esel hat ein Dach", "Der Esel hat ein Dach", 68,
+                holmes_manager_with_embeddings)
+
+    def test_reverse_only_parent_lemma_aux_twoway(self):
+        self._check_equals("Der Esel hat ein Dach", "Der Esel hat ein Haus", 29,
+                holmes_manager_with_embeddings)
+
+    def test_reverse_only_parent_lemma_aux_auxiliary_threeway(self):
+        self._check_equals("Der Esel hat ein Dach", "Der Esel wird ein Dach haben", 69,
+                holmes_manager_with_embeddings)
+
+    def test_reverse_only_parent_lemma_aux_auxiliary_twoway(self):
+        self._check_equals("Der Esel hat ein Dach", "Der Esel wird ein Haus haben", 29,
+                holmes_manager_with_embeddings)
+
+    def test_reverse_only_parent_lemma_aux_modal_threeway(self):
+        self._check_equals("Der Esel hat ein Dach", "Der Esel soll ein Dach haben", 69,
+                holmes_manager_with_embeddings)
+
+    def test_reverse_only_parent_lemma_aux_modal_twoway(self):
+        self._check_equals("Der Esel hat ein Dach", "Der Esel soll ein Haus haben", 29,
+                holmes_manager_with_embeddings)
+
+    def test_reverse_only_parent_lemma_verb_threeway(self):
+        self._check_equals("Der Esel macht ein Dach", "Der Esel macht ein Dach", 68,
+                holmes_manager_with_embeddings)
+
+    def test_reverse_only_parent_lemma_verb_twoway(self):
+        self._check_equals("Der Esel macht ein Dach", "Der Esel macht ein Haus", 29,
+                holmes_manager_with_embeddings)
+
+    def test_reverse_only_parent_lemma_threeway_control(self):
+        self._check_equals("Der Esel malt ein Dach an", "Der Esel malt ein Dach an", 82,
+                holmes_manager_with_embeddings)
+
+    def test_reverse_only_parent_lemma_twoway_control_no_embedding_based_match(self):
+        self._check_equals("Der Esel malt ein Dach an", "Der Esel malt eine Maus an", 34,
+                holmes_manager_with_embeddings)
+
+    def test_reverse_only_parent_lemma_be(self):
+        self._check_equals("Ein Präsident ist ein Politiker", "Ein Präsident ist ein Politiker", 68,
+                holmes_manager_with_embeddings)
+
+    def test_reverse_only_parent_lemma_be_reversed(self):
+        self._check_equals("Ein Präsident ist ein Politiker", "Ein Politiker ist ein Präsident", 24,
+                holmes_manager_with_embeddings)
+
+    def test_reverse_only_parent_lemma_become(self):
+        self._check_equals("Ein Präsident wird ein Politiker", "Ein Präsident wird ein Politiker", 68,
+                holmes_manager_with_embeddings)
+
+    def test_reverse_only_parent_lemma_become_reversed(self):
+        self._check_equals("Ein Präsident wird ein Politiker", "Ein Politiker wird ein Präsident", 24,
+                holmes_manager_with_embeddings)
+
+    def test_reverse_only_parent_lemma_aux_in_document(self):
+        self._check_equals("Ein Esel hat ein Dach", "Ein Esel hat ein Dach gesehen", 24,
+                holmes_manager_with_embeddings)
+
     def test_reverse_matching_noun(self):
         self._check_equals("Ein König mit einem Land", "Ein Präsident mit einem Land", 49,
                 holmes_manager_with_embeddings)

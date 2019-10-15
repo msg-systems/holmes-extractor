@@ -349,6 +349,8 @@ class TopicMatcher:
                 ignore_relation_phraselets = True,
                 include_reverse_only = False) # value is irrelevant with
                                               # ignore_relation_phraselets == True
+        if len(phraselet_labels_to_search_phrases) == 0:
+            return []
         structural_matches = self.structural_matcher.match(self.indexed_documents,
                 phraselet_labels_to_search_phrases.values(), False, None,
                 compare_embeddings_on_root_words=False, compare_embeddings_on_non_root_words=False)

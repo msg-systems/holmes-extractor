@@ -72,6 +72,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = analyzer.parse("Der Hund war groß")
         self.assertEqual(doc[1]._.holmes.string_representation_of_children(), '3:nk')
         self.assertEqual(doc[2]._.holmes.string_representation_of_children(), '-2:None')
+        self.assertTrue(doc[2]._.holmes.is_matchable)
 
     def test_predicative_adjective_with_conjunction(self):
         doc = analyzer.parse("Der Hund und die Katze waren groß und stark")
@@ -86,10 +87,12 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = analyzer.parse("Kein Hund hat irgendeine Katze gejagt")
         self.assertEqual(doc[1]._.holmes.is_negated, True)
         self.assertEqual(doc[2]._.holmes.is_negated, False)
+        self.assertFalse(doc[2]._.holmes.is_matchable)
 
     def test_negator_negation_within_parent_clause(self):
         doc = analyzer.parse("Er meinte nicht, dass der Hund die Katze gejagt hätte")
         self.assertEqual(doc[9]._.holmes.is_negated, True)
+        self.assertFalse(doc[10]._.holmes.is_matchable)
 
     def test_operator_negation_within_parent_clause(self):
         doc = analyzer.parse("Keiner behauptete, dass der Hund die Katze jagte")
@@ -127,6 +130,8 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[5]._.holmes.string_representation_of_children(), '1:sb; 4:oa')
         self.assertEqual(doc[2]._.holmes.string_representation_of_children(), '-7:None')
         self.assertEqual(doc[6]._.holmes.string_representation_of_children(), '-6:None')
+        self.assertFalse(doc[2]._.holmes.is_matchable)
+        self.assertFalse(doc[6]._.holmes.is_matchable)
 
     def test_von_passive_perfect(self):
         doc = analyzer.parse("Die Katze ist vom Hund gejagt worden")
@@ -193,6 +198,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = analyzer.parse("Der Hund soll die Katze jagen")
         self.assertEqual(doc[5]._.holmes.string_representation_of_children(), '1:sb(U); 4:oa(U)')
         self.assertEqual(doc[2]._.holmes.string_representation_of_children(), '-6:None')
+        self.assertFalse(doc[2]._.holmes.is_matchable)
 
     def test_simple_modal_verb_passive(self):
         doc = analyzer.parse("Die Katze kann vom Hund gejagt werden")

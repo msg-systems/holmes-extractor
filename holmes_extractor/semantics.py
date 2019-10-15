@@ -482,6 +482,8 @@ class SemanticAnalyzer(ABC):
 
     phraselet_stop_lemmas = NotImplemented
 
+    reverse_only_parent_lemmas = NotImplemented
+
     @abstractmethod
     def _set_negation(self, token):
         pass
@@ -826,6 +828,10 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                 ['dobj', 'relant', 'nsubjpass', 'csubjpass','advmodobj', 'pobjo'],
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only = False),
+        PhraseletTemplate("be-attribute", "Something is a thing", 1, 3,
+                ['attr'],
+                ['VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
+                ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only = True),
         PhraseletTemplate("predicate-recipient", "Somebody gives a thing something", 1, 3,
                 ['dative', 'pobjt'],
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
@@ -861,7 +867,10 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
 
     # Lemmas that should be suppressed  within relation phraselets or as words of
     # single-word phraselets.
-    phraselet_stop_lemmas = ['be', 'have', 'get', 'then', 'therefore', 'so']
+    phraselet_stop_lemmas = ('then', 'therefore', 'so')
+
+    reverse_only_parent_lemmas = (('be', 'VERB'), ('have', 'VERB'), ('do', 'VERB'), ('say', 'VERB'),
+            ('go', 'VERB'), ('get', 'VERB'), ('make', 'VERB'))
 
     def _set_negation(self, token):
         """Marks the negation on the token. A token is negative if it or one of its ancestors
@@ -1286,28 +1295,37 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
     phraselet_templates = [
         PhraseletTemplate("verb-nom", "Eine Sache tut", 2, 1,
                 ['sb'],
-                ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP'],
+                ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
+                        'VAFIN', 'VAIMP', 'VAINF', 'VAPP'],
                 ['FM', 'NE', 'NNE', 'NN'], reverse_only = False),
         PhraseletTemplate("verb-acc", "Jemand tut eine Sache", 1, 3,
                 ['oa'],
-                ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP'],
+                ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
+                        'VAFIN', 'VAIMP', 'VAINF', 'VAPP'],
                 ['FM', 'NE', 'NNE', 'NN'], reverse_only = False),
         PhraseletTemplate("verb-dat", "Jemand gibt einer Sache etwas", 1, 3,
                 ['da'],
-                ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP'],
+                ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
+                        'VAFIN', 'VAIMP', 'VAINF', 'VAPP'],
                 ['FM', 'NE', 'NNE', 'NN'], reverse_only = False),
+        PhraseletTemplate("verb-pd", "Jemand ist eine Sache", 1, 3,
+                ['pd'],
+                ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
+                        'VAFIN', 'VAIMP', 'VAINF', 'VAPP'],
+                ['FM', 'NE', 'NNE', 'NN'], reverse_only = True),
         PhraseletTemplate("noun-dependent", "Eine beschriebene Sache", 2, 1,
                 ['nk', 'ag'],
                 ['FM', 'NE', 'NNE', 'NN'],
                 ['FM', 'NE', 'NNE', 'NN', 'ADJA', 'ADJD', 'ADV', 'CARD'], reverse_only = False),
         PhraseletTemplate("verb-adverb", "schnell machen", 1, 0,
                 ['mo', 'oc'],
-                ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP'],
+                ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
+                        'VAFIN', 'VAIMP', 'VAINF', 'VAPP'],
                 ['ADJA', 'ADJD', 'ADV'], reverse_only = False),
         PhraseletTemplate("prepgovernor-noun", "Eine Sache in einer Sache", 1, 4,
                 ['pobjp'],
                 ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
-                'FM', 'NE', 'NNE', 'NN'],
+                        'VAFIN', 'VAIMP', 'VAINF', 'VAPP','FM', 'NE', 'NNE', 'NN'],
                 ['FM', 'NE', 'NNE', 'NN'], reverse_only = False),
         PhraseletTemplate("prep-noun", "in einer Sache", 0, 2,
                 ['nk'],
@@ -1318,7 +1336,10 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                 ['FM', 'NE', 'NNE', 'NN'],
                 None, reverse_only = False)]
 
-    phraselet_stop_lemmas = ['sein', 'haben', 'dann', 'danach', 'so']
+    phraselet_stop_lemmas = ['dann', 'danach', 'so']
+
+    reverse_only_parent_lemmas = (('sein', 'AUX'), ('werden', 'AUX'), ('haben', 'AUX'),
+            ('sagen', 'VERB'), ('machen', 'VERB'), ('tun', 'VERB'))
 
     def _set_negation(self, token):
         """Marks the negation on the token. A token is negative if it or one of its ancestors
@@ -1352,6 +1373,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                     for dependency in (dependency for dependency in token._.holmes.children
                             if token.doc[dependency.child_index].pos_ in ('VERB', 'AUX') and
                             token.doc[dependency.child_index].dep_ in ('oc', 'pd')):
+                        token._.holmes.is_matchable = False
                         child = token.doc[dependency.child_index]
                         self._move_information_between_tokens(token, child)
                         # VM indicates a modal verb, which has to be marked as uncertain
