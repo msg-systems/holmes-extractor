@@ -419,9 +419,16 @@ class Manager:
         holmes_consoles = HolmesConsoles(self)
         holmes_consoles.start_chatbot_mode()
 
-    def start_search_mode_console(self, only_one_topic_match_per_document=False):
-        """Starts a search mode console enabling the matching of pre-registered documents
-            to search phrases and topic-matching phrases entered ad-hoc by the user.
+    def start_structural_search_mode_console(self):
+        """Starts a structural search mode console enabling the matching of pre-registered documents
+            to search phrases entered ad-hoc by the user.
+        """
+        holmes_consoles = HolmesConsoles(self)
+        holmes_consoles.start_structural_search_mode()
+
+    def start_topic_matching_search_mode_console(self, only_one_topic_match_per_document=False):
+        """Starts a topic matching search mode console enabling the matching of pre-registered
+            documents to search texts entered ad-hoc by the user.
 
             Parameters:
 
@@ -429,7 +436,7 @@ class Manager:
             results from being returned for the same document.
         """
         holmes_consoles = HolmesConsoles(self)
-        holmes_consoles.start_search_mode(only_one_topic_match_per_document)
+        holmes_consoles.start_topic_matching_search_mode(only_one_topic_match_per_document)
 
 class MultiprocessingManager:
     """The facade class for the Holmes library used in a multiprocessing environment.
@@ -457,14 +464,14 @@ class MultiprocessingManager:
             embedding_based_matching_on_root_words=False, ontology=None,
             perform_coreference_resolution=None, debug=False, verbose=True,
             number_of_workers=None):
-        self._semantic_analyzer = SemanticAnalyzerFactory().semantic_analyzer(model=model,
+        self.semantic_analyzer = SemanticAnalyzerFactory().semantic_analyzer(model=model,
                 perform_coreference_resolution=perform_coreference_resolution, debug=debug)
         if perform_coreference_resolution == None:
             perform_coreference_resolution = \
-                    self._semantic_analyzer.model_supports_coreference_resolution()
-        validate_options(self._semantic_analyzer, overall_similarity_threshold,
+                    self.semantic_analyzer.model_supports_coreference_resolution()
+        validate_options(self.semantic_analyzer, overall_similarity_threshold,
                 embedding_based_matching_on_root_words, perform_coreference_resolution)
-        self._structural_matcher = StructuralMatcher(self._semantic_analyzer, ontology,
+        self.structural_matcher = StructuralMatcher(self.semantic_analyzer, ontology,
                 overall_similarity_threshold, embedding_based_matching_on_root_words,
                 perform_coreference_resolution)
         self._perform_coreference_resolution = perform_coreference_resolution
@@ -484,8 +491,8 @@ class MultiprocessingManager:
             input_queue = Queue()
             self._input_queues.append(input_queue)
             worker_label = ' '.join(('Worker', str(counter)))
-            this_worker = Process(target=self._worker.listen, args=(self._semantic_analyzer,
-                    self._structural_matcher, input_queue, worker_label), daemon=True)
+            this_worker = Process(target=self._worker.listen, args=(self.semantic_analyzer,
+                    self.structural_matcher, input_queue, worker_label), daemon=True)
             self._workers.append(this_worker)
             this_worker.start()
         self._lock = Lock()
@@ -543,7 +550,7 @@ class MultiprocessingManager:
         documents serialized using the *Manager.serialize_document()* method.
         """
         if self._perform_coreference_resolution:
-            raise SerializationNotSupportedError(self._semantic_analyzer.model)
+            raise SerializationNotSupportedError(self.semantic_analyzer.model)
         self._internal_register_document(serialized_document_dictionary,
                 self._worker.worker_deserialize_and_register_document)
 
@@ -615,6 +622,18 @@ class MultiprocessingManager:
         else:
             return TopicMatchDictionaryOrderer().order(topic_match_dicts, number_of_results,
                     tied_result_quotient)
+
+    def start_topic_matching_search_mode_console(self, only_one_topic_match_per_document=False):
+        """Starts a topic matching search mode console enabling the matching of pre-registered
+            documents to search texts entered ad-hoc by the user.
+
+            Parameters:
+
+            only_one_topic_match_per_document -- if 'True', prevents multiple topic match
+            results from being returned for the same document.
+        """
+        holmes_consoles = HolmesConsoles(self)
+        holmes_consoles.start_topic_matching_search_mode(only_one_topic_match_per_document)
 
     def close(self):
         for worker in self._workers:

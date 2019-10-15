@@ -22,6 +22,14 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 reverse_only_relation_score=15, single_word_score=10, single_word_any_tag_score=5)
         self.assertEqual(int(topic_matches[0].score), highest_score)
 
+    def test_no_match(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.parse_and_register_document("A plant grows")
+        topic_matches = holmes_manager_coref.topic_match_documents_against("fewfew",
+                relation_score=20, reverse_only_relation_score=15, single_word_score=10,
+                single_word_any_tag_score=5)
+        self.assertEqual(topic_matches, [])
+
     def test_direct_matching(self):
         self._check_equals("A plant grows", "A plant grows", 34, holmes_manager_coref)
 

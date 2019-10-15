@@ -1,7 +1,7 @@
 from .errors import *
 
 class HolmesConsoles:
-    """Manages the two consoles."""
+    """Manages the consoles."""
 
     def __init__(self, holmes):
         self._holmes = holmes
@@ -104,13 +104,12 @@ class HolmesConsoles:
                     map(self._string_representation_of_word_match, match_dict['word_matches']))
                 print(word_matches_string)
 
-    def start_search_mode(self, only_one_topic_match_per_document):
-        """Starts a search mode console enabling the matching of pre-registered documents
-            to search phrases entered ad-hoc by the user. This encompasses both structural
-            and topic matching.
+    def start_structural_search_mode(self):
+        """Starts a structural search mode console enabling the matching of pre-registered documents
+            to search phrases entered ad-hoc by the user.
         """
         self._common()
-        print('Search mode')
+        print('Structural search mode')
         print()
         if len(self._holmes.document_labels()) == 0:
             raise RuntimeError('No documents registered.')
@@ -121,7 +120,7 @@ class HolmesConsoles:
             print('Ready for phrases')
             print()
             search_phrase = input()
-            # removing search_phrase marks seems to lead to better results
+            # removing question marks seems to lead to better results
             search_phrase = search_phrase.strip(' ').strip('?')
             if search_phrase == '':
                 continue
@@ -130,7 +129,7 @@ class HolmesConsoles:
             print()
             match_dicts=[]
             try:
-                match_dicts = self._holmes.match_documents_against(search_phrase=search_phrase)
+                match_dicts = self._holmes.match_documents_against(search_phrase_text=search_phrase)
                 if len(match_dicts) == 0:
                     print('No structural matching results were returned.')
                 else:
@@ -160,47 +159,69 @@ class HolmesConsoles:
                 word_matches_string = '; '.join(map(self._string_representation_of_word_match,
                         match_dict['word_matches']))
                 print(word_matches_string)
+
+    def start_topic_matching_search_mode(self, only_one_topic_match_per_document):
+        """Starts a topic matching search mode console enabling the matching of pre-registered
+            documents to search texts entered ad-hoc by the user.
+
+            Parameters:
+
+            only_one_topic_match_per_document -- if 'True', prevents multiple topic match
+            results from being returned for the same document.
+        """
+        self._common()
+        print('Topic matching search mode')
+        print()
+        if len(self._holmes.document_labels()) == 0:
+            raise RuntimeError('No documents registered.')
+        document_labels = '; '.join(self._holmes.document_labels())
+        print(': '.join(('Documents', document_labels)))
+        print()
+        while True:
+            print('Ready for search texts')
+            print()
+            search_text = input()
+            # removing question marks seems to lead to better results
+            search_text = search_text.strip(' ').strip('?')
+            if search_text == '':
+                continue
+            if search_text in ('exit', 'exit()', 'bye'):
+                break
             print()
             print('Performing topic matching ...')
             topic_matches = {}
+            topic_match_dicts = []
             try:
                 print()
-                topic_matches = self._holmes.topic_match_documents_against(search_phrase,
+                topic_match_dicts = \
+                        self._holmes.topic_match_documents_returning_dictionaries_against(
+                        search_text,
                         number_of_results = 5,
                         only_one_result_per_document=only_one_topic_match_per_document)
             except NoSearchPhraseError:
                 pass
-            if len(topic_matches) == 0:
+            if len(topic_match_dicts) == 0:
                 print('No topic match results were returned.')
             elif only_one_topic_match_per_document:
                 print('Topic matching results (maximum one per document):')
             else:
                 print('Topic matching results:')
             print()
-            for index, topic_match in enumerate(topic_matches):
-                if topic_match.relative_start_index == topic_match.relative_end_index:
-                    relative_index_string = ' '.join(('relative match index',
-                            str(topic_match.relative_start_index)))
-                else:
-                    relative_index_string = ''.join(('relative match indexes ',
-                            str(topic_match.relative_start_index), '-',
-                            str(topic_match.relative_end_index)))
+            for index, topic_match_dict in enumerate(topic_match_dicts):
                 output = ''.join((
-                    str(index+1),
+                    topic_match_dict['rank'],
                     '. Document ',
-                    topic_match.document_label,
-                    '; text at indexes ',
-                    str(topic_match.sentences_start_index),
+                    topic_match_dict['document_label'],
+                    '; sentences at character indexes ',
+                    str(topic_match_dict['sentences_character_start_index_in_document']),
                     '-',
-                    str(topic_match.sentences_end_index),
-                    '; ',
-                    relative_index_string,
+                    str(topic_match_dict['sentences_character_end_index_in_document']),
                     '; score ',
-                    str(topic_match.score),
+                    str(topic_match_dict['score']),
                     ':'
                 ))
                 print (output)
                 print()
-                print (topic_match.text)
+                print (topic_match_dict['text'])
                 print()
             print()

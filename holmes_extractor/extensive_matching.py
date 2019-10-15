@@ -310,7 +310,7 @@ class TopicMatcher:
         def remove_duplicates(matches):
             matches_to_return = []
             if len(matches) == 0:
-                return
+                return matches_to_return
             else:
                 matches_to_return.append(matches[0])
             if len(matches) > 1:
