@@ -653,6 +653,10 @@ class Worker:
             except Exception as err:
                 reply_queue.put((worker_label, err))
                 break
+            except:
+                err_identifier = str(sys.exc_info()[0])
+                reply_queue.put((worker_label, err_identifier))
+                break
             reply_queue.put((worker_label, reply))
 
     def worker_parse_and_register_document(self, semantic_analyzer, structural_matcher,
