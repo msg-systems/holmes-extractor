@@ -1,43 +1,74 @@
 import urllib.request
-from bs4 import BeautifulSoup
 import holmes_extractor as holmes
+import re
+import os
 
-print('Initializing Holmes...')
-# Start the Holmes manager with the English model
-# You can try setting overall_similarity_threshold to 0.9
-# and/or perform_coreference_resolution to False
-holmes_manager = holmes.Manager(model='en_core_web_lg', overall_similarity_threshold=1.0,
-        perform_coreference_resolution=True)
-# Get the HTML document with the list of stories by Hans Christian Andersen
-front_page = urllib.request.urlopen("http://www.aesopfables.com/aesophca.html")
-front_page_soup = BeautifulSoup(front_page, 'html.parser')
-documents={}
-# For each story ...
-for anchor in front_page_soup.find_all('a'):
-    if anchor['href'].startswith('../'):
-        this_document_url = ''.join(("http://www.aesopfables.com/", anchor['href'][3:]))
-        # Get the HTML document for the story
-        print('Downloading', anchor.contents[0])
-        this_document = urllib.request.urlopen(this_document_url)
-        # Extract the raw text from the HTML document
-        this_document_soup = BeautifulSoup(this_document, 'html.parser')
-        # Remove any Javascript from the raw text
-        for script in this_document_soup(["script", "style"]):
-            script.decompose()    # rip it out
-        # Remove any carriage returns and line feeds from the raw text
-        this_document_text = this_document_soup.get_text().replace('\n', ' ').replace('\r', ' ').replace('  ', ' ')
-        # Replace multiple spaces with single spaces
-        this_document_text = ' '.join(this_document_text.split())
-        # Remove 'Process took:', which for some reason remains at the end of each raw text document
-        end_of_text_index = this_document_text.index('Process took:')
-        if end_of_text_index > 0:
-            this_document_text = this_document_text[0:end_of_text_index]
-        # Retrieve the name of the story
-        documents[anchor.contents[0]] = this_document_text
+if __name__ == '__main__':
 
-for label, text in documents.items():
-    # Register the document with Holmes
-    print('Parsing and registering', label)
-    holmes_manager.parse_and_register_document(text, label)
-# Start the search console
-holmes_manager.start_search_mode_console()
+    script_directory = os.path.dirname(os.path.realpath(__file__))
+    ontology = holmes.Ontology(os.sep.join((
+            script_directory,'example_search_EN_literature_ontology.owl')))
+    print('Initializing Holmes...')
+    #Start the Holmes manager with the English model
+    holmes_manager = holmes.MultiprocessingManager(model='en_core_web_lg',
+            overall_similarity_threshold=0.85, ontology=ontology)
+            # on Windows add e.g. number_of_workers=3 to prevent memory exhaustion
+
+    def extract_chapters_from_book(book_uri, title):
+        """ Download and save the chapters from a book."""
+
+        print()
+        print(title)
+        print()
+        book = urllib.request.urlopen(book_uri).read().decode()
+        book = re.sub("\\nPage \|.+?Rowling \\n", "", book)
+        book = re.sub("\\nP a g e \|.+?Rowling \\n", "", book)
+        book = re.sub("\\nPage \|.+?\\n", "", book)
+        book = book.replace("Harry Potter and the Half Blood Prince - J.K. Rowling", "")
+        book = book.replace("Harry Potter and the Goblet of Fire - J.K. Rowling", "")
+        book = book.replace("Harry Potter and the Deathly Hallows - J.K. Rowling", "")
+        book = book[1:]
+        chapter_headings = [heading for heading in re.finditer("(?<=((\\n\\n\\n\\n)|(\* \\n\\n)))((?!.*(WEASLEY WILL MAKE SURE)|(DO NOT OPEN THE PARCEL)|(HEADMISTRESS OF HOGWARTS))[A-Z][A-Z\-’., ]+)(\\n{1,2}((?!.*(WHO\-MUST))[A-Z\-’., ]+))?(?=(\\n\\n([^\\n]|(\\n\\n((“Harry!”)|(Harry’s)|(Ron’s)|(“Hagrid)|(Three o’clock))))))", book)]
+        chapter_counter = 1
+        chapter_dict = {}
+        for chapter_heading in chapter_headings:
+            label = ''.join(('Book ', title, '; Ch ', str(chapter_counter), ': ',
+                    chapter_heading.group().replace('\n', ''))).strip()
+            if chapter_counter == len(chapter_headings): # last chapter
+                content = book[chapter_heading.end():]
+            else:
+                content = book[chapter_heading.end():chapter_headings[chapter_counter].start()]
+            content = content.replace('\n', '')
+            if content.endswith('& '):
+                content = content[:-2]
+            print('Extracted', label)
+            chapter_dict[label] = content
+            chapter_counter += 1
+        holmes_manager.parse_and_register_documents(chapter_dict)
+
+    extract_chapters_from_book("https://raw.githubusercontent.com/formcept/whiteboard/master/nbviewer/notebooks/data/harrypotter/Book%201%20-%20The%20Philosopher's%20Stone.txt", '1: The Philosopher\'s Stone')
+    extract_chapters_from_book("https://raw.githubusercontent.com/formcept/whiteboard/master/nbviewer/notebooks/data/harrypotter/Book%202%20-%20The%20Chamber%20of%20Secrets.txt", '2: The Chamber of Secrets')
+    extract_chapters_from_book("https://raw.githubusercontent.com/formcept/whiteboard/master/nbviewer/notebooks/data/harrypotter/Book%203%20-%20The%20Prisoner%20of%20Azkaban.txt", '3: The Prisoner of Azkaban')
+    extract_chapters_from_book("https://raw.githubusercontent.com/formcept/whiteboard/master/nbviewer/notebooks/data/harrypotter/Book%204%20-%20The%20Goblet%20of%20Fire.txt", '4: The Goblet of Fire')
+    extract_chapters_from_book("https://raw.githubusercontent.com/formcept/whiteboard/master/nbviewer/notebooks/data/harrypotter/Book%205%20-%20The%20Order%20of%20the%20Phoenix.txt", '5: The Order of the Phoenix')
+    extract_chapters_from_book("https://raw.githubusercontent.com/formcept/whiteboard/master/nbviewer/notebooks/data/harrypotter/Book%206%20-%20The%20Half%20Blood%20Prince.txt", '6: The Half Blood Prince')
+    extract_chapters_from_book("https://raw.githubusercontent.com/formcept/whiteboard/master/nbviewer/notebooks/data/harrypotter/Book%207%20-%20The%20Deathly%20Hallows.txt", '7: The Deathly Hallows')
+
+    #Comment following line in to activate interactive console
+    holmes_manager.start_topic_matching_search_mode_console()
+    #Only return one topic match per story
+
+    # The following code starts a RESTful Http service to perform topic searches. It is deployed as
+    # as WSGI application. Examples of how to start it are (both issued from the directory that
+    # contains the script):
+
+    # gunicorn --reload example_search_DE_literature (Linux)
+    # waitress-serve example_search_DE_literature:application (Windows)
+
+    #class RestHandler():
+    #    def on_get(self, req, resp):
+    #        resp.body = json.dumps(holmes_manager.topic_match_documents_returning_dictionaries_against(
+    #                req.params['entry'], only_one_result_per_document=True))
+    #
+    #application = falcon.API()
+    #application.add_route('/maerchenQuery', RestHandler())
