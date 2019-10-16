@@ -351,7 +351,7 @@ class StructuralMatcher:
                             token.doc[inner_pointer]._.holmes.lemma))
                     working_tokens.append(token.doc[inner_pointer])
                     inner_pointer += 1
-                if pointer + 1 < inner_pointer:
+                if pointer + 1 < inner_pointer and token in working_tokens:
                     yield self._MultiwordSpan(working_text.strip(), working_lemma.strip(),
                             working_tokens)
             pointer += 1
