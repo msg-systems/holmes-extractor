@@ -694,7 +694,8 @@ class TopicMatcher:
                 highest_activation_word_info = containing_word_info
             if highest_activation_word_info not in word_infos_to_word_infos:
                 print("Missing in", topic_match.document_label)
-            word_infos_to_word_infos[highest_activation_word_info].is_highest_activation=True
+            else:
+                word_infos_to_word_infos[highest_activation_word_info].is_highest_activation=True
             for word_info in list(word_infos_to_word_infos.keys()):
                 if get_containing_word_info_key(word_infos_to_word_infos, word_info) != None:
                     del word_infos_to_word_infos[word_info]

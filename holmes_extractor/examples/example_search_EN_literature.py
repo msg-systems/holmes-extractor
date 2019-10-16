@@ -12,9 +12,9 @@ if __name__ == '__main__':
     #Start the Holmes manager with the English model
     holmes_manager = holmes.MultiprocessingManager(model='en_core_web_lg',
             overall_similarity_threshold=0.85, ontology=ontology, number_of_workers=8)
-            # set number_of_workers to prevent memory exhaustion; it should never be more
-            # than the number of cores on the machine
-            
+            # set number_of_workers to prevent memory exhaustion / swapping; it should never be more
+            # than the number of cores
+
     def extract_chapters_from_book(book_uri, title):
         """ Download and save the chapters from a book."""
 

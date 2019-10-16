@@ -1257,8 +1257,7 @@ class StructuralMatcher:
                         search_phrase.reverse_only:
                     continue
                 if search_phrase.topic_match_phraselet and len(search_phrase.doc) == 1 and not \
-                        compare_embeddings_on_root_words and \
-                        len(search_phrase.doc[0]._.holmes.lemma.split()) == 1:
+                        compare_embeddings_on_root_words:
                     # We are only matching a single word without embedding, so to improve
                     # performance we avoid entering the subgraph matching code.
                     for word_matching_root_token in self._words_matching_root_token(
@@ -1271,6 +1270,22 @@ class StructuralMatcher:
                                 search_phrase.topic_match_phraselet_created_without_matching_tags,
                                 search_phrase.reverse_only)
                                 minimal_match.index_within_document = index
+                                search_phrase_lemma = search_phrase.doc[0]._.holmes.lemma
+                                if len(search_phrase_lemma.split()) > 1:
+                                    for multiword_span in self._multiword_spans_with_head_token(
+                                            doc[index]):
+                                        if search_phrase_lemma.lower() == \
+                                                multiword_span.text.lower():
+                                            minimal_match.word_matches.append(WordMatch(
+                                                search_phrase.doc[0],
+                                                search_phrase.doc[0]._.holmes.lemma,
+                                                doc[index],
+                                                multiword_span.tokens[0],
+                                                multiword_span.tokens[-1],
+                                                multiword_span.text,
+                                                None,
+                                                1.0, False, False, doc[index], None, None))
+                                            break
                                 matches.append(minimal_match)
                     continue
                 if self._is_entitynoun_search_phrase_token(search_phrase.root_token,
