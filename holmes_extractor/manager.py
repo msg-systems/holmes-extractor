@@ -644,8 +644,7 @@ class Worker:
         pass
 
     def listen(self, semantic_analyzer, structural_matcher, input_queue, worker_label):
-        if thinc.extra.load_nlp.VECTORS == {}: # see https://github.com/explosion/spaCy/issues/3552
-            semantic_analyzer.reload_model()
+        semantic_analyzer.reload_model() # necessary to avoid neuralcoref MemoryError on Linux
         indexed_documents = {}
         while(True):
             method, args, reply_queue = input_queue.get()

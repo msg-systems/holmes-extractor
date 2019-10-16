@@ -14,8 +14,9 @@ if __name__ == '__main__':
     print('Initializing Holmes...')
     # Start the Holmes manager with the German model
     holmes_manager = holmes.MultiprocessingManager(model='de_core_news_md',
-            overall_similarity_threshold=0.85)
-            # on Windows add e.g. number_of_workers=3 to prevent memory exhaustion
+            overall_similarity_threshold=0.85, number_of_workers=3)
+            # set number_of_workers to prevent memory exhaustion; it should never be more
+            # than the number of cores on the machine
 
     def process_documents_from_front_page(manager, front_page_uri, front_page_label,
             labels_to_documents):

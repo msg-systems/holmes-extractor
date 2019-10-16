@@ -148,6 +148,7 @@ class TopicMatcher:
         def get_indexes_for_embedding_retry(phraselet,
                 parent_document_labels_to_indexes_for_embedding_retry_sets,
                 child_document_labels_to_indexes_for_embedding_retry_sets):
+            print('Testing', phraselet.label)
             parent_token = phraselet.root_token
             parent_word = parent_token._.holmes.lemma
             if parent_word in self._words_to_phraselet_word_match_infos and not \
@@ -168,6 +169,7 @@ class TopicMatcher:
                         and len(parent_relation_match_corpus_words) /\
                         len(parent_single_word_match_corpus_words) <= \
                         self.embedding_based_retry_preexisting_match_cutoff:
+                    print('parents', len(parent_single_word_match_corpus_words))
                     for corpus_word_position in \
                             parent_single_word_match_corpus_words.difference(
                             parent_relation_match_corpus_words):
@@ -196,6 +198,7 @@ class TopicMatcher:
                         len(child_single_word_match_corpus_words) <
                         self.embedding_based_retry_preexisting_match_cutoff) or \
                         phraselet.reverse_only: # reverse only are matched without embeddings
+                    print('children', len(child_single_word_match_corpus_words))
                     for corpus_word_position in child_single_word_match_corpus_words.difference(
                             child_relation_match_corpus_words):
                         doc = self.indexed_documents[corpus_word_position.document_label].doc
@@ -678,9 +681,6 @@ class TopicMatcher:
                                     existing_word_info.type = 'relation'
                         else:
                             word_infos_to_word_infos[word_info] = word_info
-            for word_info in list(word_infos_to_word_infos.keys()):
-                if get_containing_word_info_key(word_infos_to_word_infos, word_info) != None:
-                    del word_infos_to_word_infos[word_info]
             highest_activation_relative_start_index = doc[topic_match.index_within_document].idx - \
                     sentences_character_start_index_in_document
             highest_activation_relative_end_index = doc[topic_match.index_within_document].idx + \
@@ -693,6 +693,9 @@ class TopicMatcher:
             if containing_word_info != None:
                 highest_activation_word_info = containing_word_info
             word_infos_to_word_infos[highest_activation_word_info].is_highest_activation=True
+            for word_info in list(word_infos_to_word_infos.keys()):
+                if get_containing_word_info_key(word_infos_to_word_infos, word_info) != None:
+                    del word_infos_to_word_infos[word_info]
             word_infos = sorted(word_infos_to_word_infos.values(), key=lambda
                     word_info:(word_info.relative_start_index, word_info.relative_end_index))
             topic_match_dict = {
