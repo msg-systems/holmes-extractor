@@ -311,8 +311,12 @@ class TopicMatcher:
                             self._semantic_analyzer.token_and_coreference_chain_indexes(
                             this_other_pole_word_match.document_token) and \
                             match.search_phrase_label == other_this_pole_match.search_phrase_label \
-                            and this_pole_index - this_other_pole_word_match.document_token.i \
-                             < this_pole_index - other_other_pole_word_match.document_token.i:
+                            and ((abs(this_pole_index - this_other_pole_word_match.document_token.i) \
+                             > abs(this_pole_index - other_other_pole_word_match.document_token.i))\
+                             or (abs(this_pole_index - this_other_pole_word_match.document_token.i)
+                              == abs(this_pole_index - other_other_pole_word_match.document_token.i)
+                              and this_other_pole_word_match.document_token.i >
+                              other_other_pole_word_match.document_token.i)):
                         return False
                     if not check_for_sibling_match_with_higher_similarity(match,
                             other_this_pole_match, this_other_pole_word_match,

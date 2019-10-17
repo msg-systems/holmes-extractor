@@ -170,7 +170,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self._check_equals("An ENTITYNOUN with a car", "Richard Hudson with a lion", 5,
                 holmes_manager_coref)
 
-    def test_reverse_matching_noun_entitynoun_governed_(self):
+    def test_reverse_matching_noun_entitynoun_governed(self):
         self._check_equals("A car with an ENTITYNOUN", "A vehicle with Richard Hudson", 5,
                 holmes_manager_coref)
 
@@ -449,7 +449,6 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self.assertEqual(topic_matches[0].relative_end_index, 2)
 
     def test_coreference_double_match_on_governor(self):
-        self._check_equals("A big man", "I saw a big man. The man walked", 34, holmes_manager_coref)
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document(
                 "I saw a big man. The man walked")
@@ -461,6 +460,20 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self.assertEqual(topic_matches[0].end_index, 7)
         self.assertEqual(topic_matches[0].relative_start_index, 3)
         self.assertEqual(topic_matches[0].relative_end_index, 7)
+
+    def test_coreference_double_match_same_distance(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.parse_and_register_document(
+                "The man was big. Man walked.")
+        topic_matches = holmes_manager_coref.topic_match_documents_against("A big man",
+                relation_score=20, single_word_score=10, single_word_any_tag_score=5)
+        self.assertEqual(int(topic_matches[0].score), 34)
+        self.assertEqual(topic_matches[0].sentences_start_index, 0)
+        self.assertEqual(topic_matches[0].sentences_end_index, 7)
+        self.assertEqual(topic_matches[0].start_index, 1)
+        self.assertEqual(topic_matches[0].end_index, 5)
+        self.assertEqual(topic_matches[0].relative_start_index, 1)
+        self.assertEqual(topic_matches[0].relative_end_index, 5)
 
     def test_indexes(self):
         holmes_manager_coref.remove_all_documents()
