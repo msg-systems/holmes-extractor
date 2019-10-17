@@ -5,7 +5,8 @@ import statistics
 from scipy.sparse import dok_matrix
 from sklearn.neural_network import MLPClassifier
 from .errors import WrongModelDeserializationError, FewerThanTwoClassificationsError, \
-        DuplicateDocumentError, NoPhraseletsAfterFilteringError
+        DuplicateDocumentError, NoPhraseletsAfterFilteringError, \
+        EmbeddingThresholdGreaterThanRelationThresholdError
 
 class TopicMatch:
     """A topic match between some text and part of a document.
@@ -60,9 +61,16 @@ class TopicMatcher:
             maximum_activation_distance, relation_score, reverse_only_relation_score,
             single_word_score, single_word_any_tag_score, overlapping_relation_multiplier,
             embedding_penalty, maximum_activation_value,
-            maximum_number_of_single_word_matches_for_embedding_based_retries=1000,
-            embedding_based_retry_preexisting_match_cutoff=0.2,
+            maximum_number_of_single_word_matches_for_relation_matching,
+            maximum_number_of_single_word_matches_for_embedding_reverse_matching,
             sideways_match_extent, only_one_result_per_document, number_of_results):
+        if maximum_number_of_single_word_matches_for_embedding_reverse_matching > \
+                maximum_number_of_single_word_matches_for_relation_matching:
+            raise EmbeddingThresholdGreaterThanRelationThresholdError(' '.join((
+                    'embedding',
+                    str(maximum_number_of_single_word_matches_for_embedding_reverse_matching),
+                    'relation',
+                    str(maximum_number_of_single_word_matches_for_relation_matching))))
         self._semantic_analyzer = semantic_analyzer
         self.structural_matcher = structural_matcher
         self.indexed_documents = indexed_documents
@@ -75,10 +83,10 @@ class TopicMatcher:
         self.overlapping_relation_multiplier = overlapping_relation_multiplier
         self.embedding_penalty = embedding_penalty
         self.maximum_activation_value = maximum_activation_value
-        self.maximum_number_of_single_word_matches_for_embedding_based_retries = \
-                maximum_number_of_single_word_matches_for_embedding_based_retries
-        self.embedding_based_retry_preexisting_match_cutoff = \
-                embedding_based_retry_preexisting_match_cutoff
+        self.maximum_number_of_single_word_matches_for_relation_matching = \
+                maximum_number_of_single_word_matches_for_relation_matching
+        self.maximum_number_of_single_word_matches_for_embedding_reverse_matching = \
+                maximum_number_of_single_word_matches_for_embedding_reverse_matching
         self.sideways_match_extent = sideways_match_extent
         self.only_one_result_per_document = only_one_result_per_document
         self.number_of_results = number_of_results
@@ -145,13 +153,27 @@ class TopicMatcher:
                 self._words_to_phraselet_word_match_infos[word] = phraselet_word_match_info
                 return phraselet_word_match_info
 
-        def get_indexes_for_embedding_retry(phraselet,
+        def set_phraselet_to_reverse_only_where_too_many_single_word_matches(phraselet):
+            parent_token = phraselet.root_token
+            parent_word = parent_token._.holmes.lemma
+            if parent_word in self._words_to_phraselet_word_match_infos:
+                parent_phraselet_word_match_info = self._words_to_phraselet_word_match_infos[
+                        parent_word]
+                parent_single_word_match_corpus_words = \
+                        parent_phraselet_word_match_info.single_word_match_corpus_words
+                if len(parent_single_word_match_corpus_words) > \
+                        self.maximum_number_of_single_word_matches_for_relation_matching:
+                    phraselet.treat_as_reverse_only_during_initial_relation_matching = True
+
+        def get_indexes_for_reverse_matching(*, phraselet,
+                parent_document_labels_to_indexes_for_direct_retry_sets,
                 parent_document_labels_to_indexes_for_embedding_retry_sets,
                 child_document_labels_to_indexes_for_embedding_retry_sets):
             parent_token = phraselet.root_token
             parent_word = parent_token._.holmes.lemma
             if parent_word in self._words_to_phraselet_word_match_infos and not \
-                    phraselet.reverse_only:
+                    phraselet.reverse_only and not \
+                    phraselet.treat_as_reverse_only_during_initial_relation_matching:
                 parent_phraselet_word_match_info = self._words_to_phraselet_word_match_infos[
                         parent_word]
                 parent_single_word_match_corpus_words = \
@@ -164,10 +186,7 @@ class TopicMatcher:
                 else:
                     parent_relation_match_corpus_words = []
                 if len(parent_single_word_match_corpus_words) <= \
-                        self.maximum_number_of_single_word_matches_for_embedding_based_retries\
-                        and len(parent_relation_match_corpus_words) /\
-                        len(parent_single_word_match_corpus_words) <= \
-                        self.embedding_based_retry_preexisting_match_cutoff:
+                        self.maximum_number_of_single_word_matches_for_embedding_reverse_matching:
                     for corpus_word_position in \
                             parent_single_word_match_corpus_words.difference(
                             parent_relation_match_corpus_words):
@@ -178,8 +197,6 @@ class TopicMatcher:
                     parent_token.i][0]
             child_word = child_token._.holmes.lemma
             if child_word in self._words_to_phraselet_word_match_infos:
-                linking_dependency = parent_token._.holmes.get_label_of_dependency_with_child_index(
-                        child_token.i)
                 child_phraselet_word_match_info = \
                         self._words_to_phraselet_word_match_infos[child_word]
                 child_single_word_match_corpus_words = \
@@ -190,24 +207,28 @@ class TopicMatcher:
                             phraselet_labels_to_child_match_corpus_words[phraselet.label]
                 else:
                     child_relation_match_corpus_words = []
-                if (len(child_single_word_match_corpus_words) <=
-                        self.maximum_number_of_single_word_matches_for_embedding_based_retries
-                        and len(child_relation_match_corpus_words) /
-                        len(child_single_word_match_corpus_words) <
-                        self.embedding_based_retry_preexisting_match_cutoff) or \
-                        phraselet.reverse_only: # reverse only are matched without embeddings
-                    for corpus_word_position in child_single_word_match_corpus_words.difference(
-                            child_relation_match_corpus_words):
-                        doc = self.indexed_documents[corpus_word_position.document_label].doc
-                        working_token = doc[corpus_word_position.index]
-                        for parent_dependency in working_token._.holmes.parent_dependencies:
-                            if self._semantic_analyzer.dependency_labels_match(
-                                    search_phrase_dependency_label=linking_dependency,
-                                    document_dependency_label=parent_dependency[1]):
-                                self._add_to_dict_set(
-                                        parent_document_labels_to_indexes_for_embedding_retry_sets,
-                                        corpus_word_position.document_label,
-                                        parent_dependency[0])
+                if len(child_single_word_match_corpus_words) <= \
+                        self.maximum_number_of_single_word_matches_for_embedding_reverse_matching:
+                    set_to_add_to = parent_document_labels_to_indexes_for_embedding_retry_sets
+                elif len(child_single_word_match_corpus_words) <= \
+                        self.maximum_number_of_single_word_matches_for_relation_matching:
+                    set_to_add_to = parent_document_labels_to_indexes_for_direct_retry_sets
+                else:
+                    return
+                linking_dependency = parent_token._.holmes.get_label_of_dependency_with_child_index(
+                        child_token.i)
+                for corpus_word_position in child_single_word_match_corpus_words.difference(
+                        child_relation_match_corpus_words):
+                    doc = self.indexed_documents[corpus_word_position.document_label].doc
+                    working_token = doc[corpus_word_position.index]
+                    for parent_dependency in working_token._.holmes.parent_dependencies:
+                        if self._semantic_analyzer.dependency_labels_match(
+                                search_phrase_dependency_label=linking_dependency,
+                                document_dependency_label=parent_dependency[1]):
+                            self._add_to_dict_set(
+                                    set_to_add_to,
+                                    corpus_word_position.document_label,
+                                    parent_dependency[0])
 
         def rebuild_document_info_dict(matches, phraselet_labels_to_search_phrases):
 
@@ -351,30 +372,69 @@ class TopicMatcher:
                                               # ignore_relation_phraselets == True
         if len(phraselet_labels_to_search_phrases) == 0:
             return []
-        structural_matches = self.structural_matcher.match(self.indexed_documents,
-                phraselet_labels_to_search_phrases.values(), False, None,
-                compare_embeddings_on_root_words=False, compare_embeddings_on_non_root_words=False)
+        # First get single-word matches
+        structural_matches = self.structural_matcher.match(
+                indexed_documents = self.indexed_documents,
+                search_phrases = phraselet_labels_to_search_phrases.values(),
+                output_document_matching_message_to_console = False,
+                match_depending_on_single_words = True,
+                compare_embeddings_on_root_words = False,
+                compare_embeddings_on_non_root_words = False,
+                document_labels_to_indexes_for_reverse_matching_sets = None,
+                document_labels_to_indexes_for_embedding_reverse_matching_sets = None)
+        if not self.structural_matcher.embedding_based_matching_on_root_words:
+            rebuild_document_info_dict(structural_matches, phraselet_labels_to_search_phrases)
+            for phraselet in (phraselet for phraselet in phraselet_labels_to_search_phrases.values()
+                    if len(phraselet.doc) > 1):
+                set_phraselet_to_reverse_only_where_too_many_single_word_matches(phraselet)
+        structural_matches.extend(self.structural_matcher.match(
+                indexed_documents = self.indexed_documents,
+                search_phrases = phraselet_labels_to_search_phrases.values(),
+                output_document_matching_message_to_console = False,
+                match_depending_on_single_words = False,
+                compare_embeddings_on_root_words = False,
+                compare_embeddings_on_non_root_words = False,
+                document_labels_to_indexes_for_reverse_matching_sets = None,
+                document_labels_to_indexes_for_embedding_reverse_matching_sets = None))
         rebuild_document_info_dict(structural_matches, phraselet_labels_to_search_phrases)
+        parent_document_labels_to_indexes_for_direct_retry_sets = {}
         parent_document_labels_to_indexes_for_embedding_retry_sets = {}
         child_document_labels_to_indexes_for_embedding_retry_sets = {}
         for phraselet in (phraselet for phraselet in phraselet_labels_to_search_phrases.values()
                 if len(phraselet.doc) > 1):
-            get_indexes_for_embedding_retry(phraselet,
-                    parent_document_labels_to_indexes_for_embedding_retry_sets,
-                    child_document_labels_to_indexes_for_embedding_retry_sets)
-        if len(parent_document_labels_to_indexes_for_embedding_retry_sets) > 0:
-            structural_matches.extend(self.structural_matcher.match(self.indexed_documents,
-                    phraselet_labels_to_search_phrases.values(), False,
-                    parent_document_labels_to_indexes_for_embedding_retry_sets,
-                    compare_embeddings_on_root_words=True,
-                    compare_embeddings_on_non_root_words=False))
-        if len(child_document_labels_to_indexes_for_embedding_retry_sets) > 0:
-            structural_matches.extend(self.structural_matcher.match(self.indexed_documents,
-                    phraselet_labels_to_search_phrases.values(), False,
-                    child_document_labels_to_indexes_for_embedding_retry_sets,
-                    compare_embeddings_on_root_words=False,
-                    compare_embeddings_on_non_root_words=True))
+            get_indexes_for_reverse_matching(phraselet=phraselet,
+                parent_document_labels_to_indexes_for_direct_retry_sets =
+                parent_document_labels_to_indexes_for_direct_retry_sets,
+                parent_document_labels_to_indexes_for_embedding_retry_sets =
+                parent_document_labels_to_indexes_for_embedding_retry_sets,
+                child_document_labels_to_indexes_for_embedding_retry_sets =
+                child_document_labels_to_indexes_for_embedding_retry_sets)
         if len(parent_document_labels_to_indexes_for_embedding_retry_sets) > 0 or \
+                len(parent_document_labels_to_indexes_for_direct_retry_sets) > 0:
+            structural_matches.extend(self.structural_matcher.match(
+                    indexed_documents = self.indexed_documents,
+                    search_phrases = phraselet_labels_to_search_phrases.values(),
+                    output_document_matching_message_to_console = False,
+                    match_depending_on_single_words = False,
+                    compare_embeddings_on_root_words = True,
+                    compare_embeddings_on_non_root_words = False,
+                    document_labels_to_indexes_for_reverse_matching_sets =
+                    parent_document_labels_to_indexes_for_direct_retry_sets,
+                    document_labels_to_indexes_for_embedding_reverse_matching_sets =
+                    parent_document_labels_to_indexes_for_embedding_retry_sets))
+        if len(child_document_labels_to_indexes_for_embedding_retry_sets) > 0:
+            structural_matches.extend(self.structural_matcher.match(
+                    indexed_documents = self.indexed_documents,
+                    search_phrases = phraselet_labels_to_search_phrases.values(),
+                    output_document_matching_message_to_console = False,
+                    match_depending_on_single_words = False,
+                    compare_embeddings_on_root_words = False,
+                    compare_embeddings_on_non_root_words = True,
+                    document_labels_to_indexes_for_reverse_matching_sets = None,
+                    document_labels_to_indexes_for_embedding_reverse_matching_sets =
+                    child_document_labels_to_indexes_for_embedding_retry_sets))
+        if len(parent_document_labels_to_indexes_for_direct_retry_sets) > 0 or \
+                len(parent_document_labels_to_indexes_for_embedding_retry_sets) > 0 or \
                 len(child_document_labels_to_indexes_for_embedding_retry_sets) > 0:
             rebuild_document_info_dict(structural_matches, phraselet_labels_to_search_phrases)
         structural_matches = list(filter(filter_superfluous_matches,
@@ -842,8 +902,15 @@ class SupervisedTopicTrainingUtils:
         found = False
         for label, occurrences in \
                 self.get_labels_to_classification_frequencies_dict(
-                matches=structural_matcher.match(indexed_documents,
-                        phraselet_labels_to_search_phrases.values(), verbose, None, False, True),
+                matches = structural_matcher.match(
+                indexed_documents = indexed_documents,
+                search_phrases = phraselet_labels_to_search_phrases.values(),
+                output_document_matching_message_to_console = verbose,
+                match_depending_on_single_words = None,
+                compare_embeddings_on_root_words = False,
+                compare_embeddings_on_non_root_words = True,
+                document_labels_to_indexes_for_reverse_matching_sets = None,
+                document_labels_to_indexes_for_embedding_reverse_matching_sets = None),
                 labels_to_classifications_dict=None).items():
             if self.oneshot:
                 occurrences = 1
@@ -958,8 +1025,15 @@ class SupervisedTopicTrainingBasis:
             print('Matching documents against all phraselets')
         self.labels_to_classification_frequencies = self._utils.\
                 get_labels_to_classification_frequencies_dict(
-                matches=self.structural_matcher.match(self.training_documents,
-                self.phraselet_labels_to_search_phrases.values(), self.verbose, None, False, True),
+                matches = self.structural_matcher.match(
+                indexed_documents = self.training_documents,
+                search_phrases = self.phraselet_labels_to_search_phrases.values(),
+                output_document_matching_message_to_console = self.verbose,
+                match_depending_on_single_words = None,
+                compare_embeddings_on_root_words = False,
+                compare_embeddings_on_non_root_words = True,
+                document_labels_to_indexes_for_reverse_matching_sets = None,
+                document_labels_to_indexes_for_embedding_reverse_matching_sets = None),
                 labels_to_classifications_dict=
                 self.training_documents_labels_to_classifications_dict)
         self.classifications = \

@@ -44,3 +44,6 @@ class FewerThanTwoClassificationsError(HolmesError):
 
 class NoPhraseletsAfterFilteringError(HolmesError):
     pass
+
+class EmbeddingThresholdGreaterThanRelationThresholdError(HolmesError):
+    pass

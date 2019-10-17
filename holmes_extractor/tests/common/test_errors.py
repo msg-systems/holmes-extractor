@@ -200,3 +200,19 @@ class ErrorsTest(unittest.TestCase):
             sttb.parse_and_register_training_document("Ein Hund jagt eine Katze", 'Tiere2', 't2')
             sttb.prepare()
             sttb.train()
+
+    def test_embedding_threshold_higher_than_relation_threshold_normal_manager(self):
+        with self.assertRaises(EmbeddingThresholdGreaterThanRelationThresholdError) as context:
+            m = holmes.Manager('en_core_web_sm')
+            m.parse_and_register_document("a")
+            coref_holmes_manager.topic_match_documents_returning_dictionaries_against("b",
+                    maximum_number_of_single_word_matches_for_relation_matching=1,
+                    maximum_number_of_single_word_matches_for_embedding_reverse_matching=2)
+
+    def test_embedding_threshold_higher_than_relation_threshold_multiprocessing_manager(self):
+        with self.assertRaises(EmbeddingThresholdGreaterThanRelationThresholdError) as context:
+            m = holmes.MultiprocessingManager('en_core_web_sm', number_of_workers=1)
+            m.parse_and_register_documents({'':"a"})
+            m.topic_match_documents_returning_dictionaries_against("b",
+                    maximum_number_of_single_word_matches_for_relation_matching=1,
+                    maximum_number_of_single_word_matches_for_embedding_reverse_matching=2)

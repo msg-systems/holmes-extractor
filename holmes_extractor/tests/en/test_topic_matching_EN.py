@@ -174,23 +174,93 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self._check_equals("A car with an ENTITYNOUN", "A vehicle with Richard Hudson", 5,
                 holmes_manager_coref)
 
-    def test_reverse_matching_suppressed_with_embedding_based_retries(self):
+    def test_relation_matching_suppressed(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.parse_and_register_document("A dog chases a cat")
+        topic_matches = holmes_manager_coref.topic_match_documents_against("A dog chases a cat",
+                relation_score=20, reverse_only_relation_score=15, single_word_score=10,
+                single_word_any_tag_score=5,
+                maximum_number_of_single_word_matches_for_relation_matching = 0,
+                maximum_number_of_single_word_matches_for_embedding_reverse_matching = 0)
+        self.assertEqual(int(topic_matches[0].score), 24)
+
+    def test_suppressed_relation_matching_picked_up_during_reverse_matching(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.parse_and_register_document(
+                "A dog chases a cat. A lion chases a tiger.")
+        topic_matches = holmes_manager_coref.topic_match_documents_against("A dog chases a cat",
+                relation_score=20, reverse_only_relation_score=15, single_word_score=10,
+                single_word_any_tag_score=5,
+                maximum_number_of_single_word_matches_for_relation_matching = 1,
+                maximum_number_of_single_word_matches_for_embedding_reverse_matching = 0)
+        self.assertEqual(int(topic_matches[0].score), 82)
+
+    def test_relation_matching_suppressed_control_embedding_based_matching_on_root_words(self):
+        holmes_manager_coref_embedding_on_root.remove_all_documents()
+        holmes_manager_coref_embedding_on_root.parse_and_register_document("A dog chases a cat")
+        topic_matches = holmes_manager_coref_embedding_on_root.topic_match_documents_against(
+                "A dog chases a cat",
+                relation_score=20, reverse_only_relation_score=15, single_word_score=10,
+                single_word_any_tag_score=5,
+                maximum_number_of_single_word_matches_for_relation_matching = 0,
+                maximum_number_of_single_word_matches_for_embedding_reverse_matching = 0)
+        self.assertEqual(int(topic_matches[0].score), 82)
+
+    def test_reverse_matching_suppressed_with_relation_matching(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.parse_and_register_document("I was in Germany. I know Germany.")
+        topic_matches = holmes_manager_coref.topic_match_documents_against("in Germany",
+                relation_score=20, reverse_only_relation_score=15, single_word_score=10,
+                single_word_any_tag_score=5,
+                maximum_number_of_single_word_matches_for_relation_matching = 1,
+                maximum_number_of_single_word_matches_for_embedding_reverse_matching = 0)
+        self.assertEqual(int(topic_matches[0].score), 14)
+
+    def test_reverse_matching_suppressed_with_relation_matching_embedding_value_also_1(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.parse_and_register_document("I was in Germany. I know Germany.")
+        topic_matches = holmes_manager_coref.topic_match_documents_against("in Germany",
+                relation_score=20, reverse_only_relation_score=15, single_word_score=10,
+                single_word_any_tag_score=5,
+                maximum_number_of_single_word_matches_for_relation_matching = 1,
+                maximum_number_of_single_word_matches_for_embedding_reverse_matching = 1)
+        self.assertEqual(int(topic_matches[0].score), 14)
+
+    def test_reverse_matching_suppressed_with_embedding_reverse_matching_parent(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document("An automobile with an engine")
         topic_matches = holmes_manager_coref.topic_match_documents_against("A car with an engine",
                 relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                 single_word_any_tag_score=5,
-                maximum_number_of_single_word_matches_for_embedding_based_retries = 0)
+                maximum_number_of_single_word_matches_for_embedding_reverse_matching = 0)
         self.assertEqual(int(topic_matches[0].score), 29)
 
-    def test_reverse_matching_suppressed_with_preexisting_match_cutoff(self):
+    def test_reverse_matching_suppressed_with_embedding_reverse_matching_parent_control(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document("An automobile with an engine")
         topic_matches = holmes_manager_coref.topic_match_documents_against("A car with an engine",
                 relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                 single_word_any_tag_score=5,
-                embedding_based_retry_preexisting_match_cutoff = 0.0)
-        self.assertEqual(int(topic_matches[0].score), 29)
+                maximum_number_of_single_word_matches_for_embedding_reverse_matching = 1)
+        self.assertEqual(int(topic_matches[0].score), 51)
+
+    def test_reverse_matching_suppressed_with_embedding_reverse_matching_child(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.parse_and_register_document("An engine with an automobile")
+        topic_matches = holmes_manager_coref.topic_match_documents_against("An engine with a car",
+                relation_score=20, reverse_only_relation_score=15, single_word_score=10,
+                single_word_any_tag_score=5,
+                maximum_number_of_single_word_matches_for_embedding_reverse_matching = 0)
+        self.assertEqual(int(topic_matches[0].score), 14)
+
+    def test_reverse_matching_suppressed_with_embedding_reverse_matching_child_control(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.parse_and_register_document("An engine with an automobile")
+        topic_matches = holmes_manager_coref.topic_match_documents_against("An engine with a car",
+                relation_score=20, reverse_only_relation_score=15, single_word_score=10,
+                single_word_any_tag_score=5,
+                maximum_number_of_single_word_matches_for_embedding_reverse_matching = 1)
+        self.assertEqual(int(topic_matches[0].score), 25)
 
     def test_reverse_matching_noun_coreference_on_governor(self):
         self._check_equals("A car with an engine", "I saw an automobile. I saw it with an engine",

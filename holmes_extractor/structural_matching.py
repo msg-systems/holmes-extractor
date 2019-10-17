@@ -263,6 +263,11 @@ class StructuralMatcher:
             topic_match_phraselet_created_without_matching_tags -- 'True' if a topic match
             phraselet created without matching tags (= 'all words'), otherwise 'False'
             reverse_only -- 'True' if a phraselet that should only be reverse-matched
+            treat_as_reverse_only_during_initial_relation_matching -- phraselets are set to this
+                value during topic matching to prevent them from being taken into account during
+                initial relation matching because the parent relation occurs too frequently during
+                the corpus. 'reverse_only' cannot be used instead because it has an effect on
+                scoring.
             """
             self.doc = doc
             self._matchable_token_indexes = [token.i for token in matchable_tokens]
@@ -275,6 +280,8 @@ class StructuralMatcher:
             self.topic_match_phraselet_created_without_matching_tags = \
                     topic_match_phraselet_created_without_matching_tags
             self.reverse_only = reverse_only
+            self.treat_as_reverse_only_during_initial_relation_matching = False
+
 
         @property
         def matchable_tokens(self):
@@ -1199,40 +1206,41 @@ class StructuralMatcher:
         matches_to_return.extend(working_matches)
         return matches_to_return
 
-    def match(self, indexed_documents, search_phrases,
+    def match(self, *, indexed_documents, search_phrases,
             output_document_matching_message_to_console,
-            document_labels_to_indexes_for_embedding_retry_sets,
+            match_depending_on_single_words,
             compare_embeddings_on_root_words,
-            compare_embeddings_on_non_root_words):
+            compare_embeddings_on_non_root_words,
+            document_labels_to_indexes_for_reverse_matching_sets,
+            document_labels_to_indexes_for_embedding_reverse_matching_sets):
         """Finds and returns matches between search phrases and documents.
-
-        document_labels_to_indexes_for_embedding_retry_sets -- set during topic matching. Dictionary
-            from labels to indexes that should be tested matching root nodes. If this parameter
-            has a value, this signals that the method is being called from a specific topic-matching
-            context in which:
-
-            - All indexes not included in the dictionary are ignored.
-            - Single-word phraselets are ignored.
-            - Search phrases marked as 'reverse only' are included.
-        compare_embeddings_on_root_words -- if 'True', embeddings on root words are compared even
-            if embedding_based_matching_on_root_words==False as long as
+        match_depending_on_single_words -- 'True' to match only single word search phrases,
+            'False' to match only non-single-word search phrases and 'None' to match both.
+        compare_embeddings_on_root_words -- if 'True', embeddings on root words are compared
+            even if embedding_based_matching_on_root_words==False as long as
             overall_similarity_threshold < 1.0.
         compare_embeddings_on_non_root_words -- if 'False', embeddings on non-root words are not
             compared even if overall_similarity_threshold < 1.0.
+        document_labels_to_indexes_for_reverse_matching_sets -- indexes for direct reverse matching
+            only.
+        document_labels_to_indexes_for_embedding_reverse_matching_sets -- indexes for direct reverse
+            matching and for embedding-based reverse matching.
         """
 
-        def get_indexes_to_consider(document_label):
-            if document_labels_to_indexes_for_embedding_retry_sets == None or document_label not \
-                    in document_labels_to_indexes_for_embedding_retry_sets:
+        def get_indexes_to_consider(dictionary, document_label):
+            if dictionary == None or document_label not in dictionary:
                 return set()
             else:
-                return document_labels_to_indexes_for_embedding_retry_sets[document_label]
+                return dictionary[document_label]
 
         if self.embedding_based_matching_on_root_words:
             compare_embeddings_on_root_words=True
         if self.overall_similarity_threshold==1.0:
             compare_embeddings_on_root_words=False
             compare_embeddings_on_non_root_words=False
+        match_specific_indexes = document_labels_to_indexes_for_reverse_matching_sets != None or \
+                document_labels_to_indexes_for_embedding_reverse_matching_sets != None
+
         if len(indexed_documents) == 0:
             raise NoSearchedDocumentError(
                 'At least one searched document is required to match.')
@@ -1247,17 +1255,24 @@ class StructuralMatcher:
             # is active and there are multiple search phrases with the same root token word: the
             # same indexes in the document will then match all the search phrase root tokens.
             root_lexeme_to_indexes_to_match_dict = {}
+            if match_specific_indexes:
+                reverse_matching_indexes = get_indexes_to_consider(
+                        document_labels_to_indexes_for_reverse_matching_sets, document_label)
+                embedding_reverse_matching_indexes = get_indexes_to_consider(
+                        document_labels_to_indexes_for_embedding_reverse_matching_sets,
+                        document_label)
+
             for search_phrase in search_phrases:
-                if document_labels_to_indexes_for_embedding_retry_sets != None:
-                    if len(search_phrase.doc) == 1:
-                        continue
-                    else:
-                        indexes_to_consider = get_indexes_to_consider(document_label)
-                if document_labels_to_indexes_for_embedding_retry_sets == None and \
-                        search_phrase.reverse_only:
+                if len(search_phrase.doc) > 1 and match_depending_on_single_words:
                     continue
-                if search_phrase.topic_match_phraselet and len(search_phrase.doc) == 1 and not \
-                        compare_embeddings_on_root_words:
+                if len(search_phrase.doc) == 1 and match_depending_on_single_words == False:
+                    continue
+                if not match_specific_indexes and (search_phrase.reverse_only or \
+                        search_phrase.treat_as_reverse_only_during_initial_relation_matching):
+                    continue
+                if match_depending_on_single_words != False and \
+                        search_phrase.topic_match_phraselet and len(search_phrase.doc) == 1 and \
+                        not compare_embeddings_on_root_words:
                     # We are only matching a single word without embedding, so to improve
                     # performance we avoid entering the subgraph matching code.
                     for word_matching_root_token in self._words_matching_root_token(
@@ -1288,6 +1303,7 @@ class StructuralMatcher:
                                             break
                                 matches.append(minimal_match)
                     continue
+                direct_matching_indexes = []
                 if self._is_entitynoun_search_phrase_token(search_phrase.root_token,
                         search_phrase.topic_match_phraselet): # phraselets are not generated for
                                                               # ENTITYNOUN roots
@@ -1313,9 +1329,15 @@ class StructuralMatcher:
                                 search_phrase):
                             if word_matching_root_token in \
                                     registered_document.words_to_token_indexes_dict.keys():
-                                matched_indexes_set.update(
+                                direct_matching_indexes = \
                                         registered_document.words_to_token_indexes_dict[
-                                        word_matching_root_token])
+                                        word_matching_root_token]
+                                if match_specific_indexes:
+                                    direct_matching_indexes = [index for index in
+                                            direct_matching_indexes if index in
+                                            reverse_matching_indexes or index in
+                                            embedding_reverse_matching_indexes]
+                                matched_indexes_set.update(direct_matching_indexes)
                 if compare_embeddings_on_root_words and not \
                         self._is_entity_search_phrase_token(search_phrase.root_token,
                         search_phrase.topic_match_phraselet) and not search_phrase.reverse_only:
@@ -1331,9 +1353,10 @@ class StructuralMatcher:
                         for document_word in registered_document.words_to_token_indexes_dict.keys():
                             indexes_to_match = registered_document.words_to_token_indexes_dict[
                                     document_word]
-                            if document_labels_to_indexes_for_embedding_retry_sets != None:
+                            if match_specific_indexes:
                                 indexes_to_match = [index for index in indexes_to_match if
-                                        index in indexes_to_consider]
+                                        index in embedding_reverse_matching_indexes and index
+                                        not in direct_matching_indexes]
                                 if len(indexes_to_match) == 0:
                                     continue
                             search_phrase_lexeme = \
@@ -1351,9 +1374,6 @@ class StructuralMatcher:
                                     working_indexes_to_match_for_cache_set.update(indexes_to_match)
                         root_lexeme_to_indexes_to_match_dict[root_token_lemma_to_use] = \
                                 working_indexes_to_match_for_cache_set
-                if document_labels_to_indexes_for_embedding_retry_sets != None:
-                    matched_indexes_set = matched_indexes_set.intersection(
-                            indexes_to_consider)
                 for index_to_match in sorted(matched_indexes_set):
                     matches.extend(self._get_matches_starting_at_root_word_match(
                             search_phrase, doc, doc[index_to_match], document_label,
