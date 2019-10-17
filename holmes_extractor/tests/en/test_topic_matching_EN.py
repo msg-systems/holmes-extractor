@@ -195,6 +195,17 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 maximum_number_of_single_word_matches_for_embedding_reverse_matching = 0)
         self.assertEqual(int(topic_matches[0].score), 82)
 
+    def test_suppressed_relation_matching_picked_up_during_reverse_matching_with_coreference(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.parse_and_register_document(
+                "There was a man and there was a woman. He saw her. A lion sees a tiger.")
+        topic_matches = holmes_manager_coref.topic_match_documents_against("A man sees a woman",
+                relation_score=20, reverse_only_relation_score=15, single_word_score=10,
+                single_word_any_tag_score=5,
+                maximum_number_of_single_word_matches_for_relation_matching = 1,
+                maximum_number_of_single_word_matches_for_embedding_reverse_matching = 0)
+        self.assertEqual(int(topic_matches[0].score), 83)
+
     def test_relation_matching_suppressed_control_embedding_based_matching_on_root_words(self):
         holmes_manager_coref_embedding_on_root.remove_all_documents()
         holmes_manager_coref_embedding_on_root.parse_and_register_document("A dog chases a cat")
