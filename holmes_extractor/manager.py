@@ -447,7 +447,7 @@ class Manager:
         holmes_consoles = HolmesConsoles(self)
         holmes_consoles.start_structural_search_mode()
 
-    def start_topic_matching_search_mode_console(self, only_one_topic_match_per_document=False,
+    def start_topic_matching_search_mode_console(self, only_one_result_per_document=False,
             maximum_number_of_single_word_matches_for_relation_matching=500,
             maximum_number_of_single_word_matches_for_embedding_reverse_matching=200):
         """Starts a topic matching search mode console enabling the matching of pre-registered
@@ -455,11 +455,11 @@ class Manager:
 
             Parameters:
 
-            only_one_topic_match_per_document -- if 'True', prevents multiple topic match
+            only_one_result_per_document -- if 'True', prevents multiple topic match
             results from being returned for the same document.
         """
         holmes_consoles = HolmesConsoles(self)
-        holmes_consoles.start_topic_matching_search_mode(only_one_topic_match_per_document,
+        holmes_consoles.start_topic_matching_search_mode(only_one_result_per_document,
                 maximum_number_of_single_word_matches_for_relation_matching=
                 maximum_number_of_single_word_matches_for_relation_matching,
                 maximum_number_of_single_word_matches_for_embedding_reverse_matching=
@@ -655,7 +655,7 @@ class MultiprocessingManager:
             return TopicMatchDictionaryOrderer().order(topic_match_dicts, number_of_results,
                     tied_result_quotient)
 
-    def start_topic_matching_search_mode_console(self, only_one_topic_match_per_document=False,
+    def start_topic_matching_search_mode_console(self, only_one_result_per_document=False,
             maximum_number_of_single_word_matches_for_relation_matching=500,
             maximum_number_of_single_word_matches_for_embedding_reverse_matching=200):
         """Starts a topic matching search mode console enabling the matching of pre-registered
@@ -663,11 +663,11 @@ class MultiprocessingManager:
 
             Parameters:
 
-            only_one_topic_match_per_document -- if 'True', prevents multiple topic match
+            only_one_result_per_document -- if 'True', prevents multiple topic match
             results from being returned for the same document.
         """
         holmes_consoles = HolmesConsoles(self)
-        holmes_consoles.start_topic_matching_search_mode(only_one_topic_match_per_document,
+        holmes_consoles.start_topic_matching_search_mode(only_one_result_per_document,
                 maximum_number_of_single_word_matches_for_relation_matching=
                 maximum_number_of_single_word_matches_for_relation_matching,
                 maximum_number_of_single_word_matches_for_embedding_reverse_matching=

@@ -93,14 +93,14 @@ if __name__ == '__main__':
         load_documents_from_working_directory(labels_to_documents)
 
     #Comment following line in to activate interactive console
-    holmes_manager.start_topic_matching_search_mode_console(only_one_topic_match_per_document=True)
+    holmes_manager.start_topic_matching_search_mode_console(only_one_result_per_document=True)
 
     # The following code starts a RESTful Http service to perform topic searches. It is deployed as
     # as WSGI application. Examples of how to start it are (both issued from the directory that
     # contains the script):
 
-    # gunicorn --reload example_search_DE_literature (Linux)
-    # waitress-serve example_search_DE_literature:application (Windows)
+    #gunicorn --reload example_search_DE_literature (Linux)
+    #waitress-serve example_search_DE_literature:application (Windows)
 
     class RestHandler():
         def on_get(self, req, resp):

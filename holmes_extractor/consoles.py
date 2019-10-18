@@ -160,7 +160,7 @@ class HolmesConsoles:
                         match_dict['word_matches']))
                 print(word_matches_string)
 
-    def start_topic_matching_search_mode(self, only_one_topic_match_per_document,
+    def start_topic_matching_search_mode(self, only_one_result_per_document,
             maximum_number_of_single_word_matches_for_relation_matching,
             maximum_number_of_single_word_matches_for_embedding_reverse_matching):
         """Starts a topic matching search mode console enabling the matching of pre-registered
@@ -168,7 +168,7 @@ class HolmesConsoles:
 
             Parameters:
 
-            only_one_topic_match_per_document -- if 'True', prevents multiple topic match
+            only_one_result_per_document -- if 'True', prevents multiple topic match
             results from being returned for the same document.
         """
         self._common()
@@ -202,7 +202,7 @@ class HolmesConsoles:
                         self._holmes.topic_match_documents_returning_dictionaries_against(
                         search_text,
                         number_of_results = 5,
-                        only_one_topic_match_per_document=only_one_topic_match_per_document,
+                        only_one_result_per_document=only_one_result_per_document,
                         maximum_number_of_single_word_matches_for_relation_matching =
                         maximum_number_of_single_word_matches_for_relation_matching,
                         maximum_number_of_single_word_matches_for_embedding_reverse_matching =
@@ -213,7 +213,7 @@ class HolmesConsoles:
                 print('No topic match results were returned.')
                 print()
                 continue
-            elif only_one_topic_match_per_document:
+            elif only_one_result_per_document:
                 print('Topic matching results (maximum one per document):')
             else:
                 print('Topic matching results:')
