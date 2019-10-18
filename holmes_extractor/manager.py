@@ -447,7 +447,9 @@ class Manager:
         holmes_consoles = HolmesConsoles(self)
         holmes_consoles.start_structural_search_mode()
 
-    def start_topic_matching_search_mode_console(self, only_one_topic_match_per_document=False):
+    def start_topic_matching_search_mode_console(self, only_one_topic_match_per_document=False,
+            maximum_number_of_single_word_matches_for_relation_matching=500,
+            maximum_number_of_single_word_matches_for_embedding_reverse_matching=200):
         """Starts a topic matching search mode console enabling the matching of pre-registered
             documents to search texts entered ad-hoc by the user.
 
@@ -457,7 +459,11 @@ class Manager:
             results from being returned for the same document.
         """
         holmes_consoles = HolmesConsoles(self)
-        holmes_consoles.start_topic_matching_search_mode(only_one_topic_match_per_document)
+        holmes_consoles.start_topic_matching_search_mode(only_one_topic_match_per_document,
+                maximum_number_of_single_word_matches_for_relation_matching=
+                maximum_number_of_single_word_matches_for_relation_matching,
+                maximum_number_of_single_word_matches_for_embedding_reverse_matching=
+                maximum_number_of_single_word_matches_for_embedding_reverse_matching)
 
 class MultiprocessingManager:
     """The facade class for the Holmes library used in a multiprocessing environment.
@@ -649,7 +655,9 @@ class MultiprocessingManager:
             return TopicMatchDictionaryOrderer().order(topic_match_dicts, number_of_results,
                     tied_result_quotient)
 
-    def start_topic_matching_search_mode_console(self, only_one_topic_match_per_document=False):
+    def start_topic_matching_search_mode_console(self, only_one_topic_match_per_document=False,
+            maximum_number_of_single_word_matches_for_relation_matching=500,
+            maximum_number_of_single_word_matches_for_embedding_reverse_matching=200):
         """Starts a topic matching search mode console enabling the matching of pre-registered
             documents to search texts entered ad-hoc by the user.
 
@@ -659,7 +667,11 @@ class MultiprocessingManager:
             results from being returned for the same document.
         """
         holmes_consoles = HolmesConsoles(self)
-        holmes_consoles.start_topic_matching_search_mode(only_one_topic_match_per_document)
+        holmes_consoles.start_topic_matching_search_mode(only_one_topic_match_per_document,
+                maximum_number_of_single_word_matches_for_relation_matching=
+                maximum_number_of_single_word_matches_for_relation_matching,
+                maximum_number_of_single_word_matches_for_embedding_reverse_matching=
+                maximum_number_of_single_word_matches_for_embedding_reverse_matching)
 
     def close(self):
         for worker in self._workers:

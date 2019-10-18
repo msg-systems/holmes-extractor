@@ -56,7 +56,10 @@ if __name__ == '__main__':
     extract_chapters_from_book("https://raw.githubusercontent.com/formcept/whiteboard/master/nbviewer/notebooks/data/harrypotter/Book%207%20-%20The%20Deathly%20Hallows.txt", '7: The Deathly Hallows')
 
     #Comment following line in to activate interactive console
-    holmes_manager.start_topic_matching_search_mode_console()
+    holmes_manager.start_topic_matching_search_mode_console(
+            only_one_result_per_document=True,
+            maximum_number_of_single_word_matches_for_relation_matching=300,
+            maximum_number_of_single_word_matches_for_embedding_reverse_matching=50)
     #Only return one topic match per story
 
     # The following code starts a RESTful Http service to perform topic searches. It is deployed as
@@ -69,7 +72,9 @@ if __name__ == '__main__':
     #class RestHandler():
     #    def on_get(self, req, resp):
     #        resp.body = json.dumps(holmes_manager.topic_match_documents_returning_dictionaries_against(
-    #                req.params['entry'], only_one_result_per_document=True))
+    #                req.params['entry'], only_one_result_per_document=True,
+    #                maximum_number_of_single_word_matches_for_relation_matching=300,
+    #                maximum_number_of_single_word_matches_for_embedding_reverse_matching=50))
     #
     #application = falcon.API()
     #application.add_route('/maerchenQuery', RestHandler())
