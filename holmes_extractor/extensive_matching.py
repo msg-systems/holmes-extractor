@@ -234,7 +234,7 @@ class TopicMatcher:
 
             def process_word_match(match, parent): # 'True' -> parent, 'False' -> child
                 word_match = self._get_word_match_from_match(match, parent)
-                word = word_match.search_phrase_word
+                word = word_match.search_phrase_token._.holmes.lemma
                 phraselet_word_match_info = get_phraselet_word_match_info(word)
                 corpus_word_position = CorpusWordPosition(match.document_label,
                         word_match.document_token.i)
@@ -269,7 +269,7 @@ class TopicMatcher:
 
             def get_other_matches_at_same_word(match, parent):  # 'True' -> parent, 'False' -> child
                 word_match = self._get_word_match_from_match(match, parent)
-                word = word_match.search_phrase_word
+                word = word_match.search_phrase_token._.holmes.lemma
                 phraselet_word_match_info = get_phraselet_word_match_info(word)
                 corpus_word_position = CorpusWordPosition(match.document_label,
                         word_match.document_token.i)
