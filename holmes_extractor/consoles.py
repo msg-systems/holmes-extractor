@@ -176,7 +176,7 @@ class HolmesConsoles:
         print('maximum_number_of_single_word_matches_for_relation_matching = ',
                 maximum_number_of_single_word_matches_for_relation_matching)
         print('maximum_number_of_single_word_matches_for_embedding_reverse_matching = ',
-                maximum_number_of_single_word_matches_for_embedding_reverse_matching)        
+                maximum_number_of_single_word_matches_for_embedding_reverse_matching)
         print()
         if len(self._holmes.document_labels()) == 0:
             raise RuntimeError('No documents registered.')
@@ -202,7 +202,7 @@ class HolmesConsoles:
                         self._holmes.topic_match_documents_returning_dictionaries_against(
                         search_text,
                         number_of_results = 5,
-                        only_one_result_per_document=only_one_topic_match_per_document,
+                        only_one_topic_match_per_document=only_one_topic_match_per_document,
                         maximum_number_of_single_word_matches_for_relation_matching =
                         maximum_number_of_single_word_matches_for_relation_matching,
                         maximum_number_of_single_word_matches_for_embedding_reverse_matching =
