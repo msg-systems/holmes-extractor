@@ -173,9 +173,9 @@ class HolmesConsoles:
         """
         self._common()
         print('Topic matching search mode')
-        print('maximum_number_of_single_word_matches_for_relation_matching = ',
+        print('maximum_number_of_single_word_matches_for_relation_matching =',
                 maximum_number_of_single_word_matches_for_relation_matching)
-        print('maximum_number_of_single_word_matches_for_embedding_reverse_matching = ',
+        print('maximum_number_of_single_word_matches_for_embedding_reverse_matching =',
                 maximum_number_of_single_word_matches_for_embedding_reverse_matching)
         print()
         if len(self._holmes.document_labels()) == 0:

@@ -456,15 +456,15 @@ class StructuralMatcher:
             if ignore_relation_phraselets:
                 continue
             if self.perform_coreference_resolution:
-                parents = self.semantic_analyzer.token_and_coreference_chain_indexes(token)
+                parents = token._.holmes.token_and_coreference_chain_indexes
             else:
                 parents = [token.i]
             for parent in parents:
                 for dependency in (dependency for dependency in doc[parent]._.holmes.children
                         if dependency.child_index not in token_indexes_within_multiwords_to_ignore):
                     if self.perform_coreference_resolution:
-                        children = self.semantic_analyzer.token_and_coreference_chain_indexes(
-                                dependency.child_token(doc))
+                        children = dependency.child_token(doc)._.holmes.\
+                                token_and_coreference_chain_indexes
                     else:
                         children = [dependency.child_token(doc).i]
                     for child in children:
@@ -735,8 +735,7 @@ class StructuralMatcher:
                 at_least_one_document_dependency_matched = False
                 # Loop through this token and any tokens linked to it by coreference
                 if self.perform_coreference_resolution:
-                    parents = self.semantic_analyzer.token_and_coreference_chain_indexes(
-                            document_token)
+                    parents = document_token._.holmes.token_and_coreference_chain_indexes
                 else:
                     parents = [document_token.i]
                 for working_document_parent_index in parents:
@@ -751,8 +750,7 @@ class StructuralMatcher:
                         # wherever a dependency is found, loop through any tokens linked
                         # to the child by coreference
                         if self.perform_coreference_resolution:
-                            children = self.semantic_analyzer.token_and_coreference_chain_indexes(
-                                    document_child)
+                            children = document_child._.holmes.token_and_coreference_chain_indexes
                         else:
                             children = [document_child.i]
                         for document_dependency_child_index in (working_index for working_index in
@@ -961,16 +959,12 @@ class StructuralMatcher:
             document_label):
         """Investigate possible matches when recursion is complete."""
 
-        def get_mention_head_index_for_token(token):
-            """ Returns the leftmost start index of the mentions in any clusters
-                that contain this token. """
-            index_to_return = token.i
-            for cluster in token._.coref_clusters:
-                for mention in (mention for mention in cluster.mentions if token.i in \
-                        mention.root._.holmes.righthand_siblings):
-                    if mention.root.i < index_to_return:
-                        index_to_return = mention.root.i
-            return index_to_return
+        def mention_root_or_token_index(token):
+            mri = token._.holmes.mention_root_index
+            if mri != None:
+                return mri
+            else:
+                return token.i
 
         def filter_word_matches_based_on_coreference_resolution(word_matches):
             """ When coreference resolution is active, additional matches are sometimes
@@ -979,8 +973,7 @@ class StructuralMatcher:
             dict = {}
             # Find the structurally matching document tokens for this list of word matches
             for word_match in word_matches:
-                structural_index = get_mention_head_index_for_token(
-                    word_match.structurally_matched_document_token)
+                structural_index = mention_root_or_token_index(word_match.structurally_matched_document_token)
                 if structural_index in dict.keys():
                     dict[structural_index].append(word_match)
                 else:
@@ -993,33 +986,30 @@ class StructuralMatcher:
                         relevant_word_matches[0].document_token.doc[
                         structural_index]
                 already_added_document_token_indexes = set()
-                if structurally_matched_document_token._.in_coref:
+                if self.semantic_analyzer.is_involved_in_coreference(
+                        structurally_matched_document_token):
                     working_index = -1
-                    # There can potentially be multiple clusters.
-                    for cluster in structurally_matched_document_token._.coref_clusters:
-                        for relevant_word_match in relevant_word_matches:
-                            this_index = get_mention_head_index_for_token(
-                                    relevant_word_match.document_token)
-                            # The best mention should be as close to the structural
-                            # index as possible and preferably not after it.
-                            if working_index == -1 or\
-                                    (working_index > structural_index and
-                                    this_index <= structural_index) or\
-                                    (working_index > structural_index and
-                                    this_index > structural_index and
-                                    this_index < working_index) or\
-                                    (abs(structural_index - this_index) <
-                                    abs(structural_index - working_index)):
-                                working_index = this_index
-                        # Filter out any matches from mentions other than the best mention
-                        for relevant_word_match in relevant_word_matches:
-                            if working_index == get_mention_head_index_for_token(
-                                    relevant_word_match.document_token) \
-                                    and relevant_word_match.document_token.i not in \
-                                    already_added_document_token_indexes:
-                                        already_added_document_token_indexes.add(
-                                                relevant_word_match.document_token.i)
-                                        new_word_matches.append(relevant_word_match)
+                    for relevant_word_match in relevant_word_matches:
+                        this_index = mention_root_or_token_index(relevant_word_match.document_token)
+                        # The best mention should be as close to the structural
+                        # index as possible and preferably not after it.
+                        if working_index == -1 or\
+                                (working_index > structural_index and
+                                this_index <= structural_index) or\
+                                (working_index > structural_index and
+                                this_index > structural_index and
+                                this_index < working_index) or\
+                                (abs(structural_index - this_index) <
+                                abs(structural_index - working_index)):
+                            working_index = this_index
+                    # Filter out any matches from mentions other than the best mention
+                    for relevant_word_match in relevant_word_matches:
+                        if working_index == mention_root_or_token_index(relevant_word_match.document_token) \
+                                and relevant_word_match.document_token.i not in \
+                                already_added_document_token_indexes:
+                                    already_added_document_token_indexes.add(
+                                            relevant_word_match.document_token.i)
+                                    new_word_matches.append(relevant_word_match)
                 else:
                     new_word_matches.extend(relevant_word_matches)
             return new_word_matches
@@ -1034,43 +1024,42 @@ class StructuralMatcher:
                     in ('direct', 'ontology')):
                 working_entries = []
                 # First loop through getting ontology entries for all mentions in the cluster
-                for cluster in word_match.document_token._.coref_clusters:
-                    for mention in cluster.mentions:
-                        mention_root_token = mention.root
-                        working_entries.append(
-                                self.ontology.matches(
-                                word_match.search_phrase_token._.holmes.lemma,
-                                mention_root_token._.holmes.lemma))
-                        working_entries.append(
-                                self.ontology.matches(
-                                word_match.search_phrase_token._.holmes.lemma,
-                                mention_root_token.text.lower()))
+                for mention in word_match.document_token._.holmes.mentions:
+                    mention_root_token = word_match.document_token.doc[mention.root_index]
+                    working_entries.append(
+                            self.ontology.matches(
+                            word_match.search_phrase_token._.holmes.lemma,
+                            mention_root_token._.holmes.lemma))
+                    working_entries.append(
+                            self.ontology.matches(
+                            word_match.search_phrase_token._.holmes.lemma,
+                            mention_root_token.text.lower()))
+                    working_entries.append(
+                            self.ontology.matches(
+                            word_match.search_phrase_token.text.lower(),
+                            mention_root_token._.holmes.lemma))
+                    working_entries.append(
+                            self.ontology.matches(
+                            word_match.search_phrase_token.text.lower(),
+                            mention_root_token.text.lower()))
+                    for multiword_span in self._multiword_spans_with_head_token(
+                            mention_root_token):
                         working_entries.append(
                                 self.ontology.matches(
                                 word_match.search_phrase_token.text.lower(),
-                                mention_root_token._.holmes.lemma))
+                                multiword_span.text))
+                        working_entries.append(
+                                self.ontology.matches(
+                                word_match.search_phrase_token._.holmes.lemma,
+                                multiword_span.lemma))
                         working_entries.append(
                                 self.ontology.matches(
                                 word_match.search_phrase_token.text.lower(),
-                                mention_root_token.text.lower()))
-                        for multiword_span in self._multiword_spans_with_head_token(
-                                mention_root_token):
-                            working_entries.append(
-                                    self.ontology.matches(
-                                    word_match.search_phrase_token.text.lower(),
-                                    multiword_span.text))
-                            working_entries.append(
-                                    self.ontology.matches(
-                                    word_match.search_phrase_token._.holmes.lemma,
-                                    multiword_span.lemma))
-                            working_entries.append(
-                                    self.ontology.matches(
-                                    word_match.search_phrase_token.text.lower(),
-                                    multiword_span.text))
-                            working_entries.append(
-                                    self.ontology.matches(
-                                    word_match.search_phrase_token._.holmes.lemma,
-                                    multiword_span.lemma))
+                                multiword_span.text))
+                        working_entries.append(
+                                self.ontology.matches(
+                                word_match.search_phrase_token._.holmes.lemma,
+                                multiword_span.lemma))
                 # Now loop through the ontology entries to see if any are more specific than
                 # the current value of *extracted_word*.
                 for working_entry in working_entries:
@@ -1092,13 +1081,11 @@ class StructuralMatcher:
 
         def check_document_tokens_are_linked_by_dependency(document_parent, document_child):
             if self.perform_coreference_resolution:
-                parents = self.semantic_analyzer.token_and_coreference_chain_indexes(
-                        document_parent)
+                parents = document_parent._.holmes.token_and_coreference_chain_indexes
             else:
                 parents = [document_parent.i]
             if self.perform_coreference_resolution:
-                children = self.semantic_analyzer.token_and_coreference_chain_indexes(
-                        document_child)
+                children = document_child._.holmes.token_and_coreference_chain_indexes
             else:
                 children = [document_child.i]
             for parent in parents:
@@ -1118,8 +1105,7 @@ class StructuralMatcher:
                 # if there is any search phrase token without a matching document token,
                 # we have no match and can return
                 return []
-            if self.perform_coreference_resolution and \
-                    word_matches[0].document_token.doc._.has_coref:
+            if self.perform_coreference_resolution:
                 word_matches = filter_word_matches_based_on_coreference_resolution(word_matches)
                 if self.ontology != None:
                     word_matches = revise_extracted_words_based_on_coreference_resolution(
@@ -1145,22 +1131,27 @@ class StructuralMatcher:
         for match in matches:
             failed = False
             not_normalized_overall_similarity_measure = 1.0
-            # now carry out the coherence check
-            for parent_word_match in match.word_matches:
-                for search_phrase_dependency in \
-                        parent_word_match.search_phrase_token._.holmes.children:
-                    for child_word_match in (cwm for cwm in match.word_matches if cwm.
-                            search_phrase_token.i == search_phrase_dependency.child_index):
-                        if not check_document_tokens_are_linked_by_dependency(
-                                parent_word_match.document_token, child_word_match.document_token):
-                            failed=True
+            # now carry out the coherence check, if there are two or fewer word matches (which
+            # is the case during topic matching) no check is necessary
+            if len(match.word_matches) > 2:
+                for parent_word_match in match.word_matches:
+                    for search_phrase_dependency in \
+                            parent_word_match.search_phrase_token._.holmes.children:
+                        for child_word_match in (cwm for cwm in match.word_matches if cwm.
+                                search_phrase_token.i == search_phrase_dependency.child_index):
+                            if not check_document_tokens_are_linked_by_dependency(
+                                    parent_word_match.document_token,
+                                    child_word_match.document_token):
+                                failed=True
+                        if failed:
+                            break
                     if failed:
                         break
                 if failed:
-                    break
+                    continue
+
+            for parent_word_match in match.word_matches:
                 not_normalized_overall_similarity_measure *= parent_word_match.similarity_measure
-            if failed:
-                continue
             if not_normalized_overall_similarity_measure < 1.0:
                 overall_similarity_measure = \
                         round(not_normalized_overall_similarity_measure ** \

@@ -92,6 +92,10 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self._check_equals("I saw a king", "Somebody saw a queen", 19,
                 holmes_manager_coref_embedding_on_root)
 
+    def test_embedding_matching_root_overall_similarity_too_low(self):
+        self._check_equals("I saw a king", "Somebody viewed a queen", 4,
+                holmes_manager_coref_embedding_on_root)
+
     def test_embedding_matching_root_word_only(self):
         self._check_equals("king", "queen", 4,
                 holmes_manager_coref_embedding_on_root)

@@ -283,8 +283,8 @@ class TopicMatcher:
                     word_match, other_word_match):
                 if word_match.document_token.i == other_word_match.document_token.i:
                     return True
-                working_sibling = self._semantic_analyzer.lefthand_sibling_recursively(
-                        word_match.document_token)
+                working_sibling = word_match.document_token.doc[
+                        word_match.document_token._.holmes.token_or_lefthand_sibling_index]
                 for sibling in \
                         working_sibling._.holmes.loop_token_and_righthand_siblings(
                                 word_match.document_token.doc):
@@ -308,8 +308,8 @@ class TopicMatcher:
                     if this_other_pole_word_match.document_token.i != \
                             other_other_pole_word_match.document_token.i and \
                             other_other_pole_word_match.document_token.i in \
-                            self._semantic_analyzer.token_and_coreference_chain_indexes(
-                            this_other_pole_word_match.document_token) and \
+                            this_other_pole_word_match.document_token._.\
+                            holmes.token_and_coreference_chain_indexes and \
                             match.search_phrase_label == other_this_pole_match.search_phrase_label \
                             and ((abs(this_pole_index - this_other_pole_word_match.document_token.i) \
                              > abs(this_pole_index - other_other_pole_word_match.document_token.i))\

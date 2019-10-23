@@ -59,6 +59,16 @@ class SemanticDependency:
     def __hash__(self):
         return hash((self.parent_index, self.child_index))
 
+class Mention:
+    """ Simplified information about a coreference mention with respect to a specific token. """
+
+    def __init__(self, root_index, indexes):
+        self.root_index = root_index
+        self.indexes = indexes
+
+    def __str__(self):
+        return ''.join(('[', str(self.root_index), '; ', str(self.indexes),
+                ']'))
 
 class HolmesDictionary:
     """The holder object for token-level semantic information managed by Holmes
@@ -77,12 +87,18 @@ class HolmesDictionary:
         self.lemma = lemma
         self.children = []
         self.righthand_siblings = []
+        self.token_or_lefthand_sibling_index = None
         self.is_involved_in_or_conjunction = False
         self.is_negated = None
         self.is_matchable = None
         self.parent_dependencies = [] # list of [index, label] specifications of dependencies
         # where this token is the child. Takes any coreference resolution into account. Used in
         # topic matching.
+        self.lefthand_dependency = None
+        self.token_and_coreference_chain_indexes = None # where no coreference, only the token index
+        self.mentions = []
+        self.mention_root_index = None  # the lefthand member of the mention that contains
+                                        # this token within its first cluster
 
     @property
     def is_uncertain(self):
@@ -261,15 +277,19 @@ class SemanticAnalyzer(ABC):
         for token in spacy_doc:
             token._.set('holmes', HolmesDictionary(token.i, self._holmes_lemma(token)))
         for token in spacy_doc:
-            self._set_matchability(token)
-        for token in spacy_doc:
             self._set_negation(token)
         for token in spacy_doc:
             self._initialize_semantic_dependencies(token)
         for token in spacy_doc:
             self._mark_if_righthand_sibling(token)
+            token._.holmes.token_or_lefthand_sibling_index = \
+                    self._lefthand_sibling_recursively(token)
         for token in spacy_doc:
             self._copy_any_sibling_info(token)
+        for token in spacy_doc:
+            self._set_coreference_information(token)
+        for token in spacy_doc:
+            self._set_matchability(token)
         for token in spacy_doc:
             self._correct_auxiliaries_and_passives(token)
         for token in spacy_doc:
@@ -303,14 +323,14 @@ class SemanticAnalyzer(ABC):
             return False
         return document_dependency_label in self._matching_dep_dict[search_phrase_dependency_label]
 
-    def lefthand_sibling_recursively(self, token):
-        """If *token* is a righthand sibling, return the token that has a sibling reference
-            to it, otherwise return *token* itself.
+    def _lefthand_sibling_recursively(self, token):
+        """If *token* is a righthand sibling, return the index of the token that has a sibling
+            reference to it, otherwise return the index of *token* itself.
         """
         if token.dep_ not in self._conjunction_deps:
-            return token
+            return token.i
         else:
-            return self.lefthand_sibling_recursively(token.head)
+            return self._lefthand_sibling_recursively(token.head)
 
     def debug_structures(self, doc):
         if self.debug:
@@ -319,7 +339,8 @@ class SemanticAnalyzer(ABC):
                 uncertainty_string = 'uncertain' if token._.holmes.is_uncertain else 'certain'
                 matchability_string = 'matchable' if token._.holmes.is_matchable else 'unmatchable'
                 if self.is_involved_in_coreference(token):
-                    coreference_string = token._.coref_clusters
+                    coreference_string = '; '.join(str(mention) for mention in
+                            token._.holmes.mentions)
                 else:
                     coreference_string = ''
                 print(token.i, token.text, token._.holmes.lemma, token.pos_, token.tag_,
@@ -364,44 +385,46 @@ class SemanticAnalyzer(ABC):
                 return return_string
 
     def is_involved_in_coreference(self, token):
-        if self.perform_coreference_resolution and token.doc._.has_coref:
-            for cluster in token._.coref_clusters:
-                for mention in cluster.mentions:
-                    if mention.root.i == token.i or token.i in \
-                            mention.root._.holmes.righthand_siblings:
-                        return True
-        return False
+        return len(token._.holmes.mentions) > 0
 
-    def token_and_coreference_chain_indexes(self, token):
-        """Return the indexes of the token itself and any tokens with which it is linked by
-            coreference chains up to the maximum number of mentions away.
-        """
-        if not self.is_involved_in_coreference(token):
-            list_to_return = [token.i]
-        else:
-            list_to_return = []
-            # find out which cluster *token* is in
-            for cluster in token._.coref_clusters:
-                counter = 0
+    def _set_coreference_information(self, token):
+        token._.holmes.token_and_coreference_chain_indexes = [token.i]
+        if not self.perform_coreference_resolution or not token.doc._.has_coref or not \
+                token._.in_coref:
+            return
+        for cluster in token._.coref_clusters:
+            counter = 0
+            this_token_mention_index = -1
+            for span in cluster:
+                for candidate in span.root._.holmes.loop_token_and_righthand_siblings(
+                        token.doc):
+                    if candidate.i == token.i:
+                        this_token_mention_index = counter
+                        if token._.holmes.mention_root_index == None:
+                            token._.holmes.mention_root_index = span.root.i
+                        break
+                if this_token_mention_index > -1:
+                    break
+                counter += 1
+            counter = 0
+            if token._.holmes.mention_root_index != None:
                 for span in cluster:
-                    for candidate in span.root._.holmes.loop_token_and_righthand_siblings(
-                            token.doc):
-                        if candidate.i == token.i:
-                            token_mention_index = counter
-                    counter += 1
-            for cluster in token._.coref_clusters:
-                counter = 0
-                for span in cluster:
-                    if abs(counter - token_mention_index) <= \
+                    if abs(counter - this_token_mention_index) <= \
                             self._maximum_mentions_in_coreference_chain:
+                        indexes = []
                         for candidate in span.root._.holmes.loop_token_and_righthand_siblings(
                                 token.doc):
                             if candidate.i >= span.start and candidate.i <= span.end and not \
                                     (token.i >= span.start and token.i <= span.end and
                                     candidate.i != token.i):
-                                list_to_return.append(candidate.i)
+                                indexes.append(candidate.i)
+                        token._.holmes.mentions.append(Mention(span.root.i, indexes))
                     counter += 1
-        return list_to_return
+        working_set = set()
+        for mention in token._.holmes.mentions:
+            working_set.update(mention.indexes)
+        if len(working_set) > 0:
+            token._.holmes.token_and_coreference_chain_indexes = sorted(working_set)
 
     def belongs_to_entity_defined_multiword(self, token):
         return token.pos_ in self._entity_defined_multiword_pos and token.ent_type_ in \
@@ -701,13 +724,13 @@ class SemanticAnalyzer(ABC):
 
     def _create_parent_dependencies(self, token):
         if self.perform_coreference_resolution:
-            for linked_parent_index in \
-                    self.token_and_coreference_chain_indexes(token):
+            for linked_parent_index in token._.holmes.token_and_coreference_chain_indexes:
                 linked_parent = token.doc[linked_parent_index]
                 for child_dependency in (child_dependency for child_dependency in
                         linked_parent._.holmes.children if child_dependency.child_index >= 0):
                     child_token = child_dependency.child_token(token.doc)
-                    for linked_child_index in self.token_and_coreference_chain_indexes(child_token):
+                    for linked_child_index in \
+                            child_token._.holmes.token_and_coreference_chain_indexes:
                         linked_child = token.doc[linked_child_index]
                         linked_child._.holmes.parent_dependencies.append([token.i,
                                 child_dependency.label])
@@ -972,7 +995,8 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                                 whose_pronoun_token.doc[working_index]._.holmes.children
                                 if dependency.label == 'relcl'):
                             working_token = child.doc[working_index]
-                            working_token = self.lefthand_sibling_recursively(working_token)
+                            working_token = working_token.doc[
+                                    working_token._.holmes.token_or_lefthand_sibling_index]
                             for lefthand_sibling_of_antecedent in \
                                     working_token._.holmes.loop_token_and_righthand_siblings(
                                             token.doc):
@@ -1023,7 +1047,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                         last_righthand_sibling_of_predicate._.holmes.children if dep.label=='prep'
                         and len(dep.child_token(token.doc)._.holmes.children) == 0
                         and dep.child_token(token.doc)._.holmes.is_matchable]
-                antecedent = self.lefthand_sibling_recursively(token.head)
+                antecedent = token.doc[token.head._.holmes.token_or_lefthand_sibling_index]
                 if len(displaced_preposition_dependencies) > 0:
                     displaced_preposition = \
                             displaced_preposition_dependencies[0].child_token(token.doc)
@@ -1139,7 +1163,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
 
         # handle present active participles
         if token.dep_ == 'acl' and token.tag_ == 'VBG':
-            lefthand_sibling = self.lefthand_sibling_recursively(token.head)
+            lefthand_sibling = token.doc[token.head._.holmes.token_or_lefthand_sibling_index]
             for antecedent in \
                     lefthand_sibling._.holmes.loop_token_and_righthand_siblings(token.doc):
                 if token.i != antecedent.i:
@@ -1148,7 +1172,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
 
         # handle past passive participles
         if token.dep_ == 'acl' and token.tag_ == 'VBN':
-            lefthand_sibling = self.lefthand_sibling_recursively(token.head)
+            lefthand_sibling = token.doc[token.head._.holmes.token_or_lefthand_sibling_index]
             for antecedent in \
                     lefthand_sibling._.holmes.loop_token_and_righthand_siblings(token.doc):
                 if token.i != antecedent.i:
