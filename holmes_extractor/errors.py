@@ -36,6 +36,9 @@ class SerializationNotSupportedError(HolmesError):
 class WrongModelDeserializationError(HolmesError):
     pass
 
+class WrongVersionDeserializationError(HolmesError):
+    pass
+
 class DocumentTooBigError(HolmesError):
     pass
 
