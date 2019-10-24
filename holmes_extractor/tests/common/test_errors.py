@@ -1,6 +1,7 @@
 import unittest
 import holmes_extractor as holmes
 from holmes_extractor.errors import *
+import jsonpickle
 
 nocoref_holmes_manager = holmes.Manager('en_core_web_lg', perform_coreference_resolution=False)
 coref_holmes_manager = holmes.Manager('en_core_web_lg', perform_coreference_resolution=True)
@@ -169,6 +170,16 @@ class ErrorsTest(unittest.TestCase):
             doc = nocoref_holmes_manager.parse_and_register_document("The cat was chased by the dog", 'pets')
             serialized_doc = nocoref_holmes_manager.serialize_document('pets')
             german_holmes_manager.deserialize_and_register_document(serialized_doc, 'pets')
+
+    def test_wrong_version_deserialization_error_documents(self):
+        with self.assertRaises(WrongVersionDeserializationError) as context:
+            nocoref_holmes_manager.remove_all_documents()
+            doc = nocoref_holmes_manager.parse_and_register_document("The cat was chased by the dog", 'pets')
+            serialized_doc = nocoref_holmes_manager.serialize_document('pets')
+            document = jsonpickle.decode(serialized_doc)
+            document._version = 1
+            serialized_doc = jsonpickle.encode(document)
+            nocoref_holmes_manager.deserialize_and_register_document(serialized_doc, 'pets2')
 
     def test_wrong_model_deserialization_error_supervised_models(self):
         with self.assertRaises(WrongModelDeserializationError) as context:

@@ -1,10 +1,12 @@
 import spacy
 import neuralcoref
-from .errors import WrongModelDeserializationError, DocumentTooBigError
+from .errors import WrongModelDeserializationError, WrongVersionDeserializationError, \
+        DocumentTooBigError
 from spacy.tokens import Token, Doc
 from abc import ABC, abstractmethod
 import jsonpickle
 
+SERIALIZED_DOCUMENT_VERSION = 2
 
 class SemanticDependency:
     """A labelled semantic dependency between two tokens."""
@@ -153,6 +155,7 @@ class SerializedHolmesDocument:
         self._serialized_spacy_document = serialized_spacy_document
         self._dictionaries = dictionaries
         self._model = model
+        self._version = SERIALIZED_DOCUMENT_VERSION
 
     def holmes_document(self, semantic_analyzer):
         doc = Doc(semantic_analyzer.nlp.vocab).from_bytes(
@@ -364,6 +367,8 @@ class SemanticAnalyzer(ABC):
         serialized_document = jsonpickle.decode(serialized_spacy_doc)
         if serialized_document._model != self.model:
             raise WrongModelDeserializationError(serialized_document._model)
+        if serialized_document._version != SERIALIZED_DOCUMENT_VERSION:
+            raise WrongVersionDeserializationError(serialized_document._version)
         return serialized_document.holmes_document(self)
 
     def get_dependent_phrase(self, token):
