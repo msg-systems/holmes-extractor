@@ -1313,8 +1313,15 @@ class StructuralMatcher:
                         else:
                             entity_label = search_phrase.root_token.text
                         if entity_label in registered_document.words_to_token_indexes_dict.keys():
-                            matched_indexes_set.update(
-                                    registered_document.words_to_token_indexes_dict[entity_label])
+                            entity_matching_indexes = \
+                                    registered_document.words_to_token_indexes_dict[
+                                    entity_label].copy()
+                            if match_specific_indexes:
+                                entity_matching_indexes = [index for index in
+                                        entity_matching_indexes if index in
+                                        reverse_matching_indexes or index in
+                                        embedding_reverse_matching_indexes]
+                            matched_indexes_set.update(entity_matching_indexes)
                     else:
                         for word_matching_root_token in self._words_matching_root_token(
                                 search_phrase):
@@ -1322,7 +1329,7 @@ class StructuralMatcher:
                                     registered_document.words_to_token_indexes_dict.keys():
                                 direct_matching_indexes = \
                                         registered_document.words_to_token_indexes_dict[
-                                        word_matching_root_token]
+                                        word_matching_root_token].copy()
                                 if match_specific_indexes:
                                     direct_matching_indexes = [index for index in
                                             direct_matching_indexes if index in
@@ -1343,7 +1350,7 @@ class StructuralMatcher:
                         working_indexes_to_match_for_cache_set = set()
                         for document_word in registered_document.words_to_token_indexes_dict.keys():
                             indexes_to_match = registered_document.words_to_token_indexes_dict[
-                                    document_word]
+                                    document_word].copy()
                             if match_specific_indexes:
                                 indexes_to_match = [index for index in indexes_to_match if
                                         index in embedding_reverse_matching_indexes and index

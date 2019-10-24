@@ -277,6 +277,52 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 maximum_number_of_single_word_matches_for_embedding_reverse_matching = 1)
         self.assertEqual(int(topic_matches[0].score), 25)
 
+    def test_entity_matching_suppressed_with_relation_matching_for_governor(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.parse_and_register_document(
+                "I was tired Richard Paul Hudson. I was a tired Richard Paul Hudson.")
+        topic_matches = holmes_manager_coref.topic_match_documents_against("tired ENTITYPERSON",
+                relation_score=20, reverse_only_relation_score=15, single_word_score=10,
+                single_word_any_tag_score=5,
+                maximum_number_of_single_word_matches_for_relation_matching = 1,
+                maximum_number_of_single_word_matches_for_embedding_reverse_matching = 0)
+        self.assertEqual(int(topic_matches[0].score), 14)
+
+    def test_entity_matching_suppressed_with_relation_matching_for_governor_control(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.parse_and_register_document(
+                "I was Richard Paul Hudson. I was a tired Richard Paul Hudson.")
+        topic_matches = holmes_manager_coref.topic_match_documents_against("tired ENTITYPERSON",
+                relation_score=20, reverse_only_relation_score=15, single_word_score=10,
+                single_word_any_tag_score=5,
+                maximum_number_of_single_word_matches_for_relation_matching = 1,
+                maximum_number_of_single_word_matches_for_embedding_reverse_matching = 0)
+        self.assertEqual(int(topic_matches[0].score), 34)
+
+    def test_entity_matching_suppressed_with_relation_matching_for_governed(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.parse_and_register_document(
+                "I knew Richard Paul Hudson. I knew Richard Paul Hudson.")
+        topic_matches = holmes_manager_coref.topic_match_documents_against(
+                "someone knows an ENTITYPERSON",
+                relation_score=20, reverse_only_relation_score=15, single_word_score=10,
+                single_word_any_tag_score=5,
+                maximum_number_of_single_word_matches_for_relation_matching = 1,
+                maximum_number_of_single_word_matches_for_embedding_reverse_matching = 0)
+        self.assertEqual(int(topic_matches[0].score), 14)
+
+    def test_entity_matching_suppressed_with_relation_matching_for_governed_control(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.parse_and_register_document(
+                "I met Richard Paul Hudson. I knew Richard Paul Hudson.")
+        topic_matches = holmes_manager_coref.topic_match_documents_against(
+                "someone knows an ENTITYPERSON",
+                relation_score=20, reverse_only_relation_score=15, single_word_score=10,
+                single_word_any_tag_score=5,
+                maximum_number_of_single_word_matches_for_relation_matching = 1,
+                maximum_number_of_single_word_matches_for_embedding_reverse_matching = 0)
+        self.assertEqual(int(topic_matches[0].score), 34)
+
     def test_reverse_matching_noun_coreference_on_governor(self):
         self._check_equals("A car with an engine", "I saw an automobile. I saw it with an engine",
                 50,
