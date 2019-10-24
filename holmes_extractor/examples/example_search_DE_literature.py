@@ -106,7 +106,7 @@ if __name__ == '__main__':
         def on_get(self, req, resp):
             resp.body = \
                     json.dumps(holmes_manager.topic_match_documents_returning_dictionaries_against(
-                    req.params['entry'], only_one_result_per_document=True))
+                    req.params['entry'][0:200], only_one_result_per_document=True))
 
     application = falcon.API()
     application.add_route('/maerchenQuery', RestHandler())
