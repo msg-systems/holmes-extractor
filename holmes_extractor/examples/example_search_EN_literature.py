@@ -2,8 +2,10 @@ import urllib.request
 import holmes_extractor as holmes
 import re
 import os
+import json
+import falcon
 
-if __name__ == '__main__':
+if __name__ in ('__main__', 'example_search_EN_literature'):
 
     script_directory = os.path.dirname(os.path.realpath(__file__))
     ontology = holmes.Ontology(os.sep.join((
@@ -67,14 +69,13 @@ if __name__ == '__main__':
     # contains the script):
 
     # gunicorn --reload example_search_DE_literature (Linux)
-    # waitress-serve example_search_DE_literature:application (Windows)
+    # waitress-serve example_search_EN_literature:application (Windows)
 
-    #class RestHandler():
-    #    def on_get(self, req, resp):
-    #        resp.body = json.dumps(holmes_manager.topic_match_documents_returning_dictionaries_against(
-    #                req.params['entry'], only_one_result_per_document=True,
-    #                maximum_number_of_single_word_matches_for_relation_matching=300,
-    #                maximum_number_of_single_word_matches_for_embedding_reverse_matching=50))
-    #
-    #application = falcon.API()
-    #application.add_route('/maerchenQuery', RestHandler())
+    class RestHandler():
+        def on_get(self, req, resp):
+            resp.body = \
+                    json.dumps(holmes_manager.topic_match_documents_returning_dictionaries_against(
+                    req.params['entry'][0:200]))
+
+    application = falcon.API()
+    application.add_route('/english', RestHandler())
