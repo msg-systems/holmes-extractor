@@ -412,7 +412,7 @@ class SemanticAnalyzer(ABC):
                     break
                 counter += 1
             counter = 0
-            if token._.holmes.mention_root_index != None:
+            if this_token_mention_index > -1:
                 for span in cluster:
                     if abs(counter - this_token_mention_index) <= \
                             self._maximum_mentions_in_coreference_chain:
