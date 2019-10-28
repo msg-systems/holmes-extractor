@@ -13,7 +13,7 @@ if __name__ in ('__main__', 'example_search_EN_literature'):
     print('Initializing Holmes...')
     #Start the Holmes manager with the English model
     holmes_manager = holmes.MultiprocessingManager(model='en_core_web_lg',
-            overall_similarity_threshold=0.85, ontology=ontology, number_of_workers=8)
+            overall_similarity_threshold=0.9, ontology=ontology, number_of_workers=8)
             # set number_of_workers to prevent memory exhaustion / swapping; it should never be more
             # than the number of cores
 
@@ -57,11 +57,11 @@ if __name__ in ('__main__', 'example_search_EN_literature'):
     extract_chapters_from_book("https://raw.githubusercontent.com/formcept/whiteboard/master/nbviewer/notebooks/data/harrypotter/Book%206%20-%20The%20Half%20Blood%20Prince.txt", '6: The Half Blood Prince')
     extract_chapters_from_book("https://raw.githubusercontent.com/formcept/whiteboard/master/nbviewer/notebooks/data/harrypotter/Book%207%20-%20The%20Deathly%20Hallows.txt", '7: The Deathly Hallows')
 
-    #Comment following line in to activate interactive console
-    holmes_manager.start_topic_matching_search_mode_console(
-            only_one_result_per_document=True,
-            maximum_number_of_single_word_matches_for_relation_matching=300,
-            maximum_number_of_single_word_matches_for_embedding_reverse_matching=50)
+    #Comment following lines in to activate interactive console
+    #holmes_manager.start_topic_matching_search_mode_console(
+    #        only_one_result_per_document=True,
+    #        maximum_number_of_single_word_matches_for_relation_matching=300,
+    #        maximum_number_of_single_word_matches_for_embedding_reverse_matching=50)
     #Only return one topic match per story
 
     # The following code starts a RESTful Http service to perform topic searches. It is deployed as

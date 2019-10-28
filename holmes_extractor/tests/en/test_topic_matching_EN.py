@@ -466,23 +466,28 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     def test_multiword_in_text_to_search_and_in_document_not_root_match_on_embeddings(self):
         self._check_equals("Richard Paul Hudson came",
-                "I saw Richard Paul Hudson", 24,
+                "I saw Richard Paul Hudson", 19,
                 holmes_manager_coref_embedding_on_root)
 
     def test_multiword_in_text_to_search_and_in_document_root_match_on_embeddings(self):
         self._check_equals("the tired Richard Paul Hudson",
-                "I saw Richard Paul Hudson", 24,
+                "I saw Richard Paul Hudson", 19,
                 holmes_manager_coref_embedding_on_root)
 
     def test_multiword_in_text_to_search_and_in_document_not_root_no_embeddings(self):
         self._check_equals("Richard Paul Hudson came",
-                "I saw Richard Paul Hudson", 24,
+                "I saw Richard Paul Hudson", 19,
                 holmes_manager_coref_embedding_on_root)
 
     def test_multiword_in_text_to_search_and_in_document_root_no_embeddings(self):
         self._check_equals("the tired Richard Paul Hudson",
-                "I saw Richard Paul Hudson", 24,
+                "I saw Richard Paul Hudson", 19,
                 holmes_manager_coref_embedding_on_root)
+
+    def test_matches_in_opposite_directions(self):
+        self._check_equals("Mirror of Erised",
+                "Mirror of Erised", 39,
+                holmes_manager_coref)
 
     def test_coreference_double_match_on_governed(self):
         holmes_manager_coref.remove_all_documents()
@@ -651,6 +656,16 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 "Richard Paul Hudson")
         self.assertEqual(topic_match_dictionaries,
         [{'document_label': '', 'text': 'Richard Paul Hudson', 'text_to_match': 'Richard Paul Hudson', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'score': 10.92, 'word_infos': [[0, 19, 'single', True]]}])
+
+    def test_dictionaries_with_multiword_alone_and_entity_token_in_text_to_match(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.remove_all_search_phrases()
+        holmes_manager_coref.parse_and_register_document("Richard Paul Hudson")
+        topic_match_dictionaries = \
+                holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
+                "ENTITYPERSON")
+        self.assertEqual(topic_match_dictionaries,
+        [{'document_label': '', 'text': 'Richard Paul Hudson', 'text_to_match': 'ENTITYPERSON', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'score': 5.0, 'word_infos': [[0, 19, 'single', True]]}])
 
     def test_result_ordering_by_match_length_different_documents(self):
         holmes_manager_coref.remove_all_documents()

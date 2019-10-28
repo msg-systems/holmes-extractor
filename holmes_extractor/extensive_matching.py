@@ -326,8 +326,9 @@ class TopicMatcher:
 
             if match.from_single_word_phraselet:
                 return True
-            if not perform_checks_at_pole(match, True):
-                return False
+            #if not perform_checks_at_pole(match, True):# not necessary because same checks are
+                                                        # now carried out by structural matcher
+            #    return False
             if not perform_checks_at_pole(match, False):
                 return False
             return True
@@ -342,18 +343,20 @@ class TopicMatcher:
                 for counter in range(1, len(matches)):
                     this_match = matches[counter]
                     previous_match = matches[counter-1]
-                    if this_match.search_phrase_label != previous_match.search_phrase_label or \
-                            this_match.index_within_document != \
-                            previous_match.index_within_document or \
+                    if this_match.document_label != previous_match.document_label or \
                             len(this_match.word_matches) != len(previous_match.word_matches):
                         matches_to_return.append(this_match)
+                    elif len(this_match.word_matches) == 0 and this_match.index_within_document != \
+                            previous_match.index_within_document:
+                        matches_to_return.append(this_match)
                     else:
-                        for word_match_counter in range(len(this_match.word_matches)):
-                            if this_match.word_matches[word_match_counter].document_token.i != \
-                                    previous_match.word_matches[word_match_counter].\
-                                    document_token.i:
-                                matches_to_return.append(this_match)
-                                break
+                        this_word_matches_indexes = [word_match.document_token.i for word_match
+                                in this_match.word_matches]
+                        previous_word_matches_indexes = [word_match.document_token.i for
+                                word_match in previous_match.word_matches]
+                        if sorted(this_word_matches_indexes) != \
+                                sorted(previous_word_matches_indexes):
+                            matches_to_return.append(this_match)
             return matches_to_return
 
         doc = self._semantic_analyzer.parse(text_to_match)

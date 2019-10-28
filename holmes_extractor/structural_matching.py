@@ -992,15 +992,14 @@ class StructuralMatcher:
                     for relevant_word_match in relevant_word_matches:
                         this_index = mention_root_or_token_index(relevant_word_match.document_token)
                         # The best mention should be as close to the structural
-                        # index as possible and preferably not after it.
-                        if working_index == -1 or\
-                                (working_index > structural_index and
-                                this_index <= structural_index) or\
-                                (working_index > structural_index and
-                                this_index > structural_index and
-                                this_index < working_index) or\
+                        # index as possible; if they are the same distance, the preceding mention
+                        # wins.
+                        if working_index == -1 or \
                                 (abs(structural_index - this_index) <
-                                abs(structural_index - working_index)):
+                                abs(structural_index - working_index)) or \
+                                ((abs(structural_index - this_index) ==
+                                abs(structural_index - working_index)) and
+                                this_index < working_index):
                             working_index = this_index
                     # Filter out any matches from mentions other than the best mention
                     for relevant_word_match in relevant_word_matches:
@@ -1263,7 +1262,9 @@ class StructuralMatcher:
                     continue
                 if match_depending_on_single_words != False and \
                         search_phrase.topic_match_phraselet and len(search_phrase.doc) == 1 and \
-                        not compare_embeddings_on_root_words:
+                        not compare_embeddings_on_root_words and not \
+                        self._is_entity_search_phrase_token(search_phrase.root_token,
+                        search_phrase.topic_match_phraselet):
                     # We are only matching a single word without embedding, so to improve
                     # performance we avoid entering the subgraph matching code.
                     for word_matching_root_token in self._words_matching_root_token(

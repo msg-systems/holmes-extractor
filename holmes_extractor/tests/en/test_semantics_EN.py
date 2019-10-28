@@ -625,27 +625,27 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
     def test_coreference_within_sentence(self):
         doc = analyzer.parse("The employee got home and he was surprised")
         self.assertEqual(doc[1]._.holmes.token_and_coreference_chain_indexes, [1,5])
-        self.assertEqual(doc[5]._.holmes.token_and_coreference_chain_indexes, [1,5])
+        self.assertEqual(doc[5]._.holmes.token_and_coreference_chain_indexes, [5,1])
         self.assertEqual(doc[3]._.holmes.token_and_coreference_chain_indexes, [3])
 
     def test_coreference_between_sentences(self):
         doc = analyzer.parse("The employee got home. He was surprised")
         self.assertEqual(doc[1]._.holmes.token_and_coreference_chain_indexes, [1,5])
-        self.assertEqual(doc[5]._.holmes.token_and_coreference_chain_indexes, [1,5])
+        self.assertEqual(doc[5]._.holmes.token_and_coreference_chain_indexes, [5,1])
         self.assertEqual(doc[3]._.holmes.token_and_coreference_chain_indexes, [3])
 
     def test_coreference_three_items_in_chain(self):
         doc = analyzer.parse("Richard was at work. He went home. He was surprised")
         self.assertEqual(doc[0]._.holmes.token_and_coreference_chain_indexes, [0,5,9])
-        self.assertEqual(doc[5]._.holmes.token_and_coreference_chain_indexes, [0,5,9])
-        self.assertEqual(doc[9]._.holmes.token_and_coreference_chain_indexes, [0,5,9])
+        self.assertEqual(doc[5]._.holmes.token_and_coreference_chain_indexes, [5,0,9])
+        self.assertEqual(doc[9]._.holmes.token_and_coreference_chain_indexes, [9,0,5])
         self.assertEqual(doc[3]._.holmes.token_and_coreference_chain_indexes, [3])
 
     def test_coreference_conjunction_in_antecedent(self):
         doc = analyzer.parse("Richard and Carol came to work. They had a discussion")
         self.assertEqual(doc[0]._.holmes.token_and_coreference_chain_indexes, [0,7])
         self.assertEqual(doc[2]._.holmes.token_and_coreference_chain_indexes, [2,7])
-        self.assertEqual(doc[7]._.holmes.token_and_coreference_chain_indexes, [0,2,7])
+        self.assertEqual(doc[7]._.holmes.token_and_coreference_chain_indexes, [7,0,2])
         self.assertEqual(doc[3]._.holmes.token_and_coreference_chain_indexes, [3])
 
     def test_coreference_repeated_conjunctions(self):
@@ -655,24 +655,24 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
                 [1,8,11])
         self.assertEqual(doc[4]._.holmes.token_and_coreference_chain_indexes,
                 [4,8,11])
-        self.assertEqual(doc[8]._.holmes.token_and_coreference_chain_indexes, [1,4,8])
+        self.assertEqual(doc[8]._.holmes.token_and_coreference_chain_indexes, [8,1,4])
         self.assertEqual(doc[11]._.holmes.token_and_coreference_chain_indexes,
-                [1,4,11])
+                [11,1,4])
 
     def test_maximum_mentions_difference(self):
         doc = analyzer.parse("""Richard came to work. He was happy. He was happy. He was happy.
         He was happy. He was happy. He was happy. He was happy. He was happy.""")
         self.assertEqual(doc[0]._.holmes.token_and_coreference_chain_indexes, [0,5,9,13])
-        self.assertEqual(doc[5]._.holmes.token_and_coreference_chain_indexes, [0,5,9,13,18])
-        self.assertEqual(doc[9]._.holmes.token_and_coreference_chain_indexes, [0,5,9,13,18,22])
-        self.assertEqual(doc[13]._.holmes.token_and_coreference_chain_indexes, [0,5,9,13,18,22,26])
+        self.assertEqual(doc[5]._.holmes.token_and_coreference_chain_indexes, [5,0,9,13,18])
+        self.assertEqual(doc[9]._.holmes.token_and_coreference_chain_indexes, [9,0,5,13,18,22])
+        self.assertEqual(doc[13]._.holmes.token_and_coreference_chain_indexes, [13,0,5,9,18,22,26])
         self.assertEqual(doc[18]._.holmes.token_and_coreference_chain_indexes,
-                [5,9,13,18,22,26,30])
+                [18,5,9,13,22,26,30])
         self.assertEqual(doc[22]._.holmes.token_and_coreference_chain_indexes,
-                [9,13,18,22,26,30,34])
-        self.assertEqual(doc[26]._.holmes.token_and_coreference_chain_indexes, [13,18,22,26,30,34])
-        self.assertEqual(doc[30]._.holmes.token_and_coreference_chain_indexes, [18,22,26,30,34])
-        self.assertEqual(doc[34]._.holmes.token_and_coreference_chain_indexes, [22,26,30,34])
+                [22,9,13,18,26,30,34])
+        self.assertEqual(doc[26]._.holmes.token_and_coreference_chain_indexes, [26,13,18,22,30,34])
+        self.assertEqual(doc[30]._.holmes.token_and_coreference_chain_indexes, [30,18,22,26,34])
+        self.assertEqual(doc[34]._.holmes.token_and_coreference_chain_indexes, [34,22,26,30])
 
     def test_adjective_verb_clause_subjective_simple(self):
         doc = analyzer.parse("Richard was glad to understand.")

@@ -613,9 +613,9 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         self._check_word_match(matches[0], 1, 4, 'dog')
         self._check_word_match(matches[1], 0, 7, 'tired')
         self._check_word_match(matches[1], 1, 4, 'dog')
-        self._check_word_match(matches[2], 0, 3, 'tired')
+        self._check_word_match(matches[2], 0, 7, 'tired')
         self._check_word_match(matches[2], 1, 8, 'dog')
-        self._check_word_match(matches[3], 0, 7, 'tired')
+        self._check_word_match(matches[3], 0, 3, 'tired')
         self._check_word_match(matches[3], 1, 8, 'dog')
 
     def test_mentions_following_structural_match(self):

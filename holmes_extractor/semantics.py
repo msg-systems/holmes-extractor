@@ -428,8 +428,11 @@ class SemanticAnalyzer(ABC):
         working_set = set()
         for mention in token._.holmes.mentions:
             working_set.update(mention.indexes)
-        if len(working_set) > 0:
-            token._.holmes.token_and_coreference_chain_indexes = sorted(working_set)
+        if len(working_set) > 1:
+            working_set.remove(token.i)
+            token._.holmes.token_and_coreference_chain_indexes.extend(sorted(working_set))
+            # this token must always be the first in the list so it is recorded as the
+            # structurally matched token during structural matching
 
     def belongs_to_entity_defined_multiword(self, token):
         return token.pos_ in self._entity_defined_multiword_pos and token.ent_type_ in \
