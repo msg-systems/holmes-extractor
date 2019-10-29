@@ -888,7 +888,7 @@ class SupervisedTopicTrainingUtils:
         return labels_to_frequencies_dict
 
     def record_matches(self, *, phraselet_labels_to_search_phrases, structural_matcher,
-            sorted_label_dict, doc, matrix, row_index, verbose):
+            sorted_label_dict, doc_label, doc, matrix, row_index, verbose):
         """ Matches a document against the currently stored phraselets and records the matches
             in a matrix.
 
@@ -899,13 +899,14 @@ class SupervisedTopicTrainingUtils:
                 labels to search phrase objects.
             sorted_label_dict -- a dictionary from search phrase (phraselet) labels to their own
                 alphabetic sorting indexes.
+            doc_label -- the document label, or 'None' if there is none.
             doc -- the document to be matched.
             matrix -- the matrix within which to record the matches.
             row_index -- the row number within the matrix corresponding to the document.
             verbose -- if 'True', matching information is outputted to the console.
         """
         indexed_document = structural_matcher.index_document(doc)
-        indexed_documents = {'':indexed_document}
+        indexed_documents = {doc_label:indexed_document}
         found = False
         for label, occurrences in \
                 self.get_labels_to_classification_frequencies_dict(
@@ -1144,6 +1145,7 @@ class SupervisedTopicModelTrainer:
                     phraselet_labels_to_search_phrases =
                             phraselet_labels_to_search_phrases,
                     sorted_label_dict = self._sorted_label_dict,
+                    doc_label = document_label,
                     doc=self._training_basis.training_documents[document_label].doc,
                     matrix=self._input_matrix,
                     row_index=index,
@@ -1329,6 +1331,7 @@ class SupervisedTopicClassifier:
                 phraselet_labels_to_search_phrases=self._phraselet_labels_to_search_phrases,
                 sorted_label_dict=self._model.sorted_label_dict,
                 doc=doc,
+                doc_label = '',
                 matrix=new_document_matrix,
                 row_index=0,
                 verbose=self._verbose):
