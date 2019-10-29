@@ -438,9 +438,6 @@ class StructuralMatcher:
             if entity_defined_multiword != None:
                 for counter in range(token.left_edge.i, token.right_edge.i +1):
                     multiword_token = doc[counter]
-                    if not self.semantic_analyzer.belongs_to_entity_defined_multiword(
-                            multiword_token):
-                        continue
                     if counter == token.i:
                         token_indexes_to_multiword_lemmas[token.i] = entity_defined_multiword
                     else:

@@ -452,6 +452,7 @@ class SemanticAnalyzer(ABC):
             multiword_token = token.doc[counter]
             if not self.belongs_to_entity_defined_multiword(multiword_token) or \
                     multiword_token.ent_type_ != working_ent:
+                working_text = ''
                 continue
             working_text = ' '.join((working_text, multiword_token.text))
         if len(working_text.split()) > 1:
