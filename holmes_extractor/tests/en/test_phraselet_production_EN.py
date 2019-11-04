@@ -27,7 +27,10 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                 match_all_words=match_all_words,
                 returning_serialized_phraselets=False,
                 ignore_relation_phraselets=False,
-                include_reverse_only=include_reverse_only)
+                include_reverse_only=include_reverse_only,
+                stop_lemmas = manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
+                reverse_only_parent_lemmas = manager.semantic_analyzer.\
+                topic_matching_reverse_only_parent_lemmas)
         self.assertEqual(
                 set(phraselet_labels_to_search_phrases.keys()),
                 set(phraselet_labels))
@@ -227,7 +230,11 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                 match_all_words=False,
                 include_reverse_only=False,
                 ignore_relation_phraselets=False,
-                returning_serialized_phraselets=True)
+                returning_serialized_phraselets=True,
+                stop_lemmas = no_ontology_coref_holmes_manager.\
+                semantic_analyzer.topic_matching_phraselet_stop_lemmas,
+                reverse_only_parent_lemmas = no_ontology_coref_holmes_manager.semantic_analyzer.\
+                topic_matching_reverse_only_parent_lemmas)
         deserialized_phraselet_labels_to_search_phrases = \
                 no_ontology_coref_holmes_manager.structural_matcher.deserialize_phraselets(
                 serialized_phraselets)

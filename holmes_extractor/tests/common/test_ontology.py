@@ -29,15 +29,15 @@ class OntologyTest(unittest.TestCase):
 
     def test_word_matches_subclasses_and_synonyms(self):
         self.assertEqual(ontology.get_words_matching('dog'),
-                {'German Shepherd dog', 'puppy', 'hound', 'Fido'})
+                {'german shepherd dog', 'puppy', 'hound', 'fido'})
         self.assertEqual(ontology.get_words_matching('cat'),
-                {'kitten', 'pussy', 'Mimi Momo', 'cat creature'})
+                {'kitten', 'pussy', 'mimi momo', 'cat creature'})
         self.assertEqual(ontology.get_words_matching('hound'),
-                {'German Shepherd dog', 'puppy', 'dog', 'Fido'})
+                {'german shepherd dog', 'puppy', 'dog', 'fido'})
         self.assertEqual(ontology.get_words_matching('pussy'),
-                {'kitten', 'cat', 'Mimi Momo', 'cat creature'})
+                {'kitten', 'cat', 'mimi momo', 'cat creature'})
         self.assertEqual(ontology.get_words_matching('cat creature'),
-                {'kitten', 'cat', 'Mimi Momo', 'pussy'})
+                {'kitten', 'cat', 'mimi momo', 'pussy'})
 
     def test_matching_normal_term(self):
         entry = ontology.matches('animal', 'foal')
@@ -56,8 +56,8 @@ class OntologyTest(unittest.TestCase):
         self.assertEqual(ontology.get_words_matching('gymnastics equipment'),
                 {'horse', 'vaulting horse'})
         self.assertEqual(ontology.get_words_matching('animal'),
-                {'dog', 'cat', 'horse', 'German Shepherd dog', 'puppy', 'hound', 'kitten', 'pussy',
-                'foal', 'Fido', 'Mimi Momo', 'cat creature'})
+                {'dog', 'cat', 'horse', 'german shepherd dog', 'puppy', 'hound', 'kitten', 'pussy',
+                'foal', 'fido', 'mimi momo', 'cat creature'})
         self.assertEqual(ontology.matches('animal', 'vaulting horse'), None)
 
     def test_multiwords_symmetric(self):
@@ -73,15 +73,15 @@ class OntologyTest(unittest.TestCase):
 
     def test_word_matches_subclasses_synonyms_and_superclasses_symmetric(self):
         self.assertEqual(symmetric_ontology.get_words_matching('dog'),
-                {'German Shepherd dog', 'puppy', 'hound', 'Fido', 'animal'})
+                {'german shepherd dog', 'puppy', 'hound', 'fido', 'animal'})
         self.assertEqual(symmetric_ontology.get_words_matching('cat'),
-                {'kitten', 'pussy', 'Mimi Momo', 'cat creature', 'animal'})
+                {'kitten', 'pussy', 'mimi momo', 'cat creature', 'animal'})
         self.assertEqual(symmetric_ontology.get_words_matching('hound'),
-                {'German Shepherd dog', 'puppy', 'dog', 'Fido', 'animal'})
+                {'german shepherd dog', 'puppy', 'dog', 'fido', 'animal'})
         self.assertEqual(symmetric_ontology.get_words_matching('pussy'),
-                {'kitten', 'cat', 'Mimi Momo', 'cat creature', 'animal'})
+                {'kitten', 'cat', 'mimi momo', 'cat creature', 'animal'})
         self.assertEqual(symmetric_ontology.get_words_matching('cat creature'),
-                {'kitten', 'cat', 'Mimi Momo', 'pussy', 'animal'})
+                {'kitten', 'cat', 'mimi momo', 'pussy', 'animal'})
         self.assertEqual(symmetric_ontology.get_words_matching('mimi momo'),
                 {'cat', 'cat creature', 'pussy', 'animal'})
 
@@ -107,8 +107,8 @@ class OntologyTest(unittest.TestCase):
         self.assertEqual(symmetric_ontology.get_words_matching('gymnastics equipment'),
                 {'horse', 'vaulting horse'})
         self.assertEqual(symmetric_ontology.get_words_matching('animal'),
-                {'dog', 'cat', 'horse', 'German Shepherd dog', 'puppy', 'hound', 'kitten', 'pussy',
-                'foal', 'Fido', 'Mimi Momo', 'cat creature'})
+                {'dog', 'cat', 'horse', 'german shepherd dog', 'puppy', 'hound', 'kitten', 'pussy',
+                'foal', 'fido', 'mimi momo', 'cat creature'})
         self.assertEqual(symmetric_ontology.matches('animal', 'vaulting horse'), None)
         self.assertEqual(symmetric_ontology.matches('vaulting horse', 'animal'), None)
 

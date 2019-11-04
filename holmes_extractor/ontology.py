@@ -26,7 +26,7 @@ class Ontology:
     owl_synonym_type -- optionally overrides the OWL 2 URL for synonyms.
     owl_hyponym_type -- optionally overrides the RDF URL for hyponyms.
     symmetric_matching -- if 'True' means relationships are also taken into account where
-        a search phrase word is a hyponym of a document word.
+        a search phrase word is a hyponym of a document word. Defaults to 'False'
     """
     def __init__(self, ontology_path,
                  owl_class_type='http://www.w3.org/2002/07/owl#Class',
@@ -102,15 +102,7 @@ class Ontology:
 
     def get_words_matching(self, search_phrase_word):
         """Returns the synonyms, hyponyms and individual instances of *search_phrase_word*,
-            as well as the hypernyms where *symmetric_matching==True*"""
-        if search_phrase_word.lower() in self._match_dict.keys():
-            return set(map(lambda entry: entry.word, self._match_dict[search_phrase_word]))
-        else:
-            return []
-
-    def get_words_matching_lower_case(self, search_phrase_word):
-        """Returns the synonyms, hyponyms and individual instances of *search_phrase_word*,
-            as well as the hypernyms where *symmetric_matching==True*
+            as well as the hypernyms where *symmetric_matching==True*.
             All words are set to lower case.
         """
         if search_phrase_word.lower() in self._match_dict.keys():
@@ -165,7 +157,7 @@ class Ontology:
             working_entry_word = self._get_entry_word(working_entry_url)
             if word.lower() != working_entry_word.lower():
                 entry_set.add(self.Entry(working_entry_word, depth, is_individual))
-            if not is_hypernym:
+            if not is_hypernym: # prevent recursive traversal of adjacent branches
                 for entry, type_link, metaclass_id in self._graph.triples((None,
                         rdflib.term.URIRef(self._owl_hyponym_type), working_entry_url)):
                     self._recursive_add_to_dict(entry_set, word, entry, visited,
@@ -194,8 +186,7 @@ class Ontology:
                             self._recursive_add_to_dict(entry_set, word, entry, visited,
                                     depth-1, False, True, symmetric)
                 # setting depth to a negative value ensures the hypernym
-                # can never qualify as being equally or more specific than the original match. It
-                # also prevents recursive traversal down other hyponym branches.
+                # can never qualify as being equally or more specific than the original match.
 
     def _get_entry_word(self, class_id):
         """Converts an OWL URL into an entry word

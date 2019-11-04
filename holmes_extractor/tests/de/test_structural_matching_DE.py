@@ -27,9 +27,11 @@ holmes_manager.register_search_phrase("Jemand wandert in den Bergen")
 holmes_manager.register_search_phrase("Jemand eröffnet ein Konto für ein Kind")
 holmes_manager_with_variable_search_phrases = holmes.Manager(model='de_core_news_md')
 holmes_manager_with_embeddings = holmes.Manager(model='de_core_news_md',
-        overall_similarity_threshold=0.7, perform_coreference_resolution=False)
+        overall_similarity_threshold=0.7, perform_coreference_resolution=False,
+        embedding_based_matching_on_root_words=True)
 holmes_manager_with_embeddings.register_search_phrase("Ein Mann sieht einen großen Hund")
 holmes_manager_with_embeddings.register_search_phrase("Der Himmel ist grün")
+holmes_manager_with_embeddings.register_search_phrase("Ein König tritt zurück")
 
 class GermanStructuralMatchingTest(unittest.TestCase):
 
@@ -520,4 +522,9 @@ class GermanStructuralMatchingTest(unittest.TestCase):
     def test_moposs_before_governing_verb(self):
         matches = self._get_matches(holmes_manager,
                 "Richard Hudson möchte ein Konto für sein Kind eröffnen")
+        self.assertEqual(len(matches), 1)
+
+    def test_separable_verbs_with_embeddings(self):
+        matches = self._get_matches(holmes_manager_with_embeddings,
+                "Der König dankt ab")
         self.assertEqual(len(matches), 1)

@@ -147,9 +147,11 @@ class SerializedPhraselet:
                 self.created_without_matching_tags))
 
 class ThreadsafeContainer:
+    """Container for search phrases and documents that are registered and maintained on the
+        manager object as opposed to being supplied with an individual query.
+    """
 
     def __init__(self):
-        self._search_phrase_labels = set()
         self._search_phrases = []
         # Dict from document labels to IndexedDocument objects
         self._indexed_documents = {}
@@ -158,23 +160,20 @@ class ThreadsafeContainer:
     def remove_all_search_phrases(self):
         with self._lock:
             self._search_phrases = []
-            self._search_phrase_labels = set()
 
     def remove_all_search_phrases_with_label(self, label):
         with self._lock:
             self._search_phrases = [search_phrase for search_phrase in self._search_phrases if
                     search_phrase.label != label]
-            if label in self._search_phrase_labels:
-                self._search_phrase_labels.remove(label)
 
     def register_search_phrase(self, search_phrase):
         with self._lock:
             self._search_phrases.append(search_phrase)
-            self._search_phrase_labels.add(search_phrase.label)
 
     def list_search_phrase_labels(self):
         with self._lock:
-            search_phrase_labels = sorted(self._search_phrase_labels)
+            search_phrase_labels = sorted(set([search_phrase.label for search_phrase in
+                    self._search_phrases]))
         return search_phrase_labels
 
     def register_document(self, indexed_document, label):
@@ -221,8 +220,7 @@ class StructuralMatcher:
             embedding_based_matching_on_root_words, perform_coreference_resolution):
         """Args:
 
-        semantic_analyzer -- the *SemanticAnalyzer* object to use in generating search phrase
-            representations
+        semantic_analyzer -- the *SemanticAnalyzer* object to use
         ontology -- optionally, an *Ontology* object to use in matching
         overall_similarity_threshold -- if embedding-based matching is to be activated, a float
             value between 0 and 1. A match between a search phrase and a document is then valid
@@ -232,7 +230,7 @@ class StructuralMatcher:
         embedding_based_matching_on_root_words -- determines whether or not embedding-based
             matching should be attempted on search-phrase root tokens, which has a considerable
             performance hit. Defaults to *False*.
-        perform_coreference_resolution -- *True*, if coreference resolution should be performed.
+        perform_coreference_resolution -- *True* if coreference resolution should be performed.
         """
         self.semantic_analyzer = semantic_analyzer
         self.ontology = ontology
@@ -261,13 +259,8 @@ class StructuralMatcher:
             ontology -- a reference to the ontology held by the outer *StructuralMatcher* object.
             topic_match_phraselet -- 'True' if a topic match phraselet, otherwise 'False'.
             topic_match_phraselet_created_without_matching_tags -- 'True' if a topic match
-            phraselet created without matching tags (= 'all words'), otherwise 'False'
-            reverse_only -- 'True' if a phraselet that should only be reverse-matched
-            treat_as_reverse_only_during_initial_relation_matching -- phraselets are set to this
-                value during topic matching to prevent them from being taken into account during
-                initial relation matching because the parent relation occurs too frequently during
-                the corpus. 'reverse_only' cannot be used instead because it has an effect on
-                scoring.
+            phraselet created without matching tags (match_all_words), otherwise 'False'.
+            reverse_only -- 'True' if a phraselet that should only be reverse-matched.
             """
             self.doc = doc
             self._matchable_token_indexes = [token.i for token in matchable_tokens]
@@ -280,8 +273,11 @@ class StructuralMatcher:
             self.topic_match_phraselet_created_without_matching_tags = \
                     topic_match_phraselet_created_without_matching_tags
             self.reverse_only = reverse_only
-            self.treat_as_reverse_only_during_initial_relation_matching = False
-
+            self.treat_as_reverse_only_during_initial_relation_matching = False # phraselets are
+                # set to this value during topic matching to prevent them from being taken into
+                # account during initial relation matching because the parent relation occurs too
+                # frequently during the corpus. 'reverse_only' cannot be used instead because it
+                # has an effect on scoring.
 
         @property
         def matchable_tokens(self):
@@ -327,18 +323,17 @@ class StructuralMatcher:
                 self._is_entity_search_phrase_token(search_phrase.root_token,
                         search_phrase.topic_match_phraselet):
             ontology_matching_strings = set()
-            ontology_matching_strings.update(self.ontology.get_words_matching_lower_case(
+            ontology_matching_strings.update(self.ontology.get_words_matching(
                     search_phrase.root_token._.holmes.lemma))
             if not search_phrase.topic_match_phraselet:
-                ontology_matching_strings.update(self.ontology.get_words_matching_lower_case(
+                ontology_matching_strings.update(self.ontology.get_words_matching(
                         search_phrase.root_token.text.lower()))
             for working_word in ontology_matching_strings:
                 yield working_word
 
     def _multiword_spans_with_head_token(self, token):
         """Generator over *_MultwordSpan* objects with *token* at their head. Dependent phrases
-            are only returned for nouns at present because e.g. for verbs the whole sentence
-            would be returned.
+            are only returned for nouns because e.g. for verbs the whole sentence would be returned.
         """
 
         if not token.pos_ in self.semantic_analyzer.noun_pos:
@@ -365,7 +360,8 @@ class StructuralMatcher:
 
     def add_phraselets_to_dict(self, doc, *, phraselet_labels_to_search_phrases,
             replace_with_hypernym_ancestors, match_all_words, returning_serialized_phraselets,
-            ignore_relation_phraselets, include_reverse_only):
+            ignore_relation_phraselets, include_reverse_only, stop_lemmas,
+            reverse_only_parent_lemmas):
         """ Creates topic matching phraselets extracted from a matching text.
 
         Properties:
@@ -378,12 +374,15 @@ class StructuralMatcher:
         match_all_words -- if 'True', word phraselets are generated for all matchable words
             rather than just for words whose tags match the phraselet template; and multiwords
             are ignored for single-word phraselets.
-        returning_serialized_phraselets -- if 'True', phraselets ready for serialization are
-            returned.
+        returning_serialized_phraselets -- if 'True', serialized phraselets are returned.
         ignore_relation_phraselets -- if 'True', only single-word phraselets are processed.
         include_reverse_only -- whether to generate phraselets that are only reverse-matched.
             Reverse matching is used in topic matching but not in supervised document
             classification.
+        stop_lemmas -- lemmas that should prevent all types of phraselet production.
+        reverse_only_parent_lemmas -- lemma / part-of-speech combinations that, when present at
+            the parent pole of a relation phraselet, should cause that phraselet to be
+            reverse-matched.
         """
 
         def get_word_from_token(token):
@@ -415,8 +414,7 @@ class StructuralMatcher:
                         word = self.ontology.get_most_general_hypernym_ancestor(word)
                     phraselet_doc[phraselet_template.parent_index]._.holmes.lemma = word
                     phraselet_label = ''.join((phraselet_template.label, ': ', word))
-                    if word not in self.semantic_analyzer.phraselet_stop_lemmas and word != \
-                            'ENTITYNOUN':
+                    if word not in stop_lemmas and word != 'ENTITYNOUN':
                             # ENTITYNOUN has to be excluded as single word although it is still
                             # permitted as the child of a relation phraselet template
                         if phraselet_label not in phraselet_labels_to_search_phrases:
@@ -436,7 +434,7 @@ class StructuralMatcher:
         for token in doc:
             entity_defined_multiword = self.semantic_analyzer.get_entity_defined_multiword(token)
             if entity_defined_multiword != None:
-                for counter in range(token.left_edge.i, token.right_edge.i +1):
+                for counter in range(token.left_edge.i, token.right_edge.i + 1):
                     multiword_token = doc[counter]
                     if counter == token.i:
                         token_indexes_to_multiword_lemmas[token.i] = entity_defined_multiword
@@ -500,14 +498,13 @@ class StructuralMatcher:
                                 phraselet_label = ''.join((phraselet_template.label, ': ',
                                         parent_word, '-', child_word))
                                 is_reverse_only_parent_lemma = False
-                                for entry in self.semantic_analyzer.reverse_only_parent_lemmas:
-                                    if entry[0] == parent_word and entry[1] == doc[parent].pos_:
-                                        is_reverse_only_parent_lemma = True
-                                if parent_word not in \
-                                        self.semantic_analyzer.phraselet_stop_lemmas and \
-                                        child_word not in \
-                                        self.semantic_analyzer.phraselet_stop_lemmas and not (
-                                        is_reverse_only_parent_lemma and not include_reverse_only):
+                                if reverse_only_parent_lemmas != None:
+                                    for entry in reverse_only_parent_lemmas:
+                                        if entry[0] == parent_word and entry[1] == doc[parent].pos_:
+                                            is_reverse_only_parent_lemma = True
+                                if parent_word not in stop_lemmas and child_word not in stop_lemmas\
+                                        and not (is_reverse_only_parent_lemma and not
+                                        include_reverse_only):
                                     if phraselet_label not in phraselet_labels_to_search_phrases:
                                         phraselet_labels_to_search_phrases[phraselet_label] = \
                                                 self.create_search_phrase('topic match phraselet',
@@ -626,10 +623,11 @@ class StructuralMatcher:
         matchable_non_entity_tokens_to_lexemes = {}
         for token in search_phrase_doc:
             # check whether grammatical token
+            if phraselet_template != None and phraselet_template.parent_index != token.i and \
+                    phraselet_template.child_index != token.i:
+                token._.holmes.is_matchable = False
             if token._.holmes.is_matchable and not (len(token._.holmes.children) > 0 and
-                    token._.holmes.children[0].child_index < 0) and (phraselet_template == None or
-                    phraselet_template.parent_index == token.i or phraselet_template.child_index
-                    == token.i):
+                    token._.holmes.children[0].child_index < 0):
                 tokens_to_match.append(token)
                 if self.ontology != None:
                     self.ontology.add_to_dictionary(token._.holmes.lemma)
@@ -637,7 +635,7 @@ class StructuralMatcher:
                         self.ontology.add_to_dictionary(token.text)
                 if self.overall_similarity_threshold < 1.0 and not \
                         self._is_entity_search_phrase_token(token, phraselet_template != None):
-                    if phraselet_template == None:
+                    if phraselet_template == None and len(token._.holmes.lemma.split()) > 1:
                         matchable_non_entity_tokens_to_lexemes[token.i] = \
                                 self.semantic_analyzer.nlp.vocab[token.lemma_]
                     else:
@@ -645,9 +643,6 @@ class StructuralMatcher:
                                 self.semantic_analyzer.nlp.vocab[token._.holmes.lemma]
             if token.dep_ == 'ROOT': # syntactic root
                 root_tokens.append(replace_grammatical_root_token_recursively(token))
-            if phraselet_template != None and phraselet_template.parent_index != token.i and \
-                    phraselet_template.child_index != token.i:
-                token._.holmes.is_matchable = False
         if len(tokens_to_match) == 0:
             raise SearchPhraseWithoutMatchableWordsError(search_phrase_text)
         if len(root_tokens) > 1:
@@ -676,7 +671,7 @@ class StructuralMatcher:
             else:
                 dict[word] = [token_index]
 
-        def get_multiword(token):
+        def get_ontology_defined_multiword(token):
             for multiword_span in self._multiword_spans_with_head_token(token):
                 if self.ontology.contains_multiword(multiword_span.text):
                     return multiword_span.text.lower()
@@ -684,16 +679,6 @@ class StructuralMatcher:
 
         words_to_token_indexes_dict = {}
         for token in parsed_document:
-            if self.ontology != None:
-                multiword = get_multiword(token)
-                if multiword != None:
-                    add_dict_entry(words_to_token_indexes_dict, multiword, token.i)
-                    continue
-            entity_defined_multiword = self.semantic_analyzer.get_entity_defined_multiword(token)
-            if entity_defined_multiword != None:
-                add_dict_entry(words_to_token_indexes_dict, entity_defined_multiword, token.i)
-            add_dict_entry(words_to_token_indexes_dict, token._.holmes.lemma, token.i)
-            add_dict_entry(words_to_token_indexes_dict, token.text.lower(), token.i)
 
             # parent check is necessary so we only find multiword entities once per
             # search phrase. sibling_marker_deps applies to siblings which would
@@ -704,6 +689,18 @@ class StructuralMatcher:
                     or token.ent_type_ != token.head.ent_type_):
                 entity_label = ''.join(('ENTITY', token.ent_type_))
                 add_dict_entry(words_to_token_indexes_dict, entity_label, token.i)
+
+            if self.ontology != None:
+                ontology_defined_multiword = get_ontology_defined_multiword(token)
+                if ontology_defined_multiword != None:
+                    add_dict_entry(words_to_token_indexes_dict, ontology_defined_multiword, token.i)
+                    continue
+            entity_defined_multiword = self.semantic_analyzer.get_entity_defined_multiword(token)
+            if entity_defined_multiword != None:
+                add_dict_entry(words_to_token_indexes_dict, entity_defined_multiword, token.i)
+            add_dict_entry(words_to_token_indexes_dict, token._.holmes.lemma, token.i)
+            add_dict_entry(words_to_token_indexes_dict, token.text.lower(), token.i)
+
         return self._IndexedDocument(parsed_document, words_to_token_indexes_dict)
 
     def _match_recursively(self, *, search_phrase, search_phrase_token, document, document_token,
@@ -781,8 +778,10 @@ class StructuralMatcher:
                                 at_least_one_document_dependency_matched = True
                 if at_least_one_document_dependency_tried and not \
                         at_least_one_document_dependency_matched:
+                        # it is already clear that the search phrase has not matched, so
+                        # there is no point in pursuing things any further
                     return
-            # store this search sentence token as matching the search_phrase token
+            # store the word match
             search_phrase_tokens_to_word_matches[search_phrase_token.i].append(WordMatch(
                     search_phrase_token, search_phrase_word, document_token,
                     first_document_token, last_document_token, document_word, match_type,
@@ -842,7 +841,8 @@ class StructuralMatcher:
 
         if not search_phrase.topic_match_phraselet and \
                 search_phrase_token._.holmes.lemma == search_phrase_token.lemma_:
-            # search_phrase word is not multiword, phrasal or separable verb
+            # search phrase word is not multiword, phrasal or separable verb, so we can match
+            # against its text as well as its lemma
             if len(search_phrase_word_lemma.split()) == 1:
                 if search_phrase_word_text == document_word_text:
                     handle_match(search_phrase_token.text, document_token.text, 'direct', 0)
@@ -905,16 +905,22 @@ class StructuralMatcher:
                                 last_document_token=multiword_span.tokens[-1])
                         return True
 
+        # if the search phrase token is the root token and we have got to here, embeddings for
+        # root words must be switched on
         if self.overall_similarity_threshold < 1.0 and (compare_embeddings_on_non_root_words or
                 search_phrase.root_token.i == search_phrase_token.i) and search_phrase_token.i in \
                 search_phrase.matchable_non_entity_tokens_to_lexemes.keys():
             search_phrase_lexeme = \
                     search_phrase.matchable_non_entity_tokens_to_lexemes[search_phrase_token.i]
-            document_lexeme = self.semantic_analyzer.nlp.vocab[document_token.lemma_]
+            if len(document_token._.holmes.lemma.split()) > 1:
+                document_lexeme = self.semantic_analyzer.nlp.vocab[document_token.lemma_]
+            else:
+                document_lexeme = self.semantic_analyzer.nlp.vocab[document_token._.holmes.lemma]
             if search_phrase_lexeme.vector_norm > 0 and document_lexeme.vector_norm > 0:
                 similarity_measure = search_phrase_lexeme.similarity(document_lexeme)
                 if similarity_measure > search_phrase.single_token_similarity_threshold:
-                    if not search_phrase.topic_match_phraselet:
+                    if not search_phrase.topic_match_phraselet and \
+                            len(search_phrase_token._.holmes.lemma.split()) > 1:
                         search_phrase_word_to_use = search_phrase_token.lemma_
                     else:
                         search_phrase_word_to_use = search_phrase_token._.holmes.lemma
@@ -965,12 +971,14 @@ class StructuralMatcher:
 
         def filter_word_matches_based_on_coreference_resolution(word_matches):
             """ When coreference resolution is active, additional matches are sometimes
-                returned that are filtered out again using this method.
+                returned that are filtered out again using this method. The use of
+                mention_root_index means that only the first cluster is taken into account.
             """
             dict = {}
             # Find the structurally matching document tokens for this list of word matches
             for word_match in word_matches:
-                structural_index = mention_root_or_token_index(word_match.structurally_matched_document_token)
+                structural_index = \
+                        mention_root_or_token_index(word_match.structurally_matched_document_token)
                 if structural_index in dict.keys():
                     dict[structural_index].append(word_match)
                 else:
@@ -980,8 +988,7 @@ class StructuralMatcher:
                 # For each structural token, find the best matching coreference mention
                 relevant_word_matches = dict[structural_index]
                 structurally_matched_document_token = \
-                        relevant_word_matches[0].document_token.doc[
-                        structural_index]
+                        relevant_word_matches[0].document_token.doc[structural_index]
                 already_added_document_token_indexes = set()
                 if self.semantic_analyzer.is_involved_in_coreference(
                         structurally_matched_document_token):
@@ -1076,6 +1083,9 @@ class StructuralMatcher:
             return False
 
         def check_document_tokens_are_linked_by_dependency(document_parent, document_child):
+            """ The recursive nature of the main matching algorithm can mean that all the tokens
+                in the search phrase have matched but that two of them are linked by a dependency
+                that is absent from the document, which invalidates the match. """
             if self.perform_coreference_resolution:
                 parents = document_parent._.holmes.token_and_coreference_chain_indexes
             else:
@@ -1146,8 +1156,8 @@ class StructuralMatcher:
                 if failed:
                     continue
 
-            for parent_word_match in match.word_matches:
-                not_normalized_overall_similarity_measure *= parent_word_match.similarity_measure
+            for word_match in match.word_matches:
+                not_normalized_overall_similarity_measure *= word_match.similarity_measure
             if not_normalized_overall_similarity_measure < 1.0:
                 overall_similarity_measure = \
                         round(not_normalized_overall_similarity_measure ** \
@@ -1208,8 +1218,8 @@ class StructuralMatcher:
             overall_similarity_threshold < 1.0.
         compare_embeddings_on_non_root_words -- if 'False', embeddings on non-root words are not
             compared even if overall_similarity_threshold < 1.0.
-        document_labels_to_indexes_for_reverse_matching_sets -- indexes for direct reverse matching
-            only.
+        document_labels_to_indexes_for_reverse_matching_sets -- indexes for direct (non-embedding)
+            reverse matching only.
         document_labels_to_indexes_for_embedding_reverse_matching_sets -- indexes for direct reverse
             matching and for embedding-based reverse matching.
         """
@@ -1337,7 +1347,8 @@ class StructuralMatcher:
                 if compare_embeddings_on_root_words and not \
                         self._is_entity_search_phrase_token(search_phrase.root_token,
                         search_phrase.topic_match_phraselet) and not search_phrase.reverse_only:
-                    if not search_phrase.topic_match_phraselet:
+                    if not search_phrase.topic_match_phraselet and \
+                            len(search_phrase.root_token._.holmes.lemma.split()) > 1:
                         root_token_lemma_to_use = search_phrase.root_token.lemma_
                     else:
                         root_token_lemma_to_use = search_phrase.root_token._.holmes.lemma
@@ -1358,8 +1369,13 @@ class StructuralMatcher:
                             search_phrase_lexeme = \
                                     search_phrase.matchable_non_entity_tokens_to_lexemes[
                                     search_phrase.root_token.i]
-                            document_lexeme = self.semantic_analyzer.nlp.vocab[
-                                    doc[indexes_to_match[0]].lemma_]
+                            example_document_token = doc[indexes_to_match[0]]
+                            if len(doc[indexes_to_match[0]]._.holmes.lemma.split()) > 1:
+                                document_lexeme = self.semantic_analyzer.nlp.vocab[
+                                        example_document_token.lemma_]
+                            else:
+                                document_lexeme = self.semantic_analyzer.nlp.vocab[
+                                        example_document_token._.holmes.lemma]
                             if search_phrase_lexeme.vector_norm > 0 and \
                                     document_lexeme.vector_norm > 0:
                                 similarity_measure = search_phrase_lexeme.similarity(

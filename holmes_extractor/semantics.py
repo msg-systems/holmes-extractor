@@ -19,11 +19,11 @@ class SemanticDependency:
             object for convenience.
         child_index -- the index of the child token within the document, or one less than the zero
             minus the index of the child token within the document to indicate a grammatical
-            dependency. A grammatical dependency means that the parent is replaced by the child
-            during matching
+            dependency. A grammatical dependency means that the parent should be replaced by the
+            child during matching.
         label -- the label of the semantic dependency, which must be *None* for grammatical
             dependencies.
-        is_uncertain -- if *True*, a match involving this dependency will itself be uncertain.
+        is_uncertain -- if *True*, any match involving this dependency will itself be uncertain.
         """
         if child_index < 0 and label != None:
             raise RuntimeError(
@@ -53,13 +53,14 @@ class SemanticDependency:
 
     def __eq__(self, other):
         return type(other) == SemanticDependency and \
-                self.parent_index == other.parent_index and self.child_index == other.child_index
+                self.parent_index == other.parent_index and self.child_index == other.child_index \
+                and self.label == other.label and self.is_uncertain == other.is_uncertain
 
     def __ne__(self, other):
         return not self.__eq__(other)
 
     def __hash__(self):
-        return hash((self.parent_index, self.child_index))
+        return hash((self.parent_index, self.child_index, self.label, self.is_uncertain))
 
 class Mention:
     """ Simplified information about a coreference mention with respect to a specific token. """
@@ -79,28 +80,28 @@ class HolmesDictionary:
 
     index -- the index of the token
     lemma -- the value returned from *._.holmes.lemma* for the token.
-    children -- list of *SemanticDependency* objects where this token is the parent.
-    righthand_siblings -- list of tokens to the right of this token that stand in a conjunction
-        relationship to this token and that share its semantic parents.
     """
 
     def __init__(self, index, lemma):
         self.index = index
         self.lemma = lemma
-        self.children = []
-        self.righthand_siblings = []
-        self.token_or_lefthand_sibling_index = None
+        self.children = [] # list of *SemanticDependency* objects where this token is the parent.
+        self.righthand_siblings = [] # list of tokens to the right of this token that stand in a
+        # conjunction relationship to this token and that share its semantic parents.
+        self.token_or_lefthand_sibling_index = None # the index of this token's lefthand sibling,
+        # or this token's own index if this token has no lefthand sibling.
         self.is_involved_in_or_conjunction = False
         self.is_negated = None
         self.is_matchable = None
         self.parent_dependencies = [] # list of [index, label] specifications of dependencies
         # where this token is the child. Takes any coreference resolution into account. Used in
         # topic matching.
-        self.lefthand_dependency = None
-        self.token_and_coreference_chain_indexes = None # where no coreference, only the token index
+        self.token_and_coreference_chain_indexes = None # where no coreference, only the token
+        # index; where coreference, the token index followed by the indexes of coreferring tokens
         self.mentions = []
-        self.mention_root_index = None  # the lefthand member of the mention that contains
-                                        # this token within its first cluster
+        self.mention_root_index = None  # the lefthandmost token within of the mention that contains
+                                        # this token within the first cluster to which this token
+                                        # belongs, which will most often be this token itself
 
     @property
     def is_uncertain(self):
@@ -180,16 +181,14 @@ class PhraseletTemplate:
     dependency_labels -- the labels of dependencies that match the template
         (for relation phraselets) or 'None' for single-word phraselets.
     parent_tags -- the tag_ values of parent participants in the dependency (for parent phraselets)
-        of of the word (for single-word phraselets) that match the template. For performance
-        reasons, tags that refer to closed word classes like prepositions should be avoided
-        where possible.
+        of of the word (for single-word phraselets) that match the template.
     child_tags -- the tag_ values of child participants in the dependency (for parent phraselets)
         that match the template, or 'None' for single-word phraselets.
-    reverse_only -- specifies that phraselets derived from this template should only be
+    reverse_only -- specifies that relation phraselets derived from this template should only be
         reverse-matched, e.g. matching should only be attempted during topic matching when the
-        possible child token has already been matched to a different single-word phraselet. This
+        possible child token has already been matched to a single-word phraselet. This
         is used for performance reasons when the parent tag belongs to a closed word class like
-        prepositions.
+        prepositions. Reverse-only phraselets are ignored in supervised document classification.
     """
 
     def __init__(self, label, template_sentence, parent_index, child_index,
@@ -285,8 +284,8 @@ class SemanticAnalyzer(ABC):
             self._initialize_semantic_dependencies(token)
         for token in spacy_doc:
             self._mark_if_righthand_sibling(token)
-            token._.holmes.token_or_lefthand_sibling_index = \
-                    self._lefthand_sibling_recursively(token)
+            token._.holmes.token_or_lefthand_sibling_index = self._lefthand_sibling_recursively(
+                    token)
         for token in spacy_doc:
             self._copy_any_sibling_info(token)
         for token in spacy_doc:
@@ -310,7 +309,7 @@ class SemanticAnalyzer(ABC):
         self.debug_structures(spacy_doc)
         return spacy_doc
 
-    def model_supports_enbeddings(self):
+    def model_supports_embeddings(self):
         return self.nlp.meta['vectors']['vectors'] > 0
 
     def model_supports_coreference_resolution(self):
@@ -431,7 +430,7 @@ class SemanticAnalyzer(ABC):
         if len(working_set) > 1:
             working_set.remove(token.i)
             token._.holmes.token_and_coreference_chain_indexes.extend(sorted(working_set))
-            # this token must always be the first in the list so it is recorded as the
+            # this token must always be the first in the list to ensure it is recorded as the
             # structurally matched token during structural matching
 
     def belongs_to_entity_defined_multiword(self, token):
@@ -452,8 +451,10 @@ class SemanticAnalyzer(ABC):
             multiword_token = token.doc[counter]
             if not self.belongs_to_entity_defined_multiword(multiword_token) or \
                     multiword_token.ent_type_ != working_ent:
-                working_text = ''
-                continue
+                if working_text != '':
+                    return None
+                else:
+                    continue
             working_text = ' '.join((working_text, multiword_token.text))
         if len(working_text.split()) > 1:
             return working_text.strip().lower()
@@ -512,9 +513,11 @@ class SemanticAnalyzer(ABC):
 
     phraselet_templates = NotImplemented
 
-    phraselet_stop_lemmas = NotImplemented
+    topic_matching_phraselet_stop_lemmas = NotImplemented
 
-    reverse_only_parent_lemmas = NotImplemented
+    supervised_document_classification_phraselet_stop_lemmas = NotImplemented
+
+    topic_matching_reverse_only_parent_lemmas = NotImplemented
 
     @abstractmethod
     def _set_negation(self, token):
@@ -706,7 +709,7 @@ class SemanticAnalyzer(ABC):
         linking_dependencies = [dependency for dependency in from_token._.holmes.children
                 if dependency.child_index == to_token.i]
         if len(linking_dependencies) == 0:
-            return  # only happens if there is a problem with the spaCy structure
+            return  # should only happen if there is a problem with the spaCy structure
         linking_dependency_label = linking_dependencies[0].label
         # only loop dependencies whose label or index are not already present at the destination
         for dependency in (dependency for dependency in from_token._.holmes.children
@@ -897,12 +900,18 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                 None, reverse_only = False)
                 ]
 
-    # Lemmas that should be suppressed  within relation phraselets or as words of
-    # single-word phraselets.
-    phraselet_stop_lemmas = ('then', 'therefore', 'so')
+    # Lemmas that should be suppressed within relation phraselets or as words of
+    # single-word phraselets during topic matching.
+    topic_matching_phraselet_stop_lemmas = ('then', 'therefore', 'so')
 
-    reverse_only_parent_lemmas = (('be', 'VERB'), ('have', 'VERB'), ('do', 'VERB'), ('say', 'VERB'),
-            ('go', 'VERB'), ('get', 'VERB'), ('make', 'VERB'))
+    # Lemmas that should be suppressed within relation phraselets or as words of
+    # single-word phraselets during supervised document classification.
+    supervised_document_classification_phraselet_stop_lemmas = ('be', 'have')
+
+    # Parent lemma / part-of-speech combinations that should lead to phraselets being
+    # reverse-matched only during topic matching.
+    topic_matching_reverse_only_parent_lemmas = (('be', 'VERB'), ('have', 'VERB'), ('do', 'VERB'),
+            ('say', 'VERB'), ('go', 'VERB'), ('get', 'VERB'), ('make', 'VERB'))
 
     def _set_negation(self, token):
         """Marks the negation on the token. A token is negative if it or one of its ancestors
@@ -931,7 +940,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
             from the syntactic information supplied by spaCy.
         """
         # 'auxpass' means an auxiliary used in a passive context. We mark its subject with
-        # a new dependency label 'nsubjpass' that matches objects.
+        # a new dependency label 'nsubjpass'.
         if len([dependency for dependency in token._.holmes.children
                 if dependency.label == 'auxpass']) > 0:
             for dependency in token._.holmes.children:
@@ -1084,7 +1093,8 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                 else:
                     for lefthand_sibling_of_antecedent in \
                             antecedent._.holmes.loop_token_and_righthand_siblings(token.doc):
-                        for sibling_of_predicate in (sibling_of_predicate for sibling_of_predicate in token._.holmes.loop_token_and_righthand_siblings(token.doc)
+                        for sibling_of_predicate in (sibling_of_predicate for sibling_of_predicate
+                                in token._.holmes.loop_token_and_righthand_siblings(token.doc)
                                 if sibling_of_predicate.i != lefthand_sibling_of_antecedent.i):
                             sibling_of_predicate._.holmes.children.append(SemanticDependency(
                                     sibling_of_predicate.i, lefthand_sibling_of_antecedent.i,
@@ -1227,7 +1237,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                     if token.doc[counter].dep_ in ('nsubj', 'nsubjpass'):
                         break
                 # From the subject phrase loop up through the syntactic parents
-                # to find the governing verb
+                # to handle relative constructions
                 working_token = token.doc[counter]
                 while True:
                     if working_token.tag_.startswith('NN') or \
@@ -1316,13 +1326,10 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
     # Never used at the time of writing
     _maximum_mentions_in_coreference_chain = 3
 
-    # Presently depends purely on the language
     _model_supports_coreference_resolution = False
 
-    # The part-of-speech labels permitted for elements of an entity-defined multiword.
     _entity_defined_multiword_pos = ('NOUN', 'PROPN')
 
-    # The entity labels permitted for elements of an entity-defined multiword.
     _entity_defined_multiword_entity_types = ('PER', 'LOC')
 
     phraselet_templates = [
@@ -1369,10 +1376,12 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                 ['FM', 'NE', 'NNE', 'NN'],
                 None, reverse_only = False)]
 
-    phraselet_stop_lemmas = ['dann', 'danach', 'so']
+    topic_matching_phraselet_stop_lemmas = ('dann', 'danach', 'so')
 
-    reverse_only_parent_lemmas = (('sein', 'AUX'), ('werden', 'AUX'), ('haben', 'AUX'),
-            ('sagen', 'VERB'), ('machen', 'VERB'), ('tun', 'VERB'))
+    supervised_document_classification_phraselet_stop_lemmas = ('sein', 'haben')
+
+    topic_matching_reverse_only_parent_lemmas = (('sein', 'AUX'), ('werden', 'AUX'),
+            ('haben', 'AUX'), ('sagen', 'VERB'), ('machen', 'VERB'), ('tun', 'VERB'))
 
     def _set_negation(self, token):
         """Marks the negation on the token. A token is negative if it or one of its ancestors
@@ -1599,7 +1608,8 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
         # 'Der Mann hat xxx, es zu yyy' and similar structures
         for dependency in (dependency for dependency in token._.holmes.children
                 if dependency.label in ('oc', 'oa', 'mo', 're') and
-                token.pos_ in ('VERB','AUX') and dependency.child_token(token.doc).pos_ in ('VERB', 'AUX')):
+                token.pos_ in ('VERB','AUX') and dependency.child_token(token.doc).pos_ in \
+                        ('VERB', 'AUX')):
             dependencies_to_add = []
             target_tokens, target_dependency = find_target_tokens_and_dependency_recursively(
                     dependency.child_token(token.doc))

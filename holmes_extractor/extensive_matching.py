@@ -9,7 +9,8 @@ from .errors import WrongModelDeserializationError, FewerThanTwoClassificationsE
         EmbeddingThresholdGreaterThanRelationThresholdError
 
 class TopicMatch:
-    """A topic match between some text and part of a document.
+    """A topic match between some text and part of a document. Note that the end indexes refer
+        to the token in question rather than to the following token.
 
     Properties:
 
@@ -49,7 +50,9 @@ class TopicMatch:
         return self.end_index - self.sentences_start_index
 
 class PhraseletActivationTracker:
-
+    """ Tracks the activation for a specific phraselet - the most recent score
+        and the position within the document at which that score was calculated.
+    """
     def __init__(self, position, score):
         self.position = position
         self.score = score
@@ -60,8 +63,7 @@ class TopicMatcher:
     def __init__(self, *, semantic_analyzer, structural_matcher, indexed_documents,
             maximum_activation_distance, relation_score, reverse_only_relation_score,
             single_word_score, single_word_any_tag_score, overlapping_relation_multiplier,
-            embedding_penalty, maximum_activation_value,
-            maximum_number_of_single_word_matches_for_relation_matching,
+            embedding_penalty, maximum_number_of_single_word_matches_for_relation_matching,
             maximum_number_of_single_word_matches_for_embedding_reverse_matching,
             sideways_match_extent, only_one_result_per_document, number_of_results):
         if maximum_number_of_single_word_matches_for_embedding_reverse_matching > \
@@ -82,7 +84,6 @@ class TopicMatcher:
         self.single_word_any_tag_score = single_word_any_tag_score
         self.overlapping_relation_multiplier = overlapping_relation_multiplier
         self.embedding_penalty = embedding_penalty
-        self.maximum_activation_value = maximum_activation_value
         self.maximum_number_of_single_word_matches_for_relation_matching = \
                 maximum_number_of_single_word_matches_for_relation_matching
         self.maximum_number_of_single_word_matches_for_embedding_reverse_matching = \
@@ -140,10 +141,23 @@ class TopicMatcher:
         class PhraseletWordMatchInfo:
             def __init__(self):
                 self.single_word_match_corpus_words = set()
-                self.parent_match_corpus_words_to_matches = {}
+                # The indexes at which the single word phraselet for this word was matched.
+
                 self.phraselet_labels_to_parent_match_corpus_words = {}
-                self.child_match_corpus_words_to_matches = {}
+                # Dictionary from phraselets with this word as the parent to indexes where the
+                # phraselet was matched.
+
                 self.phraselet_labels_to_child_match_corpus_words = {}
+                # Dictionary from phraselets with this word as the child to indexes where the
+                # phraselet was matched.
+
+                self.parent_match_corpus_words_to_matches = {}
+                # Dictionary from indexes where phraselets with this word as the parent were matched
+                # to the match objects.
+
+                self.child_match_corpus_words_to_matches = {}
+                # Dictionary from indexes where phraselets with this word as the child were matched
+                # to the match objects.
 
         def get_phraselet_word_match_info(word):
             if word in self._words_to_phraselet_word_match_infos:
@@ -154,6 +168,9 @@ class TopicMatcher:
                 return phraselet_word_match_info
 
         def set_phraselet_to_reverse_only_where_too_many_single_word_matches(phraselet):
+            """ Where the parent word of a phraselet matched too often in the corpus, the phraselet
+                is set to reverse matching only to improve performance.
+            """
             parent_token = phraselet.root_token
             parent_word = parent_token._.holmes.lemma
             if parent_word in self._words_to_phraselet_word_match_infos:
@@ -169,6 +186,18 @@ class TopicMatcher:
                 parent_document_labels_to_indexes_for_direct_retry_sets,
                 parent_document_labels_to_indexes_for_embedding_retry_sets,
                 child_document_labels_to_indexes_for_embedding_retry_sets):
+            """
+            parent_document_labels_to_indexes_for_direct_retry_sets -- indexes where matching
+                against a reverse matching phraselet should be attempted. These are ascertained
+                by examining the child words.
+            parent_document_labels_to_indexes_for_embedding_retry_sets -- indexes where matching
+                against a phraselet should be attempted with embedding-based matching on the
+                parent (root) word. These are ascertained by examining the child words.
+            child_document_labels_to_indexes_for_embedding_retry_sets -- indexes where matching
+                against a phraselet should be attempted with embedding-based matching on the
+                child (non-root) word. These are ascertained by examining the parent words.
+            """
+
             parent_token = phraselet.root_token
             parent_word = parent_token._.holmes.lemma
             if parent_word in self._words_to_phraselet_word_match_infos and not \
@@ -187,6 +216,9 @@ class TopicMatcher:
                     parent_relation_match_corpus_words = []
                 if len(parent_single_word_match_corpus_words) <= \
                         self.maximum_number_of_single_word_matches_for_embedding_reverse_matching:
+                    # we deliberately use the number of single matches rather than the difference
+                    # because the deciding factor should be whether or not enough match information
+                    # has been returned without checking the embeddings
                     for corpus_word_position in \
                             parent_single_word_match_corpus_words.difference(
                             parent_relation_match_corpus_words):
@@ -211,7 +243,9 @@ class TopicMatcher:
                         self.maximum_number_of_single_word_matches_for_embedding_reverse_matching:
                     set_to_add_to = parent_document_labels_to_indexes_for_embedding_retry_sets
                 elif len(child_single_word_match_corpus_words) <= \
-                        self.maximum_number_of_single_word_matches_for_relation_matching:
+                        self.maximum_number_of_single_word_matches_for_relation_matching and (
+                        phraselet.reverse_only or
+                        phraselet.treat_as_reverse_only_during_initial_relation_matching):
                     set_to_add_to = parent_document_labels_to_indexes_for_direct_retry_sets
                 else:
                     return
@@ -281,6 +315,8 @@ class TopicMatcher:
 
             def check_for_sibling_match_with_higher_similarity(match, other_match,
                     word_match, other_word_match):
+                    # We do not want the same phraselet to match multiple siblings, so choose
+                    # the sibling that is most similar to the search phrase token.
                 if word_match.document_token.i == other_word_match.document_token.i:
                     return True
                 working_sibling = word_match.document_token.doc[
@@ -304,20 +340,33 @@ class TopicMatcher:
                     if this_other_pole_word_match.document_token.i == other_other_pole_word_match.\
                             document_token.i and other_other_pole_word_match.similarity_measure > \
                             this_other_pole_word_match.similarity_measure:
+                        # The other match has a higher similarity measure at the other pole than
+                        # this match. The matched tokens are the same. The matching phraselets
+                        # must be different.
                         return False
-                    if this_other_pole_word_match.document_token.i != \
+                        # Check unnecessary if parent==True as it has then already
+                        # been carried out during structural matching.
+                    if not parent and this_other_pole_word_match.document_token.i != \
                             other_other_pole_word_match.document_token.i and \
                             other_other_pole_word_match.document_token.i in \
                             this_other_pole_word_match.document_token._.\
                             holmes.token_and_coreference_chain_indexes and \
                             match.search_phrase_label == other_this_pole_match.search_phrase_label \
-                            and ((abs(this_pole_index - this_other_pole_word_match.document_token.i) \
+                            and ((abs(this_pole_index -
+                                    this_other_pole_word_match.document_token.i) \
                              > abs(this_pole_index - other_other_pole_word_match.document_token.i))\
                              or (abs(this_pole_index - this_other_pole_word_match.document_token.i)
-                              == abs(this_pole_index - other_other_pole_word_match.document_token.i)
-                              and this_other_pole_word_match.document_token.i >
-                              other_other_pole_word_match.document_token.i)):
+                             == abs(this_pole_index - other_other_pole_word_match.document_token.i)
+                             and this_other_pole_word_match.document_token.i >
+                             other_other_pole_word_match.document_token.i)):
+                        # The document tokens at the other poles corefer with each other and
+                        # the other match's token is closer to the second document token (the
+                        # one at this pole). Both matches are from the same phraselet.
+                        # If the tokens from the two matches are the same distance from the document
+                        # token at this pole but on opposite sides of it, the preceding one beats
+                        # the succeeding one simply because we have to choose one or the other.
                         return False
+
                     if not check_for_sibling_match_with_higher_similarity(match,
                             other_this_pole_match, this_other_pole_word_match,
                             other_other_pole_word_match):
@@ -326,14 +375,14 @@ class TopicMatcher:
 
             if match.from_single_word_phraselet:
                 return True
-            #if not perform_checks_at_pole(match, True):# not necessary because same checks are
-                                                        # now carried out by structural matcher
-            #    return False
+            if not perform_checks_at_pole(match, True):
+                return False
             if not perform_checks_at_pole(match, False):
                 return False
             return True
 
         def remove_duplicates(matches):
+            # Situations where the same document tokens have been matched by multple phraselets
             matches_to_return = []
             if len(matches) == 0:
                 return matches_to_return
@@ -354,6 +403,8 @@ class TopicMatcher:
                                 in this_match.word_matches]
                         previous_word_matches_indexes = [word_match.document_token.i for
                                 word_match in previous_match.word_matches]
+                        # In some circumstances the two phraselets may have matched the same
+                        # tokens the opposite way round
                         if sorted(this_word_matches_indexes) != \
                                 sorted(previous_word_matches_indexes):
                             matches_to_return.append(this_match)
@@ -367,7 +418,11 @@ class TopicMatcher:
                 match_all_words = False,
                 returning_serialized_phraselets = False,
                 ignore_relation_phraselets = False,
-                include_reverse_only = True)
+                include_reverse_only = True,
+                stop_lemmas = self._semantic_analyzer.topic_matching_phraselet_stop_lemmas,
+                reverse_only_parent_lemmas =
+                        self._semantic_analyzer.topic_matching_reverse_only_parent_lemmas)
+
         # now add the single word phraselets whose tags did not match.
         self.structural_matcher.add_phraselets_to_dict(doc,
                 phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
@@ -375,8 +430,11 @@ class TopicMatcher:
                 match_all_words = True,
                 returning_serialized_phraselets = False,
                 ignore_relation_phraselets = True,
-                include_reverse_only = False) # value is irrelevant with
+                include_reverse_only = False, # value is irrelevant with
                                               # ignore_relation_phraselets == True
+                stop_lemmas = self._semantic_analyzer.topic_matching_phraselet_stop_lemmas,
+                reverse_only_parent_lemmas =
+                        self._semantic_analyzer.topic_matching_reverse_only_parent_lemmas)
         if len(phraselet_labels_to_search_phrases) == 0:
             return []
         # First get single-word matches
@@ -394,6 +452,8 @@ class TopicMatcher:
             for phraselet in (phraselet for phraselet in phraselet_labels_to_search_phrases.values()
                     if len(phraselet.doc) > 1):
                 set_phraselet_to_reverse_only_where_too_many_single_word_matches(phraselet)
+
+        # Now get normally matched relations
         structural_matches.extend(self.structural_matcher.match(
                 indexed_documents = self.indexed_documents,
                 search_phrases = phraselet_labels_to_search_phrases.values(),
@@ -403,6 +463,7 @@ class TopicMatcher:
                 compare_embeddings_on_non_root_words = False,
                 document_labels_to_indexes_for_reverse_matching_sets = None,
                 document_labels_to_indexes_for_embedding_reverse_matching_sets = None))
+
         rebuild_document_info_dict(structural_matches, phraselet_labels_to_search_phrases)
         parent_document_labels_to_indexes_for_direct_retry_sets = {}
         parent_document_labels_to_indexes_for_embedding_retry_sets = {}
@@ -418,6 +479,8 @@ class TopicMatcher:
                 child_document_labels_to_indexes_for_embedding_retry_sets)
         if len(parent_document_labels_to_indexes_for_embedding_retry_sets) > 0 or \
                 len(parent_document_labels_to_indexes_for_direct_retry_sets) > 0:
+
+            # Perform reverse matching at selected indexes
             structural_matches.extend(self.structural_matcher.match(
                     indexed_documents = self.indexed_documents,
                     search_phrases = phraselet_labels_to_search_phrases.values(),
@@ -429,7 +492,10 @@ class TopicMatcher:
                     parent_document_labels_to_indexes_for_direct_retry_sets,
                     document_labels_to_indexes_for_embedding_reverse_matching_sets =
                     parent_document_labels_to_indexes_for_embedding_retry_sets))
+
         if len(child_document_labels_to_indexes_for_embedding_retry_sets) > 0:
+
+            # Retry normal matching at selected indexes with embedding-based matching on children
             structural_matches.extend(self.structural_matcher.match(
                     indexed_documents = self.indexed_documents,
                     search_phrases = phraselet_labels_to_search_phrases.values(),
@@ -469,7 +535,7 @@ class TopicMatcher:
             else:
                 return set()
 
-        def get_current_activation(phraselet_activation_tracker, current_index):
+        def get_current_activation_for_phraselet(phraselet_activation_tracker, current_index):
             distance_to_last_match = current_index - phraselet_activation_tracker.position
             tailoff_quotient = distance_to_last_match / self.maximum_activation_distance
             if tailoff_quotient > 1.0:
@@ -527,7 +593,7 @@ class TopicMatcher:
             if match.search_phrase_label in phraselet_labels_to_phraselet_activation_trackers:
                 phraselet_activation_tracker = phraselet_labels_to_phraselet_activation_trackers[
                         match.search_phrase_label]
-                current_score = get_current_activation(phraselet_activation_tracker,
+                current_score = get_current_activation_for_phraselet(phraselet_activation_tracker,
                         match.index_within_document)
                 if this_match_score > current_score:
                     phraselet_activation_tracker.score = this_match_score
@@ -541,7 +607,7 @@ class TopicMatcher:
             for phraselet_label in list(phraselet_labels_to_phraselet_activation_trackers):
                 phraselet_activation_tracker = phraselet_labels_to_phraselet_activation_trackers[
                         phraselet_label]
-                current_activation = get_current_activation(phraselet_activation_tracker,
+                current_activation = get_current_activation_for_phraselet(phraselet_activation_tracker,
                         match.index_within_document)
                 if current_activation <= 0:
                     del phraselet_labels_to_phraselet_activation_trackers[phraselet_label]
@@ -565,15 +631,12 @@ class TopicMatcher:
 
         def alter_start_and_end_indexes_for_match(start_index, end_index, match,
                 reference_match_index_within_document):
-            if match.index_within_document < start_index and \
-                    reference_match_index_within_document - match.index_within_document < \
-                    self.sideways_match_extent:
+            if match.index_within_document < start_index:
                 start_index = match.index_within_document
             for word_match in match.word_matches:
                 if word_match.first_document_token.i < start_index:
                     start_index = word_match.first_document_token.i
-            if match.index_within_document > end_index and match.index_within_document - \
-                    reference_match_index_within_document < self.sideways_match_extent:
+            if match.index_within_document > end_index:
                 end_index = match.index_within_document
             for word_match in match.word_matches:
                 if word_match.last_document_token.i > end_index:
@@ -602,9 +665,9 @@ class TopicMatcher:
                     previous_index_within_list-1].document_label == \
                     score_sorted_match.document_label and position_sorted_structural_matches[
                     previous_index_within_list].topic_score > self.single_word_score:
-                    # index_within_list rather than index_within_list -1 : when a complex structure
-                    # is matched, it will often begin with a single noun that should be included
-                    # within the topic match indexes
+                    # previous_index_within_list rather than previous_index_within_list -1 :
+                    # when a complex structure is matched, it will often begin with a single noun
+                    # that should be included within the topic match indexes
                 if match_contained_within_existing_topic_match(topic_matches,
                         position_sorted_structural_matches[
                         previous_index_within_list-1]):
@@ -613,7 +676,7 @@ class TopicMatcher:
                         previous_index_within_list-1].index_within_document > \
                         self.sideways_match_extent:
                     break
-                previous_index_within_list -=1
+                previous_index_within_list -= 1
                 start_index, end_index = alter_start_and_end_indexes_for_match(
                         start_index, end_index,
                         position_sorted_structural_matches[previous_index_within_list],
@@ -644,11 +707,11 @@ class TopicMatcher:
             relevant_sentences = [sentence for sentence in working_document.sents
                     if sentence.end > start_index and sentence.start <= end_index]
             sentences_start_index = relevant_sentences[0].start
-            sentences_end_index = relevant_sentences[-1].end - 1
-            text = working_document[sentences_start_index: sentences_end_index + 1].text
+            sentences_end_index = relevant_sentences[-1].end
+            text = working_document[sentences_start_index: sentences_end_index].text
             topic_matches.append(TopicMatch(score_sorted_match.document_label,
                     score_sorted_match.index_within_document,
-                    start_index, end_index, sentences_start_index, sentences_end_index,
+                    start_index, end_index, sentences_start_index, sentences_end_index - 1,
                     score_sorted_match.topic_score, text, position_sorted_structural_matches[
                     previous_index_within_list:next_index_within_list+1]))
             if self.only_one_result_per_document:
@@ -766,7 +829,8 @@ class TopicMatcher:
                 'document_label': topic_match.document_label,
                 'text': topic_match.text,
                 'text_to_match': text_to_match,
-                'rank': str(topic_match_counter + 1),
+                'rank': str(topic_match_counter + 1),   # ties are corrected by
+                                                        # TopicMatchDictionaryOrderer
                 'sentences_character_start_index_in_document':
                         sentences_character_start_index_in_document,
                 'sentences_character_end_index_in_document':
@@ -775,6 +839,8 @@ class TopicMatcher:
                 'word_infos': [[word_info.relative_start_index, word_info.relative_end_index,
                         word_info.type, word_info.is_highest_activation] for word_info
                         in word_infos]
+                # The word infos are labelled by array index alone to prevent the JSON from
+                # becoming too bloated
             }
             topic_match_dicts.append(topic_match_dict)
         return TopicMatchDictionaryOrderer().order(topic_match_dicts, self.number_of_results,
@@ -894,9 +960,9 @@ class SupervisedTopicTrainingUtils:
 
             Parameters:
 
-            structural_matcher -- the structural matcher to use for comparisons.
             phraselet_labels_to_search_phrases -- a dictionary from search phrase (phraselet)
                 labels to search phrase objects.
+            structural_matcher -- the structural matcher to use for comparisons.
             sorted_label_dict -- a dictionary from search phrase (phraselet) labels to their own
                 alphabetic sorting indexes.
             doc_label -- the document label, or 'None' if there is none.
@@ -930,7 +996,7 @@ class SupervisedTopicTrainingUtils:
 
 class SupervisedTopicTrainingBasis:
     """ Holder object for training documents and their classifications from which one or more
-        'SupervisedTopicModelTrainer' objects can be derived. This class is not threadsafe.
+        'SupervisedTopicModelTrainer' objects can be derived. This class is *NOT* threadsafe.
     """
     def __init__(self, *, structural_matcher, classification_ontology, overlap_memory_size,
             oneshot, match_all_words, verbose):
@@ -1003,7 +1069,10 @@ class SupervisedTopicTrainingBasis:
                 match_all_words=self._match_all_words,
                 returning_serialized_phraselets = True,
                 ignore_relation_phraselets=False,
-                include_reverse_only=False))
+                include_reverse_only=False,
+                stop_lemmas = self.semantic_analyzer.\
+                supervised_document_classification_phraselet_stop_lemmas,
+                reverse_only_parent_lemmas = None))
         self.training_documents_labels_to_classifications_dict[label] = classification
 
     def register_additional_classification_label(self, label):
@@ -1106,7 +1175,7 @@ class SupervisedTopicTrainingBasis:
         )
 
 class SupervisedTopicModelTrainer:
-    """ Worker object used to train and generate models. This class is not threadsafe."""
+    """ Worker object used to train and generate models. This class is *NOT* threadsafe."""
 
     def __init__(self, *, training_basis, semantic_analyzer, structural_matcher,
             labels_to_classification_frequencies, serialized_phraselets, minimum_occurrences,
@@ -1175,19 +1244,9 @@ class SupervisedTopicModelTrainer:
     def _filter(self, labels_to_classification_frequencies, serialized_phraselets):
         """ Filters the phraselets in memory based on minimum_occurrences and cv_threshold. """
 
-        def increment_totals(classification_frequencies):
-            for classification, frequency in classification_frequencies.items():
-                if classification in totals:
-                    totals[classification] += frequency
-                else:
-                    totals[classification] = frequency
-
-        totals = {}
         accepted = 0
         under_minimum_occurrences = 0
         under_minimum_cv = 0
-        for classification_frequencies in labels_to_classification_frequencies.values():
-            increment_totals(classification_frequencies)
         new_labels_to_classification_frequencies = {}
         new_serialized_phraselets = set()
         for label, classification_frequencies in labels_to_classification_frequencies.items():
@@ -1196,7 +1255,6 @@ class SupervisedTopicModelTrainer:
             for classification in working_classification_frequencies:
                 if working_classification_frequencies[classification] >= self._minimum_occurrences:
                     at_least_minimum = True
-                working_classification_frequencies[classification] *= totals[classification]
             if not at_least_minimum:
                 under_minimum_occurrences += 1
                 continue

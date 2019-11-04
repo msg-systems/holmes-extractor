@@ -15,7 +15,7 @@ def validate_options(semantic_analyzer, overall_similarity_threshold,
         raise ValueError(
                 'overall_similarity_threshold must be between 0 and 1')
     if overall_similarity_threshold != 1.0 and not \
-            semantic_analyzer.model_supports_enbeddings():
+            semantic_analyzer.model_supports_embeddings():
         raise ValueError(
                 'Model has no embeddings: overall_similarity_threshold must be 1.')
     if overall_similarity_threshold == 1.0 and embedding_based_matching_on_root_words:
@@ -39,7 +39,7 @@ class Manager:
         matching should be attempted on search-phrase root tokens, which has a considerable
         performance hit. Defaults to *False*.
     ontology -- an *Ontology* object. Defaults to *None* (no ontology).
-    perform_coreference_resolution -- *True*, *False* or *None* if coreference resolution
+    perform_coreference_resolution -- *True*, *False*, or *None* if coreference resolution
         should be performed depending on whether the model supports it. Defaults to *None*.
     debug -- a boolean value specifying whether debug representations should be outputted
         for parsed sentences. Defaults to *False*.
@@ -70,8 +70,7 @@ class Manager:
 
         document_text -- the raw document text.
         label -- a label for the document which must be unique. Defaults to the empty string,
-            which is intended for use cases where single documents (user entries) are
-            matched to predefined search phrases.
+            which is intended for use cases involving single documents (typically user entries).
         """
 
         doc = self.semantic_analyzer.parse(document_text)
@@ -82,8 +81,7 @@ class Manager:
 
         document -- a preparsed Holmes document.
         label -- a label for the document which must be unique. Defaults to the empty string,
-            which is intended for use cases where single documents (user entries) are
-            matched to predefined search phrases.
+            which is intended for use cases involving single documents (typically user entries).
         """
         indexed_document = self.structural_matcher.index_document(doc)
         self.threadsafe_container.register_document(indexed_document, label)
@@ -93,8 +91,7 @@ class Manager:
 
         document -- a Holmes document serialized using the *serialize_document()* function.
         label -- a label for the document which must be unique. Defaults to the empty string,
-            which is intended for use cases where single documents (user entries) are
-            matched to predefined search phrases.
+            which is intended for use cases involving single documents (typically user entries).
         """
         if self.perform_coreference_resolution:
             raise SerializationNotSupportedError(self.semantic_analyzer.model)
@@ -275,18 +272,16 @@ class Manager:
                 is matched using a search phrase that can only be reverse-matched.
         single_word_score -- the activation score added when a single word is matched.
         single_word_any_tag_score -- the activation score added when a single word is matched
-            whose tag did not correspond to the template specification. Only used when following the
-            phraselet specification yielded too few results.
+            whose tag did not correspond to the template specification.
         overlapping_relation_multiplier -- the value by which the activation score is multiplied
             when two relations were matched and the matches involved a common document word.
         embedding_penalty -- a value between 0 and 1 with which scores are multiplied when the
             match involved an embedding. The result is additionally multiplied by the overall
-            similarity measure of the match that involved an embedding.
-        maximum_activation_value -- the maximum permissible activation value.
+            similarity measure of the match.
         maximum_number_of_single_word_matches_for_relation_matching -- the maximum number
                 of single word matches that are used as the basis for matching relations. If more
-                than this value exist for both words within a relation phraselet, matching on the
-                phraselet is not attempted.
+                document words than this value correspond to each of the two words within a
+                relation phraselet, matching on the phraselet is not attempted.
         maximum_number_of_single_word_matches_for_embedding_reverse_matching = the maximum number
                 of single word matches that are used as the basis for reverse matching with
                 embeddings at the parent word. If more than this value exist, reverse matching with
@@ -309,7 +304,6 @@ class Manager:
                 single_word_any_tag_score=single_word_any_tag_score,
                 overlapping_relation_multiplier=overlapping_relation_multiplier,
                 embedding_penalty=embedding_penalty,
-                maximum_activation_value=maximum_activation_value,
                 maximum_number_of_single_word_matches_for_relation_matching =
                 maximum_number_of_single_word_matches_for_relation_matching,
                 maximum_number_of_single_word_matches_for_embedding_reverse_matching =
@@ -322,7 +316,7 @@ class Manager:
     def topic_match_documents_returning_dictionaries_against(self, text_to_match, *,
             maximum_activation_distance=75, relation_score=30, reverse_only_relation_score = 20,
             single_word_score=5, single_word_any_tag_score=2, overlapping_relation_multiplier=1.5,
-            embedding_penalty=0.6,maximum_activation_value=1000,
+            embedding_penalty=0.6,
             maximum_number_of_single_word_matches_for_relation_matching = 500,
             maximum_number_of_single_word_matches_for_embedding_reverse_matching = 100,
             sideways_match_extent=100, only_one_result_per_document=False, number_of_results=10,
@@ -341,18 +335,16 @@ class Manager:
                 is matched using a search phrase that can only be reverse-matched.
         single_word_score -- the activation score added when a single word is matched.
         single_word_any_tag_score -- the activation score added when a single word is matched
-            whose tag did not correspond to the template specification. Only used when following the
-            phraselet specification yielded too few results.
+            whose tag did not correspond to the template specification.
         overlapping_relation_multiplier -- the value by which the activation score is multiplied
             when two relations were matched and the matches involved a common document word.
         embedding_penalty -- a value between 0 and 1 with which scores are multiplied when the
             match involved an embedding. The result is additionally multiplied by the overall
-            similarity measure of the match that involved an embedding.
-        maximum_activation_value -- the maximum permissible activation value.
+            similarity measure of the match.
         maximum_number_of_single_word_matches_for_relation_matching -- the maximum number
                 of single word matches that are used as the basis for matching relations. If more
-                than this value exist for both words within a relation phraselet, matching on the
-                phraselet is not attempted.
+                document words than this value correspond to each of the two words within a
+                relation phraselet, matching on the phraselet is not attempted.
         maximum_number_of_single_word_matches_for_embedding_reverse_matching = the maximum number
                 of single word matches that are used as the basis for reverse matching with
                 embeddings at the parent word. If more than this value exist, reverse matching with
@@ -363,7 +355,7 @@ class Manager:
             for the same document.
         number_of_results -- the number of topic match objects to return.
         tied_result_quotient -- the quotient between a result and following results above which
-            the results are interpreted as tied
+            the results are interpreted as tied.
 
         """
         topic_matcher = TopicMatcher(semantic_analyzer = self.semantic_analyzer,
@@ -376,7 +368,6 @@ class Manager:
                 single_word_any_tag_score=single_word_any_tag_score,
                 overlapping_relation_multiplier=overlapping_relation_multiplier,
                 embedding_penalty=embedding_penalty,
-                maximum_activation_value=maximum_activation_value,
                 maximum_number_of_single_word_matches_for_relation_matching =
                 maximum_number_of_single_word_matches_for_relation_matching,
                 maximum_number_of_single_word_matches_for_embedding_reverse_matching =
@@ -428,10 +419,9 @@ class Manager:
             verbose -- if 'True', information about matching is outputted to the console.
         """
         model = jsonpickle.decode(serialized_model)
-        classifier = SupervisedTopicClassifier(self.semantic_analyzer,
+        return SupervisedTopicClassifier(self.semantic_analyzer,
                 self._new_supervised_topic_structural_matcher(),
                 model, verbose)
-        return classifier
 
     def start_chatbot_mode_console(self):
         """Starts a chatbot mode console enabling the matching of pre-registered search phrases
@@ -456,7 +446,15 @@ class Manager:
             Parameters:
 
             only_one_result_per_document -- if 'True', prevents multiple topic match
-            results from being returned for the same document.
+                results from being returned for the same document.
+            maximum_number_of_single_word_matches_for_relation_matching -- the maximum number
+                of single word matches that are used as the basis for matching relations. If more
+                document words than this value correspond to each of the two words within a
+                relation phraselet, matching on the phraselet is not attempted.
+            maximum_number_of_single_word_matches_for_embedding_reverse_matching = the maximum
+                number of single word matches that are used as the basis for reverse matching with
+                embeddings at the parent word. If more than this value exist, reverse matching with
+                embeddings is not attempted because the performance hit would be too great.
         """
         holmes_consoles = HolmesConsoles(self)
         holmes_consoles.start_topic_matching_search_mode(only_one_result_per_document,
@@ -475,7 +473,7 @@ class MultiprocessingManager:
     overall_similarity_threshold -- the overall similarity threshold for embedding-based
         matching. Defaults to *1.0*, which deactivates embedding-based matching.
     embedding_based_matching_on_root_words -- determines whether or not embedding-based
-        matching should be attempted on search-phrase root tokens, which has a considerable
+        matching should be attempted on root (parent) tokens, which has a considerable
         performance hit. Defaults to *False*.
     ontology -- an *Ontology* object. Defaults to *None* (no ontology).
     perform_coreference_resolution -- *True*, *False* or *None* if coreference resolution
@@ -525,7 +523,6 @@ class MultiprocessingManager:
         self._lock = Lock()
 
     def _add_document_label(self, label):
-        """Returns a list of the labels of the currently registered documents."""
         with self._lock:
             if label in self._document_labels:
                 raise DuplicateDocumentError(label)
@@ -586,8 +583,7 @@ class MultiprocessingManager:
     def topic_match_documents_returning_dictionaries_against(self, text_to_match, *,
             maximum_activation_distance=75, relation_score=30, reverse_only_relation_score = 20,
             single_word_score=5, single_word_any_tag_score=2, overlapping_relation_multiplier=1.5,
-            embedding_penalty=0.6,maximum_activation_value=1000,
-            maximum_number_of_single_word_matches_for_relation_matching = 500,
+            embedding_penalty=0.6,maximum_number_of_single_word_matches_for_relation_matching = 500,
             maximum_number_of_single_word_matches_for_embedding_reverse_matching = 100,
             sideways_match_extent=100, only_one_result_per_document=False, number_of_results=10,
             tied_result_quotient=0.9):
@@ -603,18 +599,16 @@ class MultiprocessingManager:
                 is matched using a search phrase that can only be reverse-matched.
         single_word_score -- the activation score added when a single word is matched.
         single_word_any_tag_score -- the activation score added when a single word is matched
-            whose tag did not correspond to the template specification. Only used when following the
-            phraselet specification yielded too few results.
+            whose tag did not correspond to the template specification.
         overlapping_relation_multiplier -- the value by which the activation score is multiplied
             when two relations were matched and the matches involved a common document word.
         embedding_penalty -- a value between 0 and 1 with which scores are multiplied when the
             match involved an embedding. The result is additionally multiplied by the overall
-            similarity measure of the match that involved an embedding.
-        maximum_activation_value -- the maximum permissible activation value.
+            similarity measure of the match.
         maximum_number_of_single_word_matches_for_relation_matching -- the maximum number
                 of single word matches that are used as the basis for matching relations. If more
-                than this value exist for both words within a relation phraselet, matching on the
-                phraselet is not attempted.
+                document words than this value correspond to each of the two words within a
+                relation phraselet, matching on the phraselet is not attempted.
         maximum_number_of_single_word_matches_for_embedding_reverse_matching = the maximum number
                 of single word matches that are used as the basis for reverse matching with
                 embeddings at the parent word. If more than this value exist, reverse matching with
@@ -624,6 +618,8 @@ class MultiprocessingManager:
         only_one_result_per_document -- if 'True', prevents multiple results from being returned
             for the same document.
         number_of_results -- the number of topic match objects to return.
+        tied_result_quotient -- the quotient between a result and following results above which
+            the results are interpreted as tied.
         """
         if maximum_number_of_single_word_matches_for_embedding_reverse_matching > \
                 maximum_number_of_single_word_matches_for_relation_matching:
@@ -638,7 +634,7 @@ class MultiprocessingManager:
                     self._worker.worker_topic_match_documents_returning_dictionaries_against,
                     (text_to_match, maximum_activation_distance, relation_score,
                     reverse_only_relation_score, single_word_score, single_word_any_tag_score,
-                    overlapping_relation_multiplier, embedding_penalty,maximum_activation_value,
+                    overlapping_relation_multiplier, embedding_penalty,
                     maximum_number_of_single_word_matches_for_relation_matching,
                     maximum_number_of_single_word_matches_for_embedding_reverse_matching,
                     sideways_match_extent, only_one_result_per_document, number_of_results,
@@ -664,7 +660,15 @@ class MultiprocessingManager:
             Parameters:
 
             only_one_result_per_document -- if 'True', prevents multiple topic match
-            results from being returned for the same document.
+                results from being returned for the same document.
+            maximum_number_of_single_word_matches_for_relation_matching -- the maximum number
+                of single word matches that are used as the basis for matching relations. If more
+                document words than this value correspond to each of the two words within a
+                relation phraselet, matching on the phraselet is not attempted.
+            maximum_number_of_single_word_matches_for_embedding_reverse_matching = the maximum
+                number of single word matches that are used as the basis for reverse matching with
+                embeddings at the parent word. If more than this value exist, reverse matching with
+                embeddings is not attempted because the performance hit would be too great.
         """
         holmes_consoles = HolmesConsoles(self)
         holmes_consoles.start_topic_matching_search_mode(only_one_result_per_document,
@@ -680,9 +684,6 @@ class MultiprocessingManager:
 class Worker:
     """Worker implementation used by *MultiprocessingManager*.
     """
-
-    def __init__(self):
-        pass
 
     def listen(self, semantic_analyzer, structural_matcher, input_queue, worker_label):
         semantic_analyzer.reload_model() # necessary to avoid neuralcoref MemoryError on Linux
@@ -718,8 +719,7 @@ class Worker:
             structural_matcher, indexed_documents, text_to_match,
             maximum_activation_distance, relation_score, reverse_only_relation_score,
             single_word_score, single_word_any_tag_score, overlapping_relation_multiplier,
-            embedding_penalty,maximum_activation_value,
-            maximum_number_of_single_word_matches_for_relation_matching,
+            embedding_penalty,maximum_number_of_single_word_matches_for_relation_matching,
             maximum_number_of_single_word_matches_for_embedding_reverse_matching,
             sideways_match_extent, only_one_result_per_document, number_of_results,
             tied_result_quotient):
@@ -735,7 +735,6 @@ class Worker:
                 single_word_any_tag_score=single_word_any_tag_score,
                 overlapping_relation_multiplier=overlapping_relation_multiplier,
                 embedding_penalty=embedding_penalty,
-                maximum_activation_value=maximum_activation_value,
                 maximum_number_of_single_word_matches_for_relation_matching =
                 maximum_number_of_single_word_matches_for_relation_matching,
                 maximum_number_of_single_word_matches_for_embedding_reverse_matching =
