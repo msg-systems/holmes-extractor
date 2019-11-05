@@ -1131,8 +1131,8 @@ class SupervisedTopicTrainingBasis:
 
     def train(self, *, minimum_occurrences=4, cv_threshold=1.0, mlp_activation='relu',
             mlp_solver='adam', mlp_learning_rate='constant', mlp_learning_rate_init=0.001,
-            mlp_max_iter=200, mlp_shuffle=True, mlp_random_state=42, oneshot=True,
-            overlap_memory_size=10, hidden_layer_sizes=None):
+            mlp_max_iter=200, mlp_shuffle=True, mlp_random_state=42, overlap_memory_size=10,
+            hidden_layer_sizes=None):
         """ Trains a model based on the prepared state.
 
             Parameters:
@@ -1144,8 +1144,6 @@ class SupervisedTopicTrainingBasis:
                 to occur with respect to explicit classification labels for the phraselet to be
                 accepted into the final model.
             mlp_* -- see https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPClassifier.html.
-            oneshot -- whether the same word or relationship matched multiple times should be
-                counted once only (value 'True') or multiple times (value 'False')
             overlap_memory_size -- how many non-word phraselet matches to the left should be
                 checked for words in common with a current match.
             hidden_layer_sizes -- a list of the number of neurons in each hidden layer, or 'None'
