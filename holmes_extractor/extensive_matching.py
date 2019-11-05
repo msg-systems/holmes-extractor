@@ -382,7 +382,7 @@ class TopicMatcher:
             return True
 
         def remove_duplicates(matches):
-            # Situations where the same document tokens have been matched by multple phraselets
+            # Situations where the same document tokens have been matched by multiple phraselets
             matches_to_return = []
             if len(matches) == 0:
                 return matches_to_return
