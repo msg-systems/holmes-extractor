@@ -17,7 +17,7 @@ def get_document_filename_info(filename):
     document_number = filename.split('/')[2].split('.')[0]
     return category, document_number
 
-def evaluate_classifier(working_directory, zip_filename, classifier):
+def evaluate_classifier(zip_filename, classifier):
     correct_classification_counter = wrong_classification_counter = \
     no_classification_counter = correct_as_additional_classification_counter = 0
     with zipfile.ZipFile(zip_filename) as bbc_zipfile:
@@ -63,8 +63,7 @@ def train_model(working_directory, zip_filename):
     output_filename = os.sep.join((working_directory, 'model.json'))
     with open(output_filename, "w") as f:
         f.write(classifier.serialize_model())
-    evaluate_classifier(working_directory, zip_filename, classifier)
-
+    evaluate_classifier(bbc_zipfile, classifier)
 holmes_manager = holmes.Manager('en_core_web_lg')
 
 if os.path.exists(working_directory):
@@ -84,4 +83,4 @@ else:
     print('Reloading existing trained model. Delete model.json from working directory to repeat training.')
     with open(model_filename) as model_file:
         classifier = holmes_manager.deserialize_supervised_topic_classifier(model_file.read())
-    evaluate_classifier(working_directory, zip_filename, classifier)
+    evaluate_classifier(zip_filename, classifier)

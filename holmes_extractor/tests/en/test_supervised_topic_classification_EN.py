@@ -211,7 +211,7 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
                 [0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0], [1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0], [0.0,
                 1.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0,
                 1.0, 0.0, 0.0, 0.0]], trainer._output_matrix.toarray().tolist())
-        self.assertEqual([5,5,6], trainer._hidden_layer_sizes)
+        self.assertEqual((5,5,6), trainer._hidden_layer_sizes)
         stc = trainer.classifier()
         self.assertEqual(stc.parse_and_classify("You are a robot."), ['computers'])
         self.assertEqual(stc.parse_and_classify("You are a cat."), ['animal'])
@@ -260,7 +260,7 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
                 [0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0], [1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0], [0.0,
                 1.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0,
                 1.0, 0.0, 0.0, 0.0]], trainer._output_matrix.toarray().tolist())
-        self.assertEqual([6,6,6], trainer._hidden_layer_sizes)
+        self.assertEqual((6,6,6), trainer._hidden_layer_sizes)
         stc = trainer.classifier()
         self.assertEqual(stc.parse_and_classify("You are a robot."), ['computers'])
         self.assertEqual(stc.parse_and_classify("You are a cat."), ['animal'])

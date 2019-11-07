@@ -1146,8 +1146,8 @@ class SupervisedTopicTrainingBasis:
             mlp_* -- see https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPClassifier.html.
             overlap_memory_size -- how many non-word phraselet matches to the left should be
                 checked for words in common with a current match.
-            hidden_layer_sizes -- a list of the number of neurons in each hidden layer, or 'None'
-                if the topology should be determined automatically.
+            hidden_layer_sizes -- a tuple containing the number of neurons in each hidden layer, or
+                'None' if the topology should be determined automatically.
         """
 
         if self.labels_to_classification_frequencies == None:
@@ -1222,7 +1222,7 @@ class SupervisedTopicModelTrainer:
         if self._hidden_layer_sizes == None:
             start = len(self._sorted_label_dict)
             step = (len(self._training_basis.classifications) - len(self._sorted_label_dict)) / 3
-            self._hidden_layer_sizes = [start, int(start+step), int(start+(2*step))]
+            self._hidden_layer_sizes = (start, int(start+step), int(start+(2*step)))
         if self._training_basis.verbose:
             print('Hidden layer sizes:', self._hidden_layer_sizes)
         self._mlp = MLPClassifier(

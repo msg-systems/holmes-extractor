@@ -155,7 +155,7 @@ class GermanSupervisedTopicClassificationTest(unittest.TestCase):
 
         self.assertEqual([[1.0, 0.0], [1.0, 0.0], [0.0, 1.0], [0.0, 1.0], [0.0, 1.0]],
                 trainer._output_matrix.toarray().tolist())
-        self.assertEqual([19,13,7],trainer._hidden_layer_sizes)
+        self.assertEqual((19,13,7),trainer._hidden_layer_sizes)
         stc = trainer.classifier()
         self.assertEqual(stc.parse_and_classify(
                 "Der Programmierer hat schon wieder Python geschrieben."),
@@ -192,8 +192,8 @@ class GermanSupervisedTopicClassificationTest(unittest.TestCase):
         sttb.parse_and_register_training_document("Ein Hund jagt eine Katze", 'Tiere1', 't1')
         sttb.parse_and_register_training_document("Ein Hund jagt eine Katze", 'Tiere2', 't2')
         sttb.prepare()
-        trainer = sttb.train(minimum_occurrences=0, cv_threshold=0, hidden_layer_sizes=[15])
-        self.assertEqual(trainer._hidden_layer_sizes, [15])
+        trainer = sttb.train(minimum_occurrences=0, cv_threshold=0, hidden_layer_sizes=(15))
+        self.assertEqual(trainer._hidden_layer_sizes, (15))
 
     def test_filtering(self):
         sttb = holmes_manager.get_supervised_topic_training_basis()
