@@ -14,7 +14,7 @@ if __name__ in ('__main__', 'example_search_DE_literature'):
     print('Initializing Holmes...')
     # Start the Holmes manager with the German model
     holmes_manager = holmes.MultiprocessingManager(model='de_core_news_md',
-            overall_similarity_threshold=0.85, number_of_workers=8)
+            overall_similarity_threshold=0.85, number_of_workers=4)
             # set number_of_workers to prevent memory exhaustion / swapping; it should never be more
             # than the number of cores on the machine
 
@@ -96,11 +96,10 @@ if __name__ in ('__main__', 'example_search_DE_literature'):
     #holmes_manager.start_topic_matching_search_mode_console(only_one_result_per_document=True)
 
     # The following code starts a RESTful Http service to perform topic searches. It is deployed as
-    # as WSGI application. Examples of how to start it are (both issued from the directory that
-    # contains the script):
+    # as WSGI application. An example of how to start it - issued from the directory that
+    # contains the script - is
 
-    #gunicorn --reload example_search_DE_literature (Linux)
-    #waitress-serve example_search_DE_literature:application (Windows)
+    # waitress-serve example_search_DE_literature:application
 
     class RestHandler():
         def on_get(self, req, resp):
