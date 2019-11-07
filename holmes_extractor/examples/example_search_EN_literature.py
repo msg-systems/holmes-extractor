@@ -68,7 +68,7 @@ if __name__ in ('__main__', 'example_search_EN_literature'):
     # as WSGI application. Examples of how to start it are (both issued from the directory that
     # contains the script):
 
-    # gunicorn --reload example_search_DE_literature (Linux)
+    # gunicorn --reload example_search_EN_literature (Linux)
     # waitress-serve example_search_EN_literature:application (Windows)
 
     class RestHandler():
