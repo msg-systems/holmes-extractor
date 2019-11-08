@@ -21,6 +21,6 @@ holmes_manager.start_topic_matching_search_mode_console()
 # Example queries:
 #
 # Der Versicherer darf den Vertrag fristlos kündigen, wenn der Versicherungsnehmer beim Abschluss des Vertrags die vorvertragliche Anzeigepflicht verletzt hat.
-# Wann darf der Versicherer Leistungen verweigern?
-# Wann darf der Versicherer die Prämie anpassen?
+# Der Versicherer darf Leistungen verweigern.
+# Der Versicherer darf die Prämie anpassen.
 # Eine Richtlinie einer ENTITYORG

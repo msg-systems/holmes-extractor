@@ -434,7 +434,7 @@ class Manager:
 
     def start_topic_matching_search_mode_console(self, only_one_result_per_document=False,
             maximum_number_of_single_word_matches_for_relation_matching=500,
-            maximum_number_of_single_word_matches_for_embedding_matching=200):
+            maximum_number_of_single_word_matches_for_embedding_matching=100):
         """Starts a topic matching search mode console enabling the matching of pre-registered
             documents to search texts entered ad-hoc by the user.
 
@@ -650,7 +650,7 @@ class MultiprocessingManager:
 
     def start_topic_matching_search_mode_console(self, only_one_result_per_document=False,
             maximum_number_of_single_word_matches_for_relation_matching=500,
-            maximum_number_of_single_word_matches_for_embedding_matching=200):
+            maximum_number_of_single_word_matches_for_embedding_matching=100):
         """Starts a topic matching search mode console enabling the matching of pre-registered
             documents to search texts entered ad-hoc by the user.
 

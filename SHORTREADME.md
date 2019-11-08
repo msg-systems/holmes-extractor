@@ -1,12 +1,12 @@
-**Holmes** is a Python 3 library (tested with version 3.7.2) that supports a number of
+**Holmes** is a Python 3 library (tested with version 3.7.3) that supports a number of
 use cases involving information extraction from English and German texts. In all use cases, the information extraction
 is based on analysing the semantic relationships expressed by the component parts of each sentence:
 
 - In the [chatbot](https://github.com/msg-systems/holmes-extractor/#getting-started) use case, the system is configured using one or more **search phrases**.
 Holmes then looks for structures whose meanings correspond to those of these search phrases within
 a searched **document**, which in this case corresponds to an individual snippet of text or speech
-entered by the end user. Within a match, each non-grammatical word in the search phrase
-corresponds to one or more non-grammatical words in the document. Both the fact that a search phrase was matched and any structured information the search phrase extracts can be used to drive the chatbot.
+entered by the end user. Within a match, each word with its own meaning (i.e. that does not merely fulfil a grammatical function) in the search phrase
+corresponds to one or more such words in the document. Both the fact that a search phrase was matched and any structured information the search phrase extracts can be used to drive the chatbot.
 
 - The [structural extraction](https://github.com/msg-systems/holmes-extractor/#structural-extraction) use case uses exactly the same
 [structural matching](https://github.com/msg-systems/holmes-extractor/#how-it-works-structural-matching) technology as the chatbot use
@@ -16,9 +16,9 @@ take over a second company. The identities of the companies concerned could then
 
 - The [topic matching](https://github.com/msg-systems/holmes-extractor/#topic-matching) use case aims to find passages in a document or documents whose meaning
 is close to that of another document, which takes on the role of the **query document**, or to that of a **query phrase** entered ad-hoc by the user. Holmes extracts a number of small **phraselets** from the query phrase or
-query document, matches the documents being searched against each phraselet, and conflates the results to find
-the most relevant passages within the documents. Because there is no strict requirement that every non-grammatical
-word in the query document match a specific word or words in the searched documents, more matches are found
+query document, matches the documents being searched against each phraselet, and conflates the results to find the
+most relevant passages within the documents. Because there is no strict requirement that every word with its own
+meaning in the query document match a specific word or words in the searched documents, more matches are found
 than in the structural extraction use case, but the matches do not contain structured information that can be
 used in subsequent processing. The topic matching use case is demonstrated by [a website allowing searches within
 the Harry Potter corpus (for English) and around 350 traditional stories (for German)](http://holmes-demo.xt.msg.team/).
