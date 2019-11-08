@@ -63,7 +63,7 @@ def train_model(working_directory, zip_filename):
     output_filename = os.sep.join((working_directory, 'model.json'))
     with open(output_filename, "w") as f:
         f.write(classifier.serialize_model())
-    evaluate_classifier(bbc_zipfile, classifier)
+    evaluate_classifier(zip_filename, classifier)
 holmes_manager = holmes.Manager('en_core_web_lg')
 
 if os.path.exists(working_directory):

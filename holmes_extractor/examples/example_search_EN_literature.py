@@ -61,7 +61,7 @@ if __name__ in ('__main__', 'example_search_EN_literature'):
     #holmes_manager.start_topic_matching_search_mode_console(
     #        only_one_result_per_document=True,
     #        maximum_number_of_single_word_matches_for_relation_matching=300,
-    #        maximum_number_of_single_word_matches_for_embedding_reverse_matching=50)
+    #        maximum_number_of_single_word_matches_for_embedding_matching=50)
     #Only return one topic match per story
 
     # The following code starts a RESTful Http service to perform topic searches. It is deployed as

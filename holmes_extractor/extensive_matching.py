@@ -26,7 +26,7 @@ class TopicMatch:
     relative_end_index -- the end index of the topic match relative to 'sentences_start_index'
     score -- the similarity score of the topic match
     text -- the text between 'sentences_start_index' and 'sentences_end_index'
-    structural_matches -- the contained structural matches
+    structural_matches -- a list of `Match` objects that were used to derive this object.
     """
 
     def __init__(self, document_label, index_within_document, start_index, end_index,
@@ -64,13 +64,13 @@ class TopicMatcher:
             maximum_activation_distance, relation_score, reverse_only_relation_score,
             single_word_score, single_word_any_tag_score, overlapping_relation_multiplier,
             embedding_penalty, maximum_number_of_single_word_matches_for_relation_matching,
-            maximum_number_of_single_word_matches_for_embedding_reverse_matching,
+            maximum_number_of_single_word_matches_for_embedding_matching,
             sideways_match_extent, only_one_result_per_document, number_of_results):
-        if maximum_number_of_single_word_matches_for_embedding_reverse_matching > \
+        if maximum_number_of_single_word_matches_for_embedding_matching > \
                 maximum_number_of_single_word_matches_for_relation_matching:
             raise EmbeddingThresholdGreaterThanRelationThresholdError(' '.join((
                     'embedding',
-                    str(maximum_number_of_single_word_matches_for_embedding_reverse_matching),
+                    str(maximum_number_of_single_word_matches_for_embedding_matching),
                     'relation',
                     str(maximum_number_of_single_word_matches_for_relation_matching))))
         self._semantic_analyzer = semantic_analyzer
@@ -86,8 +86,8 @@ class TopicMatcher:
         self.embedding_penalty = embedding_penalty
         self.maximum_number_of_single_word_matches_for_relation_matching = \
                 maximum_number_of_single_word_matches_for_relation_matching
-        self.maximum_number_of_single_word_matches_for_embedding_reverse_matching = \
-                maximum_number_of_single_word_matches_for_embedding_reverse_matching
+        self.maximum_number_of_single_word_matches_for_embedding_matching = \
+                maximum_number_of_single_word_matches_for_embedding_matching
         self.sideways_match_extent = sideways_match_extent
         self.only_one_result_per_document = only_one_result_per_document
         self.number_of_results = number_of_results
@@ -215,7 +215,7 @@ class TopicMatcher:
                 else:
                     parent_relation_match_corpus_words = []
                 if len(parent_single_word_match_corpus_words) <= \
-                        self.maximum_number_of_single_word_matches_for_embedding_reverse_matching:
+                        self.maximum_number_of_single_word_matches_for_embedding_matching:
                     # we deliberately use the number of single matches rather than the difference
                     # because the deciding factor should be whether or not enough match information
                     # has been returned without checking the embeddings
@@ -240,7 +240,7 @@ class TopicMatcher:
                 else:
                     child_relation_match_corpus_words = []
                 if len(child_single_word_match_corpus_words) <= \
-                        self.maximum_number_of_single_word_matches_for_embedding_reverse_matching:
+                        self.maximum_number_of_single_word_matches_for_embedding_matching:
                     set_to_add_to = parent_document_labels_to_indexes_for_embedding_retry_sets
                 elif len(child_single_word_match_corpus_words) <= \
                         self.maximum_number_of_single_word_matches_for_relation_matching and (

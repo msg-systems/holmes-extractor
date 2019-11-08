@@ -185,7 +185,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                 single_word_any_tag_score=5,
                 maximum_number_of_single_word_matches_for_relation_matching = 0,
-                maximum_number_of_single_word_matches_for_embedding_reverse_matching = 0)
+                maximum_number_of_single_word_matches_for_embedding_matching = 0)
         self.assertEqual(int(topic_matches[0].score), 24)
 
     def test_suppressed_relation_matching_picked_up_during_reverse_matching(self):
@@ -196,7 +196,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                 single_word_any_tag_score=5,
                 maximum_number_of_single_word_matches_for_relation_matching = 1,
-                maximum_number_of_single_word_matches_for_embedding_reverse_matching = 0)
+                maximum_number_of_single_word_matches_for_embedding_matching = 0)
         self.assertEqual(int(topic_matches[0].score), 82)
 
     def test_suppressed_relation_matching_picked_up_during_reverse_matching_with_coreference(self):
@@ -207,7 +207,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                 single_word_any_tag_score=5,
                 maximum_number_of_single_word_matches_for_relation_matching = 1,
-                maximum_number_of_single_word_matches_for_embedding_reverse_matching = 0)
+                maximum_number_of_single_word_matches_for_embedding_matching = 0)
         self.assertEqual(int(topic_matches[0].score), 83)
 
     def test_relation_matching_suppressed_control_embedding_based_matching_on_root_words(self):
@@ -218,7 +218,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                 single_word_any_tag_score=5,
                 maximum_number_of_single_word_matches_for_relation_matching = 0,
-                maximum_number_of_single_word_matches_for_embedding_reverse_matching = 0)
+                maximum_number_of_single_word_matches_for_embedding_matching = 0)
         self.assertEqual(int(topic_matches[0].score), 82)
 
     def test_reverse_matching_suppressed_with_relation_matching(self):
@@ -228,7 +228,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                 single_word_any_tag_score=5,
                 maximum_number_of_single_word_matches_for_relation_matching = 1,
-                maximum_number_of_single_word_matches_for_embedding_reverse_matching = 0)
+                maximum_number_of_single_word_matches_for_embedding_matching = 0)
         self.assertEqual(int(topic_matches[0].score), 14)
 
     def test_reverse_matching_suppressed_with_relation_matching_embedding_value_also_1(self):
@@ -238,7 +238,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                 single_word_any_tag_score=5,
                 maximum_number_of_single_word_matches_for_relation_matching = 1,
-                maximum_number_of_single_word_matches_for_embedding_reverse_matching = 1)
+                maximum_number_of_single_word_matches_for_embedding_matching = 1)
         self.assertEqual(int(topic_matches[0].score), 14)
 
     def test_reverse_matching_suppressed_with_embedding_reverse_matching_parent(self):
@@ -247,7 +247,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         topic_matches = holmes_manager_coref.topic_match_documents_against("A car with an engine",
                 relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                 single_word_any_tag_score=5,
-                maximum_number_of_single_word_matches_for_embedding_reverse_matching = 0)
+                maximum_number_of_single_word_matches_for_embedding_matching = 0)
         self.assertEqual(int(topic_matches[0].score), 29)
 
     def test_reverse_matching_suppressed_with_embedding_reverse_matching_parent_control(self):
@@ -256,7 +256,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         topic_matches = holmes_manager_coref.topic_match_documents_against("A car with an engine",
                 relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                 single_word_any_tag_score=5,
-                maximum_number_of_single_word_matches_for_embedding_reverse_matching = 1)
+                maximum_number_of_single_word_matches_for_embedding_matching = 1)
         self.assertEqual(int(topic_matches[0].score), 51)
 
     def test_reverse_matching_suppressed_with_embedding_reverse_matching_child(self):
@@ -265,7 +265,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         topic_matches = holmes_manager_coref.topic_match_documents_against("An engine with a car",
                 relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                 single_word_any_tag_score=5,
-                maximum_number_of_single_word_matches_for_embedding_reverse_matching = 0)
+                maximum_number_of_single_word_matches_for_embedding_matching = 0)
         self.assertEqual(int(topic_matches[0].score), 14)
 
     def test_reverse_matching_suppressed_with_embedding_reverse_matching_child_control(self):
@@ -274,7 +274,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         topic_matches = holmes_manager_coref.topic_match_documents_against("An engine with a car",
                 relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                 single_word_any_tag_score=5,
-                maximum_number_of_single_word_matches_for_embedding_reverse_matching = 1)
+                maximum_number_of_single_word_matches_for_embedding_matching = 1)
         self.assertEqual(int(topic_matches[0].score), 25)
 
     def test_entity_matching_suppressed_with_relation_matching_for_governor(self):
@@ -285,7 +285,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                 single_word_any_tag_score=5,
                 maximum_number_of_single_word_matches_for_relation_matching = 1,
-                maximum_number_of_single_word_matches_for_embedding_reverse_matching = 0)
+                maximum_number_of_single_word_matches_for_embedding_matching = 0)
         self.assertEqual(int(topic_matches[0].score), 14)
 
     def test_entity_matching_suppressed_with_relation_matching_for_governor_control(self):
@@ -296,7 +296,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                 single_word_any_tag_score=5,
                 maximum_number_of_single_word_matches_for_relation_matching = 1,
-                maximum_number_of_single_word_matches_for_embedding_reverse_matching = 0)
+                maximum_number_of_single_word_matches_for_embedding_matching = 0)
         self.assertEqual(int(topic_matches[0].score), 34)
 
     def test_entity_matching_suppressed_with_relation_matching_for_governed(self):
@@ -308,7 +308,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                 single_word_any_tag_score=5,
                 maximum_number_of_single_word_matches_for_relation_matching = 1,
-                maximum_number_of_single_word_matches_for_embedding_reverse_matching = 0)
+                maximum_number_of_single_word_matches_for_embedding_matching = 0)
         self.assertEqual(int(topic_matches[0].score), 14)
 
     def test_entity_matching_suppressed_with_relation_matching_for_governed_control(self):
@@ -320,7 +320,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                 single_word_any_tag_score=5,
                 maximum_number_of_single_word_matches_for_relation_matching = 1,
-                maximum_number_of_single_word_matches_for_embedding_reverse_matching = 0)
+                maximum_number_of_single_word_matches_for_embedding_matching = 0)
         self.assertEqual(int(topic_matches[0].score), 34)
 
     def test_reverse_matching_noun_coreference_on_governor(self):

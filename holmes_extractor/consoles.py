@@ -162,7 +162,7 @@ class HolmesConsoles:
 
     def start_topic_matching_search_mode(self, only_one_result_per_document,
             maximum_number_of_single_word_matches_for_relation_matching,
-            maximum_number_of_single_word_matches_for_embedding_reverse_matching):
+            maximum_number_of_single_word_matches_for_embedding_matching):
         """Starts a topic matching search mode console enabling the matching of pre-registered
             documents to search texts entered ad-hoc by the user.
 
@@ -173,10 +173,6 @@ class HolmesConsoles:
         """
         self._common()
         print('Topic matching search mode')
-        print('maximum_number_of_single_word_matches_for_relation_matching =',
-                maximum_number_of_single_word_matches_for_relation_matching)
-        print('maximum_number_of_single_word_matches_for_embedding_reverse_matching =',
-                maximum_number_of_single_word_matches_for_embedding_reverse_matching)
         print()
         if len(self._holmes.document_labels()) == 0:
             raise RuntimeError('No documents registered.')
@@ -205,8 +201,8 @@ class HolmesConsoles:
                         only_one_result_per_document=only_one_result_per_document,
                         maximum_number_of_single_word_matches_for_relation_matching =
                         maximum_number_of_single_word_matches_for_relation_matching,
-                        maximum_number_of_single_word_matches_for_embedding_reverse_matching =
-                        maximum_number_of_single_word_matches_for_embedding_reverse_matching)
+                        maximum_number_of_single_word_matches_for_embedding_matching =
+                        maximum_number_of_single_word_matches_for_embedding_matching)
             except NoSearchPhraseError:
                 pass
             if topic_match_dicts == None or len(topic_match_dicts) == 0:
