@@ -5,21 +5,23 @@ is based on analysing the semantic relationships expressed by the component part
 - In the [chatbot](https://github.com/msg-systems/holmes-extractor/#getting-started) use case, the system is configured using one or more **search phrases**.
 Holmes then looks for structures whose meanings correspond to those of these search phrases within
 a searched **document**, which in this case corresponds to an individual snippet of text or speech
-entered or uttered by the end user. Within a match, each non-grammatical word in the search phrase
-corresponds to one or more non-grammatical words in the document, which can then be extracted as structured information.
+entered by the end user. Within a match, each non-grammatical word in the search phrase
+corresponds to one or more non-grammatical words in the document. Both the fact that a search phrase was matched and any structured information the search phrase extracts can be used to drive the chatbot.
 
-- The [structural matching](https://github.com/msg-systems/holmes-extractor/#structural-matching) use case uses exactly the same technological basis as the chatbot use
+- The [structural extraction](https://github.com/msg-systems/holmes-extractor/#structural-extraction) use case uses exactly the same
+[structural matching](https://github.com/msg-systems/holmes-extractor/#how-it-works-structural-matching) technology as the chatbot use
 case, but searching takes place with respect to a pre-existing document or documents that are typically much
-longer than the snippets analysed in the chatbot use case.
+longer than the snippets analysed in the chatbot use case, and the aim to extract and store structured information. For example, a set of business articles could be searched to find all the places where one company is said to be planning to
+take over a second company. The identities of the companies concerned could then be stored in a database.
 
 - The [topic matching](https://github.com/msg-systems/holmes-extractor/#topic-matching) use case aims to find passages in a document or documents whose meaning
-is close to that of another document, which takes on the role of the **query document**, or to that of a
-**query phrase** entered ad-hoc by the user. Holmes extracts a number of small **phraselets** from the query phrase or
+is close to that of another document, which takes on the role of the **query document**, or to that of a **query phrase** entered ad-hoc by the user. Holmes extracts a number of small **phraselets** from the query phrase or
 query document, matches the documents being searched against each phraselet, and conflates the results to find
 the most relevant passages within the documents. Because there is no strict requirement that every non-grammatical
 word in the query document match a specific word or words in the searched documents, more matches are found
-than in the structural matching use case, but the matches do not contain structured information that can be
-used in subsequent processing.
+than in the structural extraction use case, but the matches do not contain structured information that can be
+used in subsequent processing. The topic matching use case is demonstrated by [a website allowing searches within
+the Harry Potter corpus (for English) and around 350 traditional stories (for German)](http://holmes-demo.xt.msg.team/).
 
 - The [supervised document classification](https://github.com/msg-systems/holmes-extractor/#supervised-document-classification) use case uses training data to
 learn a classifier that assigns one or more **classification labels** to new documents based on what they are about.
@@ -34,7 +36,7 @@ constitute a match, Holmes transforms the syntactic parse information provided b
 into semantic structures that allow texts to be compared using predicate logic. As a user of Holmes, you do not need to
 understand the intricacies of how this works, although there are some
 [important tips](https://github.com/msg-systems/holmes-extractor/#writing-effective-search-phrases) around writing effective search phrases for the chatbot and
-structured matching use cases that you should try and take on board.
+structural extraction use cases that you should try and take on board.
 
 Holmes aims to offer generalist solutions that can be used more or less out of the box with
 relatively little tuning, tweaking or training and that are rapidly applicable to a wide range of use cases.
