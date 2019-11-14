@@ -75,6 +75,7 @@ if __name__ in ('__main__', 'example_search_EN_literature'):
             resp.body = \
                     json.dumps(holmes_manager.topic_match_documents_returning_dictionaries_against(
                     req.params['entry'][0:200]))
+            resp.cache_control = ["s-maxage=31536000"]
 
     application = falcon.API()
     application.add_route('/english', RestHandler())
