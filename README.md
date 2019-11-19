@@ -177,6 +177,20 @@ pip install numpy
 pip install holmes-extractor
 ```
 
+To upgrade from a previous Holmes version, issue the following commands and then
+[reissue the commands to download the spaCy models](#installing-the-spacy-models) to ensure
+you have the correct versions of them:
+
+*Linux:*
+```
+pip3 install --upgrade holmes-extractor
+```
+
+*Windows:*
+```
+pip install --upgrade holmes-extractor
+```
+
 If you are working on Windows and have not used Python before,
 several of Holmes' dependencies require you to download Visual Studio and then
 rerun the installation. During the Visual Studio install, it is imperative to select
