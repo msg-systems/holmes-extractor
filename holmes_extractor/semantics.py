@@ -130,9 +130,21 @@ class HolmesDictionary:
 
     def loop_token_and_righthand_siblings(self, doc):
         """Convenience generator to loop through this token and any righthand siblings."""
-        yield doc[self.index]
-        for righthand_sibling in self.righthand_siblings:
-            yield doc[righthand_sibling]
+        indexes = [self.index]
+        indexes.extend(self.righthand_siblings)
+        indexes = sorted(indexes) # in rare cases involving truncated nouns in German, righthand
+                                  #siblings can actually end up to the left of the head word.
+        for index in indexes:
+            yield doc[index]
+
+    def get_sibling_indexes(self, doc):
+        """ Returns the indexes of this token and any siblings, ordered from left to right. """
+        # with truncated nouns in German, the righthand siblings may occasionally occur to the left
+        # of the head noun
+        head_sibling = doc[self.token_or_lefthand_sibling_index]
+        indexes = [self.token_or_lefthand_sibling_index]
+        indexes.extend(head_sibling._.holmes.righthand_siblings)
+        return sorted(indexes)
 
     def has_dependency_with_child_index(self, index):
         for dependency in self.children:
@@ -298,9 +310,6 @@ class SemanticAnalyzer(ABC):
         """
         for token in spacy_doc:
             token._.set('holmes', HolmesDictionary(token.i, self._holmes_lemma(token)))
-        subword_cache = {}
-        for token in spacy_doc:
-            self._add_subwords(token, subword_cache)
         for token in spacy_doc:
             self._set_negation(token)
         for token in spacy_doc:
@@ -311,6 +320,9 @@ class SemanticAnalyzer(ABC):
                     token)
         for token in spacy_doc:
             self._copy_any_sibling_info(token)
+        subword_cache = {}
+        for token in spacy_doc:
+            self._add_subwords(token, subword_cache)
         for token in spacy_doc:
             self._set_coreference_information(token)
         for token in spacy_doc:
@@ -1421,8 +1433,10 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
     # Only words at least this long are examined for possible subwords
     _minimum_length_for_subword_search = 10
 
-    # Parts of speech examined for subwords
-    _pos_for_subword_search = ('NOUN', 'PROPN')
+    # Part-of-speech tags examined for subwords
+    # Verbs are not examined because the separable parts that would typically be found as
+    # subwords are too short to be found.
+    _tag_for_subword_search = ('NE', 'NNE', 'NN', 'TRUNC', 'ADJA', 'ADJD')
 
     # Absolute minimum length of a subword.
     _minimum_subword_length = 3
@@ -1507,6 +1521,12 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
 
         def scan_recursively_for_subwords(lemma, initial_index = 0):
 
+            if initial_index == 0: # only need to check on the initial (outermost) call
+                for char in lemma:
+                    if not char.isalpha() and char != '-':
+                        return
+            if initial_index + 1 < len(lemma) and lemma[initial_index] == '-':
+                return scan_recursively_for_subwords(lemma, initial_index + 1)
             lengths = list(range(self._minimum_subword_length, 1 + len(lemma) - initial_index))
             possible_solutions = []
             working_subword = None
@@ -1515,10 +1535,15 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                     # we are catching up with the length already returned by get_subword
                     continue
                 working_subword = get_subword(lemma, initial_index, length)
-                if working_subword == None or working_subword in self._subword_blacklist:
+                if working_subword == None or working_subword in self._subword_blacklist or \
+                        '-' in working_subword:
                     continue
                 possible_solution = [PossibleSubword(working_subword, initial_index, 0)]
-                if initial_index + len(working_subword) == len(lemma):
+                if (initial_index + len(working_subword) == len(lemma)) or (initial_index +
+                        len(working_subword) + 1 == len(lemma) and lemma[-1] == '-') or \
+                        (initial_index + len(working_subword) + 2 == len(lemma) and lemma[-2:] ==
+                        's-'):
+                    # we have reached the end of the word
                     possible_solutions.append(possible_solution)
                     break
                 following_subwords = scan_recursively_for_subwords(lemma, initial_index +
@@ -1526,36 +1551,54 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                 if following_subwords != None:
                     possible_solution.extend(following_subwords)
                     possible_solutions.append(possible_solution)
-                if lemma[initial_index + len(working_subword)] == 's' and initial_index + len(working_subword) < \
-                        len(lemma):
-                    possible_solution = [PossibleSubword(working_subword, initial_index, 0)]
-                    following_subwords = scan_recursively_for_subwords(lemma, initial_index +
-                            len(working_subword) + 1)
-                    if following_subwords != None:
-                        for ending in self._fugen_s_ending_whitelist:
+                if initial_index + len(working_subword) + 2 < len(lemma) and \
+                        lemma[initial_index + len(working_subword): initial_index +
+                        len(working_subword) + 2] == 's-':
+                    following_initial_index = initial_index + len(working_subword) + 2
+                elif initial_index + len(working_subword) + 1 < len(lemma) and \
+                        lemma[initial_index + len(working_subword)] == 's':
+                    following_initial_index = initial_index + len(working_subword) + 1
+                else:
+                    continue
+                possible_solution = [PossibleSubword(working_subword, initial_index, 0)]
+                following_subwords = scan_recursively_for_subwords(lemma, following_initial_index)
+                if following_subwords != None:
+                    for ending in self._fugen_s_ending_whitelist:
+                        if working_subword.endswith(ending):
+                            following_subwords[0].fugen_s_status = 2
+                    if following_subwords[0].fugen_s_status == 0 and len(working_subword) >= \
+                            self._fugen_s_whitelist_bonus_surrounding_word_minimum_length and \
+                            len(following_subwords[0].text) >= \
+                            self._fugen_s_whitelist_bonus_surrounding_word_minimum_length:
+                        # if the first does not have a whitelist ending and one of the words is
+                        # short, do not give the score bonus
+                        following_subwords[0].fugen_s_status = 1
+                        for ending in self._fugen_s_ending_blacklist:
+                            # blacklist ending: take the bonus away again
                             if working_subword.endswith(ending):
-                                following_subwords[0].fugen_s_status = 2
-                        if following_subwords[0].fugen_s_status == 0 and len(working_subword) >= \
-                                self._fugen_s_whitelist_bonus_surrounding_word_minimum_length and \
-                                len(following_subwords[0].text) >= \
-                                self._fugen_s_whitelist_bonus_surrounding_word_minimum_length:
-                            # if the first does not have a whitelist ending and one of the words is
-                            # short, do not give the score bonus
-                            following_subwords[0].fugen_s_status = 1
-                            for ending in self._fugen_s_ending_blacklist:
-                                # blacklist ending: take the bonus away again
-                                if working_subword.endswith(ending):
-                                    following_subwords[0].fugen_s_status = 0
-                        possible_solution.extend(following_subwords)
-                        possible_solutions.append(possible_solution)
+                                following_subwords[0].fugen_s_status = 0
+                    possible_solution.extend(following_subwords)
+                    possible_solutions.append(possible_solution)
             if len(possible_solutions) > 0:
                 possible_solutions = sorted(possible_solutions, key=lambda possible_solution:
                         score(possible_solution))
                 return possible_solutions[0]
 
+        def get_lemmatization_doc(possible_subwords, pos):
+            # We retrieve the lemma for each subword by calling Spacy. To reduce the
+            # overhead, we concatenate the subwords in the form:
+            # Subword1. Subword2. Subword3
+            entry_words = []
+            for counter in range(len(possible_subwords)):
+                if counter + 1 == len(possible_subwords) and pos == 'ADJ':
+                    entry_words.append(possible_subwords[counter].text)
+                else:
+                    entry_words.append(possible_subwords[counter].text.capitalize())
+            subword_lemmatization_string = '. '.join(entry_words)
+            return self.spacy_parse(subword_lemmatization_string)
 
-        if not token.pos_ in self._pos_for_subword_search or len(token._.holmes.lemma) < \
-                self._minimum_length_for_subword_search or not token._.holmes.lemma.isalpha():
+        if not token.tag_ in self._tag_for_subword_search or (len(token._.holmes.lemma) < \
+                self._minimum_length_for_subword_search and '-' not in token._.holmes.lemma):
             return
         if token.text in subword_cache:
             cached_subwords = subword_cache[token.text]
@@ -1565,23 +1608,79 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                         cached_subword.char_start_index))
         else:
             possible_subwords = scan_recursively_for_subwords(token._.holmes.lemma)
-            if possible_subwords != None and len(possible_subwords) > 1:
-                # We retrieve the lemma for each subword by calling Spacy. To reduce the
-                # overhead, we concatenate the subwords in the form:
-                # Subword1. Subword2. Subword3.
-                subword_lemmatization_string = '. '.join(possible_subword.text.capitalize() for
-                        possible_subword in possible_subwords)
-                subword_lemmatization_doc = self.spacy_parse(subword_lemmatization_string)
+            if possible_subwords == None:
+                return
+            if len(possible_subwords) == 1 and token._.holmes.lemma.isalpha():
+                # not ... isalpha(): hyphenation
+                subword_cache[token.text] = []
+            else:
                 index = 0
-                for possible_subword in possible_subwords:
+                if token._.holmes.lemma[0] == '-':
+                    # with truncated nouns, the righthand siblings may actually occur to the left
+                    # of the head noun
+                    head_sibling = token.doc[token._.holmes.token_or_lefthand_sibling_index]
+                    if len(head_sibling._.holmes.righthand_siblings) > 0:
+                        indexes = token._.holmes.get_sibling_indexes(token.doc)
+                        first_sibling = token.doc[indexes[0]]
+                        first_sibling_possible_subwords = \
+                                scan_recursively_for_subwords(first_sibling._.holmes.lemma)
+                        if first_sibling_possible_subwords != None:
+                            first_sibling_lemmatization_doc = get_lemmatization_doc(
+                                    first_sibling_possible_subwords, token.pos_)
+                            for counter in range(len(first_sibling_possible_subwords) - 1):
+                                first_sibling_possible_subword = \
+                                        first_sibling_possible_subwords[counter]
+                                text = first_sibling.text[
+                                        first_sibling_possible_subword.char_start_index:
+                                        first_sibling_possible_subword.char_start_index +
+                                        len(first_sibling_possible_subword.text)]
+                                lemma = first_sibling_lemmatization_doc[counter*2].lemma_.lower()
+                                token._.holmes.subwords.append(Subword(first_sibling.i, index,
+                                        text, lemma,
+                                        first_sibling_possible_subword.char_start_index))
+                                index += 1
+                lemmatization_doc = get_lemmatization_doc(possible_subwords, token.pos_)
+                for counter in range(len(possible_subwords)):
+                    possible_subword = possible_subwords[counter]
                     text = token.text[possible_subword.char_start_index:
                             possible_subword.char_start_index + len(possible_subword.text)]
-                    lemma = subword_lemmatization_doc[index*2].lemma_.lower()
+                    lemma = lemmatization_doc[counter*2].lemma_.lower()
                     token._.holmes.subwords.append(Subword(token.i, index, text, lemma,
                             possible_subword.char_start_index))
                     index += 1
-                subword_cache[token.text] = token._.holmes.subwords
-
+                if token._.holmes.lemma[-1] == '-':
+                    # with truncated nouns, the righthand siblings may actually occur to the left
+                    # of the head noun
+                    head_sibling = token.doc[token._.holmes.token_or_lefthand_sibling_index]
+                    if len(head_sibling._.holmes.righthand_siblings) > 0:
+                        indexes = token._.holmes.get_sibling_indexes(token.doc)
+                        last_sibling_index = indexes[-1]
+                        if token.i != last_sibling_index:
+                            last_sibling = token.doc[last_sibling_index]
+                            last_sibling_possible_subwords = \
+                                    scan_recursively_for_subwords(last_sibling._.holmes.lemma)
+                            if last_sibling_possible_subwords != None:
+                                last_sibling_lemmatization_doc = get_lemmatization_doc(
+                                        last_sibling_possible_subwords, token.pos_)
+                                for counter in range(1, len(last_sibling_possible_subwords)):
+                                    last_sibling_possible_subword = \
+                                            last_sibling_possible_subwords[counter]
+                                    text = last_sibling.text[
+                                            last_sibling_possible_subword.char_start_index:
+                                            last_sibling_possible_subword.char_start_index +
+                                            len(last_sibling_possible_subword.text)]
+                                    lemma = last_sibling_lemmatization_doc[counter*2].lemma_.lower()
+                                    token._.holmes.subwords.append(Subword(last_sibling.i, index,
+                                            text, lemma,
+                                            last_sibling_possible_subword.char_start_index))
+                                    index += 1
+                if index == 1: # only one subword was found, so no need to record it on ._.holmes
+                    token._.holmes.subwords = []
+                if token._.holmes.lemma.isalpha(): # caching only where no hyphenation
+                    subword_cache[token.text] = token._.holmes.subwords
+        if len(token._.holmes.subwords) > 1 and 'nicht' in (subword.lemma for subword in
+                token._.holmes.subwords):
+            token._.holmes.is_negated = True
 
     def _set_negation(self, token):
         """Marks the negation on the token. A token is negative if it or one of its ancestors

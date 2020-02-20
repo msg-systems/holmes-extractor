@@ -808,3 +808,856 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
         doc = analyzer.parse("Widerrufs_belehrungWiderrufsrechtSie")
         self.assertEqual(len(doc[0]._.holmes.subwords), 0)
+
+    def test_negated_subword_with_caching(self):
+
+        doc = analyzer.parse("Die Nichtbeachtung der Regeln. Die Nichtbeachtung der Regeln")
+        self.assertTrue(doc[1]._.holmes.is_negated)
+        self.assertFalse(doc[0]._.holmes.is_negated)
+        self.assertFalse(doc[2]._.holmes.is_negated)
+        self.assertFalse(doc[3]._.holmes.is_negated)
+        self.assertFalse(doc[4]._.holmes.is_negated)
+
+        self.assertTrue(doc[6]._.holmes.is_negated)
+        self.assertFalse(doc[5]._.holmes.is_negated)
+        self.assertFalse(doc[7]._.holmes.is_negated)
+        self.assertFalse(doc[8]._.holmes.is_negated)
+
+    def test_subword_conjunction_two_words_single_subwords_first_word_hyphenated(self):
+
+        doc = analyzer.parse("Die Haupt- und Seiteneingänge")
+        self.assertEqual(doc[1]._.holmes.subwords[0].text, 'Haupt')
+        self.assertEqual(doc[1]._.holmes.subwords[0].lemma, 'haupt')
+        self.assertEqual(doc[1]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[1]._.holmes.subwords[0].containing_token_index, 1)
+        self.assertEqual(doc[1]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[1]._.holmes.subwords[1].text, 'eingänge')
+        self.assertEqual(doc[1]._.holmes.subwords[1].lemma, 'eingang')
+        self.assertEqual(doc[1]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[1]._.holmes.subwords[1].containing_token_index, 3)
+        self.assertEqual(doc[1]._.holmes.subwords[1].char_start_index, 6)
+
+        self.assertEqual(doc[3]._.holmes.subwords[0].text, 'Seiten')
+        self.assertEqual(doc[3]._.holmes.subwords[0].lemma, 'seite')
+        self.assertEqual(doc[3]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[3]._.holmes.subwords[0].containing_token_index, 3)
+        self.assertEqual(doc[3]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[3]._.holmes.subwords[1].text, 'eingänge')
+        self.assertEqual(doc[3]._.holmes.subwords[1].lemma, 'eingang')
+        self.assertEqual(doc[3]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[3]._.holmes.subwords[1].containing_token_index, 3)
+        self.assertEqual(doc[3]._.holmes.subwords[1].char_start_index, 6)
+
+    def test_caching(self):
+
+        doc = analyzer.parse("Die Haupt- und Seiteneingänge. Die Haupt- und Seiteneingänge")
+        self.assertEqual(doc[6]._.holmes.subwords[0].text, 'Haupt')
+        self.assertEqual(doc[6]._.holmes.subwords[0].lemma, 'haupt')
+        self.assertEqual(doc[6]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[6]._.holmes.subwords[0].containing_token_index, 6)
+        self.assertEqual(doc[6]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[6]._.holmes.subwords[1].text, 'eingänge')
+        self.assertEqual(doc[6]._.holmes.subwords[1].lemma, 'eingang')
+        self.assertEqual(doc[6]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[6]._.holmes.subwords[1].containing_token_index, 8)
+        self.assertEqual(doc[6]._.holmes.subwords[1].char_start_index, 6)
+
+        self.assertEqual(doc[8]._.holmes.subwords[0].text, 'Seiten')
+        self.assertEqual(doc[8]._.holmes.subwords[0].lemma, 'seite')
+        self.assertEqual(doc[8]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[8]._.holmes.subwords[0].containing_token_index, 8)
+        self.assertEqual(doc[8]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[8]._.holmes.subwords[1].text, 'eingänge')
+        self.assertEqual(doc[8]._.holmes.subwords[1].lemma, 'eingang')
+        self.assertEqual(doc[8]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[8]._.holmes.subwords[1].containing_token_index, 8)
+        self.assertEqual(doc[8]._.holmes.subwords[1].char_start_index, 6)
+
+    def test_subword_conjunction_three_words_single_subwords_first_word_hyphenated(self):
+
+        doc = analyzer.parse("Die Haupt-, Neben- und Seiteneingänge")
+        self.assertEqual(doc[1]._.holmes.subwords[0].text, 'Haupt')
+        self.assertEqual(doc[1]._.holmes.subwords[0].lemma, 'haupt')
+        self.assertEqual(doc[1]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[1]._.holmes.subwords[0].containing_token_index, 1)
+        self.assertEqual(doc[1]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[1]._.holmes.subwords[1].text, 'eingänge')
+        self.assertEqual(doc[1]._.holmes.subwords[1].lemma, 'eingang')
+        self.assertEqual(doc[1]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[1]._.holmes.subwords[1].containing_token_index, 5)
+        self.assertEqual(doc[1]._.holmes.subwords[1].char_start_index, 6)
+
+        self.assertEqual(doc[3]._.holmes.subwords[0].text, 'Neben')
+        self.assertEqual(doc[3]._.holmes.subwords[0].lemma, 'neben')
+        self.assertEqual(doc[3]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[3]._.holmes.subwords[0].containing_token_index, 3)
+        self.assertEqual(doc[3]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[3]._.holmes.subwords[1].text, 'eingänge')
+        self.assertEqual(doc[3]._.holmes.subwords[1].lemma, 'eingang')
+        self.assertEqual(doc[3]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[3]._.holmes.subwords[1].containing_token_index, 5)
+        self.assertEqual(doc[3]._.holmes.subwords[1].char_start_index, 6)
+
+        self.assertEqual(doc[5]._.holmes.subwords[0].text, 'Seiten')
+        self.assertEqual(doc[5]._.holmes.subwords[0].lemma, 'seite')
+        self.assertEqual(doc[5]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[5]._.holmes.subwords[0].containing_token_index, 5)
+        self.assertEqual(doc[5]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[5]._.holmes.subwords[1].text, 'eingänge')
+        self.assertEqual(doc[5]._.holmes.subwords[1].lemma, 'eingang')
+        self.assertEqual(doc[5]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[5]._.holmes.subwords[1].containing_token_index, 5)
+        self.assertEqual(doc[5]._.holmes.subwords[1].char_start_index, 6)
+
+    def test_subword_conjunction_two_words_multiple_subwords_first_word_hyphenated(self):
+
+        doc = analyzer.parse("Die Haupt- und Seiteneingangsbeschränkungen")
+        self.assertEqual(doc[1]._.holmes.subwords[0].text, 'Haupt')
+        self.assertEqual(doc[1]._.holmes.subwords[0].lemma, 'haupt')
+        self.assertEqual(doc[1]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[1]._.holmes.subwords[0].containing_token_index, 1)
+        self.assertEqual(doc[1]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[1]._.holmes.subwords[1].text, 'eingang')
+        self.assertEqual(doc[1]._.holmes.subwords[1].lemma, 'eingang')
+        self.assertEqual(doc[1]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[1]._.holmes.subwords[1].containing_token_index, 3)
+        self.assertEqual(doc[1]._.holmes.subwords[1].char_start_index, 6)
+
+        self.assertEqual(doc[1]._.holmes.subwords[2].text, 'beschränkungen')
+        self.assertEqual(doc[1]._.holmes.subwords[2].lemma, 'beschränkung')
+        self.assertEqual(doc[1]._.holmes.subwords[2].index, 2)
+        self.assertEqual(doc[1]._.holmes.subwords[2].containing_token_index, 3)
+        self.assertEqual(doc[1]._.holmes.subwords[2].char_start_index, 14)
+
+        self.assertEqual(doc[3]._.holmes.subwords[0].text, 'Seiten')
+        self.assertEqual(doc[3]._.holmes.subwords[0].lemma, 'seite')
+        self.assertEqual(doc[3]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[3]._.holmes.subwords[0].containing_token_index, 3)
+        self.assertEqual(doc[3]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[3]._.holmes.subwords[1].text, 'eingang')
+        self.assertEqual(doc[3]._.holmes.subwords[1].lemma, 'eingang')
+        self.assertEqual(doc[3]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[3]._.holmes.subwords[1].containing_token_index, 3)
+        self.assertEqual(doc[3]._.holmes.subwords[1].char_start_index, 6)
+
+        self.assertEqual(doc[1]._.holmes.subwords[2].text, 'beschränkungen')
+        self.assertEqual(doc[1]._.holmes.subwords[2].lemma, 'beschränkung')
+        self.assertEqual(doc[1]._.holmes.subwords[2].index, 2)
+        self.assertEqual(doc[1]._.holmes.subwords[2].containing_token_index, 3)
+        self.assertEqual(doc[1]._.holmes.subwords[2].char_start_index, 14)
+
+    def test_subword_conjunction_three_words_multiple_subwords_first_word_hyphenated(self):
+
+        doc = analyzer.parse("Die Haupt-, Neben- und Seiteneingangsbeschränkungen")
+        self.assertEqual(doc[1]._.holmes.subwords[0].text, 'Haupt')
+        self.assertEqual(doc[1]._.holmes.subwords[0].lemma, 'haupt')
+        self.assertEqual(doc[1]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[1]._.holmes.subwords[0].containing_token_index, 1)
+        self.assertEqual(doc[1]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[1]._.holmes.subwords[1].text, 'eingang')
+        self.assertEqual(doc[1]._.holmes.subwords[1].lemma, 'eingang')
+        self.assertEqual(doc[1]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[1]._.holmes.subwords[1].containing_token_index, 5)
+        self.assertEqual(doc[1]._.holmes.subwords[1].char_start_index, 6)
+
+        self.assertEqual(doc[1]._.holmes.subwords[2].text, 'beschränkungen')
+        self.assertEqual(doc[1]._.holmes.subwords[2].lemma, 'beschränkung')
+        self.assertEqual(doc[1]._.holmes.subwords[2].index, 2)
+        self.assertEqual(doc[1]._.holmes.subwords[2].containing_token_index, 5)
+        self.assertEqual(doc[1]._.holmes.subwords[2].char_start_index, 14)
+
+        self.assertEqual(doc[3]._.holmes.subwords[0].text, 'Neben')
+        self.assertEqual(doc[3]._.holmes.subwords[0].lemma, 'neben')
+        self.assertEqual(doc[3]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[3]._.holmes.subwords[0].containing_token_index, 3)
+        self.assertEqual(doc[3]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[3]._.holmes.subwords[1].text, 'eingang')
+        self.assertEqual(doc[3]._.holmes.subwords[1].lemma, 'eingang')
+        self.assertEqual(doc[3]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[3]._.holmes.subwords[1].containing_token_index, 5)
+        self.assertEqual(doc[3]._.holmes.subwords[1].char_start_index, 6)
+
+        self.assertEqual(doc[3]._.holmes.subwords[2].text, 'beschränkungen')
+        self.assertEqual(doc[3]._.holmes.subwords[2].lemma, 'beschränkung')
+        self.assertEqual(doc[3]._.holmes.subwords[2].index, 2)
+        self.assertEqual(doc[3]._.holmes.subwords[2].containing_token_index, 5)
+        self.assertEqual(doc[3]._.holmes.subwords[2].char_start_index, 14)
+
+        self.assertEqual(doc[5]._.holmes.subwords[0].text, 'Seiten')
+        self.assertEqual(doc[5]._.holmes.subwords[0].lemma, 'seite')
+        self.assertEqual(doc[5]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[5]._.holmes.subwords[0].containing_token_index, 5)
+        self.assertEqual(doc[5]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[5]._.holmes.subwords[1].text, 'eingang')
+        self.assertEqual(doc[5]._.holmes.subwords[1].lemma, 'eingang')
+        self.assertEqual(doc[5]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[5]._.holmes.subwords[1].containing_token_index, 5)
+        self.assertEqual(doc[5]._.holmes.subwords[1].char_start_index, 6)
+
+        self.assertEqual(doc[5]._.holmes.subwords[2].text, 'beschränkungen')
+        self.assertEqual(doc[5]._.holmes.subwords[2].lemma, 'beschränkung')
+        self.assertEqual(doc[5]._.holmes.subwords[2].index, 2)
+        self.assertEqual(doc[5]._.holmes.subwords[2].containing_token_index, 5)
+        self.assertEqual(doc[5]._.holmes.subwords[2].char_start_index, 14)
+
+    def test_subword_conjunction_adjectives(self):
+
+        doc = analyzer.parse("Das Essen war vitamin- und eiweißhaltig")
+        self.assertEqual(doc[3]._.holmes.subwords[0].text, 'vitamin')
+        self.assertEqual(doc[3]._.holmes.subwords[0].lemma, 'vitamin')
+        self.assertEqual(doc[3]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[3]._.holmes.subwords[0].containing_token_index, 3)
+        self.assertEqual(doc[3]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[3]._.holmes.subwords[1].text, 'haltig')
+        self.assertEqual(doc[3]._.holmes.subwords[1].lemma, 'haltig')
+        self.assertEqual(doc[3]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[3]._.holmes.subwords[1].containing_token_index, 5)
+        self.assertEqual(doc[3]._.holmes.subwords[1].char_start_index, 6)
+
+        self.assertEqual(doc[5]._.holmes.subwords[0].text, 'eiweiß')
+        self.assertEqual(doc[5]._.holmes.subwords[0].lemma, 'eiweiß')
+        self.assertEqual(doc[5]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[5]._.holmes.subwords[0].containing_token_index, 5)
+        self.assertEqual(doc[5]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[5]._.holmes.subwords[1].text, 'haltig')
+        self.assertEqual(doc[5]._.holmes.subwords[1].lemma, 'haltig')
+        self.assertEqual(doc[5]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[5]._.holmes.subwords[1].containing_token_index, 5)
+        self.assertEqual(doc[5]._.holmes.subwords[1].char_start_index, 6)
+
+    def test_subword_conjunction_two_words_single_subwords_last_word_hyphenated(self):
+
+        doc = analyzer.parse("Verkehrslenkung und -überwachung")
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Verkehr')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'verkehren')
+        self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'lenkung')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'lenkung')
+        self.assertEqual(doc[0]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 8)
+
+        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Verkehr')
+        self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'verkehren')
+        self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[2]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[2]._.holmes.subwords[1].text, 'überwachung')
+        self.assertEqual(doc[2]._.holmes.subwords[1].lemma, 'überwachung')
+        self.assertEqual(doc[2]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[2]._.holmes.subwords[1].containing_token_index, 2)
+        self.assertEqual(doc[2]._.holmes.subwords[1].char_start_index, 1)
+
+    def test_subword_conjunction_three_words_single_subwords_last_word_hyphenated(self):
+
+        doc = analyzer.parse("Verkehrslenkung, -überwachung und -betrachtung")
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Verkehr')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'verkehren')
+        self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'lenkung')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'lenkung')
+        self.assertEqual(doc[0]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 8)
+
+        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Verkehr')
+        self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'verkehren')
+        self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[2]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[2]._.holmes.subwords[1].text, 'überwachung')
+        self.assertEqual(doc[2]._.holmes.subwords[1].lemma, 'überwachung')
+        self.assertEqual(doc[2]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[2]._.holmes.subwords[1].containing_token_index, 2)
+        self.assertEqual(doc[2]._.holmes.subwords[1].char_start_index, 1)
+
+        self.assertEqual(doc[4]._.holmes.subwords[0].text, 'Verkehr')
+        self.assertEqual(doc[4]._.holmes.subwords[0].lemma, 'verkehren')
+        self.assertEqual(doc[4]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[4]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[4]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[4]._.holmes.subwords[1].text, 'betrachtung')
+        self.assertEqual(doc[4]._.holmes.subwords[1].lemma, 'betrachtung')
+        self.assertEqual(doc[4]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[4]._.holmes.subwords[1].containing_token_index, 4)
+        self.assertEqual(doc[4]._.holmes.subwords[1].char_start_index, 1)
+
+    def test_subword_conjunction_two_words_multiple_subwords_last_word_hyphenated(self):
+
+        doc = analyzer.parse("Verkehrskontrolllenkung und -überwachungsprinzipien")
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Verkehr')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'verkehren')
+        self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'kontroll')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'kontroll')
+        self.assertEqual(doc[0]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 8)
+
+        self.assertEqual(doc[0]._.holmes.subwords[2].text, 'lenkung')
+        self.assertEqual(doc[0]._.holmes.subwords[2].lemma, 'lenkung')
+        self.assertEqual(doc[0]._.holmes.subwords[2].index, 2)
+        self.assertEqual(doc[0]._.holmes.subwords[2].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[2].char_start_index, 16)
+
+        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Verkehr')
+        self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'verkehren')
+        self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[2]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[2]._.holmes.subwords[1].text, 'kontroll')
+        self.assertEqual(doc[2]._.holmes.subwords[1].lemma, 'kontroll')
+        self.assertEqual(doc[2]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[2]._.holmes.subwords[1].containing_token_index, 0)
+        self.assertEqual(doc[2]._.holmes.subwords[1].char_start_index, 8)
+
+        self.assertEqual(doc[2]._.holmes.subwords[2].text, 'überwachung')
+        self.assertEqual(doc[2]._.holmes.subwords[2].lemma, 'überwachung')
+        self.assertEqual(doc[2]._.holmes.subwords[2].index, 2)
+        self.assertEqual(doc[2]._.holmes.subwords[2].containing_token_index, 2)
+        self.assertEqual(doc[2]._.holmes.subwords[2].char_start_index, 1)
+
+        self.assertEqual(doc[2]._.holmes.subwords[3].text, 'prinzipien')
+        self.assertEqual(doc[2]._.holmes.subwords[3].lemma, 'prinzip')
+        self.assertEqual(doc[2]._.holmes.subwords[3].index, 3)
+        self.assertEqual(doc[2]._.holmes.subwords[3].containing_token_index, 2)
+        self.assertEqual(doc[2]._.holmes.subwords[3].char_start_index, 13)
+
+    def test_subword_conjunction_three_words_multiple_subwords_last_word_hyphenated(self):
+
+        doc = analyzer.parse("Verkehrskontrolllenkung, -überwachungsprinzipien und -betrachtung")
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Verkehr')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'verkehren')
+        self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'kontroll')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'kontroll')
+        self.assertEqual(doc[0]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 8)
+
+        self.assertEqual(doc[0]._.holmes.subwords[2].text, 'lenkung')
+        self.assertEqual(doc[0]._.holmes.subwords[2].lemma, 'lenkung')
+        self.assertEqual(doc[0]._.holmes.subwords[2].index, 2)
+        self.assertEqual(doc[0]._.holmes.subwords[2].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[2].char_start_index, 16)
+
+        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Verkehr')
+        self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'verkehren')
+        self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[2]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[2]._.holmes.subwords[1].text, 'kontroll')
+        self.assertEqual(doc[2]._.holmes.subwords[1].lemma, 'kontroll')
+        self.assertEqual(doc[2]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[2]._.holmes.subwords[1].containing_token_index, 0)
+        self.assertEqual(doc[2]._.holmes.subwords[1].char_start_index, 8)
+
+        self.assertEqual(doc[2]._.holmes.subwords[2].text, 'überwachung')
+        self.assertEqual(doc[2]._.holmes.subwords[2].lemma, 'überwachung')
+        self.assertEqual(doc[2]._.holmes.subwords[2].index, 2)
+        self.assertEqual(doc[2]._.holmes.subwords[2].containing_token_index, 2)
+        self.assertEqual(doc[2]._.holmes.subwords[2].char_start_index, 1)
+
+        self.assertEqual(doc[2]._.holmes.subwords[3].text, 'prinzipien')
+        self.assertEqual(doc[2]._.holmes.subwords[3].lemma, 'prinzip')
+        self.assertEqual(doc[2]._.holmes.subwords[3].index, 3)
+        self.assertEqual(doc[2]._.holmes.subwords[3].containing_token_index, 2)
+        self.assertEqual(doc[2]._.holmes.subwords[3].char_start_index, 13)
+
+        self.assertEqual(doc[4]._.holmes.subwords[0].text, 'Verkehr')
+        self.assertEqual(doc[4]._.holmes.subwords[0].lemma, 'verkehren')
+        self.assertEqual(doc[4]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[4]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[4]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[4]._.holmes.subwords[1].text, 'kontroll')
+        self.assertEqual(doc[4]._.holmes.subwords[1].lemma, 'kontroll')
+        self.assertEqual(doc[4]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[4]._.holmes.subwords[1].containing_token_index, 0)
+        self.assertEqual(doc[4]._.holmes.subwords[1].char_start_index, 8)
+
+        self.assertEqual(doc[4]._.holmes.subwords[2].text, 'betrachtung')
+        self.assertEqual(doc[4]._.holmes.subwords[2].lemma, 'betrachtung')
+        self.assertEqual(doc[4]._.holmes.subwords[2].index, 2)
+        self.assertEqual(doc[4]._.holmes.subwords[2].containing_token_index, 4)
+        self.assertEqual(doc[4]._.holmes.subwords[2].char_start_index, 1)
+
+    def test_subword_conjunction_two_words_single_subwords_first_and_last_words_hyphenated(self):
+
+        doc = analyzer.parse("Textilgroß- und -einzelhandel")
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Textil')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'textil')
+        self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'groß')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'groß')
+        self.assertEqual(doc[0]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 6)
+
+        self.assertEqual(doc[0]._.holmes.subwords[2].text, 'handel')
+        self.assertEqual(doc[0]._.holmes.subwords[2].lemma, 'handeln')
+        self.assertEqual(doc[0]._.holmes.subwords[2].index, 2)
+        self.assertEqual(doc[0]._.holmes.subwords[2].containing_token_index, 2)
+        self.assertEqual(doc[0]._.holmes.subwords[2].char_start_index, 7)
+
+        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Textil')
+        self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'textil')
+        self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[2]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[2]._.holmes.subwords[1].text, 'einzel')
+        self.assertEqual(doc[2]._.holmes.subwords[1].lemma, 'einzel')
+        self.assertEqual(doc[2]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[2]._.holmes.subwords[1].containing_token_index, 2)
+        self.assertEqual(doc[2]._.holmes.subwords[1].char_start_index, 1)
+
+        self.assertEqual(doc[2]._.holmes.subwords[2].text, 'handel')
+        self.assertEqual(doc[2]._.holmes.subwords[2].lemma, 'handeln')
+        self.assertEqual(doc[2]._.holmes.subwords[2].index, 2)
+        self.assertEqual(doc[2]._.holmes.subwords[2].containing_token_index, 2)
+        self.assertEqual(doc[2]._.holmes.subwords[2].char_start_index, 7)
+
+    def test_subword_conjunction_two_words_multiple_subwords_first_and_last_words_hyphenated(self):
+
+        doc = analyzer.parse("Feintextilgroß- und -einzeldetailhandel")
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Fein')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'fein')
+        self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'textil')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'textil')
+        self.assertEqual(doc[0]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 4)
+
+        self.assertEqual(doc[0]._.holmes.subwords[2].text, 'groß')
+        self.assertEqual(doc[0]._.holmes.subwords[2].lemma, 'groß')
+        self.assertEqual(doc[0]._.holmes.subwords[2].index, 2)
+        self.assertEqual(doc[0]._.holmes.subwords[2].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[2].char_start_index, 10)
+
+        self.assertEqual(doc[0]._.holmes.subwords[3].text, 'detail')
+        self.assertEqual(doc[0]._.holmes.subwords[3].lemma, 'detail')
+        self.assertEqual(doc[0]._.holmes.subwords[3].index, 3)
+        self.assertEqual(doc[0]._.holmes.subwords[3].containing_token_index, 2)
+        self.assertEqual(doc[0]._.holmes.subwords[3].char_start_index, 7)
+
+        self.assertEqual(doc[0]._.holmes.subwords[4].text, 'handel')
+        self.assertEqual(doc[0]._.holmes.subwords[4].lemma, 'handeln')
+        self.assertEqual(doc[0]._.holmes.subwords[4].index, 4)
+        self.assertEqual(doc[0]._.holmes.subwords[4].containing_token_index, 2)
+        self.assertEqual(doc[0]._.holmes.subwords[4].char_start_index, 13)
+
+        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Fein')
+        self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'fein')
+        self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[2]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[2]._.holmes.subwords[1].text, 'textil')
+        self.assertEqual(doc[2]._.holmes.subwords[1].lemma, 'textil')
+        self.assertEqual(doc[2]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[2]._.holmes.subwords[1].containing_token_index, 0)
+        self.assertEqual(doc[2]._.holmes.subwords[1].char_start_index, 4)
+
+        self.assertEqual(doc[2]._.holmes.subwords[2].text, 'einzel')
+        self.assertEqual(doc[2]._.holmes.subwords[2].lemma, 'einzel')
+        self.assertEqual(doc[2]._.holmes.subwords[2].index, 2)
+        self.assertEqual(doc[2]._.holmes.subwords[2].containing_token_index, 2)
+        self.assertEqual(doc[2]._.holmes.subwords[2].char_start_index, 1)
+
+        self.assertEqual(doc[2]._.holmes.subwords[3].text, 'detail')
+        self.assertEqual(doc[2]._.holmes.subwords[3].lemma, 'detail')
+        self.assertEqual(doc[2]._.holmes.subwords[3].index, 3)
+        self.assertEqual(doc[2]._.holmes.subwords[3].containing_token_index, 2)
+        self.assertEqual(doc[2]._.holmes.subwords[3].char_start_index, 7)
+
+        self.assertEqual(doc[2]._.holmes.subwords[4].text, 'handel')
+        self.assertEqual(doc[2]._.holmes.subwords[4].lemma, 'handeln')
+        self.assertEqual(doc[2]._.holmes.subwords[4].index, 4)
+        self.assertEqual(doc[2]._.holmes.subwords[4].containing_token_index, 2)
+        self.assertEqual(doc[2]._.holmes.subwords[4].char_start_index, 13)
+
+    def test_subword_conjunction_three_words_single_subwords_first_and_last_words_hyphenated(self):
+
+        doc = analyzer.parse("Textilgroß-, -klein- und -einzelhandel")
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Textil')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'textil')
+        self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'groß')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'groß')
+        self.assertEqual(doc[0]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 6)
+
+        self.assertEqual(doc[0]._.holmes.subwords[2].text, 'handel')
+        self.assertEqual(doc[0]._.holmes.subwords[2].lemma, 'handeln')
+        self.assertEqual(doc[0]._.holmes.subwords[2].index, 2)
+        self.assertEqual(doc[0]._.holmes.subwords[2].containing_token_index, 4)
+        self.assertEqual(doc[0]._.holmes.subwords[2].char_start_index, 7)
+
+        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Textil')
+        self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'textil')
+        self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[2]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[2]._.holmes.subwords[1].text, 'klein')
+        self.assertEqual(doc[2]._.holmes.subwords[1].lemma, 'klein')
+        self.assertEqual(doc[2]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[2]._.holmes.subwords[1].containing_token_index, 2)
+        self.assertEqual(doc[2]._.holmes.subwords[1].char_start_index, 1)
+
+        self.assertEqual(doc[2]._.holmes.subwords[2].text, 'handel')
+        self.assertEqual(doc[2]._.holmes.subwords[2].lemma, 'handeln')
+        self.assertEqual(doc[2]._.holmes.subwords[2].index, 2)
+        self.assertEqual(doc[2]._.holmes.subwords[2].containing_token_index, 4)
+        self.assertEqual(doc[2]._.holmes.subwords[2].char_start_index, 7)
+
+        self.assertEqual(doc[4]._.holmes.subwords[0].text, 'Textil')
+        self.assertEqual(doc[4]._.holmes.subwords[0].lemma, 'textil')
+        self.assertEqual(doc[4]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[4]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[4]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[4]._.holmes.subwords[1].text, 'einzel')
+        self.assertEqual(doc[4]._.holmes.subwords[1].lemma, 'einzel')
+        self.assertEqual(doc[4]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[4]._.holmes.subwords[1].containing_token_index, 4)
+        self.assertEqual(doc[4]._.holmes.subwords[1].char_start_index, 1)
+
+        self.assertEqual(doc[4]._.holmes.subwords[2].text, 'handel')
+        self.assertEqual(doc[4]._.holmes.subwords[2].lemma, 'handeln')
+        self.assertEqual(doc[4]._.holmes.subwords[2].index, 2)
+        self.assertEqual(doc[4]._.holmes.subwords[2].containing_token_index, 4)
+        self.assertEqual(doc[4]._.holmes.subwords[2].char_start_index, 7)
+
+    def test_subword_conjunction_4_words_multiple_subwords_first_and_last_words_hyphenated(self):
+
+        doc = analyzer.parse("Feintextilgroß-, -klein-, -mittel- und -einzeldetailhandel")
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Fein')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'fein')
+        self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'textil')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'textil')
+        self.assertEqual(doc[0]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 4)
+
+        self.assertEqual(doc[0]._.holmes.subwords[2].text, 'groß')
+        self.assertEqual(doc[0]._.holmes.subwords[2].lemma, 'groß')
+        self.assertEqual(doc[0]._.holmes.subwords[2].index, 2)
+        self.assertEqual(doc[0]._.holmes.subwords[2].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[2].char_start_index, 10)
+
+        self.assertEqual(doc[0]._.holmes.subwords[3].text, 'detail')
+        self.assertEqual(doc[0]._.holmes.subwords[3].lemma, 'detail')
+        self.assertEqual(doc[0]._.holmes.subwords[3].index, 3)
+        self.assertEqual(doc[0]._.holmes.subwords[3].containing_token_index, 6)
+        self.assertEqual(doc[0]._.holmes.subwords[3].char_start_index, 7)
+
+        self.assertEqual(doc[0]._.holmes.subwords[4].text, 'handel')
+        self.assertEqual(doc[0]._.holmes.subwords[4].lemma, 'handeln')
+        self.assertEqual(doc[0]._.holmes.subwords[4].index, 4)
+        self.assertEqual(doc[0]._.holmes.subwords[4].containing_token_index, 6)
+        self.assertEqual(doc[0]._.holmes.subwords[4].char_start_index, 13)
+
+        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Fein')
+        self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'fein')
+        self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[2]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[2]._.holmes.subwords[1].text, 'textil')
+        self.assertEqual(doc[2]._.holmes.subwords[1].lemma, 'textil')
+        self.assertEqual(doc[2]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[2]._.holmes.subwords[1].containing_token_index, 0)
+        self.assertEqual(doc[2]._.holmes.subwords[1].char_start_index, 4)
+
+        self.assertEqual(doc[2]._.holmes.subwords[2].text, 'klein')
+        self.assertEqual(doc[2]._.holmes.subwords[2].lemma, 'klein')
+        self.assertEqual(doc[2]._.holmes.subwords[2].index, 2)
+        self.assertEqual(doc[2]._.holmes.subwords[2].containing_token_index, 2)
+        self.assertEqual(doc[2]._.holmes.subwords[2].char_start_index, 1)
+
+        self.assertEqual(doc[2]._.holmes.subwords[3].text, 'detail')
+        self.assertEqual(doc[2]._.holmes.subwords[3].lemma, 'detail')
+        self.assertEqual(doc[2]._.holmes.subwords[3].index, 3)
+        self.assertEqual(doc[2]._.holmes.subwords[3].containing_token_index, 6)
+        self.assertEqual(doc[2]._.holmes.subwords[3].char_start_index, 7)
+
+        self.assertEqual(doc[2]._.holmes.subwords[4].text, 'handel')
+        self.assertEqual(doc[2]._.holmes.subwords[4].lemma, 'handeln')
+        self.assertEqual(doc[2]._.holmes.subwords[4].index, 4)
+        self.assertEqual(doc[2]._.holmes.subwords[4].containing_token_index, 6)
+        self.assertEqual(doc[2]._.holmes.subwords[4].char_start_index, 13)
+
+        self.assertEqual(doc[4]._.holmes.subwords[0].text, 'Fein')
+        self.assertEqual(doc[4]._.holmes.subwords[0].lemma, 'fein')
+        self.assertEqual(doc[4]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[4]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[4]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[4]._.holmes.subwords[1].text, 'textil')
+        self.assertEqual(doc[4]._.holmes.subwords[1].lemma, 'textil')
+        self.assertEqual(doc[4]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[4]._.holmes.subwords[1].containing_token_index, 0)
+        self.assertEqual(doc[4]._.holmes.subwords[1].char_start_index, 4)
+
+        self.assertEqual(doc[4]._.holmes.subwords[2].text, 'mittel')
+        self.assertEqual(doc[4]._.holmes.subwords[2].lemma, 'mitteln')
+        self.assertEqual(doc[4]._.holmes.subwords[2].index, 2)
+        self.assertEqual(doc[4]._.holmes.subwords[2].containing_token_index, 4)
+        self.assertEqual(doc[4]._.holmes.subwords[2].char_start_index, 1)
+
+        self.assertEqual(doc[4]._.holmes.subwords[3].text, 'detail')
+        self.assertEqual(doc[4]._.holmes.subwords[3].lemma, 'detail')
+        self.assertEqual(doc[4]._.holmes.subwords[3].index, 3)
+        self.assertEqual(doc[4]._.holmes.subwords[3].containing_token_index, 6)
+        self.assertEqual(doc[4]._.holmes.subwords[3].char_start_index, 7)
+
+        self.assertEqual(doc[4]._.holmes.subwords[4].text, 'handel')
+        self.assertEqual(doc[4]._.holmes.subwords[4].lemma, 'handeln')
+        self.assertEqual(doc[4]._.holmes.subwords[4].index, 4)
+        self.assertEqual(doc[4]._.holmes.subwords[4].containing_token_index, 6)
+        self.assertEqual(doc[4]._.holmes.subwords[4].char_start_index, 13)
+
+        self.assertEqual(doc[6]._.holmes.subwords[0].text, 'Fein')
+        self.assertEqual(doc[6]._.holmes.subwords[0].lemma, 'fein')
+        self.assertEqual(doc[6]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[6]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[6]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[6]._.holmes.subwords[1].text, 'textil')
+        self.assertEqual(doc[6]._.holmes.subwords[1].lemma, 'textil')
+        self.assertEqual(doc[6]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[6]._.holmes.subwords[1].containing_token_index, 0)
+        self.assertEqual(doc[6]._.holmes.subwords[1].char_start_index, 4)
+
+        self.assertEqual(doc[6]._.holmes.subwords[2].text, 'einzel')
+        self.assertEqual(doc[6]._.holmes.subwords[2].lemma, 'einzel')
+        self.assertEqual(doc[6]._.holmes.subwords[2].index, 2)
+        self.assertEqual(doc[6]._.holmes.subwords[2].containing_token_index, 6)
+        self.assertEqual(doc[6]._.holmes.subwords[2].char_start_index, 1)
+
+        self.assertEqual(doc[6]._.holmes.subwords[3].text, 'detail')
+        self.assertEqual(doc[6]._.holmes.subwords[3].lemma, 'detail')
+        self.assertEqual(doc[6]._.holmes.subwords[3].index, 3)
+        self.assertEqual(doc[6]._.holmes.subwords[3].containing_token_index, 6)
+        self.assertEqual(doc[6]._.holmes.subwords[3].char_start_index, 7)
+
+        self.assertEqual(doc[6]._.holmes.subwords[4].text, 'handel')
+        self.assertEqual(doc[6]._.holmes.subwords[4].lemma, 'handeln')
+        self.assertEqual(doc[6]._.holmes.subwords[4].index, 4)
+        self.assertEqual(doc[6]._.holmes.subwords[4].containing_token_index, 6)
+        self.assertEqual(doc[6]._.holmes.subwords[4].char_start_index, 13)
+
+    def test_inner_hyphens_single_word(self):
+
+        doc = analyzer.parse("Mozart-Symphonien")
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Mozart')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'mozart')
+        self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'Symphonien')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'symphonie')
+        self.assertEqual(doc[0]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 7)
+
+    def test_inner_hyphens_single_word_fugen_s(self):
+
+        doc = analyzer.parse("Informations-Extraktion")
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Information')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'information')
+        self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'Extraktion')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'extraktion')
+        self.assertEqual(doc[0]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 13)
+
+    def test_extraneous_final_hyphen(self):
+
+        doc = analyzer.parse("Mozart- und Leute")
+        self.assertEqual(len(doc[0]._.holmes.subwords), 0)
+
+    def test_extraneous_initial_hyphen(self):
+
+        doc = analyzer.parse("Mozart und -Leute")
+        self.assertEqual(len(doc[2]._.holmes.subwords), 0)
+
+    def test_hyphen_alone(self):
+
+        doc = analyzer.parse("Mozart und - Leute")
+        self.assertEqual(len(doc[2]._.holmes.subwords), 0)
+        self.assertEqual(doc[2].text, '-')
+        self.assertEqual(doc[2]._.holmes.lemma, '-')
+
+    def test_inner_hyphens_last_word_hyphenated(self):
+
+        doc = analyzer.parse("Mozart-Symphonien und -Sonaten")
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Mozart')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'mozart')
+        self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'Symphonien')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'symphonie')
+        self.assertEqual(doc[0]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 7)
+
+        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Mozart')
+        self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'mozart')
+        self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[2]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[2]._.holmes.subwords[1].text, 'Sonaten')
+        self.assertEqual(doc[2]._.holmes.subwords[1].lemma, 'sonaten')
+        self.assertEqual(doc[2]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[2]._.holmes.subwords[1].containing_token_index, 2)
+        self.assertEqual(doc[2]._.holmes.subwords[1].char_start_index, 1)
+
+    def test_inner_hyphens_last_word_hyphenated_fugen_s(self):
+
+        doc = analyzer.parse("Informations-Extraktion und -beurteilung")
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Information')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'information')
+        self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'Extraktion')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'extraktion')
+        self.assertEqual(doc[0]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 13)
+
+        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Information')
+        self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'information')
+        self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[2]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[2]._.holmes.subwords[1].text, 'beurteilung')
+        self.assertEqual(doc[2]._.holmes.subwords[1].lemma, 'beurteilung')
+        self.assertEqual(doc[2]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[2]._.holmes.subwords[1].containing_token_index, 2)
+        self.assertEqual(doc[2]._.holmes.subwords[1].char_start_index, 1)
+
+    def test_inner_hyphens_first_word_hyphenated(self):
+
+        doc = analyzer.parse("Mozart-, Mahler- und Wagner-Symphonien")
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Mozart')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'mozart')
+        self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'Symphonien')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'symphonie')
+        self.assertEqual(doc[0]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 4)
+        self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 7)
+
+        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Mahler')
+        self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'mahler')
+        self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 2)
+        self.assertEqual(doc[2]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[2]._.holmes.subwords[1].text, 'Symphonien')
+        self.assertEqual(doc[2]._.holmes.subwords[1].lemma, 'symphonie')
+        self.assertEqual(doc[2]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[2]._.holmes.subwords[1].containing_token_index, 4)
+        self.assertEqual(doc[2]._.holmes.subwords[1].char_start_index, 7)
+
+        self.assertEqual(doc[4]._.holmes.subwords[0].text, 'Wagner')
+        self.assertEqual(doc[4]._.holmes.subwords[0].lemma, 'wagner')
+        self.assertEqual(doc[4]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[4]._.holmes.subwords[0].containing_token_index, 4)
+        self.assertEqual(doc[4]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[4]._.holmes.subwords[1].text, 'Symphonien')
+        self.assertEqual(doc[4]._.holmes.subwords[1].lemma, 'symphonie')
+        self.assertEqual(doc[4]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[4]._.holmes.subwords[1].containing_token_index, 4)
+        self.assertEqual(doc[4]._.holmes.subwords[1].char_start_index, 7)
+
+    def test_inner_hyphens_first_word_hyphenated_fugen_s(self):
+
+        doc = analyzer.parse("Informations- und Extraktions-Beurteilung")
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Information')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'information')
+        self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'Beurteilung')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'beurteilung')
+        self.assertEqual(doc[0]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 2)
+        self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 12)
+
+        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Extraktion')
+        self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'extraktion')
+        self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 2)
+        self.assertEqual(doc[2]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[2]._.holmes.subwords[1].text, 'Beurteilung')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'beurteilung')
+        self.assertEqual(doc[2]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[2]._.holmes.subwords[1].containing_token_index, 2)
+        self.assertEqual(doc[2]._.holmes.subwords[1].char_start_index, 12)
