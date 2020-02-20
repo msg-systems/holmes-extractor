@@ -609,3 +609,202 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
     def test_parent_token_indexes(self):
         doc = analyzer.parse("Häuser im Dorf.")
         self.assertEqual(doc[2]._.holmes.parent_dependencies, [[0, 'pobjp'],[1, 'nk']])
+
+    def test_subwords_without_fugen_s(self):
+        doc = analyzer.parse("Telefaxnummer.")
+        self.assertEqual(len(doc[0]._.holmes.subwords), 2)
+
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Telefax')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'telefax')
+        self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'nummer')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'nummer')
+        self.assertEqual(doc[0]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 7)
+
+    def test_subwords_with_fugen_s(self):
+        doc = analyzer.parse("Widerrufsbelehrung")
+        self.assertEqual(len(doc[0]._.holmes.subwords), 2)
+
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Widerruf')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'widerrufen')
+        self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'belehrung')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'belehrung')
+        self.assertEqual(doc[0]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 9)
+
+    def test_no_subwords_without_s(self):
+        doc = analyzer.parse("Lappalie")
+        self.assertEqual(len(doc[0]._.holmes.subwords), 0)
+
+    def test_no_subwords_with_s(self):
+        doc = analyzer.parse("Datenschutz")
+        self.assertEqual(len(doc[0]._.holmes.subwords), 0)
+
+    def test_no_subwords_because_of_extra_letter_after_valid_subwords(self):
+        doc = analyzer.parse("ZahlungsverkehrX")
+        self.assertEqual(len(doc[0]._.holmes.subwords), 0)
+
+    def test_subwords_word_twice_in_document(self):
+        doc = analyzer.parse("Widerrufsbelehrung und die widerrufsbelehrung waren interessant")
+        self.assertEqual(len(doc[0]._.holmes.subwords), 2)
+
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Widerruf')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'widerrufen')
+        self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'belehrung')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'belehrung')
+        self.assertEqual(doc[0]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 9)
+
+        self.assertEqual(len(doc[3]._.holmes.subwords), 2)
+
+        self.assertEqual(doc[3]._.holmes.subwords[0].text, 'widerruf')
+        self.assertEqual(doc[3]._.holmes.subwords[0].lemma, 'widerrufen')
+        self.assertEqual(doc[3]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[3]._.holmes.subwords[0].containing_token_index, 3)
+        self.assertEqual(doc[3]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[3]._.holmes.subwords[1].text, 'belehrung')
+        self.assertEqual(doc[3]._.holmes.subwords[1].lemma, 'belehrung')
+        self.assertEqual(doc[3]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[3]._.holmes.subwords[1].containing_token_index, 3)
+        self.assertEqual(doc[3]._.holmes.subwords[1].char_start_index, 9)
+
+    def test_three_subwords_with_non_whitelisted_fugen_s(self):
+
+        doc = analyzer.parse("Inhaltsverzeichnisanlage")
+        self.assertEqual(len(doc[0]._.holmes.subwords), 3)
+
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Inhalt')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'inhalt')
+        self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'verzeichnis')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'verzeichnis')
+        self.assertEqual(doc[0]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 7)
+
+        self.assertEqual(doc[0]._.holmes.subwords[2].text, 'anlage')
+        self.assertEqual(doc[0]._.holmes.subwords[2].lemma, 'anlage')
+        self.assertEqual(doc[0]._.holmes.subwords[2].index, 1)
+        self.assertEqual(doc[0]._.holmes.subwords[2].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[2].char_start_index, 18)
+
+    def test_three_subwords_with_non_whitelisted_fugen_s(self):
+
+        doc = analyzer.parse("Inhaltsverzeichnisanlage")
+        self.assertEqual(len(doc[0]._.holmes.subwords), 3)
+
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Inhalt')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'inhalt')
+        self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
+
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'verzeichnis')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'verzeichnis')
+        self.assertEqual(doc[0]._.holmes.subwords[1].index, 1)
+        self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 7)
+
+        self.assertEqual(doc[0]._.holmes.subwords[2].text, 'anlage')
+        self.assertEqual(doc[0]._.holmes.subwords[2].lemma, 'anlage')
+        self.assertEqual(doc[0]._.holmes.subwords[2].index, 2)
+        self.assertEqual(doc[0]._.holmes.subwords[2].containing_token_index, 0)
+        self.assertEqual(doc[0]._.holmes.subwords[2].char_start_index, 18)
+
+    def test_four_subwords_with_whitelisted_fugen_s(self):
+
+        doc = analyzer.parse("Finanzdienstleistungsaufsicht")
+        self.assertEqual(len(doc[0]._.holmes.subwords), 4)
+
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Finanz')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'finanz')
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'dienst')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'dienst')
+        self.assertEqual(doc[0]._.holmes.subwords[2].text, 'leistung')
+        self.assertEqual(doc[0]._.holmes.subwords[2].lemma, 'leistung')
+        self.assertEqual(doc[0]._.holmes.subwords[3].text, 'aufsicht')
+        self.assertEqual(doc[0]._.holmes.subwords[3].lemma, 'aufsicht')
+
+    def test_inflected_main_word(self):
+
+        doc = analyzer.parse("Verbraucherstreitbeilegungsgesetzes")
+        self.assertEqual(len(doc[0]._.holmes.subwords), 4)
+
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Verbraucher')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'verbraucher')
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'streit')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'streiten')
+        self.assertEqual(doc[0]._.holmes.subwords[2].text, 'beilegung')
+        self.assertEqual(doc[0]._.holmes.subwords[2].lemma, 'beilegung')
+        self.assertEqual(doc[0]._.holmes.subwords[3].text, 'gesetzes')
+        self.assertEqual(doc[0]._.holmes.subwords[3].lemma, 'gesetz')
+
+    def test_inflected_subword_other_than_fugen_s(self):
+
+        doc = analyzer.parse("Bundesoberbehörde")
+        self.assertEqual(len(doc[0]._.holmes.subwords), 2)
+
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Bundes')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'bund')
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'oberbehörde')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'oberbehörde')
+
+    def test_initial_short_word(self):
+
+        doc = analyzer.parse("Vorversicherung")
+        self.assertEqual(len(doc[0]._.holmes.subwords), 2)
+
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Vor')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'vor')
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'versicherung')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'versicherung')
+
+    def test_final_blacklisted_subword(self):
+
+        doc = analyzer.parse("Gemütlichkeit")
+        self.assertEqual(len(doc[0]._.holmes.subwords), 0)
+
+    def test_nonsense_word(self):
+
+        doc = analyzer.parse("WiderrufsbelehrungWiderrufsrechtSie")
+        self.assertEqual(len(doc[0]._.holmes.subwords), 5)
+
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Widerruf')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'widerrufen')
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'belehrung')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'belehrung')
+        self.assertEqual(doc[0]._.holmes.subwords[2].text, 'Widerruf')
+        self.assertEqual(doc[0]._.holmes.subwords[2].lemma, 'widerrufen')
+        self.assertEqual(doc[0]._.holmes.subwords[3].text, 'recht')
+        self.assertEqual(doc[0]._.holmes.subwords[3].lemma, 'recht')
+        self.assertEqual(doc[0]._.holmes.subwords[4].text, 'Sie')
+        self.assertEqual(doc[0]._.holmes.subwords[4].lemma, 'ich')
+
+    def test_nonsense_word_with_number(self):
+
+        doc = analyzer.parse("Widerrufs3belehrungWiderrufsrechtSie")
+        self.assertEqual(len(doc[0]._.holmes.subwords), 0)
+
+    def test_nonsense_word_with_underscore(self):
+
+        doc = analyzer.parse("Widerrufs_belehrungWiderrufsrechtSie")
+        self.assertEqual(len(doc[0]._.holmes.subwords), 0)

@@ -6,7 +6,7 @@ from spacy.tokens import Token, Doc
 from abc import ABC, abstractmethod
 import jsonpickle
 
-SERIALIZED_DOCUMENT_VERSION = 2
+SERIALIZED_DOCUMENT_VERSION = 3
 
 class SemanticDependency:
     """A labelled semantic dependency between two tokens."""
@@ -73,6 +73,25 @@ class Mention:
         return ''.join(('[', str(self.root_index), '; ', str(self.indexes),
                 ']'))
 
+class Subword:
+    """A semantically atomic part of a word. Currently only used for German.
+
+        containing_token_index -- the index of the containing token within the document.
+        index -- the index of the subword within the containing word.
+        text -- the original subword string.
+        lemma -- the model-normalized representation of the subword string.
+        char_start_index -- the character index of *lemma* within the containing word.
+    """
+    def __init__(self, containing_token_index, index, text, lemma, char_start_index):
+        self.containing_token_index = containing_token_index
+        self.index = index
+        self.text = text
+        self.lemma = lemma
+        self.char_start_index = char_start_index
+
+    def __str__(self):
+        return ('/'.join((self.text, self.lemma)))
+
 class HolmesDictionary:
     """The holder object for token-level semantic information managed by Holmes
 
@@ -102,6 +121,7 @@ class HolmesDictionary:
         self.mention_root_index = None  # the lefthandmost token within of the mention that contains
                                         # this token within the first cluster to which this token
                                         # belongs, which will most often be this token itself
+        self.subwords = []
 
     @property
     def is_uncertain(self):
@@ -278,6 +298,9 @@ class SemanticAnalyzer(ABC):
         """
         for token in spacy_doc:
             token._.set('holmes', HolmesDictionary(token.i, self._holmes_lemma(token)))
+        subword_cache = {}
+        for token in spacy_doc:
+            self._add_subwords(token, subword_cache)
         for token in spacy_doc:
             self._set_negation(token)
         for token in spacy_doc:
@@ -337,6 +360,8 @@ class SemanticAnalyzer(ABC):
     def debug_structures(self, doc):
         if self.debug:
             for token in doc:
+                subwords_strings = ';'.join(str(subword) for subword in token._.holmes.subwords)
+                subwords_strings = ''.join(('[', subwords_strings, ']'))
                 negation_string = 'negative' if token._.holmes.is_negated else 'positive'
                 uncertainty_string = 'uncertain' if token._.holmes.is_uncertain else 'certain'
                 matchability_string = 'matchable' if token._.holmes.is_matchable else 'unmatchable'
@@ -345,8 +370,8 @@ class SemanticAnalyzer(ABC):
                             token._.holmes.mentions)
                 else:
                     coreference_string = ''
-                print(token.i, token.text, token._.holmes.lemma, token.pos_, token.tag_,
-                        token.dep_, token.ent_type_, token.head.i,
+                print(token.i, token.text, token._.holmes.lemma, subwords_strings,
+                        token.pos_, token.tag_, token.dep_, token.ent_type_, token.head.i,
                         token._.holmes.string_representation_of_children(),
                         token._.holmes.righthand_siblings, negation_string,
                         uncertainty_string, matchability_string, coreference_string)
@@ -518,6 +543,10 @@ class SemanticAnalyzer(ABC):
     supervised_document_classification_phraselet_stop_lemmas = NotImplemented
 
     topic_matching_reverse_only_parent_lemmas = NotImplemented
+
+    @abstractmethod
+    def _add_subwords(self, token, subword_cache):
+        pass
 
     @abstractmethod
     def _set_negation(self, token):
@@ -912,6 +941,12 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
     # reverse-matched only during topic matching.
     topic_matching_reverse_only_parent_lemmas = (('be', 'VERB'), ('have', 'VERB'), ('do', 'VERB'),
             ('say', 'VERB'), ('go', 'VERB'), ('get', 'VERB'), ('make', 'VERB'))
+
+    def _add_subwords(self, token, subword_cache):
+        """ Analyses the internal structure of the word to find atomic semantic elements. Is
+            relevant for German and not currently implemented for English.
+        """
+        pass
 
     def _set_negation(self, token):
         """Marks the negation on the token. A token is negative if it or one of its ancestors
@@ -1383,6 +1418,171 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
     topic_matching_reverse_only_parent_lemmas = (('sein', 'AUX'), ('werden', 'AUX'),
             ('haben', 'AUX'), ('sagen', 'VERB'), ('machen', 'VERB'), ('tun', 'VERB'))
 
+    # Only words at least this long are examined for possible subwords
+    _minimum_length_for_subword_search = 10
+
+    # Parts of speech examined for subwords
+    _pos_for_subword_search = ('NOUN', 'PROPN')
+
+    # Absolute minimum length of a subword.
+    _minimum_subword_length = 3
+
+    # Subwords at least this long are more likely to be genuine (not nonsensical) vocab entries.
+    _minimum_long_subword_length = 6
+
+    # Subwords longer than this are likely not be atomic and solutions that split them up are
+    # preferred
+    _maximum_realistic_subword_length = 12
+
+    # Scoring bonus where a Fugen-S follows a whitelisted ending
+    # (one where a Fugen-S is normally expected)
+    _fugen_s_after_whitelisted_ending_bonus = 5
+
+    # Scoring bonus where a Fugen-S follows an ending where it is neither expected nor disallowed
+    _fugen_s_after_non_whitelisted_non_blacklisted_ending_bonus = 3
+
+    # Both words around a Fugen-S have to be at least this long for the scoring bonus to be applied
+    _fugen_s_whitelist_bonus_surrounding_word_minimum_length = 5
+
+    # Endings after which a Fugen-S is normally expected
+    _fugen_s_ending_whitelist = ('tum', 'ling', 'ion', 'tät', 'heit', 'keit', 'schaft',
+            'sicht', 'ung')
+
+    # Endings after which a Fugen_S is normally disallowed
+    _fugen_s_ending_blacklist = ('a', 'ä', 'e', 'i', 'o', 'ö', 'u', 'ü', 'sch', 's', 'ß', 'st',
+            'tz', 'z')
+
+    # Blacklisted subwords
+    _subword_blacklist = ('igkeit', 'igkeiten', 'digkeit', 'digkeiten', 'schaft', 'schaften',
+            'keit', 'keiten', 'lichkeit', 'lichkeiten', 'tigten', 'tigung', 'tigungen', 'barkeit',
+            'barkeiten', 'heit', 'heiten', 'ung', 'ungen', 'aften', 'erung', 'erungen', 'mungen')
+
+    def _add_subwords(self, token, subword_cache):
+
+        class PossibleSubword:
+            """ A subword within a possible solution.
+
+                text -- the text
+                char_start_index -- the character start index of the subword within the word.
+                fugen_s_status --
+                '1' if the preceding word has an ending that normally has a Fugen-s,
+                '2' if the preceding word has an ending that precludes using a Fugen-s,
+                '0' otherwise.
+            """
+
+            def __init__(self, text, char_start_index, fugen_s_status):
+                self.text = text
+                self.char_start_index = char_start_index
+                self.fugen_s_status = fugen_s_status
+
+        def get_subword(lemma, initial_index, length):
+            # find the shortest subword longer than length, unless length is less than
+            # _minimum_long_subword_length, in which case only that length is tried. This strategy
+            # is necessary because of the large number of nonsensical short vocabulary entries.
+            for end_index in range(initial_index + length, len(lemma) + 1):
+                possible_word = lemma[initial_index: end_index]
+                if not self.nlp.vocab[possible_word].is_oov:
+                    return possible_word
+                elif length < self._minimum_long_subword_length:
+                    break
+            return None
+
+        def score(possible_solution):
+            # Lower scores are better.
+            number = 0
+            for subword in possible_solution:
+                # subwords shorter than _minimum_long_subword_length: penalty of 2
+                if len(subword.text) < self._minimum_long_subword_length:
+                    number += 2 * (self._minimum_long_subword_length - len(subword.text))
+                # subwords longer than 12: penalty of 1
+                elif len(subword.text) > self._maximum_realistic_subword_length:
+                    number += len(subword.text) - self._maximum_realistic_subword_length
+                # fugen-s after a whitelist ending
+                if subword.fugen_s_status == 2:
+                    number -= self._fugen_s_after_whitelisted_ending_bonus
+                # fugen-s after an ending that is neither whitelist nor blacklist
+                elif subword.fugen_s_status == 1:
+                    number -= self._fugen_s_after_non_whitelisted_non_blacklisted_ending_bonus
+            return number
+
+        def scan_recursively_for_subwords(lemma, initial_index = 0):
+
+            lengths = list(range(self._minimum_subword_length, 1 + len(lemma) - initial_index))
+            possible_solutions = []
+            working_subword = None
+            for length in lengths:
+                if working_subword != None and len(working_subword) >= length:
+                    # we are catching up with the length already returned by get_subword
+                    continue
+                working_subword = get_subword(lemma, initial_index, length)
+                if working_subword == None or working_subword in self._subword_blacklist:
+                    continue
+                possible_solution = [PossibleSubword(working_subword, initial_index, 0)]
+                if initial_index + len(working_subword) == len(lemma):
+                    possible_solutions.append(possible_solution)
+                    break
+                following_subwords = scan_recursively_for_subwords(lemma, initial_index +
+                        len(working_subword))
+                if following_subwords != None:
+                    possible_solution.extend(following_subwords)
+                    possible_solutions.append(possible_solution)
+                if lemma[initial_index + len(working_subword)] == 's' and initial_index + len(working_subword) < \
+                        len(lemma):
+                    possible_solution = [PossibleSubword(working_subword, initial_index, 0)]
+                    following_subwords = scan_recursively_for_subwords(lemma, initial_index +
+                            len(working_subword) + 1)
+                    if following_subwords != None:
+                        for ending in self._fugen_s_ending_whitelist:
+                            if working_subword.endswith(ending):
+                                following_subwords[0].fugen_s_status = 2
+                        if following_subwords[0].fugen_s_status == 0 and len(working_subword) >= \
+                                self._fugen_s_whitelist_bonus_surrounding_word_minimum_length and \
+                                len(following_subwords[0].text) >= \
+                                self._fugen_s_whitelist_bonus_surrounding_word_minimum_length:
+                            # if the first does not have a whitelist ending and one of the words is
+                            # short, do not give the score bonus
+                            following_subwords[0].fugen_s_status = 1
+                            for ending in self._fugen_s_ending_blacklist:
+                                # blacklist ending: take the bonus away again
+                                if working_subword.endswith(ending):
+                                    following_subwords[0].fugen_s_status = 0
+                        possible_solution.extend(following_subwords)
+                        possible_solutions.append(possible_solution)
+            if len(possible_solutions) > 0:
+                possible_solutions = sorted(possible_solutions, key=lambda possible_solution:
+                        score(possible_solution))
+                return possible_solutions[0]
+
+
+        if not token.pos_ in self._pos_for_subword_search or len(token._.holmes.lemma) < \
+                self._minimum_length_for_subword_search or not token._.holmes.lemma.isalpha():
+            return
+        if token.text in subword_cache:
+            cached_subwords = subword_cache[token.text]
+            for cached_subword in cached_subwords:
+                token._.holmes.subwords.append(Subword(token.i, cached_subword.index,
+                        cached_subword.text, cached_subword.lemma,
+                        cached_subword.char_start_index))
+        else:
+            possible_subwords = scan_recursively_for_subwords(token._.holmes.lemma)
+            if possible_subwords != None and len(possible_subwords) > 1:
+                # We retrieve the lemma for each subword by calling Spacy. To reduce the
+                # overhead, we concatenate the subwords in the form:
+                # Subword1. Subword2. Subword3.
+                subword_lemmatization_string = '. '.join(possible_subword.text.capitalize() for
+                        possible_subword in possible_subwords)
+                subword_lemmatization_doc = self.spacy_parse(subword_lemmatization_string)
+                index = 0
+                for possible_subword in possible_subwords:
+                    text = token.text[possible_subword.char_start_index:
+                            possible_subword.char_start_index + len(possible_subword.text)]
+                    lemma = subword_lemmatization_doc[index*2].lemma_.lower()
+                    token._.holmes.subwords.append(Subword(token.i, index, text, lemma,
+                            possible_subword.char_start_index))
+                    index += 1
+                subword_cache[token.text] = token._.holmes.subwords
+
+
     def _set_negation(self, token):
         """Marks the negation on the token. A token is negative if it or one of its ancestors
             has a negation word as a syntactic (not semantic!) child.
@@ -1414,7 +1614,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                         token.doc[dependency.child_index].tag_ == 'PTKVZ']) == 0: # 'vorhaben'
                     for dependency in (dependency for dependency in token._.holmes.children
                             if token.doc[dependency.child_index].pos_ in ('VERB', 'AUX') and
-                            token.doc[dependency.child_index].dep_ in ('oc', 'pd')):
+                                    token.doc[dependency.child_index].dep_ in ('oc', 'pd')):
                         token._.holmes.is_matchable = False
                         child = token.doc[dependency.child_index]
                         self._move_information_between_tokens(token, child)
