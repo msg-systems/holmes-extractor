@@ -4,6 +4,7 @@ import uuid
 import statistics
 from scipy.sparse import dok_matrix
 from sklearn.neural_network import MLPClassifier
+from .structural_matching import Index
 from .errors import WrongModelDeserializationError, FewerThanTwoClassificationsError, \
         DuplicateDocumentError, NoPhraseletsAfterFilteringError, \
         EmbeddingThresholdGreaterThanRelationThresholdError
@@ -129,9 +130,6 @@ class TopicMatcher:
                 return type(other) == CorpusWordPosition and self.index == other.index and \
                         self.document_label == other.document_label
 
-            def __ne__(self, other):
-                return not self.__eq__(other)
-
             def __hash__(self):
                 return hash((self.document_label, self.index))
 
@@ -224,7 +222,8 @@ class TopicMatcher:
                             parent_relation_match_corpus_words):
                         self._add_to_dict_set(
                                 child_document_labels_to_indexes_for_embedding_retry_sets,
-                                corpus_word_position.document_label, corpus_word_position.index)
+                                corpus_word_position.document_label, Index(
+                                corpus_word_position.index, None))
             child_token = [token for token in phraselet.matchable_tokens if token.i !=
                     parent_token.i][0]
             child_word = child_token._.holmes.lemma
@@ -262,7 +261,7 @@ class TopicMatcher:
                             self._add_to_dict_set(
                                     set_to_add_to,
                                     corpus_word_position.document_label,
-                                    parent_dependency[0])
+                                    Index(parent_dependency[0], None))
 
         def rebuild_document_info_dict(matches, phraselet_labels_to_search_phrases):
 
@@ -746,9 +745,6 @@ class TopicMatcher:
                 return type(other) == WordInfo and self.relative_start_index == \
                         other.relative_start_index and self.relative_end_index == \
                         other.relative_end_index
-
-            def __ne__(self, other):
-                return not self.__eq__(other)
 
             def __hash__(self):
                 return hash((self.relative_start_index, self.relative_end_index))
