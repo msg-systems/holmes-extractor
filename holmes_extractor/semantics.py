@@ -413,8 +413,11 @@ class SemanticAnalyzer(ABC):
             raise WrongVersionDeserializationError(serialized_document._version)
         return serialized_document.holmes_document(self)
 
-    def get_dependent_phrase(self, token):
-        "Return the dependent phrase of a token. Used in building match dictionaries"
+    def get_dependent_phrase(self, token, subword):
+        """Return the dependent phrase of a token, with an optional subword reference. Used in
+            building match dictionaries"""
+        if subword != None:
+            return subword.text
         if not token.pos_ in self.noun_pos:
             return token.text
         return_string = ''
@@ -1364,14 +1367,14 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
     _or_lemma = 'oder'
 
     _matching_dep_dict = {
-            'sb': ['nk', 'ag', 'mnr', 'arg'],
-            'ag': ['nk', 'mnr'],
+            'sb': ['nk', 'ag', 'mnr', 'arg', 'pobjerg', 'intcompound'],
+            'ag': ['nk', 'mnr', 'intcompound'],
             'da': ['nk', 'og', 'op'],
-            'oa': ['nk', 'og', 'op', 'ag', 'mnr', 'arg'],
+            'oa': ['nk', 'og', 'op', 'ag', 'mnr', 'arg', 'intcompound'],
             'og': ['oa', 'da', 'nk', 'op'],
-            'nk': ['ag'],
-            'mo': ['moposs', 'mnr', 'mnrposs', 'op'],
-            'mnr': ['mnrposs', 'mo', 'moposs', 'op']
+            'nk': ['ag', 'intcompound'],
+            'mo': ['moposs', 'mnr', 'mnrposs', 'op', 'intcompound'],
+            'mnr': ['mnrposs', 'mo', 'moposs', 'op', 'intcompound']
             }
 
     _mark_child_dependencies_copied_to_siblings_as_uncertain = False
@@ -1878,6 +1881,12 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                     token._.holmes.children.append(SemanticDependency(
                         token.i, child_dependency.child_index, 'nk'))
                     child._.holmes.is_matchable = False
+                elif dependency.label in ('mnr') and \
+                        dependency.child_token(token.doc)._.holmes.lemma in ('durch'):
+                    token._.holmes.children.append(SemanticDependency(
+                        token.i, child_dependency.child_index, 'pobjerg'))
+                        # ergative, because 'durch' with verbal nouns can only refer to the
+                        # actor of a bi- or multivalent action
                 else:
                     token._.holmes.children.append(SemanticDependency(
                         token.i, child_dependency.child_index, 'pobjp',

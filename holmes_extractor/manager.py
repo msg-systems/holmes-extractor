@@ -200,7 +200,7 @@ class Manager:
                         'search_phrase_word': word_match.search_phrase_word,
                         'document_word': word_match.document_word,
                         'document_phrase': self.semantic_analyzer.get_dependent_phrase(
-                                word_match.document_token),
+                                word_match.document_token, word_match.document_subword),
                         'match_type': word_match.type,
                         'similarity_measure': str(word_match.similarity_measure),
                         'involves_coreference': word_match.involves_coreference,

@@ -759,9 +759,13 @@ class StructuralMatcher:
                     parents = [Index(document_token.i, document_subword_index)]
                 for working_document_parent_index in parents:
                     working_document_child_indexes = []
-                    if not working_document_parent_index.is_subword():
-                        document_parent_token = document_token.doc[
-                                working_document_parent_index.token_index]
+                    document_parent_token = document_token.doc[
+                            working_document_parent_index.token_index]
+                    if not working_document_parent_index.is_subword() or \
+                            document_parent_token._.holmes.subwords[
+                            working_document_parent_index.subword_index].is_head:
+                            # is_head: e.g. 'Polizeiinformation über Kriminelle' should match
+                            # 'Information über Kriminelle'
                         for document_dependency in (document_dependency for document_dependency in
                                 document_parent_token._.holmes.children if
                                 self.semantic_analyzer.dependency_labels_match(
@@ -795,7 +799,7 @@ class StructuralMatcher:
                                             subword.is_head):
                                         working_document_child_indexes.append(Index(
                                                 subword.containing_token_index,
-                                                subword.subword_index))
+                                                subword.index))
                             # Loop through the dependencies from each token
                             for working_document_child_index in (working_index for working_index
                                     in working_document_child_indexes if working_index not in
@@ -821,7 +825,8 @@ class StructuralMatcher:
                                         compare_embeddings_on_non_root_words=
                                         compare_embeddings_on_non_root_words):
                                     at_least_one_document_dependency_matched = True
-                    else: # parent is a subword, so any child must be a subword in the same word
+                    if working_document_parent_index.is_subword():
+                        # examine relationship to dependent subword in the same word
                         document_parent_subword = document_token.doc[
                                 working_document_parent_index.token_index]._.holmes.\
                                 subwords[working_document_parent_index.subword_index]
@@ -843,8 +848,7 @@ class StructuralMatcher:
                                             search_phrase_tokens_to_word_matches,
                                     search_phrase_and_document_visited_table=
                                             search_phrase_and_document_visited_table,
-                                    is_uncertain=(document_dependency.is_uncertain and not
-                                            dependency.is_uncertain),
+                                    is_uncertain=False,
                                     structurally_matched_document_token=document_token,
                                     compare_embeddings_on_non_root_words=
                                     compare_embeddings_on_non_root_words):
@@ -855,9 +859,13 @@ class StructuralMatcher:
                         # there is no point in pursuing things any further
                     return
             # store the word match
+            if document_subword_index == None:
+                document_subword = None
+            else:
+                document_subword = document_token._.holmes.subwords[document_subword_index]
             search_phrase_tokens_to_word_matches[search_phrase_token.i].append(WordMatch(
                     search_phrase_token, search_phrase_word, document_token,
-                    first_document_token, last_document_token, document_subword_index,
+                    first_document_token, last_document_token, document_subword,
                     document_word, match_type, similarity_measure, is_negated, is_uncertain,
                     structurally_matched_document_token, document_word, depth))
 
@@ -872,7 +880,7 @@ class StructuralMatcher:
 
         if document_subword_index != None:
             document_word_text = document_token._.holmes.subwords[document_subword_index].text
-            document_word_text = document_token._.holmes.subwords[document_subword_index].lemma
+            document_word_lemma = document_token._.holmes.subwords[document_subword_index].lemma
         else:
             document_word_text = document_token.text.lower()
             document_word_lemma = document_token._.holmes.lemma
@@ -1172,7 +1180,7 @@ class StructuralMatcher:
             for word_match in match.word_matches:
                 if document_token.i == word_match.structurally_matched_document_token.i:
                     if word_match.document_subword != None and document_subword_index == \
-                            word_match.document_subword.subword_index:
+                            word_match.document_subword.index:
                         return True
                     if word_match.document_subword == None and document_subword_index == None:
                         return True
@@ -1186,19 +1194,21 @@ class StructuralMatcher:
             """
             if parent_subword != None:
                 if child_subword != None and parent_subword.dependent_index == \
-                        child_subword.subword_index and parent_token.i == child_token.i:
+                        child_subword.index and parent_token.i == child_token.i:
+                    return True
+                elif parent_subword.is_head and (child_subword == None or (
+                        child_subword.is_head and parent_subword.containing_token_index !=
+                        child_subword.containing_token_index)):
                     return True
                 else:
                     return False
-            if child_subword != None:
+            if child_subword != None and not child_subword.is_head:
                 return False
-            if self.perform_coreference_resolution:
+            if self.perform_coreference_resolution and parent_subword == None:
                 parents = parent_token._.holmes.token_and_coreference_chain_indexes
-            else:
-                parents = [parent_token.i]
-            if self.perform_coreference_resolution:
                 children = child_token._.holmes.token_and_coreference_chain_indexes
             else:
+                parents = [parent_token.i]
                 children = [child_token.i]
             for parent in parents:
                 for child in children:
@@ -1206,6 +1216,23 @@ class StructuralMatcher:
                             has_dependency_with_child_index(child):
                         return True
             return False
+
+        def match_with_subwords_involves_all_containing_document_tokens(word_matches):
+            """ Where a match involves subwords and the subwords are involved in conjunction,
+                we need to make sure there are no tokens involved in the match merely because they
+                supply subwords to another token, as this would lead to double matching. An example
+                is search phrase 'Extraktion der Information' and document
+                'Informationsextraktionsüberlegungen und -probleme'.
+            """
+            token_indexes = []
+            containing_subword_token_indexes = []
+            for word_match in word_matches:
+                if word_match.document_subword != None:
+                    token_indexes.append(word_match.document_token.i)
+                    containing_subword_token_indexes.append(
+                            word_match.document_subword.containing_token_index)
+            return len([token_index for token_index in token_indexes if not token_index in
+                    containing_subword_token_indexes]) == 0
 
         matches = [Match(search_phrase.label, document_label,
                 search_phrase.topic_match_phraselet and len(search_phrase.doc) == 1,
@@ -1230,7 +1257,7 @@ class StructuralMatcher:
                     if word_match.document_subword == None:
                         subword_index = None
                     else:
-                        subword_index = word_match.document_subword.subword_index
+                        subword_index = word_match.document_subword.index
                     if not match_already_contains_structurally_matched_document_token(working_match,
                             word_match.structurally_matched_document_token, subword_index):
                         working_match.word_matches.append(word_match)
@@ -1267,6 +1294,9 @@ class StructuralMatcher:
                         break
                 if failed:
                     continue
+
+            if not match_with_subwords_involves_all_containing_document_tokens(match.word_matches):
+                continue
 
             for word_match in match.word_matches:
                 not_normalized_overall_similarity_measure *= word_match.similarity_measure
@@ -1522,7 +1552,7 @@ class StructuralMatcher:
                         root_lexeme_to_indexes_to_match_dict[root_token_lemma_to_use] = \
                                 working_indexes_to_match_for_cache_set
                 for index_to_match in sorted(matched_indexes_set, key = lambda index_to_match:
-                            (index_to_match.token_index, index_to_match.subword_index)):
+                            (index_to_match.token_index, str(index_to_match.subword_index))):
                     matches.extend(self._get_matches_starting_at_root_word_match(
                             search_phrase, doc, doc[index_to_match.token_index],
                             index_to_match.subword_index, document_label,

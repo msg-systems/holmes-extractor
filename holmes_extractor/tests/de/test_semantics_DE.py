@@ -654,6 +654,16 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = analyzer.parse("ZahlungsverkehrX")
         self.assertEqual(len(doc[0]._.holmes.subwords), 0)
 
+    def test_pobjerg_simple(self):
+        doc = analyzer.parse("Die Jagd durch den Hund")
+        self.assertEqual(doc[1]._.holmes.string_representation_of_children(),
+                '2:mnr; 4:pobjerg')
+
+    def test_pobjerg_with_conjunction(self):
+        doc = analyzer.parse("Die Jagd durch den Hund und die Katze")
+        self.assertEqual(doc[1]._.holmes.string_representation_of_children(),
+                '2:mnr; 4:pobjerg; 7:pobjerg')
+
     def test_subwords_word_twice_in_document(self):
         doc = analyzer.parse("Widerrufsbelehrung und die widerrufsbelehrung waren interessant")
         self.assertEqual(len(doc[0]._.holmes.subwords), 2)
