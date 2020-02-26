@@ -390,8 +390,9 @@ class StructuralMatcher:
         replace_with_hypernym_ancestors -- if 'True', all words present in the ontology
             are replaced with their most general (highest) ancestors.
         match_all_words -- if 'True', word phraselets are generated for all matchable words
-            rather than just for words whose tags match the phraselet template; and multiwords
-            are ignored for single-word phraselets.
+            rather than just for words whose tags match the phraselet template; multiwords
+            are not taken into account when processing single-word phraselets; and single-word
+            phraselets are generated for subwords.
         returning_serialized_phraselets -- if 'True', serialized phraselets are returned.
         ignore_relation_phraselets -- if 'True', only single-word phraselets are processed.
         include_reverse_only -- whether to generate phraselets that are only reverse-matched.
@@ -403,12 +404,16 @@ class StructuralMatcher:
             reverse-matched.
         """
 
-        def get_word_from_token(token):
+        def get_word_from_token(index):
+            token = doc[index.token_index]
             if self._is_entity_search_phrase_token(token, False):
                 # False in order to get text rather than lemma
                 return token.text
                 # keep the text, because the lemma will be lowercase
-            word = token._.holmes.lemma
+            if index.is_subword():
+                word = token._.holmes.subwords[index.subword_index].lemma
+            else:
+                word = token._.holmes.lemma
             # the normal situation
             if self.ontology != None and not self.ontology.contains(word) and \
                     self.ontology.contains(token.text.lower()):
@@ -416,20 +421,21 @@ class StructuralMatcher:
                 # ontology contains text but not lemma, so stick to text
             return word
 
-        def process_single_word_phraselet_templates(token, checking_tags,
+        def process_single_word_phraselet_templates(token, subword_index, checking_tags,
                 token_indexes_to_multiword_lemmas):
             for phraselet_template in (phraselet_template for phraselet_template in
                     self.semantic_analyzer.phraselet_templates if
-                    phraselet_template.single_word() and token._.holmes.is_matchable):
+                    phraselet_template.single_word() and (token._.holmes.is_matchable or
+                    subword_index != None)): # see note below for explanation
                 if not checking_tags or token.tag_ in phraselet_template.parent_tags:
                     phraselet_doc = self.semantic_analyzer.parse(
                         phraselet_template.template_sentence)
                     if token.i in token_indexes_to_multiword_lemmas and not match_all_words:
                         word = token_indexes_to_multiword_lemmas[token.i]
                     else:
-                        word = get_word_from_token(token)
+                        word = get_word_from_token(Index(token.i, subword_index))
                     if self.ontology != None and replace_with_hypernym_ancestors:
-                        word = self.ontology.get_most_general_hypernym_ancestor(word)
+                        word = self.ontology.get_most_general_hypernym_ancestor(word).lower()
                     phraselet_doc[phraselet_template.parent_index]._.holmes.lemma = word
                     phraselet_label = ''.join((phraselet_template.label, ': ', word))
                     if word not in stop_lemmas and word != 'ENTITYNOUN':
@@ -443,6 +449,21 @@ class StructuralMatcher:
                         if returning_serialized_phraselets:
                             serialized_phraselets.append(SerializedPhraselet(
                                     phraselet_label, phraselet_template.label, word, None))
+
+        def add_head_subwords_to_token_list_and_remove_words_with_subword_conjuntion(index_list):
+            # for each token in the list, find out whether it has subwords and if so add the
+            # head subword to the list
+            for index in index_list.copy():
+                token = doc[index.token_index]
+                if token._.holmes.subwords != None:
+                    for subword in (subword for subword in token._.holmes.subwords if
+                            subword.is_head and subword.containing_token_index == token.i):
+                        index_list.append(Index(token.i, subword.index))
+            # if one or more subwords do not belong to this token, it is a hyphenated word
+            # within conjunction and should not itself be added as a single-word phraselet.
+                    if len ([subword for subword in token._.holmes.subwords if
+                            subword.containing_token_index != token.i]) > 0:
+                        index_list.remove(index)
 
         if returning_serialized_phraselets:
             serialized_phraselets = []
@@ -461,25 +482,40 @@ class StructuralMatcher:
         for token in doc:
             if token.i in token_indexes_within_multiwords_to_ignore:
                 if match_all_words:
-                    process_single_word_phraselet_templates(token, not match_all_words,
+                    process_single_word_phraselet_templates(token, None, False,
                             token_indexes_to_multiword_lemmas)
                 continue
-            process_single_word_phraselet_templates(token, not match_all_words,
-                    token_indexes_to_multiword_lemmas)
+            if token._.holmes.subwords == None or len([subword for subword in
+                    token._.holmes.subwords if subword.containing_token_index != token.i]) == 0:
+                # whole single words involved in subword conjunction should not be included as
+                # these are partial words including hyphens.
+                process_single_word_phraselet_templates(token, None, not match_all_words,
+                        token_indexes_to_multiword_lemmas)
+            if match_all_words and token._.holmes.subwords != None:
+                for subword in (subword for subword in token._.holmes.subwords if
+                        token.i == subword.containing_token_index):
+                    process_single_word_phraselet_templates(token, subword.index,
+                            False, token_indexes_to_multiword_lemmas)
             if ignore_relation_phraselets:
                 continue
             if self.perform_coreference_resolution:
-                parents = token._.holmes.token_and_coreference_chain_indexes
+                parents = [Index(token_index, None) for token_index in
+                        token._.holmes.token_and_coreference_chain_indexes]
             else:
-                parents = [token.i]
+                parents = [Index(token.i, None)]
+            add_head_subwords_to_token_list_and_remove_words_with_subword_conjuntion(parents)
             for parent in parents:
-                for dependency in (dependency for dependency in doc[parent]._.holmes.children
+                for dependency in (dependency for dependency in
+                        doc[parent.token_index]._.holmes.children
                         if dependency.child_index not in token_indexes_within_multiwords_to_ignore):
                     if self.perform_coreference_resolution:
-                        children = dependency.child_token(doc)._.holmes.\
-                                token_and_coreference_chain_indexes
+                        children = [Index(token_index, None) for token_index in
+                                dependency.child_token(doc)._.holmes.
+                                token_and_coreference_chain_indexes]
                     else:
-                        children = [dependency.child_token(doc).i]
+                        children = [Index(dependency.child_token(doc).i, None)]
+                    add_head_subwords_to_token_list_and_remove_words_with_subword_conjuntion(
+                            children)
                     for child in children:
                         for phraselet_template in (phraselet_template for phraselet_template in
                                 self.semantic_analyzer.phraselet_templates if not
@@ -487,28 +523,31 @@ class StructuralMatcher:
                                 phraselet_template.reverse_only or include_reverse_only)):
                             if dependency.label in \
                                     phraselet_template.dependency_labels and \
-                                    doc[parent].tag_ in phraselet_template.parent_tags and \
-                                    doc[child].tag_ in phraselet_template.child_tags and \
-                                    doc[parent]._.holmes.is_matchable and \
-                                    doc[child]._.holmes.is_matchable:
+                                    doc[parent.token_index].tag_ in phraselet_template.parent_tags\
+                                    and doc[child.token_index].tag_ in \
+                                    phraselet_template.child_tags and \
+                                    doc[parent.token_index]._.holmes.is_matchable and \
+                                    doc[child.token_index]._.holmes.is_matchable:
                                 phraselet_doc = self.semantic_analyzer.parse(
                                         phraselet_template.template_sentence)
-                                if parent in token_indexes_to_multiword_lemmas:
-                                    parent_word = token_indexes_to_multiword_lemmas[parent]
+                                if parent.token_index in token_indexes_to_multiword_lemmas:
+                                    parent_word = token_indexes_to_multiword_lemmas[
+                                            parent.token_index]
                                 else:
-                                    parent_word = get_word_from_token(doc[parent])
+                                    parent_word = get_word_from_token(parent)
                                 if self.ontology != None and replace_with_hypernym_ancestors:
                                     parent_word = \
                                             self.ontology.get_most_general_hypernym_ancestor(
-                                            parent_word)
-                                if child in token_indexes_to_multiword_lemmas:
-                                    child_word = token_indexes_to_multiword_lemmas[child]
+                                            parent_word).lower()
+                                if child.token_index in token_indexes_to_multiword_lemmas:
+                                    child_word = token_indexes_to_multiword_lemmas[
+                                            child.token_index]
                                 else:
-                                    child_word = get_word_from_token(doc[child])
+                                    child_word = get_word_from_token(child)
                                 if self.ontology != None and replace_with_hypernym_ancestors:
                                     child_word = \
                                             self.ontology.get_most_general_hypernym_ancestor(
-                                            child_word)
+                                            child_word).lower()
                                 phraselet_doc[phraselet_template.parent_index]._.holmes.lemma = \
                                         parent_word
                                 phraselet_doc[phraselet_template.child_index]._.holmes.lemma = \
@@ -518,7 +557,8 @@ class StructuralMatcher:
                                 is_reverse_only_parent_lemma = False
                                 if reverse_only_parent_lemmas != None:
                                     for entry in reverse_only_parent_lemmas:
-                                        if entry[0] == parent_word and entry[1] == doc[parent].pos_:
+                                        if entry[0] == parent_word and entry[1] == \
+                                                doc[parent.token_index].pos_:
                                             is_reverse_only_parent_lemma = True
                                 if parent_word not in stop_lemmas and child_word not in stop_lemmas\
                                         and not (is_reverse_only_parent_lemma and not
@@ -532,9 +572,54 @@ class StructuralMatcher:
                                             serialized_phraselets.append(SerializedPhraselet(
                                                     phraselet_label, phraselet_template.label,
                                                     parent_word, child_word))
+            if token._.holmes.subwords != None:
+                # We do not check for matchability in order to catch pos_='X', tag_='TRUNC'. This
+                # is not a problem as only a limited range of parts of speech receive subwords in
+                # the first place.
+                for subword in (subword for subword in token._.holmes.subwords if
+                        subword.dependent_index != None):
+                    parent_subword_index = subword.index
+                    child_subword_index = subword.dependent_index
+                    if token._.holmes.subwords[parent_subword_index].containing_token_index != \
+                            token.i and \
+                            token._.holmes.subwords[child_subword_index].containing_token_index \
+                            != token.i:
+                        continue
+                    for phraselet_template in (phraselet_template for phraselet_template in
+                            self.semantic_analyzer.phraselet_templates if not
+                            phraselet_template.single_word() and (not
+                            phraselet_template.reverse_only or include_reverse_only) and
+                            subword.dependency_label in phraselet_template.dependency_labels and
+                            token.tag_ in phraselet_template.parent_tags):
+                        phraselet_doc = self.semantic_analyzer.parse(
+                                phraselet_template.template_sentence)
+                        parent_word = get_word_from_token(Index(token.i, parent_subword_index))
+                        if self.ontology != None and replace_with_hypernym_ancestors:
+                            parent_word = self.ontology.get_most_general_hypernym_ancestor(
+                                    parent_word).lower()
+                        child_word = get_word_from_token(Index(token.i, child_subword_index))
+                        if self.ontology != None and replace_with_hypernym_ancestors:
+                            child_word = self.ontology.get_most_general_hypernym_ancestor(
+                                    child_word).lower()
+                        phraselet_doc[phraselet_template.parent_index]._.holmes.lemma = \
+                                parent_word
+                        phraselet_doc[phraselet_template.child_index]._.holmes.lemma = \
+                                child_word
+                        phraselet_label = ''.join((phraselet_template.label, ': ',
+                                parent_word, '-', child_word))
+                        if phraselet_label not in phraselet_labels_to_search_phrases:
+                            phraselet_labels_to_search_phrases[phraselet_label] = \
+                                    self.create_search_phrase('topic match phraselet',
+                                    phraselet_doc, phraselet_label, phraselet_template,
+                                    match_all_words, False)
+                            if returning_serialized_phraselets:
+                                serialized_phraselets.append(SerializedPhraselet(
+                                        phraselet_label, phraselet_template.label,
+                                        parent_word, child_word))
+
         if len(phraselet_labels_to_search_phrases) == 0 and not match_all_words:
             for token in doc:
-                process_single_word_phraselet_templates(token, False,
+                process_single_word_phraselet_templates(token, None, False,
                         token_indexes_to_multiword_lemmas)
         if returning_serialized_phraselets:
             return serialized_phraselets
@@ -644,6 +729,12 @@ class StructuralMatcher:
             if phraselet_template != None and phraselet_template.parent_index != token.i and \
                     phraselet_template.child_index != token.i:
                 token._.holmes.is_matchable = False
+            if phraselet_template != None and phraselet_template.parent_index == token.i and not \
+                    phraselet_template.single_word() and \
+                    phraselet_template.assigned_dependency_label != None:
+                for dependency in (dependency for dependency in token._.holmes.children if \
+                        dependency.child_index == phraselet_template.child_index):
+                    dependency.label = phraselet_template.assigned_dependency_label
             if token._.holmes.is_matchable and not (len(token._.holmes.children) > 0 and
                     token._.holmes.children[0].child_index < 0):
                 tokens_to_match.append(token)

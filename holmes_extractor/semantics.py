@@ -227,10 +227,14 @@ class PhraseletTemplate:
         possible child token has already been matched to a single-word phraselet. This
         is used for performance reasons when the parent tag belongs to a closed word class like
         prepositions. Reverse-only phraselets are ignored in supervised document classification.
+    assigned_dependency_label -- if a value other than 'None', specifies a dependency label that
+        should be used to relabel the relationship between the parent and child participants.
+        Has no effect if child_index == None.
     """
 
     def __init__(self, label, template_sentence, parent_index, child_index,
-            dependency_labels, parent_tags, child_tags, *, reverse_only):
+            dependency_labels, parent_tags, child_tags, *, reverse_only,
+            assigned_dependency_label=None):
         self.label = label
         self.template_sentence = template_sentence
         self.parent_index = parent_index
@@ -239,6 +243,7 @@ class PhraseletTemplate:
         self.parent_tags = parent_tags
         self.child_tags = child_tags
         self.reverse_only = reverse_only
+        self.assigned_dependency_label = assigned_dependency_label
 
     def single_word(self):
         """ 'True' if this is a template for single-word phraselets, otherwise 'False'. """
@@ -1371,11 +1376,15 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
             'ag': ['nk', 'mnr', 'intcompound'],
             'da': ['nk', 'og', 'op'],
             'oa': ['nk', 'og', 'op', 'ag', 'mnr', 'arg', 'intcompound'],
-            'og': ['oa', 'da', 'nk', 'op'],
+            'og': ['oa', 'da', 'nk', 'op', 'intcompound'],
             'nk': ['ag', 'intcompound'],
             'mo': ['moposs', 'mnr', 'mnrposs', 'op', 'intcompound'],
-            'mnr': ['mnrposs', 'mo', 'moposs', 'op', 'intcompound']
-            }
+            'mnr': ['mnrposs', 'mo', 'moposs', 'op'],
+            'pobjp': ['intcompound'],
+            # intcompound is only used within extensive matching because it is not assigned
+            # in the context of registering search phrases.
+            'intcompound': ['sb', 'ag', 'oa', 'og', 'nk', 'mo', 'pobjp']
+    }
 
     _mark_child_dependencies_copied_to_siblings_as_uncertain = False
 
@@ -1427,6 +1436,11 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                 ['nk'],
                 ['APPO', 'APPR', 'APPRART', 'APZR'],
                 ['FM', 'NE', 'NNE', 'NN'], reverse_only = True),
+        PhraseletTemplate("intcompound", "Eine Sache in einer Sache", 1, 4,
+                ['intcompound'],
+                ['NE', 'NNE', 'NN', 'TRUNC', 'ADJA', 'ADJD', 'TRUNC'],
+                ['NE', 'NNE', 'NN', 'TRUNC', 'ADJA', 'ADJD', 'TRUNC'], reverse_only = False,
+                assigned_dependency_label = 'intcompound'),
         PhraseletTemplate("word", "Sache", 0, None,
                 None,
                 ['FM', 'NE', 'NNE', 'NN'],

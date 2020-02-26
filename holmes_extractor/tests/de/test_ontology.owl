@@ -21,6 +21,12 @@
     
 
 
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2020/1/subwordtests#Hardware -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2020/1/subwordtests#Hardware"/>
+    
+
+
     <!-- http://www.semanticweb.org/hudsonr/ontologies/2020/1/subwordtests#Jagd -->
 
     <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2020/1/subwordtests#Jagd">
@@ -42,6 +48,14 @@
 
     <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2020/1/subwordtests#Linguistik">
         <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2020/1/subwordtests#Sprachwissenschaft"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2020/1/subwordtests#Monitor -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2020/1/subwordtests#Monitor">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2020/1/subwordtests#Hardware"/>
     </owl:Class>
     
 
