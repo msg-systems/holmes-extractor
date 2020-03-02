@@ -676,3 +676,59 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 "The dog chased the cat")
         self.assertEqual(topic_matches[0].end_index, 7)
         self.assertEqual(topic_matches[1].end_index, 4)
+
+    def test_filtering_with_topic_matches(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.remove_all_search_phrases()
+        holmes_manager_coref.parse_and_register_document("The dog chased the cat", "T11")
+        holmes_manager_coref.parse_and_register_document("The dog chased the cat", "T12")
+        holmes_manager_coref.parse_and_register_document("The dog chased the cat", "T21")
+        holmes_manager_coref.parse_and_register_document("The dog chased the cat", "T22")
+        topic_matches = \
+                holmes_manager_coref.topic_match_documents_against(
+                "The dog chased the cat")
+        self.assertEqual(len(topic_matches), 4)
+        topic_matches = \
+                holmes_manager_coref.topic_match_documents_against(
+                "The dog chased the cat", document_label_filter="T")
+        self.assertEqual(len(topic_matches), 4)
+        topic_matches = \
+                holmes_manager_coref.topic_match_documents_against(
+                "The dog chased the cat", document_label_filter="T1")
+        self.assertEqual(len(topic_matches), 2)
+        topic_matches = \
+                holmes_manager_coref.topic_match_documents_against(
+                "The dog chased the cat", document_label_filter="T22")
+        self.assertEqual(len(topic_matches), 1)
+        topic_matches = \
+                holmes_manager_coref.topic_match_documents_against(
+                "The dog chased the cat", document_label_filter="X")
+        self.assertEqual(len(topic_matches), 0)
+
+    def test_filtering_with_topic_match_dictionaries(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.remove_all_search_phrases()
+        holmes_manager_coref.parse_and_register_document("The dog chased the cat", "T11")
+        holmes_manager_coref.parse_and_register_document("The dog chased the cat", "T12")
+        holmes_manager_coref.parse_and_register_document("The dog chased the cat", "T21")
+        holmes_manager_coref.parse_and_register_document("The dog chased the cat", "T22")
+        topic_match_dictionaries = \
+                holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
+                "The dog chased the cat")
+        self.assertEqual(len(topic_match_dictionaries), 4)
+        topic_match_dictionaries = \
+                holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
+                "The dog chased the cat", document_label_filter="T")
+        self.assertEqual(len(topic_match_dictionaries), 4)
+        topic_match_dictionaries = \
+                holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
+                "The dog chased the cat", document_label_filter="T1")
+        self.assertEqual(len(topic_match_dictionaries), 2)
+        topic_match_dictionaries = \
+                holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
+                "The dog chased the cat", document_label_filter="T22")
+        self.assertEqual(len(topic_match_dictionaries), 1)
+        topic_match_dictionaries = \
+                holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
+                "The dog chased the cat", document_label_filter="X")
+        self.assertEqual(len(topic_match_dictionaries), 0)

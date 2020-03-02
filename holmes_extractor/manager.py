@@ -259,7 +259,8 @@ class Manager:
             maximum_activation_value=1000,
             maximum_number_of_single_word_matches_for_relation_matching = 500,
             maximum_number_of_single_word_matches_for_embedding_matching = 100,
-            sideways_match_extent=100, only_one_result_per_document=False, number_of_results=10):
+            sideways_match_extent=100, only_one_result_per_document=False, number_of_results=10,
+            document_label_filter=None):
         """Returns the results of a topic match between an entered text and the loaded documents.
 
         Properties:
@@ -293,6 +294,8 @@ class Manager:
         only_one_result_per_document -- if 'True', prevents multiple results from being returned
             for the same document.
         number_of_results -- the number of topic match objects to return.
+        document_label_filter -- optionally, a string with which document labels must start to
+            be considered for inclusion in the results.
         """
         maximum_number_of_single_word_matches_for_relation_matching,
         maximum_number_of_single_word_matches_for_embedding_matching,
@@ -312,7 +315,8 @@ class Manager:
                 maximum_number_of_single_word_matches_for_embedding_matching,
                 sideways_match_extent=sideways_match_extent,
                 only_one_result_per_document=only_one_result_per_document,
-                number_of_results=number_of_results)
+                number_of_results=number_of_results,
+                document_label_filter=document_label_filter)
         return topic_matcher.topic_match_documents_against(text_to_match)
 
     def topic_match_documents_returning_dictionaries_against(self, text_to_match, *,
@@ -322,7 +326,7 @@ class Manager:
             maximum_number_of_single_word_matches_for_relation_matching = 500,
             maximum_number_of_single_word_matches_for_embedding_matching = 100,
             sideways_match_extent=100, only_one_result_per_document=False, number_of_results=10,
-            tied_result_quotient=0.9):
+            document_label_filter=None, tied_result_quotient=0.9):
         """Returns a list of dictionaries representing the results of a topic match between an
             entered text and the loaded documents. Callers of this method do not have to manage any
             further dependencies on spaCy or Holmes.
@@ -360,8 +364,10 @@ class Manager:
         number_of_results -- the number of topic match objects to return.
         tied_result_quotient -- the quotient between a result and following results above which
             the results are interpreted as tied.
-
+        document_label_filter -- optionally, a string with which document labels must start to
+            be considered for inclusion in the results.
         """
+        
         topic_matcher = TopicMatcher(semantic_analyzer = self.semantic_analyzer,
                 structural_matcher = self.structural_matcher,
                 indexed_documents = self.threadsafe_container.get_indexed_documents(),
@@ -378,7 +384,8 @@ class Manager:
                 maximum_number_of_single_word_matches_for_embedding_matching,
                 sideways_match_extent=sideways_match_extent,
                 only_one_result_per_document=only_one_result_per_document,
-                number_of_results=number_of_results)
+                number_of_results=number_of_results,
+                document_label_filter=document_label_filter)
         return topic_matcher.topic_match_documents_returning_dictionaries_against(text_to_match,
                 tied_result_quotient=tied_result_quotient)
 
@@ -581,7 +588,7 @@ class MultiprocessingManager:
             embedding_penalty=0.6,maximum_number_of_single_word_matches_for_relation_matching = 500,
             maximum_number_of_single_word_matches_for_embedding_matching = 100,
             sideways_match_extent=100, only_one_result_per_document=False, number_of_results=10,
-            tied_result_quotient=0.9):
+            document_label_filter=None, tied_result_quotient=0.9):
         """Returns the results of a topic match between an entered text and the loaded documents.
 
         Properties:
@@ -615,6 +622,8 @@ class MultiprocessingManager:
         only_one_result_per_document -- if 'True', prevents multiple results from being returned
             for the same document.
         number_of_results -- the number of topic match objects to return.
+        document_label_filter -- optionally, a string with which document labels must start to
+            be considered for inclusion in the results.
         tied_result_quotient -- the quotient between a result and following results above which
             the results are interpreted as tied.
         """
@@ -635,7 +644,7 @@ class MultiprocessingManager:
                     maximum_number_of_single_word_matches_for_relation_matching,
                     maximum_number_of_single_word_matches_for_embedding_matching,
                     sideways_match_extent, only_one_result_per_document, number_of_results,
-                    tied_result_quotient), reply_queue))
+                    document_label_filter, tied_result_quotient), reply_queue))
         topic_match_dicts = []
         for _ in range(0, self._number_of_workers):
             worker_label, worker_topic_match_dicts = reply_queue.get()
@@ -719,7 +728,7 @@ class Worker:
             embedding_penalty,maximum_number_of_single_word_matches_for_relation_matching,
             maximum_number_of_single_word_matches_for_embedding_matching,
             sideways_match_extent, only_one_result_per_document, number_of_results,
-            tied_result_quotient):
+            document_label_filter, tied_result_quotient):
         if len(indexed_documents) == 0:
             return []
         topic_matcher = TopicMatcher(semantic_analyzer = semantic_analyzer,
@@ -738,7 +747,8 @@ class Worker:
                 maximum_number_of_single_word_matches_for_embedding_matching,
                 sideways_match_extent=sideways_match_extent,
                 only_one_result_per_document=only_one_result_per_document,
-                number_of_results=number_of_results)
+                number_of_results=number_of_results,
+                document_label_filter=document_label_filter)
         topic_match_dicts = \
                 topic_matcher.topic_match_documents_returning_dictionaries_against(text_to_match,
                 tied_result_quotient=tied_result_quotient)

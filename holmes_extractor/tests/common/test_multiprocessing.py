@@ -158,3 +158,33 @@ class MultiprocessingTest(unittest.TestCase):
 
     def test_multithreading_topic_matching_with_8_workers(self):
         self._internal_test_multithreading_topic_matching(8)
+
+    def test_multithreading_filtering_with_topic_match_dictionaries(self):
+        m = holmes.MultiprocessingManager('en_core_web_sm', number_of_workers=2,
+                ontology=ontology, verbose=False)
+
+        m.parse_and_register_documents({'T11' : "The dog chased the cat",
+                'T12' : "The dog chased the cat",
+                'T21' : "The dog chased the cat",
+                'T22' : "The dog chased the cat"})
+        topic_match_dictionaries = \
+                m.topic_match_documents_returning_dictionaries_against(
+                "The dog chased the cat")
+        self.assertEqual(len(topic_match_dictionaries), 4)
+        topic_match_dictionaries = \
+                m.topic_match_documents_returning_dictionaries_against(
+                "The dog chased the cat", document_label_filter="T")
+        self.assertEqual(len(topic_match_dictionaries), 4)
+        topic_match_dictionaries = \
+                m.topic_match_documents_returning_dictionaries_against(
+                "The dog chased the cat", document_label_filter="T1")
+        self.assertEqual(len(topic_match_dictionaries), 2)
+        topic_match_dictionaries = \
+                m.topic_match_documents_returning_dictionaries_against(
+                "The dog chased the cat", document_label_filter="T22")
+        self.assertEqual(len(topic_match_dictionaries), 1)
+        topic_match_dictionaries = \
+                m.topic_match_documents_returning_dictionaries_against(
+                "The dog chased the cat", document_label_filter="X")
+        self.assertEqual(len(topic_match_dictionaries), 0)
+        m.close()

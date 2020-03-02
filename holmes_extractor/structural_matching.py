@@ -1476,7 +1476,8 @@ class StructuralMatcher:
             compare_embeddings_on_root_words,
             compare_embeddings_on_non_root_words,
             document_labels_to_indexes_for_reverse_matching_sets,
-            document_labels_to_indexes_for_embedding_reverse_matching_sets):
+            document_labels_to_indexes_for_embedding_reverse_matching_sets,
+            document_label_filter = None):
         """Finds and returns matches between search phrases and documents.
         match_depending_on_single_words -- 'True' to match only single word search phrases,
             'False' to match only non-single-word search phrases and 'None' to match both.
@@ -1489,6 +1490,8 @@ class StructuralMatcher:
             reverse matching only.
         document_labels_to_indexes_for_embedding_reverse_matching_sets -- indexes for direct reverse
             matching and for embedding-based reverse matching.
+        document_label_filter -- a string with which the label of a document must begin for that
+            document to be considered for matching, or 'None' if no filter is in use.
         """
 
         def get_indexes_to_consider(dictionary, document_label):
@@ -1512,6 +1515,9 @@ class StructuralMatcher:
             raise NoSearchPhraseError('At least one search_phrase is required to match.')
         matches = []
         for document_label, registered_document in indexed_documents.items():
+            if document_label_filter != None and document_label != None and not \
+                    document_label.startswith(str(document_label_filter)):
+                continue
             if output_document_matching_message_to_console:
                 print('Processing document', document_label)
             doc = registered_document.doc

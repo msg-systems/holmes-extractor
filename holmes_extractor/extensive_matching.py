@@ -69,7 +69,8 @@ class TopicMatcher:
             single_word_score, single_word_any_tag_score, overlapping_relation_multiplier,
             embedding_penalty, maximum_number_of_single_word_matches_for_relation_matching,
             maximum_number_of_single_word_matches_for_embedding_matching,
-            sideways_match_extent, only_one_result_per_document, number_of_results):
+            sideways_match_extent, only_one_result_per_document, number_of_results,
+            document_label_filter):
         if maximum_number_of_single_word_matches_for_embedding_matching > \
                 maximum_number_of_single_word_matches_for_relation_matching:
             raise EmbeddingThresholdGreaterThanRelationThresholdError(' '.join((
@@ -95,6 +96,7 @@ class TopicMatcher:
         self.sideways_match_extent = sideways_match_extent
         self.only_one_result_per_document = only_one_result_per_document
         self.number_of_results = number_of_results
+        self.document_label_filter = document_label_filter
 
     def _get_word_match_from_match(self, match, parent):
         ## child if parent==False
@@ -504,7 +506,8 @@ class TopicMatcher:
                 compare_embeddings_on_root_words = False,
                 compare_embeddings_on_non_root_words = False,
                 document_labels_to_indexes_for_reverse_matching_sets = None,
-                document_labels_to_indexes_for_embedding_reverse_matching_sets = None)
+                document_labels_to_indexes_for_embedding_reverse_matching_sets = None,
+                document_label_filter = self.document_label_filter)
         if not self.structural_matcher.embedding_based_matching_on_root_words:
             rebuild_document_info_dict(structural_matches, phraselet_labels_to_search_phrases)
             for phraselet in (phraselet for phraselet in phraselet_labels_to_search_phrases.values()
@@ -520,7 +523,8 @@ class TopicMatcher:
                 compare_embeddings_on_root_words = False,
                 compare_embeddings_on_non_root_words = False,
                 document_labels_to_indexes_for_reverse_matching_sets = None,
-                document_labels_to_indexes_for_embedding_reverse_matching_sets = None))
+                document_labels_to_indexes_for_embedding_reverse_matching_sets = None,
+                document_label_filter = self.document_label_filter))
 
         rebuild_document_info_dict(structural_matches, phraselet_labels_to_search_phrases)
         parent_document_labels_to_indexes_for_direct_retry_sets = {}
@@ -549,7 +553,8 @@ class TopicMatcher:
                     document_labels_to_indexes_for_reverse_matching_sets =
                     parent_document_labels_to_indexes_for_direct_retry_sets,
                     document_labels_to_indexes_for_embedding_reverse_matching_sets =
-                    parent_document_labels_to_indexes_for_embedding_retry_sets))
+                    parent_document_labels_to_indexes_for_embedding_retry_sets,
+                    document_label_filter = self.document_label_filter))
 
         if len(child_document_labels_to_indexes_for_embedding_retry_sets) > 0:
 
@@ -563,7 +568,8 @@ class TopicMatcher:
                     compare_embeddings_on_non_root_words = True,
                     document_labels_to_indexes_for_reverse_matching_sets = None,
                     document_labels_to_indexes_for_embedding_reverse_matching_sets =
-                    child_document_labels_to_indexes_for_embedding_retry_sets))
+                    child_document_labels_to_indexes_for_embedding_retry_sets,
+                    document_label_filter = self.document_label_filter))
         if len(parent_document_labels_to_indexes_for_direct_retry_sets) > 0 or \
                 len(parent_document_labels_to_indexes_for_embedding_retry_sets) > 0 or \
                 len(child_document_labels_to_indexes_for_embedding_retry_sets) > 0:
