@@ -1,7 +1,10 @@
 import unittest
 import holmes_extractor as holmes
+import os
 
-holmes_manager = holmes.Manager('de_core_news_md')
+script_directory = os.path.dirname(os.path.realpath(__file__))
+ontology = holmes.Ontology(os.sep.join((script_directory,'test_ontology.owl')))
+holmes_manager = holmes.Manager('de_core_news_md', ontology=ontology)
 holmes_manager_with_embeddings = holmes.Manager('de_core_news_md',
         overall_similarity_threshold=0.65)
 
@@ -160,6 +163,143 @@ class GermanTopicMatchingTest(unittest.TestCase):
                 "vier Ochsen", 34,
                 holmes_manager_with_embeddings)
 
+    def test_separate_words_in_text_to_match_subwords_in_document_text_with_fugen_s(self):
+        self._check_equals("Die Extraktion der Information",
+                "Informationsextraktion", 40,
+                holmes_manager)
+
+    def test_separate_words_in_text_to_match_subwords_in_document_text_without_fugen_s(self):
+        self._check_equals("Eine Symphonie des Mozarts",
+                "Mozartsymphonien", 40,
+                holmes_manager)
+
+    def test_subwords_in_text_to_match_separate_words_in_document_text_with_fugen_s(self):
+        self._check_equals("Informationsextraktion",
+                "Die Extraktion der Information", 29,
+                holmes_manager)
+
+    def test_subwords_in_text_to_match_separate_words_in_document_text_without_fugen_s(self):
+        self._check_equals("Mozartsymphonien",
+                "Eine Symphonie von Mozart", 29,
+                holmes_manager)
+
+    def test_subwords_in_text_to_match_subwords_in_document_text_with_fugen_s(self):
+        self._check_equals("Informationsextraktion",
+                "Informationsextraktion", 10,
+                holmes_manager)
+
+    def test_subwords_in_text_to_match_subwords_in_document_text_without_fugen_s(self):
+        self._check_equals("Mozartsymphonie",
+                "Mozartsymphonie", 10,
+                holmes_manager)
+
+    def test_subwords_in_text_to_match_subwords_in_document_text_lemmatization_failed(self):
+        self._check_equals("Mozartsymphonien",
+                "Mozartsymphonie", 30,
+                holmes_manager)
+
+    def test_subwords_conjunction_in_text_to_match(self):
+        self._check_equals("Mozart- und Beethovensymphonie",
+                "Mozartsymphonie", 30,
+                holmes_manager)
+
+    def test_subwords_conjunction_in_document_text(self):
+        self._check_equals("Mozartsymphonie",
+                "Mozart- und Beethovensymphonie", 30,
+                holmes_manager)
+
+    def test_subwords_conjunction_in_text_to_match_and_document_text(self):
+        self._check_equals("Mozart- und Mahlersymphonie",
+                "Mozart- und Beethovensymphonie", 30,
+                holmes_manager)
+
+    def test_subword_matches_verbal_expression(self):
+        self._check_equals("Katzenjagen",
+                "Ein Hund jagt eine Katze", 29,
+                holmes_manager)
+
+    def test_disjunct_relation_mapping_within_subword(self):
+        self._check_equals("Extraktion von Information und Entführung von Löwen",
+                "Informationsextraktionsentführung von Löwen", 78)
+
+    def test_overlapping_relation_mapping_within_subword(self):
+        self._check_equals("Extraktion von Information und Löwen",
+                "Informationsextraktion von Löwen", 87)
+
+    def test_word_with_subwords_matches_single_word_linked_via_ontology(self):
+        self._check_equals("Komputerlinguistik",
+                "Linguistik", 10,
+                holmes_manager)
+
+    def test_word_with_subwords_matches_single_word_linked_via_ontology_control(self):
+        self._check_equals("Theorielinguistik",
+                "Linguistik", 5,
+                holmes_manager)
+
+    def test_single_word_matches_word_with_subwords_linked_via_ontology(self):
+        self._check_equals("Linguistik",
+                "Komputerlinguistik", 10,
+                holmes_manager)
+
+    def test_single_word_matches_word_with_subwords_linked_via_ontology_control(self):
+        self._check_equals("Linguistik",
+                "Theorielinguistik", 10,
+                holmes_manager)
+
+    def test_embedding_matching_with_subwords(self):
+        self._check_equals("Eine Königsabdanken",
+                "Der Prinz dankte ab", 14,
+                holmes_manager_with_embeddings)
+
+    def test_embedding_matching_with_subwords_control(self):
+        self._check_equals("Eine Königsabdanken",
+                "Der Prinz dankte ab", 5,
+                holmes_manager)
+
+    def test_sibling_match_with_higher_similarity_and_subwords_1(self):
+        self._check_equals("Das Abdanken eines Königs",
+                "Ein Königs- und Prinzenabdanken", 40,
+                holmes_manager_with_embeddings)
+
+    def test_sibling_match_with_higher_similarity_no_embeddings_control(self):
+        self._check_equals("Das Abdanken eines Königs",
+                "Ein Königs- und Prinzenabdanken", 40,
+                holmes_manager)
+
+    def test_sibling_match_with_higher_similarity_and_subwords_2(self):
+        self._check_equals("Das Abdanken eines Königs",
+                "Ein Prinzen- und Königsabdanken", 40,
+                holmes_manager_with_embeddings)
+
+    def test_sibling_match_with_higher_similarity_and_subwords_3(self):
+        self._check_equals("Ein Königs- und Prinzenabdanken",
+                "Das Abdanken eines Königs", 29,
+                holmes_manager_with_embeddings)
+
+    def test_sibling_match_with_higher_similarity_and_subwords_4(self):
+        self._check_equals("Ein Prinzen- und Königsabdanken",
+                "Das Abdanken eines Königs", 29,
+                holmes_manager_with_embeddings)
+
+    def test_sibling_match_with_higher_similarity_and_subwords_control_1(self):
+        self._check_equals("Das Abdanken eines Königs",
+                "Ein Prinzen- und Informationsabdanken", 19,
+                holmes_manager_with_embeddings)
+
+    def test_sibling_match_with_higher_similarity_and_subwords_control_2(self):
+        self._check_equals("Ein Prinzen- und Informationsabdanken",
+                "Das Abdanken eines Königs", 14,
+                holmes_manager_with_embeddings)
+
+    def test_entity_matching_with_single_word_subword_match(self):
+        self._check_equals("Ein ENTITYLOC singt", "Informationsextraktion hat sich durchgesetzt", 10)
+
+    def test_entity_matching_with_relation_subword_match(self):
+        self._check_equals("Ein ENTITYLOC setzt sich durch", "Informationsextraktion hat sich durchgesetzt", 34)
+
+    def test_entitynoun_matching_with_relation_subword_match(self):
+        self._check_equals("Ein ENTITYNOUN setzt sich durch", "Informationsextraktion hat sich durchgesetzt", 25)
+
     def test_indexes(self):
         holmes_manager.remove_all_documents()
         holmes_manager.parse_and_register_document(
@@ -186,3 +326,84 @@ class GermanTopicMatchingTest(unittest.TestCase):
         self.assertEqual(topic_matches[0].end_index, 2)
         self.assertEqual(topic_matches[1].start_index, 1)
         self.assertEqual(topic_matches[1].end_index, 2)
+
+    def test_suppressed_relation_matching_picked_up_during_reverse_matching_subwords(self):
+        holmes_manager.remove_all_documents()
+        holmes_manager.parse_and_register_document(
+                "Der König dankte ab. Die Königin dankte ab.")
+        topic_matches = holmes_manager.topic_match_documents_against("Das Königabdanken",
+                relation_score=20, reverse_only_relation_score=15, single_word_score=10,
+                single_word_any_tag_score=5,
+                maximum_number_of_single_word_matches_for_relation_matching = 1,
+                maximum_number_of_single_word_matches_for_embedding_matching = 0)
+        self.assertEqual(int(topic_matches[0].score), 29)
+
+    def test_reverse_matching_suppressed_with_embedding_reverse_matching_parent(self):
+        holmes_manager_with_embeddings.remove_all_documents()
+        holmes_manager_with_embeddings.parse_and_register_document("Der Prinz dankte ab")
+        topic_matches = holmes_manager_with_embeddings.topic_match_documents_against(
+                "Das Königsabdanken",
+                relation_score=20, reverse_only_relation_score=15, single_word_score=10,
+                single_word_any_tag_score=5,
+                maximum_number_of_single_word_matches_for_embedding_matching = 0)
+        self.assertEqual(int(topic_matches[0].score), 5)
+
+    def test_reverse_matching_suppressed_with_embedding_reverse_matching_parent_control(self):
+        holmes_manager_with_embeddings.remove_all_documents()
+        holmes_manager_with_embeddings.parse_and_register_document("Der Prinz dankte ab")
+        topic_matches = holmes_manager_with_embeddings.topic_match_documents_against(
+                "Das Königsabdanken",
+                relation_score=20, reverse_only_relation_score=15, single_word_score=10,
+                single_word_any_tag_score=5,
+                maximum_number_of_single_word_matches_for_embedding_matching = 1)
+        self.assertEqual(int(topic_matches[0].score), 14)
+
+    def test_reverse_matching_suppressed_with_embedding_reverse_matching_child(self):
+        holmes_manager_with_embeddings.remove_all_documents()
+        holmes_manager_with_embeddings.parse_and_register_document("Der König vom Abdanken")
+        topic_matches = holmes_manager_with_embeddings.topic_match_documents_against(
+                "Die Abdankenprinzen",
+                relation_score=20, reverse_only_relation_score=15, single_word_score=10,
+                single_word_any_tag_score=5,
+                maximum_number_of_single_word_matches_for_embedding_matching = 0)
+        self.assertEqual(int(topic_matches[0].score), 5)
+
+    def test_reverse_matching_suppressed_with_embedding_reverse_matching_child_control(self):
+        holmes_manager_with_embeddings.remove_all_documents()
+        holmes_manager_with_embeddings.parse_and_register_document("Der König vom Abdanken")
+        topic_matches = holmes_manager_with_embeddings.topic_match_documents_against(
+                "Die Abdankenprinzen",
+                relation_score=20, reverse_only_relation_score=15, single_word_score=10,
+                single_word_any_tag_score=5,
+                maximum_number_of_single_word_matches_for_embedding_matching = 1)
+        self.assertEqual(int(topic_matches[0].score), 14)
+
+    def test_disjunct_relation_mapping_within_subword_dictionaries(self):
+        holmes_manager.remove_all_documents()
+        holmes_manager.remove_all_search_phrases()
+        holmes_manager.parse_and_register_document("Informationssymphonieentführung von Löwen")
+        topic_match_dictionaries = \
+                holmes_manager.topic_match_documents_returning_dictionaries_against(
+                "Symphonie von Information und Entführung von Löwen")
+        self.assertEqual(topic_match_dictionaries,
+        [{'document_label': '', 'text': 'Informationssymphonieentführung von Löwen', 'text_to_match': 'Symphonie von Information und Entführung von Löwen', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 41, 'score': 78, 'word_infos': [[0, 11, 'relation', False], [12, 21, 'relation', False], [21, 31, 'relation', False], [36, 41, 'relation', True]]}])
+
+    def test_overlapping_relation_mapping_within_subword_dictionaries(self):
+        holmes_manager.remove_all_documents()
+        holmes_manager.remove_all_search_phrases()
+        holmes_manager.parse_and_register_document("Informationsextraktion von Löwen")
+        topic_match_dictionaries = \
+                holmes_manager.topic_match_documents_returning_dictionaries_against(
+                "Extraktion von Information und Löwen")
+        self.assertEqual(topic_match_dictionaries,
+        [{'document_label': '', 'text': 'Informationsextraktion von Löwen', 'text_to_match': 'Extraktion von Information und Löwen', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 32, 'score': 102.33333333333334, 'word_infos': [[0, 11, 'overlapping_relation', False], [12, 22, 'overlapping_relation', False], [27, 32, 'overlapping_relation', True]]}])
+
+    def test_subword_dictionaries_subword_is_not_peak(self):
+        holmes_manager.remove_all_documents()
+        holmes_manager.remove_all_search_phrases()
+        holmes_manager.parse_and_register_document("Information und Löwen wurden genommen")
+        topic_match_dictionaries = \
+                holmes_manager.topic_match_documents_returning_dictionaries_against(
+                "Informationsnehmen der Löwen")
+        self.assertEqual(topic_match_dictionaries,
+        [{'document_label': '', 'text': 'Information und Löwen wurden genommen', 'text_to_match': 'Informationsnehmen der Löwen', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 37, 'score': 38.76, 'word_infos': [[0, 11, 'relation', False], [16, 21, 'single', False], [29, 37, 'relation', True]]}])

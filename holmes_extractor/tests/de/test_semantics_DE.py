@@ -1393,6 +1393,8 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[0]._.holmes.subwords[0].is_head, False)
         self.assertEqual(doc[0]._.holmes.subwords[0].dependent_index, None)
         self.assertEqual(doc[0]._.holmes.subwords[0].dependency_label, None)
+        self.assertEqual(doc[0]._.holmes.subwords[0].governor_index, 1)
+        self.assertEqual(doc[0]._.holmes.subwords[0].governing_dependency_label, 'intcompound')
 
         self.assertEqual(doc[0]._.holmes.subwords[1].text, 'textil')
         self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'textil')
@@ -1402,6 +1404,8 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[0]._.holmes.subwords[1].is_head, False)
         self.assertEqual(doc[0]._.holmes.subwords[1].dependent_index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[1].dependency_label, 'intcompound')
+        self.assertEqual(doc[0]._.holmes.subwords[1].governor_index, 2)
+        self.assertEqual(doc[0]._.holmes.subwords[1].governing_dependency_label, 'intcompound')
 
         self.assertEqual(doc[0]._.holmes.subwords[2].text, 'groß')
         self.assertEqual(doc[0]._.holmes.subwords[2].lemma, 'groß')
@@ -1411,6 +1415,8 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[0]._.holmes.subwords[2].is_head, False)
         self.assertEqual(doc[0]._.holmes.subwords[2].dependent_index, 1)
         self.assertEqual(doc[0]._.holmes.subwords[2].dependency_label, 'intcompound')
+        self.assertEqual(doc[0]._.holmes.subwords[2].governor_index, 3)
+        self.assertEqual(doc[0]._.holmes.subwords[2].governing_dependency_label, 'intcompound')
 
         self.assertEqual(doc[0]._.holmes.subwords[3].text, 'detail')
         self.assertEqual(doc[0]._.holmes.subwords[3].lemma, 'detail')
@@ -1420,6 +1426,8 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[0]._.holmes.subwords[3].is_head, False)
         self.assertEqual(doc[0]._.holmes.subwords[3].dependent_index, 2)
         self.assertEqual(doc[0]._.holmes.subwords[3].dependency_label, 'intcompound')
+        self.assertEqual(doc[0]._.holmes.subwords[3].governor_index, 4)
+        self.assertEqual(doc[0]._.holmes.subwords[3].governing_dependency_label, 'intcompound')
 
         self.assertEqual(doc[0]._.holmes.subwords[4].text, 'handel')
         self.assertEqual(doc[0]._.holmes.subwords[4].lemma, 'handeln')
@@ -1429,6 +1437,8 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[0]._.holmes.subwords[4].is_head, True)
         self.assertEqual(doc[0]._.holmes.subwords[4].dependent_index, 3)
         self.assertEqual(doc[0]._.holmes.subwords[4].dependency_label, 'intcompound')
+        self.assertEqual(doc[0]._.holmes.subwords[4].governor_index, None)
+        self.assertEqual(doc[0]._.holmes.subwords[4].governing_dependency_label, None)
 
         self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Fein')
         self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'fein')
@@ -1438,6 +1448,8 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[2]._.holmes.subwords[0].is_head, False)
         self.assertEqual(doc[2]._.holmes.subwords[0].dependent_index, None)
         self.assertEqual(doc[2]._.holmes.subwords[0].dependency_label, None)
+        self.assertEqual(doc[2]._.holmes.subwords[0].governor_index, 1)
+        self.assertEqual(doc[2]._.holmes.subwords[0].governing_dependency_label, 'intcompound')
 
         self.assertEqual(doc[2]._.holmes.subwords[1].text, 'textil')
         self.assertEqual(doc[2]._.holmes.subwords[1].lemma, 'textil')
@@ -1447,7 +1459,8 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[2]._.holmes.subwords[1].is_head, False)
         self.assertEqual(doc[2]._.holmes.subwords[1].dependent_index, 0)
         self.assertEqual(doc[2]._.holmes.subwords[1].dependency_label, 'intcompound')
-
+        self.assertEqual(doc[2]._.holmes.subwords[1].governor_index, 2)
+        self.assertEqual(doc[2]._.holmes.subwords[1].governing_dependency_label, 'intcompound')
 
         self.assertEqual(doc[2]._.holmes.subwords[2].text, 'klein')
         self.assertEqual(doc[2]._.holmes.subwords[2].lemma, 'klein')
@@ -1457,6 +1470,8 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[2]._.holmes.subwords[2].is_head, False)
         self.assertEqual(doc[2]._.holmes.subwords[2].dependent_index, 1)
         self.assertEqual(doc[2]._.holmes.subwords[2].dependency_label, 'intcompound')
+        self.assertEqual(doc[2]._.holmes.subwords[2].governor_index, 3)
+        self.assertEqual(doc[2]._.holmes.subwords[2].governing_dependency_label, 'intcompound')
 
         self.assertEqual(doc[2]._.holmes.subwords[3].text, 'detail')
         self.assertEqual(doc[2]._.holmes.subwords[3].lemma, 'detail')
@@ -1466,7 +1481,8 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[2]._.holmes.subwords[3].is_head, False)
         self.assertEqual(doc[2]._.holmes.subwords[3].dependent_index, 2)
         self.assertEqual(doc[2]._.holmes.subwords[3].dependency_label, 'intcompound')
-
+        self.assertEqual(doc[2]._.holmes.subwords[3].governor_index, 4)
+        self.assertEqual(doc[2]._.holmes.subwords[3].governing_dependency_label, 'intcompound')
 
         self.assertEqual(doc[2]._.holmes.subwords[4].text, 'handel')
         self.assertEqual(doc[2]._.holmes.subwords[4].lemma, 'handeln')
@@ -1476,6 +1492,8 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[2]._.holmes.subwords[4].is_head, True)
         self.assertEqual(doc[2]._.holmes.subwords[4].dependent_index, 3)
         self.assertEqual(doc[2]._.holmes.subwords[4].dependency_label, 'intcompound')
+        self.assertEqual(doc[2]._.holmes.subwords[4].governor_index, None)
+        self.assertEqual(doc[2]._.holmes.subwords[4].governing_dependency_label, None)
 
         self.assertEqual(doc[4]._.holmes.subwords[0].text, 'Fein')
         self.assertEqual(doc[4]._.holmes.subwords[0].lemma, 'fein')
@@ -1485,6 +1503,8 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[4]._.holmes.subwords[0].is_head, False)
         self.assertEqual(doc[4]._.holmes.subwords[0].dependent_index, None)
         self.assertEqual(doc[4]._.holmes.subwords[0].dependency_label, None)
+        self.assertEqual(doc[4]._.holmes.subwords[0].governor_index, 1)
+        self.assertEqual(doc[4]._.holmes.subwords[0].governing_dependency_label, 'intcompound')
 
         self.assertEqual(doc[4]._.holmes.subwords[1].text, 'textil')
         self.assertEqual(doc[4]._.holmes.subwords[1].lemma, 'textil')
@@ -1494,6 +1514,8 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[4]._.holmes.subwords[1].is_head, False)
         self.assertEqual(doc[4]._.holmes.subwords[1].dependent_index, 0)
         self.assertEqual(doc[4]._.holmes.subwords[1].dependency_label, 'intcompound')
+        self.assertEqual(doc[4]._.holmes.subwords[1].governor_index, 2)
+        self.assertEqual(doc[4]._.holmes.subwords[1].governing_dependency_label, 'intcompound')
 
         self.assertEqual(doc[4]._.holmes.subwords[2].text, 'mittel')
         self.assertEqual(doc[4]._.holmes.subwords[2].lemma, 'mitteln')
@@ -1503,6 +1525,8 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[4]._.holmes.subwords[2].is_head, False)
         self.assertEqual(doc[4]._.holmes.subwords[2].dependent_index, 1)
         self.assertEqual(doc[4]._.holmes.subwords[2].dependency_label, 'intcompound')
+        self.assertEqual(doc[4]._.holmes.subwords[2].governor_index, 3)
+        self.assertEqual(doc[4]._.holmes.subwords[2].governing_dependency_label, 'intcompound')
 
         self.assertEqual(doc[4]._.holmes.subwords[3].text, 'detail')
         self.assertEqual(doc[4]._.holmes.subwords[3].lemma, 'detail')
@@ -1512,6 +1536,8 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[4]._.holmes.subwords[3].is_head, False)
         self.assertEqual(doc[4]._.holmes.subwords[3].dependent_index, 2)
         self.assertEqual(doc[4]._.holmes.subwords[3].dependency_label, 'intcompound')
+        self.assertEqual(doc[4]._.holmes.subwords[3].governor_index, 4)
+        self.assertEqual(doc[4]._.holmes.subwords[3].governing_dependency_label, 'intcompound')
 
         self.assertEqual(doc[4]._.holmes.subwords[4].text, 'handel')
         self.assertEqual(doc[4]._.holmes.subwords[4].lemma, 'handeln')
@@ -1521,6 +1547,8 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[4]._.holmes.subwords[4].is_head, True)
         self.assertEqual(doc[4]._.holmes.subwords[4].dependent_index, 3)
         self.assertEqual(doc[4]._.holmes.subwords[4].dependency_label, 'intcompound')
+        self.assertEqual(doc[4]._.holmes.subwords[4].governor_index, None)
+        self.assertEqual(doc[4]._.holmes.subwords[4].governing_dependency_label, None)
 
         self.assertEqual(doc[6]._.holmes.subwords[0].text, 'Fein')
         self.assertEqual(doc[6]._.holmes.subwords[0].lemma, 'fein')
@@ -1530,6 +1558,8 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[6]._.holmes.subwords[0].is_head, False)
         self.assertEqual(doc[6]._.holmes.subwords[0].dependent_index, None)
         self.assertEqual(doc[6]._.holmes.subwords[0].dependency_label, None)
+        self.assertEqual(doc[6]._.holmes.subwords[0].governor_index, 1)
+        self.assertEqual(doc[6]._.holmes.subwords[0].governing_dependency_label, 'intcompound')
 
         self.assertEqual(doc[6]._.holmes.subwords[1].text, 'textil')
         self.assertEqual(doc[6]._.holmes.subwords[1].lemma, 'textil')
@@ -1539,6 +1569,8 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[6]._.holmes.subwords[1].is_head, False)
         self.assertEqual(doc[6]._.holmes.subwords[1].dependent_index, 0)
         self.assertEqual(doc[6]._.holmes.subwords[1].dependency_label, 'intcompound')
+        self.assertEqual(doc[6]._.holmes.subwords[1].governor_index, 2)
+        self.assertEqual(doc[6]._.holmes.subwords[1].governing_dependency_label, 'intcompound')
 
         self.assertEqual(doc[6]._.holmes.subwords[2].text, 'einzel')
         self.assertEqual(doc[6]._.holmes.subwords[2].lemma, 'einzel')
@@ -1548,6 +1580,8 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[6]._.holmes.subwords[2].is_head, False)
         self.assertEqual(doc[6]._.holmes.subwords[2].dependent_index, 1)
         self.assertEqual(doc[6]._.holmes.subwords[2].dependency_label, 'intcompound')
+        self.assertEqual(doc[6]._.holmes.subwords[2].governor_index, 3)
+        self.assertEqual(doc[6]._.holmes.subwords[2].governing_dependency_label, 'intcompound')
 
         self.assertEqual(doc[6]._.holmes.subwords[3].text, 'detail')
         self.assertEqual(doc[6]._.holmes.subwords[3].lemma, 'detail')
@@ -1557,6 +1591,8 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[6]._.holmes.subwords[3].is_head, False)
         self.assertEqual(doc[6]._.holmes.subwords[3].dependent_index, 2)
         self.assertEqual(doc[6]._.holmes.subwords[3].dependency_label, 'intcompound')
+        self.assertEqual(doc[6]._.holmes.subwords[3].governor_index, 4)
+        self.assertEqual(doc[6]._.holmes.subwords[3].governing_dependency_label, 'intcompound')
 
         self.assertEqual(doc[6]._.holmes.subwords[4].text, 'handel')
         self.assertEqual(doc[6]._.holmes.subwords[4].lemma, 'handeln')
@@ -1566,6 +1602,9 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[6]._.holmes.subwords[4].is_head, True)
         self.assertEqual(doc[6]._.holmes.subwords[4].dependent_index, 3)
         self.assertEqual(doc[6]._.holmes.subwords[4].dependency_label, 'intcompound')
+        self.assertEqual(doc[6]._.holmes.subwords[4].governor_index, None)
+        self.assertEqual(doc[6]._.holmes.subwords[4].governing_dependency_label, None)
+
 
     def test_inner_hyphens_single_word(self):
 
@@ -1578,6 +1617,9 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[0]._.holmes.subwords[0].is_head, False)
         self.assertEqual(doc[0]._.holmes.subwords[0].dependent_index, None)
         self.assertEqual(doc[0]._.holmes.subwords[0].dependency_label, None)
+        self.assertEqual(doc[0]._.holmes.subwords[0].governor_index, 1)
+        self.assertEqual(doc[0]._.holmes.subwords[0].governing_dependency_label, 'intcompound')
+
 
         self.assertEqual(doc[0]._.holmes.subwords[1].text, 'Symphonien')
         self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'symphonie')
@@ -1587,6 +1629,9 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[0]._.holmes.subwords[1].is_head, True)
         self.assertEqual(doc[0]._.holmes.subwords[1].dependent_index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[1].dependency_label, 'intcompound')
+        self.assertEqual(doc[0]._.holmes.subwords[1].governor_index, None)
+        self.assertEqual(doc[0]._.holmes.subwords[1].governing_dependency_label, None)
+
 
     def test_inner_hyphens_single_word_fugen_s(self):
 
@@ -1739,3 +1784,13 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[2]._.holmes.subwords[1].index, 1)
         self.assertEqual(doc[2]._.holmes.subwords[1].containing_token_index, 2)
         self.assertEqual(doc[2]._.holmes.subwords[1].char_start_index, 12)
+
+    def test_conjunction_switched_round_with_hyphenated_subword_expression(self):
+
+        doc = analyzer.parse("Ein Informationsextraktions- und Besprechungspaket wird aufgelöst")
+        self.assertEqual(doc[5]._.holmes.string_representation_of_children(), '1:oa; 3:oa')
+
+    def test_conjunction_switched_round_with_hyphenated_subword_expression_and_relative_clause(self):
+
+        doc = analyzer.parse("Das Informationsextraktions- und Besprechungspaket, welches aufgelöst wurde")
+        self.assertEqual(doc[6]._.holmes.string_representation_of_children(), '1:oa(U); 3:oa')

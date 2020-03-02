@@ -83,9 +83,13 @@ class Subword:
             if there is no such subword.
         dependency_label -- the label of the dependency between this subword and its dependent,
             or *None* if it has no dependent.
+        governor_index -- the index of a subword on which this subword is dependent, or *None*
+            if there is no such subword.
+        governing_dependency_label -- the label of the dependency between this subword and its
+            governor, or *None* if it has no governor.
     """
     def __init__(self, containing_token_index, index, text, lemma, char_start_index, is_head,
-            dependent_index, dependency_label):
+            dependent_index, dependency_label, governor_index, governing_dependency_label):
         self.containing_token_index = containing_token_index
         self.index = index
         self.text = text
@@ -94,6 +98,8 @@ class Subword:
         self.is_head = is_head
         self.dependent_index = dependent_index
         self.dependency_label = dependency_label
+        self.governor_index = governor_index
+        self.governing_dependency_label = governing_dependency_label
 
     def __str__(self):
         return ('/'.join((self.text, self.lemma)))
@@ -1629,7 +1635,8 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                 token._.holmes.subwords.append(Subword(token.i, cached_subword.index,
                         cached_subword.text, cached_subword.lemma,
                         cached_subword.char_start_index, cached_subword.is_head,
-                        cached_subword.dependent_index, cached_subword.dependency_label))
+                        cached_subword.dependent_index, cached_subword.dependency_label,
+                        cached_subword.governor_index, cached_subword.governing_dependency_label))
         else:
             working_subwords = []
             possible_subwords = scan_recursively_for_subwords(token._.holmes.lemma)
@@ -1663,7 +1670,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                                 working_subwords.append(Subword(first_sibling.i, index,
                                         text, lemma,
                                         first_sibling_possible_subword.char_start_index,
-                                        None, None, None))
+                                        None, None, None, None, None))
                                 index += 1
                 lemmatization_doc = get_lemmatization_doc(possible_subwords, token.pos_)
                 for counter in range(len(possible_subwords)):
@@ -1672,7 +1679,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                             possible_subword.char_start_index + len(possible_subword.text)]
                     lemma = lemmatization_doc[counter*2].lemma_.lower()
                     working_subwords.append(Subword(token.i, index, text, lemma,
-                            possible_subword.char_start_index, None, None, None))
+                            possible_subword.char_start_index, None, None, None, None, None))
                     index += 1
                 if token._.holmes.lemma[-1] == '-':
                     # with truncated nouns, the righthand siblings may actually occur to the left
@@ -1698,7 +1705,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                                     lemma = last_sibling_lemmatization_doc[counter*2].lemma_.lower()
                                     working_subwords.append(Subword(last_sibling.i, index, text,
                                             lemma, last_sibling_possible_subword.char_start_index,
-                                            None, None, None))
+                                            None, None, None, None, None))
                                     index += 1
 
                 if index > 1: # if only one subword was found, no need to record it on ._.holmes
@@ -1709,12 +1716,19 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                         else:
                             dependency_label = None
                             dependent_index = None
+                        if counter + 1 < len(working_subwords):
+                            governing_dependency_label = 'intcompound'
+                            governor_index = counter + 1
+                        else:
+                            governing_dependency_label = None
+                            governor_index = None
                         working_subword = working_subwords[counter]
                         token._.holmes.subwords.append(Subword(
                                 working_subword.containing_token_index,
                                 working_subword.index, working_subword.text, working_subword.lemma,
                                 working_subword.char_start_index, counter + 1 ==
-                                len(working_subwords), dependent_index, dependency_label))
+                                len(working_subwords), dependent_index, dependency_label,
+                                governor_index, governing_dependency_label))
                 if token._.holmes.lemma.isalpha(): # caching only where no hyphenation
                     subword_cache[token.text] = token._.holmes.subwords
         if len(token._.holmes.subwords) > 1 and 'nicht' in (subword.lemma for subword in
@@ -1784,7 +1798,8 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                                 #mark syntactic object as synctactic subject, removing the
                                 #preposition 'von' or 'durch' from the construction and marking
                                 #it as non-matchable
-                                for grandchild_dependency in (gd for gd in child_or_sib._.holmes.children if gd.child_index >= 0):
+                                for grandchild_dependency in (gd for gd in
+                                        child_or_sib._.holmes.children if gd.child_index >= 0):
                                     grandchild = token.doc[grandchild_dependency.child_index]
                                     if (grandchild_dependency.label == 'sbp' and
                                             grandchild._.holmes.lemma in ('von', 'vom')) or \
@@ -2040,10 +2055,10 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                 dependency.is_uncertain]) == 0:
             dependencies.sort(key = lambda dependency: dependency.child_index)
             first_real_subject = dependencies[0].child_token(token.doc)
-            for real_subject in \
-                    first_real_subject._.holmes.loop_token_and_righthand_siblings(token.doc):
+            for real_subject_index in \
+                    first_real_subject._.holmes.get_sibling_indexes(token.doc):
                 for dependency in dependencies:
-                    if dependency.child_index == real_subject.i:
+                    if dependency.child_index == real_subject_index:
                        dependencies.remove(dependency)
             for dependency in (other_dependency for other_dependency in dependencies):
                 dependency.label = 'oa'
@@ -2055,12 +2070,9 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                 in dependencies if object_dependency.label == 'sb' and not
                 dependency.is_uncertain]) == 0:
             dependencies.sort(key = lambda dependency: dependency.child_index)
-            real_subjects = [dependency for dependency in
-                    dependencies[0].child_token(token.doc)._.holmes.\
-                    loop_token_and_righthand_siblings(token.doc)]
-            real_subject_indexes = (map(lambda real_subject: real_subject.i,
-                    real_subjects))
-            if len(dependencies) > len(real_subjects):
+            first_real_subject = dependencies[0].child_token(token.doc)
+            real_subject_indexes = first_real_subject._.holmes.get_sibling_indexes(token.doc)
+            if len(dependencies) > len(real_subject_indexes):
                 for dependency in (dependency for dependency in dependencies if
                         dependency.child_index in real_subject_indexes):
                     dependency.label = 'sb'

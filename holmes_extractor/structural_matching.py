@@ -2,6 +2,7 @@ import copy
 from .errors import *
 from .semantics import SemanticDependency
 from threading import Lock
+from functools import total_ordering
 
 class WordMatch:
     """A match between a searched phrase word and a document word.
@@ -17,7 +18,7 @@ class WordMatch:
         *document_token* except with multiword matches.
     document_subword -- the subword from the token that matched, or *None* if the match was
         with the whole token.
-    document_word -- the word that matched structurally from the document.
+    document_word -- the word or subword that matched structurally from the document.
     type -- *direct*, *entity*, *embedding* or *ontology*.
     similarity_measure -- for type *embedding*, the similarity between the two tokens,
         otherwise 1.0.
@@ -59,6 +60,13 @@ class WordMatch:
     @property
     def involves_coreference(self):
         return self.document_token != self.structurally_matched_document_token
+
+    def get_document_index(self):
+        if self.document_subword != None:
+            subword_index = self.document_subword.index
+        else:
+            subword_index = None
+        return Index(self.document_token.i, subword_index)
 
 class Match:
     """A match between a search phrase and a document.
@@ -114,6 +122,22 @@ class Match:
         match_to_return.index_within_document = self.index_within_document
         return match_to_return
 
+    def get_subword_index(self):
+        if len(self.word_matches) == 0:
+            return None
+        if self.word_matches[0].document_subword == None:
+            return None
+        return self.word_matches[0].document_subword.index
+
+    def get_subword_index_for_sorting(self):
+        # returns *-1* rather than *None* in the absence of a subword
+        if len(self.word_matches) == 0:
+            return -1
+        if self.word_matches[0].document_subword == None:
+            return -1
+        return self.word_matches[0].document_subword.index
+
+@total_ordering
 class Index:
     """ The position of a word or subword within a document. """
 
@@ -127,6 +151,17 @@ class Index:
     def __eq__(self, other):
         return type(other) == Index and \
                 self.token_index == other.token_index and self.subword_index == other.subword_index
+
+    def __lt__(self, other):
+        if type(other) != Index:
+            raise RuntimeError('Comparison between Index and another type.')
+        if self.token_index < other.token_index:
+            return True
+        if not self.is_subword() and other.is_subword():
+            return True
+        if self.is_subword() and other.is_subword() and self.subword_index < other.subword_index:
+            return True
+        return False
 
     def __hash__(self):
         return hash((self.token_index, self.subword_index))
@@ -450,20 +485,19 @@ class StructuralMatcher:
                             serialized_phraselets.append(SerializedPhraselet(
                                     phraselet_label, phraselet_template.label, word, None))
 
-        def add_head_subwords_to_token_list_and_remove_words_with_subword_conjuntion(index_list):
+        def add_head_subwords_to_token_list_and_remove_words_with_subword_conjunction(index_list):
             # for each token in the list, find out whether it has subwords and if so add the
             # head subword to the list
             for index in index_list.copy():
                 token = doc[index.token_index]
-                if token._.holmes.subwords != None:
-                    for subword in (subword for subword in token._.holmes.subwords if
-                            subword.is_head and subword.containing_token_index == token.i):
-                        index_list.append(Index(token.i, subword.index))
+                for subword in (subword for subword in token._.holmes.subwords if
+                        subword.is_head and subword.containing_token_index == token.i):
+                    index_list.append(Index(token.i, subword.index))
             # if one or more subwords do not belong to this token, it is a hyphenated word
-            # within conjunction and should not itself be added as a single-word phraselet.
-                    if len ([subword for subword in token._.holmes.subwords if
-                            subword.containing_token_index != token.i]) > 0:
-                        index_list.remove(index)
+            # within conjunction and the whole word should not be used to build relation phraselets.
+                if len ([subword for subword in token._.holmes.subwords if
+                        subword.containing_token_index != token.i]) > 0:
+                    index_list.remove(index)
 
         if returning_serialized_phraselets:
             serialized_phraselets = []
@@ -485,13 +519,13 @@ class StructuralMatcher:
                     process_single_word_phraselet_templates(token, None, False,
                             token_indexes_to_multiword_lemmas)
                 continue
-            if token._.holmes.subwords == None or len([subword for subword in
-                    token._.holmes.subwords if subword.containing_token_index != token.i]) == 0:
+            if len([subword for subword in token._.holmes.subwords if
+                    subword.containing_token_index != token.i]) == 0:
                 # whole single words involved in subword conjunction should not be included as
                 # these are partial words including hyphens.
                 process_single_word_phraselet_templates(token, None, not match_all_words,
                         token_indexes_to_multiword_lemmas)
-            if match_all_words and token._.holmes.subwords != None:
+            if match_all_words:
                 for subword in (subword for subword in token._.holmes.subwords if
                         token.i == subword.containing_token_index):
                     process_single_word_phraselet_templates(token, subword.index,
@@ -503,7 +537,7 @@ class StructuralMatcher:
                         token._.holmes.token_and_coreference_chain_indexes]
             else:
                 parents = [Index(token.i, None)]
-            add_head_subwords_to_token_list_and_remove_words_with_subword_conjuntion(parents)
+            add_head_subwords_to_token_list_and_remove_words_with_subword_conjunction(parents)
             for parent in parents:
                 for dependency in (dependency for dependency in
                         doc[parent.token_index]._.holmes.children
@@ -514,7 +548,7 @@ class StructuralMatcher:
                                 token_and_coreference_chain_indexes]
                     else:
                         children = [Index(dependency.child_token(doc).i, None)]
-                    add_head_subwords_to_token_list_and_remove_words_with_subword_conjuntion(
+                    add_head_subwords_to_token_list_and_remove_words_with_subword_conjunction(
                             children)
                     for child in children:
                         for phraselet_template in (phraselet_template for phraselet_template in
@@ -572,50 +606,49 @@ class StructuralMatcher:
                                             serialized_phraselets.append(SerializedPhraselet(
                                                     phraselet_label, phraselet_template.label,
                                                     parent_word, child_word))
-            if token._.holmes.subwords != None:
-                # We do not check for matchability in order to catch pos_='X', tag_='TRUNC'. This
-                # is not a problem as only a limited range of parts of speech receive subwords in
-                # the first place.
-                for subword in (subword for subword in token._.holmes.subwords if
-                        subword.dependent_index != None):
-                    parent_subword_index = subword.index
-                    child_subword_index = subword.dependent_index
-                    if token._.holmes.subwords[parent_subword_index].containing_token_index != \
-                            token.i and \
-                            token._.holmes.subwords[child_subword_index].containing_token_index \
-                            != token.i:
-                        continue
-                    for phraselet_template in (phraselet_template for phraselet_template in
-                            self.semantic_analyzer.phraselet_templates if not
-                            phraselet_template.single_word() and (not
-                            phraselet_template.reverse_only or include_reverse_only) and
-                            subword.dependency_label in phraselet_template.dependency_labels and
-                            token.tag_ in phraselet_template.parent_tags):
-                        phraselet_doc = self.semantic_analyzer.parse(
-                                phraselet_template.template_sentence)
-                        parent_word = get_word_from_token(Index(token.i, parent_subword_index))
-                        if self.ontology != None and replace_with_hypernym_ancestors:
-                            parent_word = self.ontology.get_most_general_hypernym_ancestor(
-                                    parent_word).lower()
-                        child_word = get_word_from_token(Index(token.i, child_subword_index))
-                        if self.ontology != None and replace_with_hypernym_ancestors:
-                            child_word = self.ontology.get_most_general_hypernym_ancestor(
-                                    child_word).lower()
-                        phraselet_doc[phraselet_template.parent_index]._.holmes.lemma = \
-                                parent_word
-                        phraselet_doc[phraselet_template.child_index]._.holmes.lemma = \
-                                child_word
-                        phraselet_label = ''.join((phraselet_template.label, ': ',
-                                parent_word, '-', child_word))
-                        if phraselet_label not in phraselet_labels_to_search_phrases:
-                            phraselet_labels_to_search_phrases[phraselet_label] = \
-                                    self.create_search_phrase('topic match phraselet',
-                                    phraselet_doc, phraselet_label, phraselet_template,
-                                    match_all_words, False)
-                            if returning_serialized_phraselets:
-                                serialized_phraselets.append(SerializedPhraselet(
-                                        phraselet_label, phraselet_template.label,
-                                        parent_word, child_word))
+            # We do not check for matchability in order to catch pos_='X', tag_='TRUNC'. This
+            # is not a problem as only a limited range of parts of speech receive subwords in
+            # the first place.
+            for subword in (subword for subword in token._.holmes.subwords if
+                    subword.dependent_index != None):
+                parent_subword_index = subword.index
+                child_subword_index = subword.dependent_index
+                if token._.holmes.subwords[parent_subword_index].containing_token_index != \
+                        token.i and \
+                        token._.holmes.subwords[child_subword_index].containing_token_index \
+                        != token.i:
+                    continue
+                for phraselet_template in (phraselet_template for phraselet_template in
+                        self.semantic_analyzer.phraselet_templates if not
+                        phraselet_template.single_word() and (not
+                        phraselet_template.reverse_only or include_reverse_only) and
+                        subword.dependency_label in phraselet_template.dependency_labels and
+                        token.tag_ in phraselet_template.parent_tags):
+                    phraselet_doc = self.semantic_analyzer.parse(
+                            phraselet_template.template_sentence)
+                    parent_word = get_word_from_token(Index(token.i, parent_subword_index))
+                    if self.ontology != None and replace_with_hypernym_ancestors:
+                        parent_word = self.ontology.get_most_general_hypernym_ancestor(
+                                parent_word).lower()
+                    child_word = get_word_from_token(Index(token.i, child_subword_index))
+                    if self.ontology != None and replace_with_hypernym_ancestors:
+                        child_word = self.ontology.get_most_general_hypernym_ancestor(
+                                child_word).lower()
+                    phraselet_doc[phraselet_template.parent_index]._.holmes.lemma = \
+                            parent_word
+                    phraselet_doc[phraselet_template.child_index]._.holmes.lemma = \
+                            child_word
+                    phraselet_label = ''.join((phraselet_template.label, ': ',
+                            parent_word, '-', child_word))
+                    if phraselet_label not in phraselet_labels_to_search_phrases:
+                        phraselet_labels_to_search_phrases[phraselet_label] = \
+                                self.create_search_phrase('topic match phraselet',
+                                phraselet_doc, phraselet_label, phraselet_template,
+                                match_all_words, False)
+                        if returning_serialized_phraselets:
+                            serialized_phraselets.append(SerializedPhraselet(
+                                    phraselet_label, phraselet_template.label,
+                                    parent_word, child_word))
 
         if len(phraselet_labels_to_search_phrases) == 0 and not match_all_words:
             for token in doc:
@@ -884,13 +917,12 @@ class StructuralMatcher:
                                     working_document_child_indexes.copy():
                                 working_document_child = \
                                         document_token.doc[working_document_child_index.token_index]
-                                if working_document_child._.holmes.subwords != None:
-                                    for subword in (subword for subword in
-                                            working_document_child._.holmes.subwords if
-                                            subword.is_head):
-                                        working_document_child_indexes.append(Index(
-                                                subword.containing_token_index,
-                                                subword.index))
+                                for subword in (subword for subword in
+                                        working_document_child._.holmes.subwords if
+                                        subword.is_head):
+                                    working_document_child_indexes.append(Index(
+                                            working_document_child.i,
+                                            subword.index))
                             # Loop through the dependencies from each token
                             for working_document_child_index in (working_index for working_index
                                     in working_document_child_indexes if working_index not in
@@ -973,7 +1005,7 @@ class StructuralMatcher:
             document_word_text = document_token._.holmes.subwords[document_subword_index].text
             document_word_lemma = document_token._.holmes.subwords[document_subword_index].lemma
         else:
-            document_word_text = document_token.text.lower()
+            document_word_text = document_token.text
             document_word_lemma = document_token._.holmes.lemma
 
         if self._is_entity_search_phrase_token(search_phrase_token,
@@ -999,14 +1031,14 @@ class StructuralMatcher:
                 return True
             return False
 
-        if search_phrase_word_lemma == document_word_text:
+        if search_phrase_word_lemma == document_word_text.lower():
             handle_match(search_phrase_word_lemma, document_word_text, 'direct', 0)
             return True
         if search_phrase_word_lemma == document_word_lemma:
             handle_match(search_phrase_word_lemma, document_word_lemma, 'direct', 0)
             return True
         if self.ontology != None:
-            entry = self.ontology.matches(search_phrase_word_lemma, document_word_text)
+            entry = self.ontology.matches(search_phrase_word_lemma, document_word_text.lower())
             if entry != None:
                 handle_match(search_phrase_word_lemma, entry.word, 'ontology',
                         entry.depth)
@@ -1022,14 +1054,14 @@ class StructuralMatcher:
             # search phrase word is not multiword, phrasal or separable verb, so we can match
             # against its text as well as its lemma
             if len(search_phrase_word_lemma.split()) == 1:
-                if search_phrase_word_text == document_word_text:
-                    handle_match(search_phrase_token.text, document_token.text, 'direct', 0)
+                if search_phrase_word_text == document_word_text.lower():
+                    handle_match(search_phrase_token.text, document_token_text, 'direct', 0)
                     return True
                 if search_phrase_word_text == document_word_lemma:
                     handle_match(search_phrase_token.text, document_word_lemma, 'direct', 0)
                     return True
             if self.ontology != None:
-                entry = self.ontology.matches(search_phrase_word_text, document_word_text)
+                entry = self.ontology.matches(search_phrase_word_text, document_word_text.lower())
                 if entry != None:
                     handle_match(search_phrase_token.text, entry.word, 'ontology',
                             entry.depth)
@@ -1549,8 +1581,9 @@ class StructuralMatcher:
                                             subword,
                                             subword.text,
                                             'direct',
-                                            1.0, token.is_negated, False, token, None, None))
-                                    if token.is_negated:
+                                            1.0, token._.holmes.is_negated, False, token, None,
+                                            None))
+                                    if token._.holmes.is_negated:
                                         minimal_match.is_negated = True
                                 matches.append(minimal_match)
                     continue
@@ -1642,8 +1675,7 @@ class StructuralMatcher:
                                     working_indexes_to_match_for_cache_set.update(indexes_to_match)
                         root_lexeme_to_indexes_to_match_dict[root_token_lemma_to_use] = \
                                 working_indexes_to_match_for_cache_set
-                for index_to_match in sorted(matched_indexes_set, key = lambda index_to_match:
-                            (index_to_match.token_index, str(index_to_match.subword_index))):
+                for index_to_match in sorted(matched_indexes_set):
                     matches.extend(self._get_matches_starting_at_root_word_match(
                             search_phrase, doc, doc[index_to_match.token_index],
                             index_to_match.subword_index, document_label,

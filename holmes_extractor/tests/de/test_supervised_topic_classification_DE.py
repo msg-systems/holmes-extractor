@@ -85,17 +85,113 @@ class GermanSupervisedTopicClassificationTest(unittest.TestCase):
                 freq.keys())
         self.assertEqual(freq['word: löwe'], {'Tiere': 2})
 
+    def test_get_labels_to_classification_frequencies_direct_matching_with_subwords(self):
+        sttb = holmes_manager.get_supervised_topic_training_basis(oneshot=False)
+        sttb.parse_and_register_training_document(
+                "Ein Informationslöwe jagt einen Informationstiger", 'Tiere')
+        sttb.parse_and_register_training_document("schnell", 'Dummy')
+        sttb.prepare()
+        freq = sttb.labels_to_classification_frequencies
+        self.assertEqual(freq['verb-nom: jagen-löwe'], {'Tiere': 1})
+        self.assertEqual(freq['verb-acc: jagen-tigern'], {'Tiere': 1})
+        self.assertEqual(freq['verb-acc: jagen-tigern/verb-nom: jagen-löwe'], {'Tiere': 1})
+        self.assertEqual(freq['word: informationslöwe'], {'Tiere': 1})
+        self.assertEqual(freq['word: informationstiger'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: löwe-information'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: tigern-information'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: löwe-information/verb-nom: jagen-löwe'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: tigern-information/verb-acc: jagen-tigern'], {'Tiere': 1})
+
+    def test_get_labels_to_classification_frequencies_direct_matching_with_subwords_and_conjunction_of_verb(self):
+        sttb = holmes_manager.get_supervised_topic_training_basis(oneshot=False)
+        sttb.parse_and_register_training_document(
+                "Ein Informationslöwe jagt und trägt einen Informationstiger", 'Tiere')
+        sttb.parse_and_register_training_document("schnell", 'Dummy')
+        sttb.prepare()
+        freq = sttb.labels_to_classification_frequencies
+        self.assertEqual(freq['verb-nom: jagen-löwe'], {'Tiere': 1})
+        self.assertEqual(freq['verb-nom: tragen-löwe'], {'Tiere': 1})
+        self.assertEqual(freq['verb-acc: tragen-tigern'], {'Tiere': 1})
+        self.assertEqual(freq['verb-acc: tragen-tigern/verb-nom: tragen-löwe'], {'Tiere': 1})
+        self.assertEqual(freq['word: informationslöwe'], {'Tiere': 1})
+        self.assertEqual(freq['word: informationstiger'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: löwe-information'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: tigern-information'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: löwe-information/verb-nom: jagen-löwe'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: löwe-information/verb-nom: tragen-löwe'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: tigern-information/verb-acc: tragen-tigern'], {'Tiere': 1})
+
+    def test_get_labels_to_classification_frequencies_with_front_subword_conjunction(self):
+        sttb = holmes_manager.get_supervised_topic_training_basis(oneshot=False)
+        sttb.parse_and_register_training_document(
+                "Ein Informationsextraktionsmaßnahmen- und Raketenlöwe fressen", 'Tiere')
+        sttb.parse_and_register_training_document("schnell", 'Dummy')
+        sttb.prepare()
+        freq = sttb.labels_to_classification_frequencies
+        self.assertEqual(freq['intcompound: extraktion-information'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: maßnahme-extraktion'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: löwe-maßnahme'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: löwe-rakete'], {'Tiere': 1})
+        self.assertEqual(freq['verb-nom: fressen-löwe'], {'Tiere': 1})
+        self.assertEqual(freq['word: raketenlöwe'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: extraktion-information/intcompound: maßnahme-extraktion'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: löwe-maßnahme/intcompound: maßnahme-extraktion'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: löwe-rakete/verb-nom: fressen-löwe'], {'Tiere': 1})
+        # 'intcompound: löwe-maßnahme/verb-nom: fressen-löwe' should logically be added as well,
+        # but would require considerable changes for very little additional functionality.
+
+    def test_get_labels_to_classification_frequencies_with_back_subword_conjunction(self):
+        sttb = holmes_manager.get_supervised_topic_training_basis(oneshot=False)
+        sttb.parse_and_register_training_document(
+                "Ein Informationsextraktionsmaßnahmen und -raketenlöwe fressen", 'Tiere')
+        sttb.parse_and_register_training_document("schnell", 'Dummy')
+        sttb.prepare()
+        freq = sttb.labels_to_classification_frequencies
+        print(freq)
+        self.assertEqual(freq['intcompound: extraktion-information'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: maßnahme-extraktion'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: rakete-extraktion'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: löwe-rakete'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: löwe-rakete/intcompound: rakete-extraktion'], {'Tiere': 1})
+        self.assertEqual(freq['verb-nom: fressen-löwe'], {'Tiere': 1})
+        self.assertEqual(freq['verb-nom: fressen-maßnahme'], {'Tiere': 1})
+        self.assertEqual(freq['word: informationsextraktionsmaßnahmen'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: extraktion-information/intcompound: maßnahme-extraktion'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: löwe-rakete/verb-nom: fressen-löwe'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: maßnahme-extraktion/verb-nom: fressen-maßnahme'], {'Tiere': 1})
+        self.assertEqual(freq['verb-nom: fressen-löwe/verb-nom: fressen-maßnahme'], {'Tiere': 1})
+
+    def test_get_labels_to_classification_frequencies_with_front_and_back_subword_conjunction(self):
+        sttb = holmes_manager.get_supervised_topic_training_basis(oneshot=False)
+        sttb.parse_and_register_training_document(
+                "Ein Informationsextraktionsmaßnahmen- und -raketenlöwe fressen", 'Tiere')
+        sttb.parse_and_register_training_document("schnell", 'Dummy')
+        sttb.prepare()
+        freq = sttb.labels_to_classification_frequencies
+        self.assertEqual(freq['intcompound: extraktion-information'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: maßnahme-extraktion'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: rakete-extraktion'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: löwe-maßnahme'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: löwe-rakete'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: löwe-rakete/intcompound: rakete-extraktion'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: löwe-maßnahme/intcompound: maßnahme-extraktion'], {'Tiere': 1})
+        self.assertEqual(freq['verb-nom: fressen-löwe'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: extraktion-information/intcompound: maßnahme-extraktion'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: löwe-rakete/verb-nom: fressen-löwe'], {'Tiere': 1})
+
     def _test_whole_scenario(self, oneshot):
         sttb = holmes_manager.get_supervised_topic_training_basis(oneshot=oneshot)
         sttb.parse_and_register_training_document("Eine Katze jagt einen Hund. Eine Katze.", 'Tiere',
             't2')
-        sttb.parse_and_register_training_document("Ein Hund jagt eine Katze", 'Tiere', 't1')
+        sttb.parse_and_register_training_document("Ein Plüschhund jagt eine Katze", 'Tiere', 't1')
         sttb.parse_and_register_training_document("Eine Katze jagt eine Maus", 'Tiere', 't3')
         sttb.parse_and_register_training_document("Ein Programmierer benutzt eine Maus", 'IT', 'i1')
         sttb.parse_and_register_training_document("Ein Programmierer schreibt Python", 'IT', 'i2')
         sttb.prepare()
         freq = sttb.labels_to_classification_frequencies
         self.assertEqual(freq['verb-nom: jagen-hund'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: hund-plüsch'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: hund-plüsch/verb-nom: jagen-hund'], {'Tiere': 1})
         self.assertEqual(freq['verb-nom: jagen-katze'], {'Tiere': 2})
         self.assertEqual(freq['verb-acc: jagen-katze/verb-nom: jagen-hund'], {'Tiere': 1})
         self.assertEqual(freq['verb-acc: jagen-hund/verb-nom: jagen-katze'], {'Tiere': 1})
@@ -125,7 +221,8 @@ class GermanSupervisedTopicClassificationTest(unittest.TestCase):
         # should not have any effect because the supervised topic objects have their own
         # StructuralMatcher instance
         self.assertEqual(list(trainer._sorted_label_dict.keys()),
-                ['verb-acc: benutzen-maus',
+                ['intcompound: hund-plüsch', 'intcompound: hund-plüsch/verb-nom: jagen-hund',
+                'verb-acc: benutzen-maus',
                 'verb-acc: benutzen-maus/verb-nom: benutzen-programmierer', 'verb-acc: jagen-hund',
                 'verb-acc: jagen-hund/verb-nom: jagen-katze', 'verb-acc: jagen-katze',
                 'verb-acc: jagen-katze/verb-nom: jagen-hund', 'verb-acc: jagen-maus',
@@ -133,40 +230,47 @@ class GermanSupervisedTopicClassificationTest(unittest.TestCase):
                 'verb-acc: schreiben-python/verb-nom: schreiben-programmierer',
                 'verb-nom: benutzen-programmierer', 'verb-nom: jagen-hund',
                 'verb-nom: jagen-katze', 'verb-nom: schreiben-programmierer', 'word: hund',
-                'word: katze', 'word: maus', 'word: programmierer', 'word: python'])
+                'word: katze', 'word: maus', 'word: plüschhund', 'word: programmierer',
+                'word: python'])
         if oneshot:
             self.assertEqual([
-                    [1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0,
-                    0.0, 1.0, 1.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0,
-                    0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0], [0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0,
-                    0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 1.0,
-                    1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0,
-                    0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0,
-                    0.0, 1.0, 1.0, 0.0, 0.0]], trainer._input_matrix.toarray().tolist())
+                    [0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0], [1.0,
+                    1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0,
+                    1.0, 0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0,
+                    0.0, 0.0, 0.0]],
+                    trainer._input_matrix.toarray().tolist())
         else:
             self.assertEqual([
-                    [1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0,
-                    0.0, 1.0, 1.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0,
-                    0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 1.0, 1.0], [0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0,
-                    0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 1.0,
-                    1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 2.0, 0.0, 0.0,
-                    0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0,
-                    0.0, 1.0, 1.0, 0.0, 0.0]], trainer._input_matrix.toarray().tolist())
+                    [0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 0.0], [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0], [1.0,
+                    1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0,
+                    1.0, 0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 2.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0,
+                    0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0,
+                    0.0, 0.0, 0.0]],
+                    trainer._input_matrix.toarray().tolist())
 
         self.assertEqual([[1.0, 0.0], [1.0, 0.0], [0.0, 1.0], [0.0, 1.0], [0.0, 1.0]],
                 trainer._output_matrix.toarray().tolist())
-        self.assertEqual((19,13,7),trainer._hidden_layer_sizes)
+        self.assertEqual((22,15,8),trainer._hidden_layer_sizes)
         stc = trainer.classifier()
         self.assertEqual(stc.parse_and_classify(
                 "Der Programmierer hat schon wieder Python geschrieben."),
                 ['IT'])
         self.assertEqual(stc.parse_and_classify("Der Hund jagt"), ['Tiere'])
+        self.assertEqual(stc.parse_and_classify("Der Plüschhund debattiert"), ['Tiere'])
         self.assertEqual(stc.parse_and_classify("Das Parlament debattiert das Gesetz"), [])
         serialized_supervised_topic_classifier_model = stc.serialize_model()
         stc2 = holmes_manager.deserialize_supervised_topic_classifier(
                 serialized_supervised_topic_classifier_model)
         self.assertEqual(list(stc2._model.sorted_label_dict.keys()),
-                ['verb-acc: benutzen-maus',
+                ['intcompound: hund-plüsch', 'intcompound: hund-plüsch/verb-nom: jagen-hund',
+                'verb-acc: benutzen-maus',
                 'verb-acc: benutzen-maus/verb-nom: benutzen-programmierer', 'verb-acc: jagen-hund',
                 'verb-acc: jagen-hund/verb-nom: jagen-katze', 'verb-acc: jagen-katze',
                 'verb-acc: jagen-katze/verb-nom: jagen-hund', 'verb-acc: jagen-maus',
@@ -174,11 +278,13 @@ class GermanSupervisedTopicClassificationTest(unittest.TestCase):
                 'verb-acc: schreiben-python/verb-nom: schreiben-programmierer',
                 'verb-nom: benutzen-programmierer', 'verb-nom: jagen-hund',
                 'verb-nom: jagen-katze', 'verb-nom: schreiben-programmierer', 'word: hund',
-                'word: katze', 'word: maus', 'word: programmierer', 'word: python'])
+                'word: katze', 'word: maus', 'word: plüschhund', 'word: programmierer',
+                'word: python'])
         self.assertEqual(stc2.parse_and_classify(
                 "Der Programmierer hat schon wieder Python geschrieben."),
                 ['IT'])
         self.assertEqual(stc2.parse_and_classify("Der Hund jagt"), ['Tiere'])
+        self.assertEqual(stc2.parse_and_classify("Der Plüschhund debattiert"), ['Tiere'])
         self.assertEqual(stc2.parse_and_classify("Das Parlament debattiert das Gesetz"), [])
 
     def test_whole_scenario(self):

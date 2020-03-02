@@ -160,7 +160,7 @@ class MultithreadingTest(unittest.TestCase):
                 self.assertFalse(match.from_single_word_phraselet)
                 self.assertEqual(match.overall_similarity_measure, '1.0')
                 self.assertEqual(match.index_within_document, 1)
-                self.assertEqual(match.word_matches[0].document_word, 'people')
+                self.assertEqual(match.word_matches[0].document_word, 'People')
                 self.assertEqual(match.word_matches[0].search_phrase_word, 'people')
                 self.assertEqual(match.word_matches[0].type, 'direct')
                 self.assertEqual(match.word_matches[0].document_token.i, 0)

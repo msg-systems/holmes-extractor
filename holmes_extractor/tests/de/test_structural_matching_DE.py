@@ -40,6 +40,7 @@ holmes_manager_with_embeddings.register_search_phrase("Ein Mann sieht einen gro�
 holmes_manager_with_embeddings.register_search_phrase("Der Himmel ist grün")
 holmes_manager_with_embeddings.register_search_phrase("Ein König tritt zurück")
 holmes_manager_with_embeddings.register_search_phrase("Die Abdankung eines Königs")
+holmes_manager_with_embeddings.register_search_phrase("Informationskönig")
 
 class GermanStructuralMatchingTest(unittest.TestCase):
 
@@ -820,12 +821,15 @@ class GermanStructuralMatchingTest(unittest.TestCase):
         self.assertEqual(matches[0].word_matches[0].document_token.i, 0)
         self.assertEqual(matches[0].word_matches[0].document_subword.index, 2)
         self.assertEqual(matches[0].word_matches[0].document_subword.containing_token_index, 4)
+        self.assertEqual(matches[0].word_matches[0].document_word, 'maßnahme')
         self.assertEqual(matches[0].word_matches[1].document_token.i, 0)
         self.assertEqual(matches[0].word_matches[1].document_subword.index, 1)
         self.assertEqual(matches[0].word_matches[1].document_subword.containing_token_index, 4)
+        self.assertEqual(matches[0].word_matches[1].document_word, 'beschaffung')
         self.assertEqual(matches[0].word_matches[2].document_token.i, 0)
         self.assertEqual(matches[0].word_matches[2].document_subword.index, 0)
         self.assertEqual(matches[0].word_matches[2].document_subword.containing_token_index, 0)
+        self.assertEqual(matches[0].word_matches[2].document_word, 'Information')
 
     def test_three_subwords_two_word_conjunction_last_elements_two_one(self):
         matches = self._get_matches(holmes_manager,
@@ -883,15 +887,21 @@ class GermanStructuralMatchingTest(unittest.TestCase):
         self.assertEqual(matches[0].word_matches[2].document_subword.index, 0)
         self.assertEqual(matches[0].word_matches[2].document_subword.containing_token_index, 0)
 
-    def test_embeddings_not_extended_to_subwords_control_case(self):
+    def test_uncertain_subword_match_with_or_conjunction(self):
+        matches = self._get_matches(holmes_manager,
+                "Informationsinteressen oder -extraktion")
+        self.assertEqual(len(matches), 1)
+        self.assertTrue(matches[0].is_uncertain)
+
+    def test_embedding_match_on_root_subword(self):
         matches = self._get_matches(holmes_manager_with_embeddings,
-                "Die Königsabdankung")
+                "Ein Informationskönig")
         self.assertEqual(len(matches), 1)
 
-    def test_embeddings_not_extended_to_subwords(self):
+    def test_embedding_match_on_non_root_subword(self):
         matches = self._get_matches(holmes_manager_with_embeddings,
-                "Die Königinabdankung")
-        self.assertEqual(len(matches), 0)
+                "Die Prinzenabdankung")
+        self.assertEqual(len(matches), 1)
 
     def test_ontology_matching_with_subwords(self):
         matches = self._get_matches(holmes_manager,
