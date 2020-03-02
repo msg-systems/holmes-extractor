@@ -878,12 +878,14 @@ class TopicMatcher:
                 if get_containing_word_info_key(word_infos_to_word_infos, word_info) != None:
                     del word_infos_to_word_infos[word_info]
             if topic_match.subword_index != None:
-                subword = word_match.document_token._.holmes.subwords[topic_match.subword_index]
+                subword = doc[topic_match.index_within_document]._.holmes.subwords\
+                        [topic_match.subword_index]
                 highest_activation_relative_start_index = \
                         doc[topic_match.index_within_document].idx + \
                         subword.char_start_index - \
                         sentences_character_start_index_in_document
-                highest_activation_relative_end_index = relative_start_index + len(subword.text)
+                highest_activation_relative_end_index = \
+                        highest_activation_relative_start_index + len(subword.text)
             else:
                 highest_activation_relative_start_index = \
                         doc[topic_match.index_within_document].idx - \
