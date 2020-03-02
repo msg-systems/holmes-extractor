@@ -1623,7 +1623,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                     entry_words.append(possible_subwords[counter].text)
                 else:
                     entry_words.append(possible_subwords[counter].text.capitalize())
-            subword_lemmatization_string = '. '.join(entry_words)
+            subword_lemmatization_string = ' . '.join(entry_words)
             return self.spacy_parse(subword_lemmatization_string)
 
         if not token.tag_ in self._tag_for_subword_search or (len(token._.holmes.lemma) < \

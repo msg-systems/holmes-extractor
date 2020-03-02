@@ -1794,3 +1794,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
         doc = analyzer.parse("Das Informationsextraktions- und Besprechungspaket, welches aufgelöst wurde")
         self.assertEqual(doc[6]._.holmes.string_representation_of_children(), '1:oa(U); 3:oa')
+
+    def test_subword_is_abbreviation_no_error_thrown(self):
+
+        doc = analyzer.parse("Briljanten")
