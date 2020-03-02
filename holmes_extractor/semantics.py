@@ -1498,7 +1498,8 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
     # Blacklisted subwords
     _subword_blacklist = ('igkeit', 'igkeiten', 'digkeit', 'digkeiten', 'schaft', 'schaften',
             'keit', 'keiten', 'lichkeit', 'lichkeiten', 'tigten', 'tigung', 'tigungen', 'barkeit',
-            'barkeiten', 'heit', 'heiten', 'ung', 'ungen', 'aften', 'erung', 'erungen', 'mungen')
+            'barkeiten', 'heit', 'heiten', 'ung', 'ungen', 'aften', 'erung', 'erungen', 'mungen',
+            'chen', 'lein')
 
     def _add_subwords(self, token, subword_cache):
 
