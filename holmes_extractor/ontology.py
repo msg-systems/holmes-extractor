@@ -18,8 +18,8 @@ class Ontology:
 
     Args:
 
-    ontology_path -- the path from where the ontology is to be loaded.
-        See https://github.com/RDFLib/rdflib/.
+    ontology_path -- the path from where the ontology is to be loaded, or a list of
+        several such paths. See https://github.com/RDFLib/rdflib/.
     owl_class_type -- optionally overrides the OWL 2 URL for types.
     owl_individual_type -- optionally overrides the OWL 2 URL for individuals.
     owl_type_link -- optionally overrides the RDF URL for types.
@@ -37,7 +37,11 @@ class Ontology:
                  symmetric_matching=False):
         self.path = ontology_path
         self._graph = rdflib.Graph()
-        self._graph.load(ontology_path)
+        if isinstance(self.path, list):
+            for entry in ontology_path:
+                self._graph.load(entry)
+        else:
+            self._graph.load(ontology_path)
         self._owl_class_type = owl_class_type
         self._owl_individual_type = owl_individual_type
         self._owl_type_link = owl_type_link
