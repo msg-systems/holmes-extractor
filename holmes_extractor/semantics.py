@@ -78,6 +78,8 @@ class Subword:
         index -- the index of the subword within the containing word.
         text -- the original subword string.
         lemma -- the model-normalized representation of the subword string.
+        derived_lemma -- where relevant, another lemma with which *lemma* is derivationally related
+        and which can also be useful for matching in some usecases; otherwise *None*
         char_start_index -- the character index of *lemma* within the containing word.
         is_head -- **True**, if this subword is the head within its word, **False** otherwise.
         dependent_index -- the index of a subword that is dependent on this subword, or *None*
@@ -89,12 +91,13 @@ class Subword:
         governing_dependency_label -- the label of the dependency between this subword and its
             governor, or *None* if it has no governor.
     """
-    def __init__(self, containing_token_index, index, text, lemma, char_start_index, is_head,
-            dependent_index, dependency_label, governor_index, governing_dependency_label):
+    def __init__(self, containing_token_index, index, text, lemma, derived_lemma, char_start_index,
+            is_head, dependent_index, dependency_label, governor_index, governing_dependency_label):
         self.containing_token_index = containing_token_index
         self.index = index
         self.text = text
         self.lemma = lemma
+        self.derived_lemma = derived_lemma
         self.char_start_index = char_start_index
         self.is_head = is_head
         self.dependent_index = dependent_index
@@ -103,7 +106,11 @@ class Subword:
         self.governing_dependency_label = governing_dependency_label
 
     def __str__(self):
-        return ('/'.join((self.text, self.lemma)))
+        if self.derived_lemma != None:
+            lemma_string = ''.join((self.lemma, '(', self.derived_lemma, ')'))
+        else:
+            lemma_string = self.lemma
+        return ('/'.join((self.text, lemma_string)))
 
 class HolmesDictionary:
     """The holder object for token-level semantic information managed by Holmes
@@ -114,7 +121,7 @@ class HolmesDictionary:
     lemma -- the value returned from *._.holmes.lemma* for the token.
     derived_lemma -- the value returned from *._.holmes.derived_lemma for the token; where relevant,
         another lemma with which *lemma* is derivationally related and which can also be useful for
-        matching in some usecases; otherwise the empty string.
+        matching in some usecases; otherwise *None*.
     """
 
     def __init__(self, index, lemma, derived_lemma):
@@ -1699,7 +1706,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
             cached_subwords = subword_cache[token.text]
             for cached_subword in cached_subwords:
                 token._.holmes.subwords.append(Subword(token.i, cached_subword.index,
-                        cached_subword.text, cached_subword.lemma,
+                        cached_subword.text, cached_subword.lemma, cached_subword.derived_lemma,
                         cached_subword.char_start_index, cached_subword.is_head,
                         cached_subword.dependent_index, cached_subword.dependency_label,
                         cached_subword.governor_index, cached_subword.governing_dependency_label))
@@ -1733,8 +1740,9 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                                         first_sibling_possible_subword.char_start_index +
                                         len(first_sibling_possible_subword.text)]
                                 lemma = first_sibling_lemmatization_doc[counter*2].lemma_.lower()
+                                derived_lemma = self._derived_holmes_lemma(None, lemma)
                                 working_subwords.append(Subword(first_sibling.i, index,
-                                        text, lemma,
+                                        text, lemma, derived_lemma,
                                         first_sibling_possible_subword.char_start_index,
                                         None, None, None, None, None))
                                 index += 1
@@ -1744,7 +1752,8 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                     text = token.text[possible_subword.char_start_index:
                             possible_subword.char_start_index + len(possible_subword.text)]
                     lemma = lemmatization_doc[counter*2].lemma_.lower()
-                    working_subwords.append(Subword(token.i, index, text, lemma,
+                    derived_lemma = self._derived_holmes_lemma(None, lemma)
+                    working_subwords.append(Subword(token.i, index, text, lemma, derived_lemma,
                             possible_subword.char_start_index, None, None, None, None, None))
                     index += 1
                 if token._.holmes.lemma[-1] == '-':
@@ -1769,8 +1778,10 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                                             last_sibling_possible_subword.char_start_index +
                                             len(last_sibling_possible_subword.text)]
                                     lemma = last_sibling_lemmatization_doc[counter*2].lemma_.lower()
+                                    derived_lemma = self._derived_holmes_lemma(None, lemma)
                                     working_subwords.append(Subword(last_sibling.i, index, text,
-                                            lemma, last_sibling_possible_subword.char_start_index,
+                                            lemma, derived_lemma,
+                                            last_sibling_possible_subword.char_start_index,
                                             None, None, None, None, None))
                                     index += 1
 
@@ -1792,9 +1803,9 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                         token._.holmes.subwords.append(Subword(
                                 working_subword.containing_token_index,
                                 working_subword.index, working_subword.text, working_subword.lemma,
-                                working_subword.char_start_index, counter + 1 ==
-                                len(working_subwords), dependent_index, dependency_label,
-                                governor_index, governing_dependency_label))
+                                working_subword.derived_lemma, working_subword.char_start_index,
+                                counter + 1 == len(working_subwords), dependent_index,
+                                dependency_label, governor_index, governing_dependency_label))
                 if token._.holmes.lemma.isalpha(): # caching only where no hyphenation
                     subword_cache[token.text] = token._.holmes.subwords
         if len(token._.holmes.subwords) > 1 and 'nicht' in (subword.lemma for subword in
@@ -1956,25 +1967,27 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
     _ung_ending_blacklist = ('sprung', 'schwung', 'nibelung')
 
     def _language_specific_derived_holmes_lemma(self, token, lemma):
+        """ token == None where *lemma* belongs to a subword """
+
         # nominalization with 'ung'
-        if token.tag_ == 'NN' and lemma.endswith('ung'):
+        if (token == None or token.tag_ == 'NN') and lemma.endswith('ung'):
             for word in self._ung_ending_blacklist:
                 if lemma.endswith(word):
                     return None
-            if lemma.endswith('rung') or lemma.endswith('lung'):
+            if lemma.endswith('erung') or lemma.endswith('elung'):
                 return ''.join((lemma[:-3], 'n'))
             else:
                 return ''.join((lemma[:-3], 'en'))
         # nominalization with 'heit', 'keit'
-        if token.tag_ == 'NN' and (lemma.endswith('keit') or lemma.endswith('heit')):
+        if (token == None or token.tag_ == 'NN') and (lemma.endswith('keit') or lemma.endswith('heit')):
             return lemma[:-4]
-        if token.pos_ in ('NOUN', 'PROPN') and len(lemma) > 4 and (lemma.endswith('chen') or
+        if (token == None or token.pos_ in ('NOUN', 'PROPN')) and len(lemma) > 4 and (lemma.endswith('chen') or
                 lemma.endswith('lein')):
             working_lemma = lemma[-12:-4]
             # replace umlauts in the last 8 characters of the derived lemma
             working_lemma = working_lemma.replace('ä','a').replace('ö','o').replace('ü','u')
             return ''.join((lemma[:-12],working_lemma))
-        if token.tag_ == 'NN' and lemma.endswith('e') and len(lemma) > 1:
+        if (token == None or token.tag_ == 'NN') and lemma.endswith('e') and len(lemma) > 1:
             # for comparability with diminutive forms, e.g. äuglein <-> auge
             return lemma[:-1]
         return None

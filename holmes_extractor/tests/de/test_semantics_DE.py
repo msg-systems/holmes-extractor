@@ -1763,24 +1763,28 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = analyzer.parse("Informations- und Extraktions-Beurteilung")
         self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Information')
         self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'information')
+        self.assertEqual(doc[0]._.holmes.subwords[0].derived_lemma, None)
         self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
 
         self.assertEqual(doc[0]._.holmes.subwords[1].text, 'Beurteilung')
         self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'beurteilung')
+        self.assertEqual(doc[0]._.holmes.subwords[1].derived_lemma, 'beurteilen')
         self.assertEqual(doc[0]._.holmes.subwords[1].index, 1)
         self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 2)
         self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 12)
 
         self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Extraktion')
         self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'extraktion')
+        self.assertEqual(doc[2]._.holmes.subwords[0].derived_lemma, None)
         self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 2)
         self.assertEqual(doc[2]._.holmes.subwords[0].char_start_index, 0)
 
         self.assertEqual(doc[2]._.holmes.subwords[1].text, 'Beurteilung')
-        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'beurteilung')
+        self.assertEqual(doc[2]._.holmes.subwords[1].lemma, 'beurteilung')
+        self.assertEqual(doc[2]._.holmes.subwords[1].derived_lemma, 'beurteilen')
         self.assertEqual(doc[2]._.holmes.subwords[1].index, 1)
         self.assertEqual(doc[2]._.holmes.subwords[1].containing_token_index, 2)
         self.assertEqual(doc[2]._.holmes.subwords[1].char_start_index, 12)
@@ -1862,3 +1866,19 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
     def test_derived_lemma_e_1_char(self):
         doc = analyzer.parse("Das große E.")
         self.assertEqual(doc[2]._.holmes.derived_lemma, None)
+
+    def test_derived_lemma_subword_positive_case(self):
+        doc = analyzer.parse("Informierensextraktion.")
+        self.assertEqual(doc[0]._.holmes.subwords[0].derived_lemma, 'information')
+
+    def test_derived_lemma_subword_negative_case(self):
+        doc = analyzer.parse("Elefantenschau.")
+        self.assertEqual(doc[0]._.holmes.subwords[0].derived_lemma, None)
+
+    def test_derived_lemma_subword_conjunction_first_word(self):
+        doc = analyzer.parse("Fitness- und Freizeitsjogging.")
+        self.assertEqual(doc[0]._.holmes.subwords[1].derived_lemma, 'joggen')
+
+    def test_derived_lemma_subword_conjunction_last_word(self):
+        doc = analyzer.parse("Investitionsanfänge und -auswirkungen.")
+        self.assertEqual(doc[0]._.holmes.subwords[0].derived_lemma, 'investieren')
