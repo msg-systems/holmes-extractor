@@ -73,3 +73,13 @@ class SerializationTest(unittest.TestCase):
         self.assertEqual(new_doc[0]._.holmes.subwords[0].lemma, 'bund')
         self.assertEqual(new_doc[0]._.holmes.subwords[1].text, 'oberbehörde')
         self.assertEqual(new_doc[0]._.holmes.subwords[1].lemma, 'oberbehörde')
+
+    def test_derived_lemma(self):
+        nocoref_holmes_manager.remove_all_documents()
+        nocoref_holmes_manager.parse_and_register_document("A lot of information.", 'information')
+        serialized_doc = nocoref_holmes_manager.serialize_document('information')
+        nocoref_holmes_manager.deserialize_and_register_document(serialized_doc, 'information2')
+        old_doc = nocoref_holmes_manager.threadsafe_container.get_document('information')
+        new_doc = nocoref_holmes_manager.threadsafe_container.get_document('information2')
+        self.assertEqual(old_doc[3]._.holmes.derived_lemma, 'inform')
+        self.assertEqual(new_doc[3]._.holmes.derived_lemma, 'inform')

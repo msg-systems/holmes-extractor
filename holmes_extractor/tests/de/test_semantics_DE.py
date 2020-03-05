@@ -1798,3 +1798,67 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
     def test_subword_is_abbreviation_no_error_thrown(self):
 
         doc = analyzer.parse("Briljanten")
+
+    def test_derived_lemma_from_dictionary(self):
+        doc = analyzer.parse("Er schießt.")
+        self.assertEqual(doc[1]._.holmes.derived_lemma, 'schuss')
+
+    def test_derived_lemma_root_word_from_dictionary(self):
+        doc = analyzer.parse("Der Schuss war laut.")
+        self.assertEqual(doc[1]._.holmes.derived_lemma, None)
+
+    def test_derived_lemma_ung(self):
+        doc = analyzer.parse("Eine hohe Regung.")
+        self.assertEqual(doc[2]._.holmes.derived_lemma, 'regen')
+
+    def test_derived_lemma_lung(self):
+        doc = analyzer.parse("Die Drosselung.")
+        self.assertEqual(doc[1]._.holmes.derived_lemma, 'drosseln')
+
+    def test_derived_lemma_rung(self):
+        doc = analyzer.parse("Eine Behinderung.")
+        self.assertEqual(doc[1]._.holmes.derived_lemma, 'behindern')
+
+    def test_derived_lemma_ung_blacklist_direct(self):
+        doc = analyzer.parse("Der Nibelung.")
+        self.assertEqual(doc[1]._.holmes.derived_lemma, None)
+
+    def test_derived_lemma_heit(self):
+        doc = analyzer.parse("Die ganze Schönheit.")
+        self.assertEqual(doc[2]._.holmes.derived_lemma, 'schön')
+
+    def test_derived_lemma_keit(self):
+        doc = analyzer.parse("Seine Langlebigkeit.")
+        self.assertEqual(doc[1]._.holmes.derived_lemma, 'langlebig')
+
+    def test_derived_lemma_chen_no_change(self):
+        doc = analyzer.parse("Das Tischchen.")
+        self.assertEqual(doc[1]._.holmes.derived_lemma, 'tisch')
+
+    def test_derived_lemma_lein_no_change(self):
+        doc = analyzer.parse("Das Tischlein.")
+        self.assertEqual(doc[1]._.holmes.derived_lemma, 'tisch')
+
+    def test_derived_lemma_chen_umlaut(self):
+        doc = analyzer.parse("Das kleine Bäuchchen.")
+        self.assertEqual(doc[2]._.holmes.derived_lemma, 'bauch')
+
+    def test_derived_lemma_lein_umlaut(self):
+        doc = analyzer.parse("Das kleine Bäuchlein.")
+        self.assertEqual(doc[2]._.holmes.derived_lemma, 'bauch')
+
+    def test_derived_lemma_chen_5_chars(self):
+        doc = analyzer.parse("Das kleine Öchen.")
+        self.assertEqual(doc[2]._.holmes.derived_lemma, 'o')
+
+    def test_derived_lemma_chen_4_chars(self):
+        doc = analyzer.parse("Das kleine Chen.")
+        self.assertEqual(doc[2]._.holmes.derived_lemma, None)
+
+    def test_derived_lemma_e(self):
+        doc = analyzer.parse("Das große Auge.")
+        self.assertEqual(doc[2]._.holmes.derived_lemma, 'aug')
+
+    def test_derived_lemma_e_1_char(self):
+        doc = analyzer.parse("Das große E.")
+        self.assertEqual(doc[2]._.holmes.derived_lemma, None)

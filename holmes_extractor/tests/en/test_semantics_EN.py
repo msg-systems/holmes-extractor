@@ -729,3 +729,51 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[0]._.holmes.string_representation_of_children(),
                 '1:prep; 3:pobjp')
         self.assertEqual(doc[3]._.holmes.parent_dependencies, [[0, 'pobjp'],[1, 'pobj']])
+
+    def test_derived_lemma_from_dictionary(self):
+        doc = analyzer.parse("A long imprisonment.")
+        self.assertEqual(doc[2]._.holmes.derived_lemma, 'imprison')
+
+    def test_derived_lemma_root_word_from_dictionary(self):
+        doc = analyzer.parse("He was imprisoned.")
+        self.assertEqual(doc[2]._.holmes.derived_lemma, None)
+
+    def test_derived_lemma_ization(self):
+        doc = analyzer.parse("Linearization problems.")
+        self.assertEqual(doc[0]._.holmes.derived_lemma, 'linearize')
+
+    def test_derived_lemma_isation(self):
+        doc = analyzer.parse("Linearisation problems.")
+        self.assertEqual(doc[0]._.holmes.derived_lemma, 'linearise')
+
+    def test_derived_lemma_ically(self):
+        doc = analyzer.parse("They used it very economically.")
+        self.assertEqual(doc[4]._.holmes.derived_lemma, 'economic')
+
+    def test_derived_lemma_ibly(self):
+        doc = analyzer.parse("It stank horribly.")
+        self.assertEqual(doc[2]._.holmes.derived_lemma, 'horrible')
+
+    def test_derived_lemma_ibly(self):
+        doc = analyzer.parse("Regrettably it was a problem.")
+        self.assertEqual(doc[0]._.holmes.derived_lemma, 'regrettable')
+
+    def test_derived_lemma_ibly(self):
+        doc = analyzer.parse("He used the software happily.")
+        self.assertEqual(doc[4]._.holmes.derived_lemma, 'happy')
+
+    def test_derived_lemma_ly(self):
+        doc = analyzer.parse("It went swingingly.")
+        self.assertEqual(doc[2]._.holmes.derived_lemma, 'swinging')
+
+    def test_derived_lemma_ing(self):
+        doc = analyzer.parse("The playing was very loud.")
+        self.assertEqual(doc[1]._.holmes.derived_lemma, 'play')
+
+    def test_derived_lemma_ing_with_doubling(self):
+        doc = analyzer.parse("The ramming of the vehicle was very loud.")
+        self.assertEqual(doc[1]._.holmes.derived_lemma, 'ram')
+
+    def test_no_derived_lemma(self):
+        doc = analyzer.parse("vehicle.")
+        self.assertEqual(doc[0]._.holmes.derived_lemma, None)

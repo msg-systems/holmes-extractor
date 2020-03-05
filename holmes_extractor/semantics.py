@@ -304,7 +304,7 @@ class SemanticAnalyzer(ABC):
         self.model = model
         self.perform_coreference_resolution = perform_coreference_resolution
         self.debug = debug
-        self.derivational_dictionary = self._load_derivational_dictionary()
+        self._derivational_dictionary = self._load_derivational_dictionary()
 
     Token.set_extension('holmes', default='')
 
@@ -312,10 +312,10 @@ class SemanticAnalyzer(ABC):
         in_package_filename = ''.join(('data/derivation_', self.model[0:2], '.csv'))
         absolute_filename = pkg_resources.resource_filename(__name__, in_package_filename)
         dictionary = {}
-        with open(absolute_filename, "r") as f:
+        with open(absolute_filename, "r", encoding="utf-8") as f:
             for line in f.readlines():
                 words = [word.strip() for word in line.split(',')]
-                for index in range(1, len(words)):
+                for index in range(len(words)):
                     dictionary[words[index]] = words[0]
         return dictionary
 
@@ -344,7 +344,7 @@ class SemanticAnalyzer(ABC):
         """
         for token in spacy_doc:
             lemma = self._holmes_lemma(token)
-            derived_lemma = self._derived_holmes_lemma(lemma)
+            derived_lemma = self._derived_holmes_lemma(token, lemma)
             token._.set('holmes', HolmesDictionary(token.i, lemma, derived_lemma))
         for token in spacy_doc:
             self._set_negation(token)
@@ -624,11 +624,19 @@ class SemanticAnalyzer(ABC):
     def _holmes_lemma(self, token):
         pass
 
-    def _derived_holmes_lemma(self, lemma):
-        if lemma in self.derivational_dictionary:
-            return self.derivational_dictionary[lemma]
+    def _derived_holmes_lemma(self, token, lemma):
+        if lemma in self._derivational_dictionary:
+            derived_lemma = self._derivational_dictionary[lemma]
+            if lemma == derived_lemma: # basis entry, so do not call language specific method
+                return None
+            else:
+                return derived_lemma
         else:
-            return None
+            return self._language_specific_derived_holmes_lemma(token, lemma)
+
+    @abstractmethod
+    def _language_specific_derived_holmes_lemma(self, token, lemma):
+        pass
 
     def _initialize_semantic_dependencies(self, token):
         for child in (child for child in token.children if child.dep_ != 'punct' and child.tag_
@@ -1213,6 +1221,33 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                 if child.tag_ == 'RP':
                     return ' '.join([token.lemma_.lower(), child.lemma_.lower()])
         return token.lemma_.lower()
+
+    def _language_specific_derived_holmes_lemma(self, token, lemma):
+        """Generates and returns a derived lemma where appropriate, otherwise returns *None*."""
+        # 'isation', 'ization' -> 'ise', 'ize'
+        if token.pos_ == 'NOUN' and len(lemma) > 7 and (lemma.endswith('isation') or
+                lemma.endswith('ization')):
+            return ''.join((lemma[:-5], 'e'))
+        # adverb with 'ly' -> adjective without 'ly'
+        if token.tag_ == 'RB':
+            # domestically -> domestic
+            if lemma.endswith('ically'):
+                return lemma[:-4]
+            # 'regrettably', 'horribly' -> 'regrettable', 'horrible'
+            if lemma.endswith('ably') or lemma.endswith('ibly'):
+                return ''.join((lemma[:-1], 'e'))
+            if lemma.endswith('ly'):
+                derived_lemma = lemma[:-2]
+                # 'happily' -> 'happy'
+                if derived_lemma[-1] == 'i':
+                    derived_lemma = ''.join((derived_lemma[:-1], 'y'))
+                return derived_lemma
+        # singing -> sing
+        if token.tag_ == 'NN' and lemma.endswith('ing'):
+            lemmatization_sentence = ' '.join(('it is', lemma))
+            lemmatization_doc = self.spacy_parse(lemmatization_sentence)
+            return lemmatization_doc[2].lemma_.lower()
+        return None
 
     def _perform_language_specific_tasks(self, token):
 
@@ -1917,6 +1952,32 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                 token.lemma_.lower().endswith('e'):
             return token.lemma_.lower().rstrip('e')
         return token.lemma_.lower()
+
+    _ung_ending_blacklist = ('sprung', 'schwung', 'nibelung')
+
+    def _language_specific_derived_holmes_lemma(self, token, lemma):
+        # nominalization with 'ung'
+        if token.tag_ == 'NN' and lemma.endswith('ung'):
+            for word in self._ung_ending_blacklist:
+                if lemma.endswith(word):
+                    return None
+            if lemma.endswith('rung') or lemma.endswith('lung'):
+                return ''.join((lemma[:-3], 'n'))
+            else:
+                return ''.join((lemma[:-3], 'en'))
+        # nominalization with 'heit', 'keit'
+        if token.tag_ == 'NN' and (lemma.endswith('keit') or lemma.endswith('heit')):
+            return lemma[:-4]
+        if token.pos_ in ('NOUN', 'PROPN') and len(lemma) > 4 and (lemma.endswith('chen') or
+                lemma.endswith('lein')):
+            working_lemma = lemma[-12:-4]
+            # replace umlauts in the last 8 characters of the derived lemma
+            working_lemma = working_lemma.replace('ä','a').replace('ö','o').replace('ü','u')
+            return ''.join((lemma[:-12],working_lemma))
+        if token.tag_ == 'NN' and lemma.endswith('e') and len(lemma) > 1:
+            # for comparability with diminutive forms, e.g. äuglein <-> auge
+            return lemma[:-1]
+        return None
 
     def _perform_language_specific_tasks(self, token):
 
