@@ -1979,10 +1979,11 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
             else:
                 return ''.join((lemma[:-3], 'en'))
         # nominalization with 'heit', 'keit'
-        if (token == None or token.tag_ == 'NN') and (lemma.endswith('keit') or lemma.endswith('heit')):
+        if (token == None or token.tag_ == 'NN') and (lemma.endswith('keit') or
+                lemma.endswith('heit')):
             return lemma[:-4]
-        if (token == None or token.pos_ in ('NOUN', 'PROPN')) and len(lemma) > 4 and (lemma.endswith('chen') or
-                lemma.endswith('lein')):
+        if (token == None or token.pos_ in ('NOUN', 'PROPN')) and len(lemma) > 4 and \
+                (lemma.endswith('chen') or lemma.endswith('lein')):
             working_lemma = lemma[-12:-4]
             # replace umlauts in the last 8 characters of the derived lemma
             working_lemma = working_lemma.replace('ä','a').replace('ö','o').replace('ü','u')

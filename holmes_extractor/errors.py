@@ -50,3 +50,6 @@ class NoPhraseletsAfterFilteringError(HolmesError):
 
 class EmbeddingThresholdGreaterThanRelationThresholdError(HolmesError):
     pass
+
+class IncompatibleAnalyzeDerivationalMorphologyDeserializationError(HolmesError):
+    pass

@@ -54,6 +54,10 @@ class HolmesConsoles:
             print("Coreference resolution is ON")
         else:
             print("Coreference resolution is OFF")
+        if self._structural_matcher.analyze_derivational_morphology:
+            print("Derivational morphology analysis is ON")
+        else:
+            print("Derivational morphology analysis is OFF")
         print("Overall similarity threshold is", str(
                 self._structural_matcher.overall_similarity_threshold))
         if self._structural_matcher.overall_similarity_threshold < 1.0:

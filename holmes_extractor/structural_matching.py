@@ -270,7 +270,8 @@ class StructuralMatcher:
     """The class responsible for matching search phrases with documents."""
 
     def __init__(self, semantic_analyzer, ontology, overall_similarity_threshold,
-            embedding_based_matching_on_root_words, perform_coreference_resolution):
+             embedding_based_matching_on_root_words, analyze_derivational_morphology,
+             perform_coreference_resolution):
         """Args:
 
         semantic_analyzer -- the *SemanticAnalyzer* object to use
@@ -283,12 +284,15 @@ class StructuralMatcher:
         embedding_based_matching_on_root_words -- determines whether or not embedding-based
             matching should be attempted on search-phrase root tokens, which has a considerable
             performance hit. Defaults to *False*.
+        analyze_derivational_morphology -- *True* if matching should be attempted between different
+            words from the same word family. Defaults to *True*.
         perform_coreference_resolution -- *True* if coreference resolution should be performed.
         """
         self.semantic_analyzer = semantic_analyzer
         self.ontology = ontology
         self.overall_similarity_threshold = overall_similarity_threshold
         self.embedding_based_matching_on_root_words = embedding_based_matching_on_root_words
+        self.analyze_derivational_morphology = analyze_derivational_morphology
         self.perform_coreference_resolution = perform_coreference_resolution
 
     class _SearchPhrase:

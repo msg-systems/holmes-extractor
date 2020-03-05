@@ -7,7 +7,8 @@ from sklearn.neural_network import MLPClassifier
 from .structural_matching import Index
 from .errors import WrongModelDeserializationError, FewerThanTwoClassificationsError, \
         DuplicateDocumentError, NoPhraseletsAfterFilteringError, \
-        EmbeddingThresholdGreaterThanRelationThresholdError
+        EmbeddingThresholdGreaterThanRelationThresholdError, \
+        IncompatibleAnalyzeDerivationalMorphologyDeserializationError
 
 class TopicMatch:
     """A topic match between some text and part of a document. Note that the end indexes refer
@@ -1401,7 +1402,9 @@ class SupervisedTopicModelTrainer:
                 sorted_label_dict = self._sorted_label_dict,
                 classifications = self._training_basis.classifications,
                 overlap_memory_size = self._utils.overlap_memory_size,
-                oneshot = self._utils.oneshot)
+                oneshot = self._utils.oneshot,
+                analyze_derivational_morphology=
+                self._structural_matcher.analyze_derivational_morphology)
         return SupervisedTopicClassifier(self._semantic_analyzer, self._structural_matcher,
                 model, self._training_basis.verbose)
 
@@ -1424,11 +1427,14 @@ class SupervisedTopicClassifierModel:
             checked for words in common with a current match.
         oneshot -- whether the same word or relationship matched multiple times should be
             counted once only (value 'True') or multiple times (value 'False')
+        analyze_derivational_morphology -- the value of this manager parameter that was in force
+            when the model was built. The same value has to be in force when the model is
+            deserialized and reused.
     """
 
     def __init__(self, semantic_analyzer_model, structural_matcher_ontology,
             serialized_phraselets, mlp, sorted_label_dict, classifications, overlap_memory_size,
-            oneshot):
+            oneshot, analyze_derivational_morphology):
         self.semantic_analyzer_model = semantic_analyzer_model
         self.structural_matcher_ontology = structural_matcher_ontology
         self.serialized_phraselets = serialized_phraselets
@@ -1437,6 +1443,7 @@ class SupervisedTopicClassifierModel:
         self.classifications = classifications
         self.overlap_memory_size = overlap_memory_size
         self.oneshot = oneshot
+        self.analyze_derivational_morphology = analyze_derivational_morphology
 
 class SupervisedTopicClassifier:
     """ Classifies new documents based on a pre-trained model."""
@@ -1449,6 +1456,18 @@ class SupervisedTopicClassifier:
         self._utils = SupervisedTopicTrainingUtils(model.overlap_memory_size, model.oneshot)
         if self._semantic_analyzer.model != model.semantic_analyzer_model:
             raise WrongModelDeserializationError(model.semantic_analyzer_model)
+        if hasattr(model, 'analyze_derivational_morphology'): # backwards compatibility
+            analyze_derivational_morphology = model.analyze_derivational_morphology
+        else:
+            analyze_derivational_morphology = False
+        if self._structural_matcher.analyze_derivational_morphology != \
+                analyze_derivational_morphology:
+            print(''.join((
+                    'manager: ', str(self._structural_matcher.analyze_derivational_morphology),
+                    '; model: ', str(analyze_derivational_morphology))))
+            raise IncompatibleAnalyzeDerivationalMorphologyDeserializationError(''.join((
+                    'manager: ', str(self._structural_matcher.analyze_derivational_morphology),
+                    '; model: ', str(analyze_derivational_morphology))))
         self._structural_matcher.ontology = model.structural_matcher_ontology
         self._phraselet_labels_to_search_phrases = self._structural_matcher.deserialize_phraselets(
                 model.serialized_phraselets)

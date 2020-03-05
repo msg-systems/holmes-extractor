@@ -39,6 +39,8 @@ class Manager:
         matching should be attempted on search-phrase root tokens, which has a considerable
         performance hit. Defaults to *False*.
     ontology -- an *Ontology* object. Defaults to *None* (no ontology).
+    analyze_derivational_morphology -- *True* if matching should be attempted between different
+        words from the same word family. Defaults to *True*.
     perform_coreference_resolution -- *True*, *False*, or *None* if coreference resolution
         should be performed depending on whether the model supports it. Defaults to *None*.
     debug -- a boolean value specifying whether debug representations should be outputted
@@ -47,7 +49,7 @@ class Manager:
 
     def __init__(self, model, *, overall_similarity_threshold=1.0,
             embedding_based_matching_on_root_words=False, ontology=None,
-            perform_coreference_resolution=None, debug=False):
+            analyze_derivational_morphology=True, perform_coreference_resolution=None, debug=False):
         self.semantic_analyzer = SemanticAnalyzerFactory().semantic_analyzer(model=model,
                 perform_coreference_resolution=perform_coreference_resolution, debug=debug)
         if perform_coreference_resolution == None:
@@ -62,7 +64,7 @@ class Manager:
         self.perform_coreference_resolution = perform_coreference_resolution
         self.structural_matcher = StructuralMatcher(self.semantic_analyzer, ontology,
                 overall_similarity_threshold, embedding_based_matching_on_root_words,
-                perform_coreference_resolution)
+                analyze_derivational_morphology, perform_coreference_resolution)
         self.threadsafe_container = ThreadsafeContainer()
 
     def parse_and_register_document(self, document_text, label=''):
@@ -367,7 +369,7 @@ class Manager:
         document_label_filter -- optionally, a string with which document labels must start to
             be considered for inclusion in the results.
         """
-        
+
         topic_matcher = TopicMatcher(semantic_analyzer = self.semantic_analyzer,
                 structural_matcher = self.structural_matcher,
                 indexed_documents = self.threadsafe_container.get_indexed_documents(),
@@ -478,6 +480,8 @@ class MultiprocessingManager:
         matching should be attempted on root (parent) tokens, which has a considerable
         performance hit. Defaults to *False*.
     ontology -- an *Ontology* object. Defaults to *None* (no ontology).
+    analyze_derivational_morphology -- *True* if matching should be attempted between different
+        words from the same word family. Defaults to *True*.
     perform_coreference_resolution -- *True*, *False* or *None* if coreference resolution
         should be performed depending on whether the model supports it. Defaults to *None*.
     debug -- a boolean value specifying whether debug representations should be outputted
@@ -489,8 +493,8 @@ class MultiprocessingManager:
     """
     def __init__(self, model, *, overall_similarity_threshold=1.0,
             embedding_based_matching_on_root_words=False, ontology=None,
-            perform_coreference_resolution=None, debug=False, verbose=True,
-            number_of_workers=None):
+            analyze_derivational_morphology=True, perform_coreference_resolution=None,
+            debug=False, verbose=True, number_of_workers=None):
         self.semantic_analyzer = SemanticAnalyzerFactory().semantic_analyzer(model=model,
                 perform_coreference_resolution=perform_coreference_resolution, debug=debug)
         if perform_coreference_resolution == None:
@@ -500,7 +504,7 @@ class MultiprocessingManager:
                 embedding_based_matching_on_root_words, perform_coreference_resolution)
         self.structural_matcher = StructuralMatcher(self.semantic_analyzer, ontology,
                 overall_similarity_threshold, embedding_based_matching_on_root_words,
-                perform_coreference_resolution)
+                analyze_derivational_morphology, perform_coreference_resolution)
         self._perform_coreference_resolution = perform_coreference_resolution
 
         self._verbose = verbose
