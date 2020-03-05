@@ -5,6 +5,7 @@ from .errors import WrongModelDeserializationError, WrongVersionDeserializationE
 from spacy.tokens import Token, Doc
 from abc import ABC, abstractmethod
 import jsonpickle
+import pkg_resources
 
 SERIALIZED_DOCUMENT_VERSION = 3
 
@@ -111,11 +112,15 @@ class HolmesDictionary:
 
     index -- the index of the token
     lemma -- the value returned from *._.holmes.lemma* for the token.
+    derived_lemma -- the value returned from *._.holmes.derived_lemma for the token; where relevant,
+        another lemma with which *lemma* is derivationally related and which can also be useful for
+        matching in some usecases; otherwise the empty string.
     """
 
-    def __init__(self, index, lemma):
+    def __init__(self, index, lemma, derived_lemma):
         self.index = index
         self.lemma = lemma
+        self.derived_lemma = derived_lemma
         self.children = [] # list of *SemanticDependency* objects where this token is the parent.
         self.righthand_siblings = [] # list of tokens to the right of this token that stand in a
         # conjunction relationship to this token and that share its semantic parents.
@@ -299,8 +304,20 @@ class SemanticAnalyzer(ABC):
         self.model = model
         self.perform_coreference_resolution = perform_coreference_resolution
         self.debug = debug
+        self.derivational_dictionary = self._load_derivational_dictionary()
 
     Token.set_extension('holmes', default='')
+
+    def _load_derivational_dictionary(self):
+        in_package_filename = ''.join(('data/derivation_', self.model[0:2], '.csv'))
+        absolute_filename = pkg_resources.resource_filename(__name__, in_package_filename)
+        dictionary = {}
+        with open(absolute_filename, "r") as f:
+            for line in f.readlines():
+                words = [word.strip() for word in line.split(',')]
+                for index in range(1, len(words)):
+                    dictionary[words[index]] = words[0]
+        return dictionary
 
     def reload_model(self):
         spacy.load(self.model)
@@ -326,7 +343,9 @@ class SemanticAnalyzer(ABC):
         """Adds the Holmes-specific information to each token within a spaCy document.
         """
         for token in spacy_doc:
-            token._.set('holmes', HolmesDictionary(token.i, self._holmes_lemma(token)))
+            lemma = self._holmes_lemma(token)
+            derived_lemma = self._derived_holmes_lemma(lemma)
+            token._.set('holmes', HolmesDictionary(token.i, lemma, derived_lemma))
         for token in spacy_doc:
             self._set_negation(token)
         for token in spacy_doc:
@@ -389,6 +408,11 @@ class SemanticAnalyzer(ABC):
     def debug_structures(self, doc):
         if self.debug:
             for token in doc:
+                if token._.holmes.derived_lemma != None:
+                    lemma_string = ''.join((token._.holmes.lemma, '(',
+                            token._.holmes.derived_lemma, ')'))
+                else:
+                    lemma_string = token._.holmes.lemma
                 subwords_strings = ';'.join(str(subword) for subword in token._.holmes.subwords)
                 subwords_strings = ''.join(('[', subwords_strings, ']'))
                 negation_string = 'negative' if token._.holmes.is_negated else 'positive'
@@ -399,8 +423,8 @@ class SemanticAnalyzer(ABC):
                             token._.holmes.mentions)
                 else:
                     coreference_string = ''
-                print(token.i, token.text, token._.holmes.lemma, subwords_strings,
-                        token.pos_, token.tag_, token.dep_, token.ent_type_, token.head.i,
+                print(token.i, token.text, lemma_string, subwords_strings, token.pos_, token.tag_,
+                        token.dep_, token.ent_type_, token.head.i,
                         token._.holmes.string_representation_of_children(),
                         token._.holmes.righthand_siblings, negation_string,
                         uncertainty_string, matchability_string, coreference_string)
@@ -599,6 +623,12 @@ class SemanticAnalyzer(ABC):
     @abstractmethod
     def _holmes_lemma(self, token):
         pass
+
+    def _derived_holmes_lemma(self, lemma):
+        if lemma in self.derivational_dictionary:
+            return self.derivational_dictionary[lemma]
+        else:
+            return None
 
     def _initialize_semantic_dependencies(self, token):
         for child in (child for child in token.children if child.dep_ != 'punct' and child.tag_
