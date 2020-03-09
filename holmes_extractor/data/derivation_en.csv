@@ -12,7 +12,7 @@ accuracy,accurate
 accuse,accusation
 achieve,achievement
 acknowledge,acknowledgement
-act,action
+act,action,activity
 adapt,adaptation
 add,addition,additional
 adjust,adjustment
@@ -73,6 +73,7 @@ compare,comparison
 compete,competition
 compile,compilation
 complete,completion
+compliant,compliance
 compose,composition
 comprehend,comprehension
 conclude,conclusion
@@ -88,6 +89,7 @@ consistent,consistency
 constrain,constraint
 construct,construction
 consult,consultation
+contaminate,contamination
 continue,continuation
 contradict,contradiction
 contribute,contribution
@@ -170,6 +172,7 @@ entitle,entitlement
 envy,envious
 equal,equality
 equip,equipment
+evaluate,evaluation
 evolve,evolution
 examine,examination
 excel,excellent,excellence
@@ -183,11 +186,13 @@ expanse,expansive
 expect,expectation
 expend,expenditure
 expense,expensive
+expire,expiry,expiration
 explain,explanation
 explode,explosion,explosive
 exploit,exploitation
 explore,exploration
 express,expression
+extract,extraction
 fail,failure
 familiar,familiarise,familiarity,familiarize
 fear,fearful
@@ -260,14 +265,17 @@ intervene,intervention
 introduce,introduction
 invade,invasion
 invent,invention
+investigate,investigation
 invite,invitation
 involve,involvement
+isolate,isolation
 liable,liability
 logic,logical
 loose,loosen
 lose,loss
 loyal,loyalty
 magic,magical
+maintain,maintenance
 manage,management
 manipulate,manipulation,manipulative
 marry,marriage
@@ -294,6 +302,7 @@ oblige,obligation,obligatory
 offend,offence,offense
 omit,omission
 option,optional
+package,packaging
 patient,patience
 patriot,patriotic,patriotism
 peace,peaceful
@@ -323,6 +332,7 @@ pretend,pretence
 prevalent,prevalence
 prevent,prevention
 probable,probability
+produce,production
 progress,progression
 prohibit,prohibition,prohibitory
 project,projection
@@ -344,6 +354,7 @@ reassure,reassurance
 rebel,rebellious
 receipt,receive
 recognise,recognize,recognition
+reconcile,reconciliation
 reconsider,reconsideration
 recruit,recruitment
 refer,referral
@@ -356,6 +367,7 @@ reluctant,reluctance
 rely,reliance
 represent,representation
 reproduce,reproduction
+require,requirement
 reside,residence,residential
 resign,resignation
 resist,resistance
@@ -379,6 +391,7 @@ serve,service
 settle,settlement
 sex,sexual
 shy,shyness
+sign,signature
 simplify,simplification
 sincere,sincerity
 smooth,smoothness
@@ -386,6 +399,7 @@ soft,softness
 solidify,solidification
 solve,solution
 speak,speech
+specify,specification
 sphere,spherical
 spite,spiteful
 spontaneity,spontaneous
@@ -418,6 +432,7 @@ unimportant,unimportance
 unite,unity
 use,usage
 vague,vagueness
+validate,validation
 vary,variation
 virtue,virtuous
 warm,warmth
