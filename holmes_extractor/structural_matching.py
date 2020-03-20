@@ -1,8 +1,9 @@
 import copy
 from .errors import *
-from .semantics import SemanticDependency
+from .semantics import SemanticDependency, Subword
 from threading import Lock
 from functools import total_ordering
+from spacy.tokens.token import Token
 
 class WordMatch:
     """A match between a searched phrase word and a document word.
@@ -19,7 +20,7 @@ class WordMatch:
     document_subword -- the subword from the token that matched, or *None* if the match was
         with the whole token.
     document_word -- the word or subword that matched structurally from the document.
-    type -- *direct*, *entity*, *embedding* or *ontology*.
+    type -- *direct*, *entity*, *embedding*, *ontology* or *derivation*.
     similarity_measure -- for type *embedding*, the similarity between the two tokens,
         otherwise 1.0.
     is_negated -- *True* if this word match leads to a match of which it
@@ -166,38 +167,57 @@ class Index:
     def __hash__(self):
         return hash((self.token_index, self.subword_index))
 
-
-class SerializedPhraselet:
-    """A serialized topic matching phraselet.
+class PhraseletInfo:
+    """Information describing a topic matching phraselet.
 
         Parameters:
 
         label -- the phraselet label.
         template_label -- the value of 'PhraseletTemplate.label'.
-        parent_word -- the parent word, or the word for single-word phraselets.
-        child_word -- the child word, or 'None' for single-word phraselets.
-        created_without_matching_tags -- 'True' if created without matching tags. Default value
-            is supplied for backwards compatibility.
+        parent_lemma -- the parent lemma, or the lemma for single-word phraselets.
+        parent_derived_lemma -- the parent derived lemma, or the derived lemma for single-word
+            phraselets.
+        parent_pos -- the part of speech tag of the token that supplied the parent word.
+        child_lemma -- the child lemma, or 'None' for single-word phraselets.
+        child_derived_lemma -- the child derived lemma, or 'None' for single-word phraselets.
+        child_pos -- the part of speech tag of the token that supplied the child word, or 'None'
+            for single-word phraselets.
+        created_without_matching_tags -- 'True' if created without matching tags.
+        reverse_only_parent_lemma -- 'True' if the parent lemma is in the reverse matching list.
     """
 
-    def __init__(self, label, template_label, parent_word, child_word,
-            created_without_matching_tags = False):
+    def __init__(self, label, template_label, parent_lemma, parent_derived_lemma, parent_pos,
+            child_lemma, child_derived_lemma, child_pos, created_without_matching_tags,
+            reverse_only_parent_lemma):
         self.label = label
         self.template_label = template_label
-        self.parent_word = parent_word
-        self.child_word = child_word
+
+        self.parent_lemma = parent_lemma
+        self.parent_derived_lemma = parent_derived_lemma
+        self.parent_pos = parent_pos
+        self.child_lemma = child_lemma
+        self.child_derived_lemma = child_derived_lemma
+        self.child_pos = child_pos
         self.created_without_matching_tags = created_without_matching_tags
+        self.reverse_only_parent_lemma = reverse_only_parent_lemma
 
     def __eq__(self, other):
-        return type(other) == SerializedPhraselet and \
+        return type(other) == PhraseletInfo and \
+                self.label == other.label and \
                 self.template_label == other.template_label and \
-                self.parent_word == other.parent_word and \
-                self.child_word == other.child_word and \
-                self.created_without_matching_tags == other.created_without_matching_tags
+                self.parent_lemma == other.parent_lemma and \
+                self.parent_derived_lemma == other.parent_derived_lemma and \
+                self.parent_pos == other.parent_pos and \
+                self.child_lemma == other.child_lemma and \
+                self.child_derived_lemma == other.child_derived_lemma and \
+                self.child_pos == other.child_pos and \
+                self.created_without_matching_tags == other.created_without_matching_tags and \
+                self.reverse_only_parent_lemma == other.reverse_only_parent_lemma
 
     def __hash__(self):
-        return hash((self.template_label, self.parent_word, self.child_word,
-                self.created_without_matching_tags))
+        return hash((self.label, self.template_label, self.parent_lemma, self.parent_derived_lemma,
+                self.parent_pos, self.child_lemma, self.child_derived_lemma,
+                self.child_pos, self.created_without_matching_tags, self.reverse_only_parent_lemma))
 
 class ThreadsafeContainer:
     """Container for search phrases and documents that are registered and maintained on the
@@ -294,13 +314,55 @@ class StructuralMatcher:
         self.embedding_based_matching_on_root_words = embedding_based_matching_on_root_words
         self.analyze_derivational_morphology = analyze_derivational_morphology
         self.perform_coreference_resolution = perform_coreference_resolution
+        self.populate_ontology_reverse_derivational_dict()
+
+    def populate_ontology_reverse_derivational_dict(self):
+        """During structural matching, a lemma or derived lemma matches any words in the ontology
+            that yield the same word as their derived lemmas. This method generates a dictionary
+            from derived lemmas to ontology words that yield them to facilitate such matching. To
+            simplify the calling code, every ontology word has a dictionary entry that points to
+            itself plus any such reverse-derivations. Called from *ThreadsafeContainer*.
+        """
+        if self.ontology != None and self.analyze_derivational_morphology:
+            ontology_reverse_derivational_dict = {}
+            for ontology_word in self.ontology.words:
+                derived_lemmas = []
+                for textual_word in ontology_word.split():
+                    derived_lemma = self.semantic_analyzer.derived_holmes_lemma(None,
+                            textual_word.lower())
+                    if derived_lemma == None:
+                        derived_lemma = textual_word
+                    derived_lemmas.append(derived_lemma)
+                derived_ontology_word = ' '.join(derived_lemmas)
+                if derived_ontology_word in ontology_reverse_derivational_dict:
+                    ontology_reverse_derivational_dict[derived_ontology_word].append(
+                            ontology_word)
+                else:
+                    ontology_reverse_derivational_dict[derived_ontology_word] = [ontology_word]
+            # sort entry lists to ensure deterministic behaviour
+            for derived_ontology_word in ontology_reverse_derivational_dict:
+                ontology_reverse_derivational_dict[derived_ontology_word] = \
+                        sorted(ontology_reverse_derivational_dict[derived_ontology_word])
+            self.ontology_reverse_derivational_dict = ontology_reverse_derivational_dict
+        else:
+            self.ontology_reverse_derivational_dict = None
+
+    def reverse_derived_lemmas_in_ontology(self, token):
+        """ Returns all ontology entries that point to the derived lemma of a token.
+        """
+        derived_lemma = token._.holmes.lemma_or_derived_lemma()
+        if derived_lemma in self.ontology_reverse_derivational_dict:
+            return self.ontology_reverse_derivational_dict[derived_lemma]
+        else:
+            return []
 
     class _SearchPhrase:
 
         def __init__(self, doc, matchable_tokens, root_token,
                 matchable_non_entity_tokens_to_lexemes, single_token_similarity_threshold, label,
                 ontology, topic_match_phraselet,
-                topic_match_phraselet_created_without_matching_tags, reverse_only):
+                topic_match_phraselet_created_without_matching_tags, reverse_only,
+                structural_matcher):
             """Args:
 
             doc -- the Holmes document created for the search phrase
@@ -318,6 +380,7 @@ class StructuralMatcher:
             topic_match_phraselet_created_without_matching_tags -- 'True' if a topic match
             phraselet created without matching tags (match_all_words), otherwise 'False'.
             reverse_only -- 'True' if a phraselet that should only be reverse-matched.
+            structural_matcher -- the enclosing instance.
             """
             self.doc = doc
             self._matchable_token_indexes = [token.i for token in matchable_tokens]
@@ -335,6 +398,8 @@ class StructuralMatcher:
                 # account during initial relation matching because the parent relation occurs too
                 # frequently during the corpus. 'reverse_only' cannot be used instead because it
                 # has an effect on scoring.
+            self.words_matching_root_token = self.get_words_matching_root_token(
+                    structural_matcher)
 
         @property
         def matchable_tokens(self):
@@ -343,6 +408,42 @@ class StructuralMatcher:
         @property
         def root_token(self):
             return self.doc[self._root_token_index]
+
+        def get_words_matching_root_token(self, structural_matcher):
+            """ Create list of all words that match the root token of the search phrase,
+                taking any ontology into account.
+            """
+            list_to_return = [self.root_token._.holmes.lemma]
+            if not self.topic_match_phraselet:
+                list_to_return.append(self.root_token.text.lower())
+            if structural_matcher.analyze_derivational_morphology and \
+                    self.root_token._.holmes.derived_lemma != None:
+                list_to_return.append(self.root_token._.holmes.derived_lemma)
+            if structural_matcher.ontology != None and not \
+                    structural_matcher._is_entity_search_phrase_token(self.root_token,
+                            self.topic_match_phraselet):
+                ontology_matching_strings = set()
+                ontology_matching_strings.update(structural_matcher.ontology.get_words_matching(
+                        self.root_token._.holmes.lemma))
+                if not self.topic_match_phraselet:
+                    ontology_matching_strings.update(structural_matcher.ontology.get_words_matching(
+                            self.root_token.text.lower()))
+                if structural_matcher.analyze_derivational_morphology:
+                    for reverse_derived_lemma in \
+                            structural_matcher.reverse_derived_lemmas_in_ontology(self.root_token):
+                        ontology_matching_strings.update(
+                                structural_matcher.ontology.get_words_matching(
+                                reverse_derived_lemma))
+                for working_word in ontology_matching_strings:
+                    list_to_return.append(working_word)
+                    if structural_matcher.analyze_derivational_morphology:
+                        working_derived_lemma = \
+                                structural_matcher.semantic_analyzer.derived_holmes_lemma(
+                                self.root_token, working_word.lower())
+                        if working_derived_lemma != None:
+                            list_to_return.append(working_derived_lemma)
+            return list_to_return
+
 
     class _IndexedDocument:
         """Args:
@@ -358,38 +459,22 @@ class StructuralMatcher:
 
     class _MultiwordSpan:
 
-        def __init__(self, text, lemma, tokens):
+        def __init__(self, text, lemma, derived_lemma, tokens):
             """Args:
 
             text -- the raw text representation of the multiword span
             lemma - the lemma representation of the multiword span
+            derived_lemma - the lemma representation with individual words that have derived
+                lemmas replaced by those derived lemmas
             tokens -- a list of tokens that make up the multiword span
             """
             self.text = text
             self.lemma = lemma
+            self.derived_lemma = derived_lemma
             self.tokens = tokens
 
-    def _words_matching_root_token(self, search_phrase):
-        """ Generator over all words that match the root token of the search phrase,
-            taking any ontology into account.
-        """
-        yield search_phrase.root_token._.holmes.lemma
-        if not search_phrase.topic_match_phraselet:
-            yield search_phrase.root_token.text.lower()
-        if self.ontology != None and not \
-                self._is_entity_search_phrase_token(search_phrase.root_token,
-                        search_phrase.topic_match_phraselet):
-            ontology_matching_strings = set()
-            ontology_matching_strings.update(self.ontology.get_words_matching(
-                    search_phrase.root_token._.holmes.lemma))
-            if not search_phrase.topic_match_phraselet:
-                ontology_matching_strings.update(self.ontology.get_words_matching(
-                        search_phrase.root_token.text.lower()))
-            for working_word in ontology_matching_strings:
-                yield working_word
-
     def _multiword_spans_with_head_token(self, token):
-        """Generator over *_MultwordSpan* objects with *token* at their head. Dependent phrases
+        """Generator over *_MultiwordSpan* objects with *token* at their head. Dependent phrases
             are only returned for nouns because e.g. for verbs the whole sentence would be returned.
         """
 
@@ -401,6 +486,7 @@ class StructuralMatcher:
                     and token.doc[pointer].dep_ in self.semantic_analyzer.noun_kernel_dep:
                 working_text = ''
                 working_lemma = ''
+                working_derived_lemma = ''
                 working_tokens = []
                 inner_pointer = pointer
                 while inner_pointer <= token.right_edge.i and \
@@ -408,14 +494,22 @@ class StructuralMatcher:
                     working_text = ' '.join((working_text, token.doc[inner_pointer].text))
                     working_lemma = ' '.join((working_lemma,
                             token.doc[inner_pointer]._.holmes.lemma))
+                    this_token_derived_lemma = token.doc[inner_pointer]._.holmes.lemma
+                    if self.analyze_derivational_morphology and this_token_derived_lemma == None:
+                        # if derivational morphology analysis is switched off, the derived lemma
+                        # will be identical to the lemma and will not be yielded by
+                        # _loop_textual_representatations().
+                        this_token_derived_lemma = token.doc[inner_pointer]._.holmes.derived_lemma
+                    working_derived_lemma = ' '.join((working_derived_lemma,
+                            this_token_derived_lemma))
                     working_tokens.append(token.doc[inner_pointer])
                     inner_pointer += 1
                 if pointer + 1 < inner_pointer and token in working_tokens:
                     yield self._MultiwordSpan(working_text.strip(), working_lemma.strip(),
-                            working_tokens)
+                            working_derived_lemma.strip(), working_tokens)
             pointer += 1
 
-    def add_phraselets_to_dict(self, doc, *, phraselet_labels_to_search_phrases,
+    def add_phraselets_to_dict(self, doc, *, phraselet_labels_to_phraselet_infos,
             replace_with_hypernym_ancestors, match_all_words, returning_serialized_phraselets,
             ignore_relation_phraselets, include_reverse_only, stop_lemmas,
             reverse_only_parent_lemmas):
@@ -424,8 +518,8 @@ class StructuralMatcher:
         Properties:
 
         doc -- the Holmes-parsed document
-        phraselet_labels_to_search_phrases -- a dictionary from labels to search phrases that
-            ensures that the same phraselet is not processed multiple times.
+        phraselet_labels_to_phraselet_infos -- a dictionary from labels to phraselet info objects
+            that are used to generate phraselet search phrases.
         replace_with_hypernym_ancestors -- if 'True', all words present in the ontology
             are replaced with their most general (highest) ancestors.
         match_all_words -- if 'True', word phraselets are generated for all matchable words
@@ -443,22 +537,79 @@ class StructuralMatcher:
             reverse-matched.
         """
 
-        def get_word_from_token(index):
+        def get_lemmas_from_token(index):
+            """ Returns the lemma and the derived lemma. Phraselets form a special case where
+                the derived lemma is set even if it is identical to the lemma. This is necessary
+                because the lemma may be set to a different value during the lifecycle of the
+                object. The property getter in the SemanticDictionary class ensures that
+                derived_lemma == None is always returned where the two strings are identical.
+            """
             token = doc[index.token_index]
             if self._is_entity_search_phrase_token(token, False):
                 # False in order to get text rather than lemma
-                return token.text
+                return token.text, token.text
                 # keep the text, because the lemma will be lowercase
             if index.is_subword():
-                word = token._.holmes.subwords[index.subword_index].lemma
+                lemma = token._.holmes.subwords[index.subword_index].lemma
+                if self.analyze_derivational_morphology:
+                    derived_lemma = token._.holmes.subwords[index.subword_index].\
+                            lemma_or_derived_lemma()
+                else:
+                    derived_lemma = lemma
             else:
-                word = token._.holmes.lemma
+                lemma = token._.holmes.lemma
+                if self.analyze_derivational_morphology:
+                    derived_lemma = token._.holmes.lemma_or_derived_lemma()
+                else:
+                    derived_lemma = lemma
             # the normal situation
-            if self.ontology != None and not self.ontology.contains(word) and \
-                    self.ontology.contains(token.text.lower()):
-                word = token.text.lower()
-                # ontology contains text but not lemma, so stick to text
-            return word
+            if self.ontology != None and not self.ontology.contains(lemma):
+                if self.ontology.contains(token.text.lower()):
+                    lemma = derived_lemma = token.text.lower()
+                # ontology contains text but not lemma, so return text
+                if self.analyze_derivational_morphology:
+                    for reverse_derived_word in self.reverse_derived_lemmas_in_ontology(token):
+                        lemma = derived_lemma = reverse_derived_word.lower()
+                        break
+                        # ontology contains a word pointing to the same derived lemma,
+                        # so return that. Note that if there are several such words the same
+                        # one will always be returned.
+            return lemma, derived_lemma
+
+        def replace_lemmas_with_most_general_ancestor(lemma, derived_lemma):
+            new_derived_lemma = self.ontology.get_most_general_hypernym_ancestor(
+                    derived_lemma).lower()
+            if derived_lemma != new_derived_lemma:
+                lemma = derived_lemma = new_derived_lemma
+            return lemma, derived_lemma
+
+        def lemma_replacement_indicated(existing_lemma, existing_pos, new_lemma, new_pos):
+            if existing_lemma == None:
+                return False
+            if not existing_pos in self.semantic_analyzer.preferred_phraselet_pos and \
+                    new_pos in self.semantic_analyzer.preferred_phraselet_pos:
+                return True
+            return len(new_lemma) < len(existing_lemma)
+
+        def add_new_phraselet_info(phraselet_label, phraselet_doc, phraselet_template,
+                created_without_matching_tags, is_reverse_only_parent_lemma, parent_lemma,
+                parent_derived_lemma, parent_pos, child_lemma, child_derived_lemma, child_pos):
+            if phraselet_label not in phraselet_labels_to_phraselet_infos:
+                phraselet_labels_to_phraselet_infos[phraselet_label] = \
+                        PhraseletInfo(phraselet_label, phraselet_template.label, parent_lemma,
+                                parent_derived_lemma, parent_pos, child_lemma, child_derived_lemma,
+                                child_pos, created_without_matching_tags,
+                                is_reverse_only_parent_lemma)
+            else:
+                existing_phraselet = phraselet_labels_to_phraselet_infos[phraselet_label]
+                if lemma_replacement_indicated(existing_phraselet.parent_lemma,
+                        existing_phraselet.parent_pos, parent_lemma, parent_pos):
+                    existing_phraselet.parent_lemma = parent_lemma
+                    existing_phraselet.parent_pos = parent_pos
+                if lemma_replacement_indicated(existing_phraselet.child_lemma,
+                        existing_phraselet.child_pos, child_lemma, child_pos):
+                    existing_phraselet.child_lemma = child_lemma
+                    existing_phraselet.child_pos = child_pos
 
         def process_single_word_phraselet_templates(token, subword_index, checking_tags,
                 token_indexes_to_multiword_lemmas):
@@ -470,24 +621,22 @@ class StructuralMatcher:
                     phraselet_doc = self.semantic_analyzer.parse(
                         phraselet_template.template_sentence)
                     if token.i in token_indexes_to_multiword_lemmas and not match_all_words:
-                        word = token_indexes_to_multiword_lemmas[token.i]
+                        lemma = derived_lemma = token_indexes_to_multiword_lemmas[token.i]
                     else:
-                        word = get_word_from_token(Index(token.i, subword_index))
+                        lemma, derived_lemma = get_lemmas_from_token(Index(token.i, subword_index))
                     if self.ontology != None and replace_with_hypernym_ancestors:
-                        word = self.ontology.get_most_general_hypernym_ancestor(word).lower()
-                    phraselet_doc[phraselet_template.parent_index]._.holmes.lemma = word
-                    phraselet_label = ''.join((phraselet_template.label, ': ', word))
-                    if word not in stop_lemmas and word != 'ENTITYNOUN':
-                            # ENTITYNOUN has to be excluded as single word although it is still
-                            # permitted as the child of a relation phraselet template
-                        if phraselet_label not in phraselet_labels_to_search_phrases:
-                            phraselet_labels_to_search_phrases[phraselet_label] = \
-                                    self.create_search_phrase('topic match phraselet',
-                                    phraselet_doc, phraselet_label, phraselet_template,
-                                    not checking_tags)
-                        if returning_serialized_phraselets:
-                            serialized_phraselets.append(SerializedPhraselet(
-                                    phraselet_label, phraselet_template.label, word, None))
+                        lemma, derived_lemma = replace_lemmas_with_most_general_ancestor(lemma,
+                                derived_lemma)
+                    phraselet_doc[phraselet_template.parent_index]._.holmes.lemma = lemma
+                    phraselet_doc[phraselet_template.parent_index]._.holmes.derived_lemma = \
+                            derived_lemma
+                    phraselet_label = ''.join((phraselet_template.label, ': ', derived_lemma))
+                    if derived_lemma not in stop_lemmas and derived_lemma != 'ENTITYNOUN':
+                        # ENTITYNOUN has to be excluded as single word although it is still
+                        # permitted as the child of a relation phraselet template
+                        add_new_phraselet_info(phraselet_label, phraselet_doc, phraselet_template,
+                                not checking_tags, None, lemma, derived_lemma, token.pos_, None,
+                                None, None)
 
         def add_head_subwords_to_token_list_and_remove_words_with_subword_conjunction(index_list):
             # for each token in the list, find out whether it has subwords and if so add the
@@ -503,8 +652,6 @@ class StructuralMatcher:
                         subword.containing_token_index != token.i]) > 0:
                     index_list.remove(index)
 
-        if returning_serialized_phraselets:
-            serialized_phraselets = []
         self._redefine_multiwords_on_head_tokens(doc)
         token_indexes_to_multiword_lemmas = {}
         token_indexes_within_multiwords_to_ignore = []
@@ -569,47 +716,51 @@ class StructuralMatcher:
                                 phraselet_doc = self.semantic_analyzer.parse(
                                         phraselet_template.template_sentence)
                                 if parent.token_index in token_indexes_to_multiword_lemmas:
-                                    parent_word = token_indexes_to_multiword_lemmas[
-                                            parent.token_index]
+                                    parent_lemma = parent_derived_lemma = \
+                                            token_indexes_to_multiword_lemmas[parent.token_index]
                                 else:
-                                    parent_word = get_word_from_token(parent)
+                                    parent_lemma, parent_derived_lemma = \
+                                            get_lemmas_from_token(parent)
                                 if self.ontology != None and replace_with_hypernym_ancestors:
-                                    parent_word = \
-                                            self.ontology.get_most_general_hypernym_ancestor(
-                                            parent_word).lower()
+                                    parent_lemma, parent_derived_lemma = \
+                                            replace_lemmas_with_most_general_ancestor(parent_lemma,
+                                            parent_derived_lemma)
                                 if child.token_index in token_indexes_to_multiword_lemmas:
-                                    child_word = token_indexes_to_multiword_lemmas[
-                                            child.token_index]
+                                    child_lemma = child_derived_lemma = \
+                                            token_indexes_to_multiword_lemmas[child.token_index]
                                 else:
-                                    child_word = get_word_from_token(child)
+                                    child_lemma, child_derived_lemma = get_lemmas_from_token(child)
                                 if self.ontology != None and replace_with_hypernym_ancestors:
-                                    child_word = \
-                                            self.ontology.get_most_general_hypernym_ancestor(
-                                            child_word).lower()
+                                    child_lemma, child_derived_lemma = \
+                                            replace_lemmas_with_most_general_ancestor(child_lemma,
+                                            child_derived_lemma)
                                 phraselet_doc[phraselet_template.parent_index]._.holmes.lemma = \
-                                        parent_word
+                                        parent_lemma
+                                phraselet_doc[phraselet_template.parent_index]._.holmes.\
+                                        derived_lemma = parent_derived_lemma
                                 phraselet_doc[phraselet_template.child_index]._.holmes.lemma = \
-                                        child_word
+                                        child_lemma
+                                phraselet_doc[phraselet_template.child_index]._.holmes.\
+                                        derived_lemma = child_derived_lemma
                                 phraselet_label = ''.join((phraselet_template.label, ': ',
-                                        parent_word, '-', child_word))
+                                        parent_derived_lemma, '-', child_derived_lemma))
                                 is_reverse_only_parent_lemma = False
                                 if reverse_only_parent_lemmas != None:
                                     for entry in reverse_only_parent_lemmas:
-                                        if entry[0] == parent_word and entry[1] == \
-                                                doc[parent.token_index].pos_:
+                                        if entry[0] == doc[parent.token_index]._.holmes.lemma \
+                                                and entry[1] == doc[parent.token_index].pos_:
                                             is_reverse_only_parent_lemma = True
-                                if parent_word not in stop_lemmas and child_word not in stop_lemmas\
-                                        and not (is_reverse_only_parent_lemma and not
-                                        include_reverse_only):
-                                    if phraselet_label not in phraselet_labels_to_search_phrases:
-                                        phraselet_labels_to_search_phrases[phraselet_label] = \
-                                                self.create_search_phrase('topic match phraselet',
-                                                phraselet_doc, phraselet_label, phraselet_template,
-                                                match_all_words, is_reverse_only_parent_lemma)
-                                        if returning_serialized_phraselets:
-                                            serialized_phraselets.append(SerializedPhraselet(
-                                                    phraselet_label, phraselet_template.label,
-                                                    parent_word, child_word))
+                                if parent_lemma not in stop_lemmas and child_lemma not in \
+                                        stop_lemmas and not (is_reverse_only_parent_lemma
+                                        and not include_reverse_only):
+                                    add_new_phraselet_info(phraselet_label, phraselet_doc,
+                                            phraselet_template, match_all_words,
+                                            is_reverse_only_parent_lemma,
+                                            parent_lemma, parent_derived_lemma,
+                                            doc[parent.token_index].pos_,
+                                            child_lemma, child_derived_lemma,
+                                            doc[child.token_index].pos_)
+
             # We do not check for matchability in order to catch pos_='X', tag_='TRUNC'. This
             # is not a problem as only a limited range of parts of speech receive subwords in
             # the first place.
@@ -630,89 +781,91 @@ class StructuralMatcher:
                         token.tag_ in phraselet_template.parent_tags):
                     phraselet_doc = self.semantic_analyzer.parse(
                             phraselet_template.template_sentence)
-                    parent_word = get_word_from_token(Index(token.i, parent_subword_index))
+                    parent_lemma, parent_derived_lemma = get_lemmas_from_token(Index(token.i,
+                            parent_subword_index))
                     if self.ontology != None and replace_with_hypernym_ancestors:
-                        parent_word = self.ontology.get_most_general_hypernym_ancestor(
-                                parent_word).lower()
-                    child_word = get_word_from_token(Index(token.i, child_subword_index))
+                        parent_lemma, parent_derived_lemma = \
+                                replace_lemmas_with_most_general_ancestor(parent_lemma,
+                                parent_derived_lemma)
+                    child_lemma, child_derived_lemma = get_lemmas_from_token(Index(token.i,
+                            child_subword_index))
                     if self.ontology != None and replace_with_hypernym_ancestors:
-                        child_word = self.ontology.get_most_general_hypernym_ancestor(
-                                child_word).lower()
+                        child_lemma, child_derived_lemma = \
+                                replace_lemmas_with_most_general_ancestor(child_lemma,
+                                child_derived_lemma)
                     phraselet_doc[phraselet_template.parent_index]._.holmes.lemma = \
-                            parent_word
+                            parent_lemma
+                    phraselet_doc[phraselet_template.parent_index]._.holmes.derived_lemma = \
+                            parent_derived_lemma
                     phraselet_doc[phraselet_template.child_index]._.holmes.lemma = \
-                            child_word
+                            child_lemma
+                    phraselet_doc[phraselet_template.child_index]._.holmes.derived_lemma = \
+                            child_derived_lemma
                     phraselet_label = ''.join((phraselet_template.label, ': ',
-                            parent_word, '-', child_word))
-                    if phraselet_label not in phraselet_labels_to_search_phrases:
-                        phraselet_labels_to_search_phrases[phraselet_label] = \
-                                self.create_search_phrase('topic match phraselet',
-                                phraselet_doc, phraselet_label, phraselet_template,
-                                match_all_words, False)
-                        if returning_serialized_phraselets:
-                            serialized_phraselets.append(SerializedPhraselet(
-                                    phraselet_label, phraselet_template.label,
-                                    parent_word, child_word))
-
-        if len(phraselet_labels_to_search_phrases) == 0 and not match_all_words:
+                            parent_derived_lemma, '-', child_derived_lemma))
+                    add_new_phraselet_info(phraselet_label, phraselet_doc,
+                            phraselet_template, match_all_words, False, parent_lemma,
+                            parent_derived_lemma, token.pos_, child_lemma, child_derived_lemma,
+                            token.pos_)
+        if len(phraselet_labels_to_phraselet_infos) == 0 and not match_all_words:
             for token in doc:
                 process_single_word_phraselet_templates(token, None, False,
                         token_indexes_to_multiword_lemmas)
-        if returning_serialized_phraselets:
-            return serialized_phraselets
 
-    def deserialize_phraselets(self, serialized_phraselets):
-        """ Deserializes serialized phraselets to recreate the dictionary from
-            labels to search phrases.
+    def create_search_phrases_from_phraselet_infos(self, phraselet_infos):
+        """ Creates search phrases from phraselet info objects, returning a dictionary from
+            phraselet labels to the created search phrases.
         """
 
-        def deserialize_phraselet(serialized_phraselet, phraselet_labels_to_search_phrases):
+        def create_phraselet_label(phraselet_info):
+            if phraselet_info.child_lemma != None:
+                return ''.join((phraselet_info.template_label, ': ',
+                        phraselet_info.parent_derived_lemma, '-',
+                        phraselet_info.child_derived_lemma))
+            else:
+                return ''.join((phraselet_info.template_label, ': ',
+                        phraselet_info.parent_derived_lemma))
+
+        def create_search_phrase_from_phraselet(phraselet_info):
             for phraselet_template in self.semantic_analyzer.phraselet_templates:
-                if serialized_phraselet.template_label == phraselet_template.label:
+                if phraselet_info.template_label == phraselet_template.label:
                     phraselet_doc = self.semantic_analyzer.parse(
                             phraselet_template.template_sentence)
                     phraselet_doc[phraselet_template.parent_index]._.holmes.lemma = \
-                            serialized_phraselet.parent_word
-                    if serialized_phraselet.child_word != None:
+                            phraselet_info.parent_lemma
+                    phraselet_doc[phraselet_template.parent_index]._.holmes.derived_lemma = \
+                            phraselet_info.parent_derived_lemma
+                    if phraselet_info.child_lemma != None:
                         phraselet_doc[phraselet_template.child_index]._.holmes.lemma = \
-                                serialized_phraselet.child_word
-                        phraselet_label = ''.join((phraselet_template.label, ': ',
-                                serialized_phraselet.parent_word, '-',
-                                serialized_phraselet.child_word))
-                    else:
-                        phraselet_label = ''.join((phraselet_template.label, ': ',
-                                serialized_phraselet.parent_word))
-                    if phraselet_label not in phraselet_labels_to_search_phrases:
-                        phraselet_labels_to_search_phrases[phraselet_label] = \
-                                self.create_search_phrase('topic match phraselet',
-                                phraselet_doc, phraselet_label, phraselet_template,
-                                serialized_phraselet.created_without_matching_tags)
+                                phraselet_info.child_lemma
+                        phraselet_doc[phraselet_template.child_index]._.holmes.derived_lemma = \
+                                phraselet_info.child_derived_lemma
+                    return self.create_search_phrase('topic match phraselet',
+                                phraselet_doc, create_phraselet_label(phraselet_info),
+                                phraselet_template, phraselet_info.created_without_matching_tags,
+                                phraselet_info.reverse_only_parent_lemma)
                     return
-            raise RuntimeError(' '.join(('Phraselet template', serialized_phraselet.template_label,
+            raise RuntimeError(' '.join(('Phraselet template', phraselet_info.template_label,
                     'not found.')))
 
-        phraselet_labels_to_search_phrases = {}
-        for serialized_phraselet in serialized_phraselets:
-            deserialize_phraselet(serialized_phraselet, phraselet_labels_to_search_phrases)
-        return phraselet_labels_to_search_phrases
+        return {create_phraselet_label(phraselet_info) :
+                create_search_phrase_from_phraselet(phraselet_info) for phraselet_info in
+                phraselet_infos}
 
     def _redefine_multiwords_on_head_tokens(self, doc):
         if self.ontology != None:
             for token in doc:
                 for multiword_span in self._multiword_spans_with_head_token(token):
-                    if self.ontology.contains_multiword(multiword_span.lemma) or \
-                            self.ontology.contains_multiword(multiword_span.text):
-                        if self.ontology.contains_multiword(multiword_span.lemma):
-                            token._.holmes.lemma = multiword_span.lemma.lower()
-                        else:
-                            token._.holmes.lemma = multiword_span.text.lower()
-                        # mark the dependent tokens as grammatical and non-matchable
-                        for multiword_token in (
-                                multiword_token for multiword_token in multiword_span.tokens
-                                if multiword_token.i != token.i):
-                            multiword_token._.holmes.children = [SemanticDependency(
-                                    multiword_token.i, 0 - (token.i + 1), None)]
-                            multiword_token._.holmes.is_matchable = False
+                    for representation in self._loop_textual_representatations(multiword_span):
+                        if self.ontology.contains_multiword(representation):
+                            token._.holmes.lemma = representation.lower()
+                            # mark the dependent tokens as grammatical and non-matchable
+                            for multiword_token in (
+                                    multiword_token for multiword_token in multiword_span.tokens
+                                    if multiword_token.i != token.i):
+                                multiword_token._.holmes.children = [SemanticDependency(
+                                        multiword_token.i, 0 - (token.i + 1), None)]
+                                multiword_token._.holmes.is_matchable = False
 
     def create_search_phrase(self, search_phrase_text, search_phrase_doc,
             label, phraselet_template, topic_match_phraselet_created_without_matching_tags,
@@ -775,10 +928,6 @@ class StructuralMatcher:
             if token._.holmes.is_matchable and not (len(token._.holmes.children) > 0 and
                     token._.holmes.children[0].child_index < 0):
                 tokens_to_match.append(token)
-                if self.ontology != None:
-                    self.ontology.add_to_dictionary(token._.holmes.lemma)
-                    if phraselet_template == None:
-                        self.ontology.add_to_dictionary(token.text)
                 if self.overall_similarity_threshold < 1.0 and not \
                         self._is_entity_search_phrase_token(token, phraselet_template != None):
                     if phraselet_template == None and len(token._.holmes.lemma.split()) > 1:
@@ -806,7 +955,7 @@ class StructuralMatcher:
                 root_tokens[0], matchable_non_entity_tokens_to_lexemes,
                 single_token_similarity_threshold, label, self.ontology,
                 phraselet_template != None, topic_match_phraselet_created_without_matching_tags,
-                reverse_only)
+                reverse_only, self)
 
     def index_document(self, parsed_document):
 
@@ -845,12 +994,12 @@ class StructuralMatcher:
             entity_defined_multiword = self.semantic_analyzer.get_entity_defined_multiword(token)
             if entity_defined_multiword != None:
                 add_dict_entry(words_to_token_indexes_dict, entity_defined_multiword, token.i)
-            add_dict_entry(words_to_token_indexes_dict, token._.holmes.lemma, token.i)
-            add_dict_entry(words_to_token_indexes_dict, token.text.lower(), token.i)
+            for representation in self._loop_textual_representatations(token):
+                add_dict_entry(words_to_token_indexes_dict, representation, token.i)
             for subword in token._.holmes.subwords:
-                add_dict_entry(words_to_token_indexes_dict, subword.lemma, token.i, subword.index)
-                add_dict_entry(words_to_token_indexes_dict, subword.text.lower(), token.i,
-                        subword.index)
+                for representation in self._loop_textual_representatations(subword):
+                    add_dict_entry(words_to_token_indexes_dict, representation.lower(), token.i,
+                            subword.index)
 
         return self._IndexedDocument(parsed_document, words_to_token_indexes_dict)
 
@@ -870,7 +1019,7 @@ class StructuralMatcher:
 
             search_phrase_word -- the textual representation of the search phrase word that matched.
             document_word -- the textual representation of the document word that matched.
-            match_type -- *direct*, *entity*, *embedding* or *ontology*
+            match_type -- *direct*, *entity*, *embedding*, *ontology* or *derivation*
             similarity_measure -- the similarity between the two tokens. Defaults to 1.0 if the
                 match did not involve embeddings.
             """
@@ -1004,13 +1153,25 @@ class StructuralMatcher:
 
         search_phrase_word_text = search_phrase_token.text.lower()
         search_phrase_word_lemma = search_phrase_token._.holmes.lemma
+        if self.analyze_derivational_morphology and self.ontology != None:
+            search_phrase_word_reverse_derived_lemmas = self.reverse_derived_lemmas_in_ontology(
+                    search_phrase_token)
 
         if document_subword_index != None:
             document_word_text = document_token._.holmes.subwords[document_subword_index].text
             document_word_lemma = document_token._.holmes.subwords[document_subword_index].lemma
+            if self.analyze_derivational_morphology:
+                document_word_derived_lemma = \
+                        document_token._.holmes.subwords[document_subword_index].derived_lemma
+            else:
+                document_word_derived_lemma = None
         else:
             document_word_text = document_token.text
             document_word_lemma = document_token._.holmes.lemma
+            if self.analyze_derivational_morphology:
+                document_word_derived_lemma = document_token._.holmes.derived_lemma
+            else:
+                document_word_derived_lemma = None
 
         if self._is_entity_search_phrase_token(search_phrase_token,
                 search_phrase.topic_match_phraselet) and document_subword_index == None:
@@ -1041,6 +1202,10 @@ class StructuralMatcher:
         if search_phrase_word_lemma == document_word_lemma:
             handle_match(search_phrase_word_lemma, document_word_lemma, 'direct', 0)
             return True
+        if document_word_derived_lemma != None and search_phrase_word_lemma == \
+                document_word_derived_lemma:
+            handle_match(search_phrase_word_lemma, document_word_derived_lemma, 'derivation', 0)
+            return True
         if self.ontology != None:
             entry = self.ontology.matches(search_phrase_word_lemma, document_word_text.lower())
             if entry != None:
@@ -1052,6 +1217,22 @@ class StructuralMatcher:
                 handle_match(search_phrase_word_lemma, entry.word, 'ontology',
                         entry.depth)
                 return True
+            if document_word_derived_lemma != None:
+                entry = self.ontology.matches(search_phrase_word_lemma, document_word_derived_lemma)
+                if entry != None:
+                    handle_match(search_phrase_word_lemma, entry.word, 'ontology',
+                            entry.depth)
+                    return True
+            if self.analyze_derivational_morphology:
+                for search_phrase_reverse_lemma in search_phrase_word_reverse_derived_lemmas:
+                    for document_reverse_lemma in self.reverse_derived_lemmas_in_ontology(
+                            document_token):
+                        entry = self.ontology.matches(search_phrase_reverse_lemma,
+                                document_reverse_lemma)
+                        if entry != None:
+                            handle_match(search_phrase_word_lemma, entry.word, 'ontology',
+                                    entry.depth)
+                            return True
 
         if not search_phrase.topic_match_phraselet and \
                 search_phrase_token._.holmes.lemma == search_phrase_token.lemma_:
@@ -1063,6 +1244,11 @@ class StructuralMatcher:
                     return True
                 if search_phrase_word_text == document_word_lemma:
                     handle_match(search_phrase_token.text, document_word_lemma, 'direct', 0)
+                    return True
+                if document_word_derived_lemma != None and search_phrase_word_text == \
+                        document_word_derived_lemma:
+                    handle_match(search_phrase_token.text, document_word_derived_lemma,
+                            'derivation', 0)
                     return True
             if self.ontology != None:
                 entry = self.ontology.matches(search_phrase_word_text, document_word_text.lower())
@@ -1077,29 +1263,62 @@ class StructuralMatcher:
                     return True
 
         # multiword matches
-
         if search_phrase.topic_match_phraselet and len(search_phrase_word_lemma.split()) > 1 \
                 and document_subword_index == None:
             for multiword_span in self._multiword_spans_with_head_token(document_token):
+                matched_word = None
                 if search_phrase_word_lemma.lower() == multiword_span.text.lower():
+                    matched_word = multiword_span.text
+                    word_match_type = 'direct'
+                elif search_phrase_word_lemma.lower() == multiword_span.lemma.lower():
+                    matched_word = multiword_span.lemma
+                    word_match_type = 'direct'
+                # derived_lemma can only != lemma if analyze_derivational_morphology == True
+                elif search_phrase_word_lemma.lower() == multiword_span.derived_lemma.lower():
+                    matched_word = multiword_span.derived_lemma
+                    word_match_type = 'derivation'
+                if matched_word != None:
                     for working_token in multiword_span.tokens:
                         search_phrase_and_document_visited_table[search_phrase_token.i].add(
                                 working_token.i)
-                        handle_match(search_phrase_word_lemma, multiword_span.text, 'direct',
-                                0, first_document_token=multiword_span.tokens[0],
-                                last_document_token=multiword_span.tokens[-1])
-                        return True
+                    handle_match(search_phrase_word_lemma, matched_word, word_match_type,
+                            0, first_document_token=multiword_span.tokens[0],
+                            last_document_token=multiword_span.tokens[-1])
+                    return True
         if self.ontology != None and document_subword_index == None:
             for multiword_span in self._multiword_spans_with_head_token(document_token):
-                if search_phrase_word_lemma == multiword_span.text.lower():
+                matched_word = None
+                if search_phrase_word_lemma.lower() == multiword_span.text.lower():
+                    matched_word = multiword_span.text
+                elif search_phrase_word_lemma.lower() == multiword_span.lemma:
+                    matched_word = multiword_span.lemma
+                elif search_phrase_word_lemma.lower() == multiword_span.derived_lemma.lower():
+                    matched_word = multiword_span.derived_lemma
+                if matched_word != None:
                     for working_token in multiword_span.tokens:
                         search_phrase_and_document_visited_table[search_phrase_token.i].add(
                                 working_token.i)
-                        handle_match(search_phrase_word_lemma, multiword_span.text, 'ontology',
-                                0, first_document_token=multiword_span.tokens[0],
-                                last_document_token=multiword_span.tokens[-1])
-                        return True
+                    handle_match(search_phrase_word_lemma, matched_word, 'ontology',
+                            0, first_document_token=multiword_span.tokens[0],
+                            last_document_token=multiword_span.tokens[-1])
+                    return True
                 entry = self.ontology.matches(search_phrase_word_lemma, multiword_span.text.lower())
+                if entry == None:
+                    entry = self.ontology.matches(search_phrase_word_lemma,
+                            multiword_span.derived_lemma.lower())
+                if self.analyze_derivational_morphology and multiword_span.derived_lemma.lower() in\
+                        self.ontology_reverse_derivational_dict:
+                    for document_multispan_reverse_derived_lemma in \
+                            self.ontology_reverse_derivational_dict[
+                            multiword_span.derived_lemma.lower()]:
+                        for search_phrase_reverse_derived_lemma in \
+                                search_phrase_word_reverse_derived_lemmas:
+                            entry = self.ontology.matches(search_phrase_reverse_derived_lemma,
+                                    document_multispan_reverse_derived_lemma)
+                            if entry != None:
+                                break
+                        if entry != None:
+                            break
                 if entry != None:
                     for working_token in multiword_span.tokens:
                         search_phrase_and_document_visited_table[search_phrase_token.i].add(
@@ -1177,6 +1396,25 @@ class StructuralMatcher:
                 # len(document_token._.holmes.lemma.strip()) > 0: in German spaCy sometimes
                 # classifies whitespace as entities.
 
+    def _loop_textual_representatations(self, object):
+        if isinstance(object, Token):
+            yield object.text
+            yield object._.holmes.lemma
+            if self.analyze_derivational_morphology and object._.holmes.derived_lemma != None:
+                yield object._.holmes.derived_lemma
+        elif isinstance(object, Subword):
+            yield object.text
+            yield object.lemma
+            if self.analyze_derivational_morphology and object.derived_lemma != None:
+                yield object.derived_lemma
+        elif isinstance(object, self._MultiwordSpan):
+            yield object.text
+            yield object.lemma
+            if object.lemma != object.derived_lemma:
+                yield object.derived_lemma
+        else:
+            raise RuntimeError(': '.join(('Unsupported type', str(type(object)))))
+
     def _build_matches(self, *, search_phrase, document, search_phrase_tokens_to_word_matches,
             document_label):
         """Investigate possible matches when recursion is complete."""
@@ -1247,46 +1485,29 @@ class StructuralMatcher:
                 they subwords are available only for German, coreference resolution only for
                 English), this method will need to be updated to handle this.
             """
+
+
             for word_match in (word_match for word_match in word_matches if word_match.type
-                    in ('direct', 'ontology')):
+                    in ('direct', 'derivation', 'ontology')):
                 working_entries = []
                 # First loop through getting ontology entries for all mentions in the cluster
-                for mention in word_match.document_token._.holmes.mentions:
-                    mention_root_token = word_match.document_token.doc[mention.root_index]
-                    working_entries.append(
-                            self.ontology.matches(
-                            word_match.search_phrase_token._.holmes.lemma,
-                            mention_root_token._.holmes.lemma))
-                    working_entries.append(
-                            self.ontology.matches(
-                            word_match.search_phrase_token._.holmes.lemma,
-                            mention_root_token.text.lower()))
-                    working_entries.append(
-                            self.ontology.matches(
-                            word_match.search_phrase_token.text.lower(),
-                            mention_root_token._.holmes.lemma))
-                    working_entries.append(
-                            self.ontology.matches(
-                            word_match.search_phrase_token.text.lower(),
-                            mention_root_token.text.lower()))
-                    for multiword_span in self._multiword_spans_with_head_token(
-                            mention_root_token):
-                        working_entries.append(
-                                self.ontology.matches(
-                                word_match.search_phrase_token.text.lower(),
-                                multiword_span.text))
-                        working_entries.append(
-                                self.ontology.matches(
-                                word_match.search_phrase_token._.holmes.lemma,
-                                multiword_span.lemma))
-                        working_entries.append(
-                                self.ontology.matches(
-                                word_match.search_phrase_token.text.lower(),
-                                multiword_span.text))
-                        working_entries.append(
-                                self.ontology.matches(
-                                word_match.search_phrase_token._.holmes.lemma,
-                                multiword_span.lemma))
+                for search_phrase_representation in \
+                        self._loop_textual_representatations(word_match.search_phrase_token):
+                    for mention in word_match.document_token._.holmes.mentions:
+                        mention_root_token = word_match.document_token.doc[mention.root_index]
+                        for mention_representation in \
+                                self._loop_textual_representatations(mention_root_token):
+                            working_entries.append(
+                                    self.ontology.matches(
+                                    search_phrase_representation, mention_representation))
+                        for multiword_span in \
+                                self._multiword_spans_with_head_token(mention_root_token):
+                            for multiword_representation in \
+                                    self._loop_textual_representatations(multiword_span):
+                                working_entries.append(
+                                        self.ontology.matches(
+                                        search_phrase_representation, multiword_representation))
+
                 # Now loop through the ontology entries to see if any are more specific than
                 # the current value of *extracted_word*.
                 for working_entry in working_entries:
@@ -1490,10 +1711,10 @@ class StructuralMatcher:
             overall_similarity_threshold < 1.0.
         compare_embeddings_on_non_root_words -- if 'False', embeddings on non-root words are not
             compared even if overall_similarity_threshold < 1.0.
-        document_labels_to_indexes_for_reverse_matching_sets -- indexes for direct (non-embedding)
+        document_labels_to_indexes_for_reverse_matching_sets -- indexes for non-embedding
             reverse matching only.
-        document_labels_to_indexes_for_embedding_reverse_matching_sets -- indexes for direct reverse
-            matching and for embedding-based reverse matching.
+        document_labels_to_indexes_for_embedding_reverse_matching_sets -- indexes for embedding
+            and non-embedding reverse matching.
         document_label_filter -- a string with which the label of a document must begin for that
             document to be considered for matching, or 'None' if no filter is in use.
         """
@@ -1551,12 +1772,14 @@ class StructuralMatcher:
                         search_phrase.topic_match_phraselet):
                     # We are only matching a single word without embedding, so to improve
                     # performance we avoid entering the subgraph matching code.
-                    for word_matching_root_token in self._words_matching_root_token(
-                            search_phrase):
+                    existing_minimal_match_indexes = []
+                    for word_matching_root_token in search_phrase.words_matching_root_token:
                         if word_matching_root_token in \
                                 registered_document.words_to_token_indexes_dict.keys():
                             for index in registered_document.words_to_token_indexes_dict[
                                     word_matching_root_token]:
+                                if index in existing_minimal_match_indexes:
+                                    continue
                                 minimal_match = Match(search_phrase.label, document_label, True,
                                 search_phrase.topic_match_phraselet_created_without_matching_tags,
                                 search_phrase.reverse_only)
@@ -1565,8 +1788,20 @@ class StructuralMatcher:
                                 if len(search_phrase_lemma.split()) > 1:
                                     for multiword_span in self._multiword_spans_with_head_token(
                                             doc[index.token_index]):
+                                        matched_word = None
                                         if search_phrase_lemma.lower() == \
                                                 multiword_span.text.lower():
+                                            matched_word = multiword_span.text
+                                            word_match_type = 'direct'
+                                        elif search_phrase_lemma.lower() == \
+                                                multiword_span.lemma:
+                                            matched_word = multiword_span.lemma
+                                            word_match_type = 'direct'
+                                        elif search_phrase_lemma.lower() == \
+                                                multiword_span.derived_lemma.lower():
+                                            matched_word = multiword_span.derived_lemma
+                                            word_match_type = 'derivation'
+                                        if matched_word != None:
                                             minimal_match.word_matches.append(WordMatch(
                                                 search_phrase.doc[0],
                                                 search_phrase.doc[0]._.holmes.lemma,
@@ -1574,14 +1809,23 @@ class StructuralMatcher:
                                                 multiword_span.tokens[0],
                                                 multiword_span.tokens[-1],
                                                 None,
-                                                multiword_span.text,
-                                                'direct',
+                                                matched_word,
+                                                word_match_type,
                                                 1.0, False, False, doc[index.token_index], None,
                                                 None))
                                             break
                                 elif index.is_subword():
                                     token = doc[index.token_index]
                                     subword = token._.holmes.subwords[index.subword_index]
+                                    # We do not have the actual texts that matched, so do the best
+                                    # we can to distinguish word match types 'direct' and
+                                    # 'derivation'
+                                    if search_phrase.doc[0]._.holmes.lemma == subword.derived_lemma:
+                                        matched_word = subword.derived_lemma
+                                        word_match_type = 'derivation'
+                                    else:
+                                        matched_word = subword.text
+                                        word_match_type = 'direct'
                                     minimal_match.word_matches.append(WordMatch(
                                             search_phrase.doc[0],
                                             search_phrase.doc[0]._.holmes.lemma,
@@ -1589,12 +1833,13 @@ class StructuralMatcher:
                                             token,
                                             token,
                                             subword,
-                                            subword.text,
-                                            'direct',
+                                            matched_word,
+                                            word_match_type,
                                             1.0, token._.holmes.is_negated, False, token, None,
                                             None))
                                     if token._.holmes.is_negated:
                                         minimal_match.is_negated = True
+                                existing_minimal_match_indexes.append(index)
                                 matches.append(minimal_match)
                     continue
                 direct_matching_indexes = []
@@ -1627,8 +1872,7 @@ class StructuralMatcher:
                                         not index.is_subword()]
                             matched_indexes_set.update(entity_matching_indexes)
                     else:
-                        for word_matching_root_token in self._words_matching_root_token(
-                                search_phrase):
+                        for word_matching_root_token in search_phrase.words_matching_root_token:
                             if word_matching_root_token in \
                                     registered_document.words_to_token_indexes_dict.keys():
                                 direct_matching_indexes = \

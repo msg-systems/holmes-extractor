@@ -294,7 +294,7 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
                 ['predicate-actor: chase-animal',
                 'predicate-actor: chase-animal/predicate-patient: chase-animal',
                 'predicate-patient: chase-animal', 'word: animal'])
-        self.assertEqual(set(map(lambda phr: phr.label, trainer._serialized_phraselets)),
+        self.assertEqual(set(map(lambda phr: phr.label, trainer._phraselet_infos)),
                 {'predicate-actor: chase-animal',
                 'predicate-patient: chase-animal', 'word: animal'})
         trainer2 = sttb.train(minimum_occurrences=4, cv_threshold=1)
@@ -302,6 +302,6 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
                 ['predicate-actor: chase-animal',
                 'predicate-actor: chase-animal/predicate-patient: chase-animal',
                 'predicate-patient: chase-animal'])
-        self.assertEqual(set(map(lambda phr: phr.label, trainer2._serialized_phraselets)),
+        self.assertEqual(set(map(lambda phr: phr.label, trainer2._phraselet_infos)),
                 {'predicate-actor: chase-animal',
                 'predicate-patient: chase-animal'})

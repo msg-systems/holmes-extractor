@@ -572,11 +572,6 @@ class GermanStructuralMatchingTest(unittest.TestCase):
                 "Die Hundenjagd durch die Katze")
         self.assertEqual(len(matches), 0)
 
-    def test_objective_deverbal_subword_phrase_with_von(self):
-        matches = self._get_matches(holmes_manager,
-                "Die Katzenjagd vom Hund und vom Hund")
-        self.assertEqual(len(matches), 2)
-
     def test_subjective_deverbal_subword_phrase_with_von(self):
         matches = self._get_matches(holmes_manager,
                 "Die Hundenjagd von der Katze und der Katze")

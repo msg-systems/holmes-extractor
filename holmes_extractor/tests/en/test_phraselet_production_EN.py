@@ -6,6 +6,9 @@ script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join((script_directory,'test_ontology.owl')))
 ontology_holmes_manager = holmes.Manager(model='en_core_web_lg',
         perform_coreference_resolution=False, ontology=ontology)
+ontology_holmes_manager_adm_false = holmes.Manager(model='en_core_web_lg',
+        perform_coreference_resolution=False, ontology=ontology,
+        analyze_derivational_morphology=False)
 symmetric_ontology = holmes.Ontology(os.sep.join((script_directory,'test_ontology.owl')),
         symmetric_matching = True)
 symmetric_ontology_nocoref_holmes_manager = holmes.Manager(model='en_core_web_lg',
@@ -20,9 +23,9 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
             include_reverse_only = False):
         manager.remove_all_search_phrases()
         doc = manager.semantic_analyzer.parse(text_to_match)
-        phraselet_labels_to_search_phrases = {}
+        phraselet_labels_to_phraselet_infos = {}
         manager.structural_matcher.add_phraselets_to_dict(doc,
-                phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
+                phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
                 replace_with_hypernym_ancestors=replace_with_hypernym_ancestors,
                 match_all_words=match_all_words,
                 returning_serialized_phraselets=False,
@@ -32,9 +35,9 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                 reverse_only_parent_lemmas = manager.semantic_analyzer.\
                 topic_matching_reverse_only_parent_lemmas)
         self.assertEqual(
-                set(phraselet_labels_to_search_phrases.keys()),
+                set(phraselet_labels_to_phraselet_infos.keys()),
                 set(phraselet_labels))
-        self.assertEqual(len(phraselet_labels_to_search_phrases.keys()),
+        self.assertEqual(len(phraselet_labels_to_phraselet_infos.keys()),
                 len(phraselet_labels))
 
     def test_verb_subject_no_entry_in_ontology(self):
@@ -43,12 +46,17 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
 
     def test_phrasal_verb_subject_no_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "A plant grows up quickly",
+                ['governor-adjective: grow up-quick', 'predicate-actor: grow up-plant',
+                        'word: plant'])
+
+    def test_phrasal_verb_subject_no_entry_in_ontology_adm_false(self):
+        self._check_equals(ontology_holmes_manager_adm_false, "A plant grows up quickly",
                 ['governor-adjective: grow up-quickly', 'predicate-actor: grow up-plant',
                         'word: plant'])
 
     def test_verb_direct_object_no_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "A plant is grown",
-                ['predicate-patient: grow-plant', 'word: plant'])
+                ['predicate-passivesubject: grow-plant', 'word: plant'])
 
     def test_verb_indirect_object_no_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "Somebody gives something to a plant",
@@ -60,6 +68,10 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
 
     def test_verb_adverb_no_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "They sailed rapidly",
+                ['governor-adjective: sail-rapid'])
+
+    def test_verb_adverb_no_entry_in_ontology_adm_false(self):
+        self._check_equals(ontology_holmes_manager_adm_false, "They sailed rapidly",
                 ['governor-adjective: sail-rapidly'])
 
     def test_noun_noun_no_entry_in_ontology(self):
@@ -68,13 +80,13 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
 
     def test_possessor_possessed_no_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "A gardener's plant",
-                ['possessor-possessed: plant-gardener', 'word: plant', 'word: gardener'])
+                ['predicate-patient: plant-gardener', 'word: plant', 'word: gardener'])
 
     def test_combined_no_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager,
                 "A gardener's healthy hobby plant grows in the sun",
                 ['predicate-actor: grow-plant', 'governor-adjective: plant-healthy',
-                'noun-noun: plant-hobby', 'possessor-possessed: plant-gardener',
+                'noun-noun: plant-hobby', 'predicate-patient: plant-gardener',
                 'prepgovernor-noun: grow-sun', 'word: plant', 'word: hobby', 'word: gardener',
                 'word: sun'])
 
@@ -116,6 +128,12 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
 
     def test_multiword_not_in_ontology(self):
         self._check_equals(ontology_holmes_manager,
+                "Information extraction progresses with information",
+                ['predicate-actor: progress-extract', 'noun-noun: extract-inform',
+                'prepgovernor-noun: progress-inform', 'word: inform', 'word: extract'])
+
+    def test_multiword_not_in_ontology_analyze_derivational_morphology_false(self):
+        self._check_equals(ontology_holmes_manager_adm_false,
                 "Information extraction progresses with information",
                 ['predicate-actor: progress-extraction', 'noun-noun: extraction-information',
                 'prepgovernor-noun: progress-information', 'word: information', 'word: extraction'])
@@ -164,8 +182,8 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
 
     def test_multiword_not_in_ontology_symmetric_ontology(self):
         self._check_equals(symmetric_ontology_nocoref_holmes_manager, "Information extraction progresses",
-                ['predicate-actor: progress-extraction', 'noun-noun: extraction-information',
-                        'word: information', 'word: extraction'])
+                ['predicate-actor: progress-extract', 'noun-noun: extract-inform',
+                        'word: inform', 'word: extract'])
 
     def test_text_in_ontology_lemma_not_in_ontology_symmetric_ontology(self):
         self._check_equals(symmetric_ontology_nocoref_holmes_manager,
@@ -217,15 +235,14 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                 "So he did it at home", ['word: home'],
                 include_reverse_only=False)
 
-    def test_coref_and_serialization(self):
+    def test_coref_and_phraselet_labels(self):
         no_ontology_coref_holmes_manager.remove_all_search_phrases()
         doc = no_ontology_coref_holmes_manager.semantic_analyzer.parse(
                 "I saw a dog. He was chasing a cat and a cat")
-        phraselet_labels_to_search_phrases = {}
-        serialized_phraselets = \
-                no_ontology_coref_holmes_manager.structural_matcher.add_phraselets_to_dict(
+        phraselet_labels_to_phraselet_infos = {}
+        no_ontology_coref_holmes_manager.structural_matcher.add_phraselets_to_dict(
                 doc,
-                phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
+                phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
                 replace_with_hypernym_ancestors=False,
                 match_all_words=False,
                 include_reverse_only=False,
@@ -235,11 +252,8 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                 semantic_analyzer.topic_matching_phraselet_stop_lemmas,
                 reverse_only_parent_lemmas = no_ontology_coref_holmes_manager.semantic_analyzer.\
                 topic_matching_reverse_only_parent_lemmas)
-        deserialized_phraselet_labels_to_search_phrases = \
-                no_ontology_coref_holmes_manager.structural_matcher.deserialize_phraselets(
-                serialized_phraselets)
         self.assertEqual(set(
-                deserialized_phraselet_labels_to_search_phrases.keys()),
+                phraselet_labels_to_phraselet_infos.keys()),
                 set(['predicate-patient: see-dog', 'predicate-actor: chase-dog',
                 'predicate-patient: chase-cat', 'word: dog', 'word: cat']))
 

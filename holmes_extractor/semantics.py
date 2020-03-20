@@ -105,6 +105,12 @@ class Subword:
         self.governor_index = governor_index
         self.governing_dependency_label = governing_dependency_label
 
+    def lemma_or_derived_lemma(self):
+        if self.derived_lemma != None:
+            return self.derived_lemma
+        else:
+            return self.lemma
+
     def __str__(self):
         if self.derived_lemma != None:
             lemma_string = ''.join((self.lemma, '(', self.derived_lemma, ')'))
@@ -127,7 +133,7 @@ class HolmesDictionary:
     def __init__(self, index, lemma, derived_lemma):
         self.index = index
         self.lemma = lemma
-        self.derived_lemma = derived_lemma
+        self._derived_lemma = derived_lemma
         self.children = [] # list of *SemanticDependency* objects where this token is the parent.
         self.righthand_siblings = [] # list of tokens to the right of this token that stand in a
         # conjunction relationship to this token and that share its semantic parents.
@@ -146,6 +152,23 @@ class HolmesDictionary:
                                         # this token within the first cluster to which this token
                                         # belongs, which will most often be this token itself
         self.subwords = []
+
+    @property
+    def derived_lemma(self):
+        if self.lemma == self._derived_lemma: # can occur with phraselets
+            return None
+        else:
+            return self._derived_lemma
+
+    @derived_lemma.setter
+    def derived_lemma(self, derived_lemma):
+        self._derived_lemma = derived_lemma
+
+    def lemma_or_derived_lemma(self):
+        if self.derived_lemma != None:
+            return self.derived_lemma
+        else:
+            return self.lemma
 
     @property
     def is_uncertain(self):
@@ -351,7 +374,7 @@ class SemanticAnalyzer(ABC):
         """
         for token in spacy_doc:
             lemma = self._holmes_lemma(token)
-            derived_lemma = self._derived_holmes_lemma(token, lemma)
+            derived_lemma = self.derived_holmes_lemma(token, lemma)
             token._.set('holmes', HolmesDictionary(token.i, lemma, derived_lemma))
         for token in spacy_doc:
             self._set_negation(token)
@@ -607,6 +630,8 @@ class SemanticAnalyzer(ABC):
 
     topic_matching_reverse_only_parent_lemmas = NotImplemented
 
+    preferred_phraselet_pos = NotImplemented
+
     @abstractmethod
     def _add_subwords(self, token, subword_cache):
         pass
@@ -631,7 +656,7 @@ class SemanticAnalyzer(ABC):
     def _holmes_lemma(self, token):
         pass
 
-    def _derived_holmes_lemma(self, token, lemma):
+    def derived_holmes_lemma(self, token, lemma):
         if lemma in self._derivational_dictionary:
             derived_lemma = self._derivational_dictionary[lemma]
             if lemma == derived_lemma: # basis entry, so do not call language specific method
@@ -925,21 +950,27 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
     # in matching from search phrases to documents versus from documents to search phrases.
     _matching_dep_dict = {
             'nsubj': ['csubj', 'poss', 'pobjb', 'advmodsubj', 'arg'],
-            'acomp': ['amod', 'advmod', 'npmod'],
-            'amod': ['acomp', 'advmod', 'npmod'],
-            'advmod': ['acomp', 'amod', 'npmod'],
+            'acomp': ['amod', 'advmod', 'npmod', 'advcl'],
+            'amod': ['acomp', 'advmod', 'npmod', 'advcl'],
+            'advmod': ['acomp', 'amod', 'npmod', 'advcl'],
+            'arg': ['nsubj', 'csubj', 'poss', 'pobjb', 'advmodsubj', 'dobj', 'pobjo', 'relant',
+                    'nsubjpass', 'csubjpass', 'compound', 'advmodobj', 'dative'],
+            'compound': ['nmod', 'appos', 'nounmod', 'nsubj', 'csubj', 'poss', 'pobjb',
+                    'advmodsubj', 'dobj', 'pobjo', 'relant',
+                    'nsubjpass', 'csubjpass', 'arg', 'advmodobj', 'dative'],
             'dative': ['pobjt', 'relant', 'nsubjpass'],
             'pobjt': ['dative', 'relant'],
-            'nsubjpass': ['dobj', 'pobjo', 'poss', 'relant', 'csubjpass', 'compound',
-                    'advmodobj', 'arg'],
-             'dobj': ['pobjo', 'poss', 'relant', 'nsubjpass', 'csubjpass',
+            'nsubjpass': ['dobj', 'pobjo', 'poss', 'relant', 'csubjpass',
+                    'compound','advmodobj', 'arg', 'dative', 'relant'],
+            'dobj': ['pobjo', 'poss', 'relant', 'nsubjpass', 'csubjpass',
                     'compound','advmodobj', 'arg'],
-             'nmod': ['appos', 'compound', 'nummod'],
-             'poss': ['pobjo'],
-             'pobjo': ['poss'],
-             'pobjb': ['nsubj', 'csubj', 'poss', 'advmodsubj', 'arg'],
-             'prep': ['prepposs']
-             }
+            'nmod': ['appos', 'compound', 'nummod'],
+            'poss': ['pobjo', 'nsubj', 'csubj', 'pobjb', 'advmodsubj', 'arg', 'relant',
+                    'nsubjpass', 'csubjpass', 'compound', 'advmodobj'],
+            'pobjo': ['poss'],
+            'pobjb': ['nsubj', 'csubj', 'poss', 'advmodsubj', 'arg'],
+            'prep': ['prepposs']
+            }
 
     # Where dependencies from a parent to a child are copied to the parent's righthand siblings,
     # it can make sense to mark the dependency as uncertain depending on the underlying spaCy
@@ -966,7 +997,15 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only = False),
         PhraseletTemplate("predicate-patient", "Somebody does a thing", 1, 3,
-                ['dobj', 'relant', 'nsubjpass', 'csubjpass','advmodobj', 'pobjo'],
+                ['dobj', 'relant', 'advmodobj', 'pobjo', 'poss'],
+                ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
+                ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only = False),
+        PhraseletTemplate("predicate-toughmovedargument", "A thing is easy to do", 5, 1,
+                ['arg'],
+                ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
+                ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only = False),
+        PhraseletTemplate("predicate-passivesubject", "A thing is done", 3, 1,
+                ['nsubjpass', 'csubjpass'],
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only = False),
         PhraseletTemplate("be-attribute", "Something is a thing", 1, 3,
@@ -989,10 +1028,6 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                 ['nummod'],
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS'],
                 ['CD'], reverse_only = False),
-        PhraseletTemplate("possessor-possessed", "A thing's thing", 3, 1,
-                ['poss', 'pobjo'],
-                ['FW', 'NN', 'NNP', 'NNPS', 'NNS'],
-                ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only = False),
         PhraseletTemplate("prepgovernor-noun", "A thing in a thing", 1, 4,
                 ['pobjp'],
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
@@ -1018,6 +1053,9 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
     # reverse-matched only during topic matching.
     topic_matching_reverse_only_parent_lemmas = (('be', 'VERB'), ('have', 'VERB'), ('do', 'VERB'),
             ('say', 'VERB'), ('go', 'VERB'), ('get', 'VERB'), ('make', 'VERB'))
+
+    # Parts of speech that are preferred as lemmas within phraselets
+    preferred_phraselet_pos = ('NOUN', 'PROPN')
 
     def _add_subwords(self, token, subword_cache):
         """ Analyses the internal structure of the word to find atomic semantic elements. Is
@@ -1231,12 +1269,27 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
 
     def _language_specific_derived_holmes_lemma(self, token, lemma):
         """Generates and returns a derived lemma where appropriate, otherwise returns *None*."""
-        # 'isation', 'ization' -> 'ise', 'ize'
-        if token.pos_ == 'NOUN' and len(lemma) > 7 and (lemma.endswith('isation') or
-                lemma.endswith('ization')):
-            return ''.join((lemma[:-5], 'e'))
+        if (token == None or token.pos_ == 'NOUN') and len(lemma) > 9:
+            possible_lemma = None
+            lemma_to_test_in_vocab = possible_lemma
+            if lemma.endswith('isation') or lemma.endswith('ization'):
+                possible_lemma = ''.join((lemma[:-5], 'e')) # 'isation', 'ization' -> 'ise', 'ize'
+                if possible_lemma.endswith('ise'):
+                    lemma_to_test_in_vocab = ''.join((possible_lemma[:-3], 'ize'))
+                    # only American spellings in vocab
+                else:
+                    lemma_to_test_in_vocab = possible_lemma
+            elif lemma.endswith('ication'):
+                possible_lemma = ''.join((lemma[:-7], 'y')) # implication -> imply
+                lemma_to_test_in_vocab = possible_lemma
+            if (possible_lemma == None or self.nlp.vocab[lemma_to_test_in_vocab].is_oov) and \
+                    lemma.endswith('ation'):
+                possible_lemma = ''.join((lemma[:-3], 'e')) # manipulation -> manipulate
+                lemma_to_test_in_vocab = possible_lemma
+            if possible_lemma != None and not self.nlp.vocab[lemma_to_test_in_vocab].is_oov:
+                return possible_lemma
         # adverb with 'ly' -> adjective without 'ly'
-        if token.tag_ == 'RB':
+        if token == None or token.tag_ == 'RB':
             # domestically -> domestic
             if lemma.endswith('ically'):
                 return lemma[:-4]
@@ -1250,7 +1303,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                     derived_lemma = ''.join((derived_lemma[:-1], 'y'))
                 return derived_lemma
         # singing -> sing
-        if token.tag_ == 'NN' and lemma.endswith('ing'):
+        if (token == None or token.tag_ == 'NN') and lemma.endswith('ing'):
             lemmatization_sentence = ' '.join(('it is', lemma))
             lemmatization_doc = self.spacy_parse(lemmatization_sentence)
             return lemmatization_doc[2].lemma_.lower()
@@ -1450,18 +1503,18 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
     _or_lemma = 'oder'
 
     _matching_dep_dict = {
-            'sb': ['nk', 'ag', 'mnr', 'arg', 'pobjerg', 'intcompound'],
-            'ag': ['nk', 'mnr', 'intcompound'],
-            'da': ['nk', 'og', 'op'],
-            'oa': ['nk', 'og', 'op', 'ag', 'mnr', 'arg', 'intcompound'],
-            'og': ['oa', 'da', 'nk', 'op', 'intcompound'],
-            'nk': ['ag', 'intcompound'],
-            'mo': ['moposs', 'mnr', 'mnrposs', 'op', 'intcompound'],
-            'mnr': ['mnrposs', 'mo', 'moposs', 'op'],
+            'sb': ['pobjb', 'ag', 'arg', 'intcompound'],
+            'ag': ['nk', 'pobjo', 'intcompound'],
+            'oa': ['pobjo', 'ag', 'arg', 'intcompound', 'og'],
+            'arg': ['sb', 'oa', 'ag', 'intcompound', 'pobjb', 'pobjo'],
+            'mo': ['moposs', 'mnr', 'mnrposs', 'nk', 'oc'],
+            'mnr': ['mnrposs', 'mo', 'moposs', 'nk', 'oc'],
+            'nk': ['ag', 'pobjo', 'intcompound', 'oc'],
+            'pobjo': ['ag', 'intcompound'],
             'pobjp': ['intcompound'],
             # intcompound is only used within extensive matching because it is not assigned
             # in the context of registering search phrases.
-            'intcompound': ['sb', 'ag', 'oa', 'og', 'nk', 'mo', 'pobjp']
+            'intcompound': ['sb', 'oa', 'ag', 'og', 'nk', 'pobjo']
     }
 
     _mark_child_dependencies_copied_to_siblings_as_uncertain = False
@@ -1477,14 +1530,14 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
 
     phraselet_templates = [
         PhraseletTemplate("verb-nom", "Eine Sache tut", 2, 1,
-                ['sb'],
+                ['sb', 'pobjb'],
                 ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
-                        'VAFIN', 'VAIMP', 'VAINF', 'VAPP'],
+                        'VAFIN', 'VAIMP', 'VAINF', 'VAPP', 'FM', 'NE', 'NNE', 'NN'],
                 ['FM', 'NE', 'NNE', 'NN'], reverse_only = False),
         PhraseletTemplate("verb-acc", "Jemand tut eine Sache", 1, 3,
-                ['oa'],
+                ['oa', 'pobjo', 'ag', 'og'],
                 ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
-                        'VAFIN', 'VAIMP', 'VAINF', 'VAPP'],
+                        'VAFIN', 'VAIMP', 'VAINF', 'VAPP', 'FM', 'NE', 'NNE', 'NN'],
                 ['FM', 'NE', 'NNE', 'NN'], reverse_only = False),
         PhraseletTemplate("verb-dat", "Jemand gibt einer Sache etwas", 1, 3,
                 ['da'],
@@ -1497,11 +1550,11 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                         'VAFIN', 'VAIMP', 'VAINF', 'VAPP'],
                 ['FM', 'NE', 'NNE', 'NN'], reverse_only = True),
         PhraseletTemplate("noun-dependent", "Eine beschriebene Sache", 2, 1,
-                ['nk', 'ag'],
+                ['nk'],
                 ['FM', 'NE', 'NNE', 'NN'],
                 ['FM', 'NE', 'NNE', 'NN', 'ADJA', 'ADJD', 'ADV', 'CARD'], reverse_only = False),
         PhraseletTemplate("verb-adverb", "schnell machen", 1, 0,
-                ['mo', 'oc'],
+                ['mo', 'moposs', 'oc'],
                 ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
                         'VAFIN', 'VAIMP', 'VAINF', 'VAPP'],
                 ['ADJA', 'ADJD', 'ADV'], reverse_only = False),
@@ -1514,6 +1567,11 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                 ['nk'],
                 ['APPO', 'APPR', 'APPRART', 'APZR'],
                 ['FM', 'NE', 'NNE', 'NN'], reverse_only = True),
+        PhraseletTemplate("verb-toughmovedargument", "Eine Sache ist schwer zu tun", 5, 1,
+                ['arg'],
+                ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
+                        'VAFIN', 'VAIMP', 'VAINF', 'VAPP'],
+                ['FM', 'NE', 'NNE', 'NN'], reverse_only = False),
         PhraseletTemplate("intcompound", "Eine Sache in einer Sache", 1, 4,
                 ['intcompound'],
                 ['NE', 'NNE', 'NN', 'TRUNC', 'ADJA', 'ADJD', 'TRUNC'],
@@ -1530,6 +1588,8 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
 
     topic_matching_reverse_only_parent_lemmas = (('sein', 'AUX'), ('werden', 'AUX'),
             ('haben', 'AUX'), ('sagen', 'VERB'), ('machen', 'VERB'), ('tun', 'VERB'))
+
+    preferred_phraselet_pos = ('NOUN', 'PROPN')
 
     # Only words at least this long are examined for possible subwords
     _minimum_length_for_subword_search = 10
@@ -1740,7 +1800,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                                         first_sibling_possible_subword.char_start_index +
                                         len(first_sibling_possible_subword.text)]
                                 lemma = first_sibling_lemmatization_doc[counter*2].lemma_.lower()
-                                derived_lemma = self._derived_holmes_lemma(None, lemma)
+                                derived_lemma = self.derived_holmes_lemma(None, lemma)
                                 working_subwords.append(Subword(first_sibling.i, index,
                                         text, lemma, derived_lemma,
                                         first_sibling_possible_subword.char_start_index,
@@ -1752,7 +1812,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                     text = token.text[possible_subword.char_start_index:
                             possible_subword.char_start_index + len(possible_subword.text)]
                     lemma = lemmatization_doc[counter*2].lemma_.lower()
-                    derived_lemma = self._derived_holmes_lemma(None, lemma)
+                    derived_lemma = self.derived_holmes_lemma(None, lemma)
                     working_subwords.append(Subword(token.i, index, text, lemma, derived_lemma,
                             possible_subword.char_start_index, None, None, None, None, None))
                     index += 1
@@ -1778,7 +1838,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                                             last_sibling_possible_subword.char_start_index +
                                             len(last_sibling_possible_subword.text)]
                                     lemma = last_sibling_lemmatization_doc[counter*2].lemma_.lower()
-                                    derived_lemma = self._derived_holmes_lemma(None, lemma)
+                                    derived_lemma = self.derived_holmes_lemma(None, lemma)
                                     working_subwords.append(Subword(last_sibling.i, index, text,
                                             lemma, derived_lemma,
                                             last_sibling_possible_subword.char_start_index,
@@ -1969,6 +2029,18 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
     def _language_specific_derived_holmes_lemma(self, token, lemma):
         """ token == None where *lemma* belongs to a subword """
 
+        # verbs with 'ieren' -> 'ation'
+        if (token == None or token.pos_ == 'VERB') and len(lemma) > 9 and \
+                lemma.endswith('ieren'):
+            working_lemma = ''.join((lemma[:-5], 'ation'))
+            if not self.nlp.vocab[working_lemma].is_oov:
+                return working_lemma
+        # nouns with 'ierung' -> 'ation'
+        if (token == None or token.pos_ == 'NOUN') and len(lemma) > 10 and \
+                lemma.endswith('ierung'):
+            working_lemma = ''.join((lemma[:-6], 'ation'))
+            if not self.nlp.vocab[working_lemma].is_oov:
+                return working_lemma
         # nominalization with 'ung'
         if (token == None or token.tag_ == 'NN') and lemma.endswith('ung'):
             for word in self._ung_ending_blacklist:
@@ -1976,18 +2048,32 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                     return None
             if lemma.endswith('erung') or lemma.endswith('elung'):
                 return ''.join((lemma[:-3], 'n'))
-            else:
-                return ''.join((lemma[:-3], 'en'))
+            return ''.join((lemma[:-3], 'en'))
         # nominalization with 'heit', 'keit'
         if (token == None or token.tag_ == 'NN') and (lemma.endswith('keit') or
                 lemma.endswith('heit')):
             return lemma[:-4]
-        if (token == None or token.pos_ in ('NOUN', 'PROPN')) and len(lemma) > 4 and \
+        if (token == None or token.pos_ in ('NOUN', 'PROPN')) and len(lemma) > 6 and \
                 (lemma.endswith('chen') or lemma.endswith('lein')):
+            # len > 6: because e.g. Dach and Loch have lemmas 'dachen' and 'lochen'
             working_lemma = lemma[-12:-4]
             # replace umlauts in the last 8 characters of the derived lemma
             working_lemma = working_lemma.replace('ä','a').replace('ö','o').replace('ü','u')
-            return ''.join((lemma[:-12],working_lemma))
+            working_lemma = ''.join((lemma[:-12],working_lemma))
+            if not self.nlp.vocab[working_lemma].is_oov:
+                return working_lemma
+            if lemma[-4] == 'l': # 'lein' where original word ends in 'l'
+                second_working_lemma = ''.join((working_lemma, 'l'))
+                if not self.nlp.vocab[working_lemma].is_oov:
+                    return second_working_lemma
+            second_working_lemma = lemma[:-4] # 'Löffelchen'
+            if not self.nlp.vocab[second_working_lemma].is_oov:
+                return second_working_lemma
+            if lemma[-4] == 'l': # 'Schlüsselein'
+                second_working_lemma = ''.join((second_working_lemma, 'l'))
+                if not self.nlp.vocab[second_working_lemma].is_oov:
+                    return second_working_lemma
+            return working_lemma
         if (token == None or token.tag_ == 'NN') and lemma.endswith('e') and len(lemma) > 1:
             # for comparability with diminutive forms, e.g. äuglein <-> auge
             return lemma[:-1]
@@ -2001,10 +2087,6 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                 token.head.tag_ not in ('VAINF', 'VMINF', 'VVINF', 'VVIZU'):
             token.head._.holmes.remove_dependency_with_child_index(token.i)
 
-        # equivalence between 'der Abschluss einer Versicherung' and 'der Abschluss von einer
-        # Versicherung': add an additional dependency spanning the preposition; in all other cases
-        # add a new dependency spanning the preposition to facilitate topic matching and supervised
-        # document classification
         for dependency in (dependency for dependency in token._.holmes.children
                 if dependency.label in ('mo', 'mnr','pg', 'op')):
             child = dependency.child_token(token.doc)
@@ -2014,14 +2096,14 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                 if dependency.label in ('mnr', 'pg') and \
                         dependency.child_token(token.doc)._.holmes.lemma in ('von', 'vom'):
                     token._.holmes.children.append(SemanticDependency(
-                        token.i, child_dependency.child_index, 'nk'))
+                        token.i, child_dependency.child_index, 'pobjo'))
+                        # pobjO from English 'of'
                     child._.holmes.is_matchable = False
                 elif dependency.label in ('mnr') and \
                         dependency.child_token(token.doc)._.holmes.lemma in ('durch'):
                     token._.holmes.children.append(SemanticDependency(
-                        token.i, child_dependency.child_index, 'pobjerg'))
-                        # ergative, because 'durch' with verbal nouns can only refer to the
-                        # actor of a bi- or multivalent action
+                        token.i, child_dependency.child_index, 'pobjb'))
+                        # pobjB from English 'by'
                 else:
                     token._.holmes.children.append(SemanticDependency(
                         token.i, child_dependency.child_index, 'pobjp',

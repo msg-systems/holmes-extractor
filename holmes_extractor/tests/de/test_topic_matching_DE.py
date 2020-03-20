@@ -406,4 +406,4 @@ class GermanTopicMatchingTest(unittest.TestCase):
                 holmes_manager.topic_match_documents_returning_dictionaries_against(
                 "Informationsnehmen der Löwen")
         self.assertEqual(topic_match_dictionaries,
-        [{'document_label': '', 'text': 'Information und Löwen wurden genommen', 'text_to_match': 'Informationsnehmen der Löwen', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 37, 'score': 38.76, 'word_infos': [[0, 11, 'relation', False], [16, 21, 'single', False], [29, 37, 'relation', True]]}])
+        [{'document_label': '', 'text': 'Information und Löwen wurden genommen', 'text_to_match': 'Informationsnehmen der Löwen', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 37, 'score': 98.75999999999999, 'word_infos': [[0, 11, 'overlapping_relation', False], [16, 21, 'overlapping_relation', False], [29, 37, 'overlapping_relation', True]]}])

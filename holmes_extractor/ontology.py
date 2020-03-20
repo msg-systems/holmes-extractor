@@ -47,9 +47,10 @@ class Ontology:
         self._owl_type_link = owl_type_link
         self._owl_synonym_type = owl_synonym_type
         self._owl_hyponym_type = owl_hyponym_type
-        self._words, self._multiwords = self._get_words()
+        self.words, self._multiwords = self._get_words()
         self._match_dict = {}
         self.symmetric_matching=symmetric_matching
+        self._populate_dictionary()
 
     class Entry:
         """Args:
@@ -65,28 +66,31 @@ class Ontology:
             self.depth = depth
             self.is_individual = is_individual
 
-    def add_to_dictionary(self, search_phrase_word):
-        """Generates the dictionary for a search_phrase word."""
-        search_phrase_word = search_phrase_word.lower()
-        if search_phrase_word not in self._match_dict:
-            entry_set = set()
-            self._match_dict[search_phrase_word] = entry_set
-            for class_id, type_link, metaclass_id in self._get_classes():
-                entry_word = self._get_entry_word(class_id).lower()
-                if entry_word == search_phrase_word:
-                    self._recursive_add_to_dict(
-                            entry_set, entry_word, class_id, set(), 0, False, False,
-                            self.symmetric_matching)
-            for class_id, type_link, metaclass_id in self._get_individuals():
-                entry_word = self._get_entry_word(class_id).lower()
-                if entry_word == search_phrase_word:
-                    self._recursive_add_to_dict(
-                            entry_set, entry_word, class_id, set(), 0, True, False,
-                            self.symmetric_matching)
+    def _populate_dictionary(self):
+        """Generates the dictionary from search phrase words to matching document words."""
+
+        for class_id, type_link, metaclass_id in self._get_classes():
+            entry_word = self._get_entry_word(class_id).lower()
+            if entry_word in self._match_dict:
+                entry_set = self._match_dict[entry_word]
+            else:
+                self._match_dict[entry_word] = entry_set = set()
+            self._recursive_add_to_dict(
+                    entry_set, entry_word, class_id, set(), 0, False, False,
+                    self.symmetric_matching)
+        for class_id, type_link, metaclass_id in self._get_individuals():
+            entry_word = self._get_entry_word(class_id).lower()
+            if entry_word in self._match_dict:
+                entry_set = self._match_dict[entry_word]
+            else:
+                self._match_dict[entry_word] = entry_set = set()
+            self._recursive_add_to_dict(
+                    entry_set, entry_word, class_id, set(), 0, True, False,
+                    self.symmetric_matching)
 
     def contains(self, word):
         """Returns whether or not a word is present in the loaded ontology."""
-        return word.lower() in self._words
+        return word.lower() in self.words
 
     def contains_multiword(self, multiword):
         """Returns whether or not a multiword is present in the loaded ontology."""

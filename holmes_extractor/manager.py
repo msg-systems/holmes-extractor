@@ -299,8 +299,6 @@ class Manager:
         document_label_filter -- optionally, a string with which document labels must start to
             be considered for inclusion in the results.
         """
-        maximum_number_of_single_word_matches_for_relation_matching,
-        maximum_number_of_single_word_matches_for_embedding_matching,
         topic_matcher = TopicMatcher(semantic_analyzer = self.semantic_analyzer,
                 structural_matcher = self.structural_matcher,
                 indexed_documents = self.threadsafe_container.get_indexed_documents(),

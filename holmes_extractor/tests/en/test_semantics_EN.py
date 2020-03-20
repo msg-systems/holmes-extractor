@@ -774,6 +774,18 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         doc = analyzer.parse("The ramming of the vehicle was very loud.")
         self.assertEqual(doc[1]._.holmes.derived_lemma, 'ram')
 
+    def test_derived_lemma_ication(self):
+        doc = analyzer.parse("The verification of the results.")
+        self.assertEqual(doc[1]._.holmes.derived_lemma, 'verify')
+
+    def test_derived_lemma_ation_3(self):
+        doc = analyzer.parse("The manipulation of the results.")
+        self.assertEqual(doc[1]._.holmes.derived_lemma, 'manipulate')
+
+    def test_derived_lemma_ication_in_icate(self):
+        doc = analyzer.parse("The domestication of the dog.")
+        self.assertEqual(doc[1]._.holmes.derived_lemma, 'domesticate')
+
     def test_no_derived_lemma(self):
         doc = analyzer.parse("vehicle.")
         self.assertEqual(doc[0]._.holmes.derived_lemma, None)

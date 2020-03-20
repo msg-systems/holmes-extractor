@@ -274,15 +274,25 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
     def test_von_phrase(self):
         doc = analyzer.parse("Der Abschluss von einer Versicherung")
-        self.assertEqual(doc[1]._.holmes.string_representation_of_children(), '2:mnr; 4:nk')
+        self.assertEqual(doc[1]._.holmes.string_representation_of_children(), '2:mnr; 4:pobjo')
 
     def test_von_phrase_with_conjunction(self):
         doc = analyzer.parse(
                 "Der Abschluss und Aufrechterhaltung von einer Versicherung und einem Vertrag")
         self.assertEqual(doc[1]._.holmes.string_representation_of_children(),
-                '2:cd; 4:mnr; 6:nk; 9:nk')
+                '2:cd; 4:mnr; 6:pobjo; 9:pobjo')
         self.assertEqual(doc[3]._.holmes.string_representation_of_children(),
-                '4:mnr; 6:nk; 9:nk')
+                '4:mnr; 6:pobjo; 9:pobjo')
+
+    def test_von_and_durch_phrase(self):
+        doc = analyzer.parse("Der Abschluss von einer Versicherung durch einen Makler")
+        self.assertEqual(doc[1]._.holmes.string_representation_of_children(),
+                '2:mnr; 4:pobjo; 5:mnr; 7:pobjb')
+
+    def test_genitive_and_durch_phrase(self):
+        doc = analyzer.parse("Der Abschluss einer Versicherung durch einen Makler")
+        self.assertEqual(doc[1]._.holmes.string_representation_of_children(),
+                '3:ag; 4:mnr; 6:pobjb')
 
     def test_subjective_zu_clause_complement_simple_active(self):
         doc = analyzer.parse("Der Hund überlegte, eine Katze zu jagen")
@@ -654,15 +664,15 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = analyzer.parse("ZahlungsverkehrX")
         self.assertEqual(len(doc[0]._.holmes.subwords), 0)
 
-    def test_pobjerg_simple(self):
+    def test_durch_phrase_simple(self):
         doc = analyzer.parse("Die Jagd durch den Hund")
         self.assertEqual(doc[1]._.holmes.string_representation_of_children(),
-                '2:mnr; 4:pobjerg')
+                '2:mnr; 4:pobjb')
 
-    def test_pobjerg_with_conjunction(self):
+    def test_durch_phrase_with_conjunction(self):
         doc = analyzer.parse("Die Jagd durch den Hund und die Katze")
         self.assertEqual(doc[1]._.holmes.string_representation_of_children(),
-                '2:mnr; 4:pobjerg; 7:pobjerg')
+                '2:mnr; 4:pobjb; 7:pobjb')
 
     def test_subwords_word_twice_in_document(self):
         doc = analyzer.parse("Widerrufsbelehrung und die widerrufsbelehrung waren interessant")
@@ -1819,6 +1829,14 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = analyzer.parse("Die Drosselung.")
         self.assertEqual(doc[1]._.holmes.derived_lemma, 'drosseln')
 
+    def test_derived_lemma_ierung(self):
+        doc = analyzer.parse("Die Validierung.")
+        self.assertEqual(doc[1]._.holmes.derived_lemma, 'validation')
+
+    def test_derived_lemma_ieren(self):
+        doc = analyzer.parse("Wir validieren das.")
+        self.assertEqual(doc[1]._.holmes.derived_lemma, 'validation')
+
     def test_derived_lemma_rung(self):
         doc = analyzer.parse("Eine Behinderung.")
         self.assertEqual(doc[1]._.holmes.derived_lemma, 'behindern')
@@ -1847,17 +1865,33 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = analyzer.parse("Das kleine Bäuchchen.")
         self.assertEqual(doc[2]._.holmes.derived_lemma, 'bauch')
 
+    def test_derived_lemma_four_letter_ending_ch(self):
+        doc = analyzer.parse("Das Dach.")
+        self.assertEqual(doc[1]._.holmes.derived_lemma, None)
+
     def test_derived_lemma_lein_umlaut(self):
         doc = analyzer.parse("Das kleine Bäuchlein.")
         self.assertEqual(doc[2]._.holmes.derived_lemma, 'bauch')
 
     def test_derived_lemma_chen_5_chars(self):
         doc = analyzer.parse("Das kleine Öchen.")
-        self.assertEqual(doc[2]._.holmes.derived_lemma, 'o')
+        self.assertEqual(doc[2]._.holmes.derived_lemma, None)
 
     def test_derived_lemma_chen_4_chars(self):
         doc = analyzer.parse("Das kleine Chen.")
         self.assertEqual(doc[2]._.holmes.derived_lemma, None)
+
+    def test_derived_lemma_chen_no_umlaut_change(self):
+        doc = analyzer.parse("Das kleine Löffelchen.")
+        self.assertEqual(doc[2]._.holmes.derived_lemma, 'löffel')
+
+    def test_derived_lemma_lein_no_umlaut_change_l_ending(self):
+        doc = analyzer.parse("Das kleine Löffelein.")
+        self.assertEqual(doc[2]._.holmes.derived_lemma, 'löffel')
+
+    def test_derived_lemma_lein_l_ending(self):
+        doc = analyzer.parse("Das kleine Schakalein.")
+        self.assertEqual(doc[2]._.holmes.derived_lemma, 'schakal')
 
     def test_derived_lemma_e(self):
         doc = analyzer.parse("Das große Auge.")

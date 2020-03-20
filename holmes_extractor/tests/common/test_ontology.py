@@ -12,20 +12,6 @@ combined_ontology_2 = holmes.Ontology([os.sep.join((script_directory,'test_ontol
         os.sep.join((script_directory,'test_ontology.owl'))])
 combined_ontology_symmetric = holmes.Ontology([os.sep.join((script_directory,'test_ontology.owl')),
         os.sep.join((script_directory,'test_ontology2.owl'))], symmetric_matching=True)
-for term in ['horse', 'football', 'gymnastics equipment', 'dog', 'cat', 'hound', 'pussy', 'animal',
-        'foal', 'fido', 'mimi momo', 'absent', 'cat creature']:
-    ontology.add_to_dictionary(term)
-    symmetric_ontology.add_to_dictionary(term)
-    combined_ontology_1.add_to_dictionary(term)
-    combined_ontology_2.add_to_dictionary(term)
-    combined_ontology_symmetric.add_to_dictionary(term)
-symmetric_ontology.add_to_dictionary('vaulting horse')
-combined_ontology_1.add_to_dictionary('poodle')
-combined_ontology_2.add_to_dictionary('poodle')
-combined_ontology_symmetric.add_to_dictionary('poodle')
-combined_ontology_1.add_to_dictionary('Schneeglöckchen')
-combined_ontology_2.add_to_dictionary('Schneeglöckchen')
-combined_ontology_symmetric.add_to_dictionary('Schneeglöckchen')
 
 class OntologyTest(unittest.TestCase):
 
