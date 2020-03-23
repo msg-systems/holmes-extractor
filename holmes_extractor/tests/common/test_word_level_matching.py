@@ -17,6 +17,8 @@ holmes_manager_coref.register_search_phrase('A narcissistic king')
 holmes_manager_coref.register_search_phrase('A splendid king')
 holmes_manager_coref.register_search_phrase('A kind king')
 holmes_manager_coref.register_search_phrase("An ENTITYGPE")
+holmes_manager_coref.register_search_phrase("Somebody believes strongly")
+holmes_manager_coref.register_search_phrase("A strong attraction")
 symmetric_ontology = holmes.Ontology(os.sep.join((script_directory,'test_ontology.owl')),
         symmetric_matching=True)
 second_holmes_manager_coref = holmes.Manager(model='en_core_web_lg', overall_similarity_threshold=0.85,
@@ -180,3 +182,17 @@ class WordMatchingTest(unittest.TestCase):
         self.assertEqual(len(text_matches), 2)
         self.assertEqual(text_matches[0]['index_within_document'], 4)
         self.assertEqual(text_matches[1]['index_within_document'], 6)
+
+    def test_derivation_matching_1(self):
+        text_matches = holmes_manager_coref.match_search_phrases_against(
+                entry='A strong belief')
+        self.assertEqual(len(text_matches), 1)
+        self.assertEqual(text_matches[0]['word_matches'][0]['match_type'], 'derivation')
+        self.assertEqual(text_matches[0]['word_matches'][1]['match_type'], 'derivation')
+
+    def test_derivation_matching_2(self):
+        text_matches = holmes_manager_coref.match_search_phrases_against(
+                entry='Someone is strongly attracted')
+        self.assertEqual(len(text_matches), 1)
+        self.assertEqual(text_matches[0]['word_matches'][0]['match_type'], 'derivation')
+        self.assertEqual(text_matches[0]['word_matches'][1]['match_type'], 'derivation')

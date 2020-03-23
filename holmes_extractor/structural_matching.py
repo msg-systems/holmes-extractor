@@ -610,6 +610,9 @@ class StructuralMatcher:
             if not existing_pos in self.semantic_analyzer.preferred_phraselet_pos and \
                     new_pos in self.semantic_analyzer.preferred_phraselet_pos:
                 return True
+            if existing_pos in self.semantic_analyzer.preferred_phraselet_pos and \
+                    not new_pos in self.semantic_analyzer.preferred_phraselet_pos:
+                return False
             return len(new_lemma) < len(existing_lemma)
 
         def add_new_phraselet_info(phraselet_label, phraselet_doc, phraselet_template,

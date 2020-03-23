@@ -40,6 +40,22 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
         self.assertEqual(len(phraselet_labels_to_phraselet_infos.keys()),
                 len(phraselet_labels))
 
+    def _get_phraselet_dict(self, manager, text_to_match):
+        manager.remove_all_search_phrases()
+        doc = manager.semantic_analyzer.parse(text_to_match)
+        phraselet_labels_to_phraselet_infos = {}
+        manager.structural_matcher.add_phraselets_to_dict(doc,
+                phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
+                replace_with_hypernym_ancestors=False,
+                match_all_words=True,
+                returning_serialized_phraselets=False,
+                ignore_relation_phraselets=False,
+                include_reverse_only=True,
+                stop_lemmas = manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
+                reverse_only_parent_lemmas = manager.semantic_analyzer.\
+                topic_matching_reverse_only_parent_lemmas)
+        return phraselet_labels_to_phraselet_infos
+
     def test_verb_subject_no_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "A plant grows",
                 ['predicate-actor: grow-plant', 'word: plant'])
@@ -283,3 +299,97 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                 "Richard Paul Hudson came",
                 ['predicate-actor: come-richard paul hudson',
                 'word: richard', 'word: paul', 'word: hudson', 'word: come'], False, True)
+
+    def test_noun_lemmas_preferred_noun_lemma_first(self):
+        dict = self._get_phraselet_dict(no_ontology_coref_holmes_manager,
+                "They discussed anonymity. They wanted to use anonymous.")
+        self.assertFalse('word: anonymous' in dict)
+        self.assertFalse('governor-adjective: use-anonymous' in dict)
+        word_phraselet = dict['word: anonymity']
+        self.assertEqual(word_phraselet.parent_lemma, 'anonymity')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'anonymity')
+        relation_phraselet = dict['governor-adjective: use-anonymity']
+        self.assertEqual(relation_phraselet.child_lemma, 'anonymous')
+        self.assertEqual(relation_phraselet.child_derived_lemma, 'anonymity')
+
+    def test_noun_lemmas_preferred_noun_lemma_second(self):
+        dict = self._get_phraselet_dict(no_ontology_coref_holmes_manager,
+                "They wanted to use anonymous. They discussed anonymity.")
+        self.assertFalse('word: anonymous' in dict)
+        self.assertFalse('governor-adjective: use-anonymous' in dict)
+        word_phraselet = dict['word: anonymity']
+        self.assertEqual(word_phraselet.parent_lemma, 'anonymity')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'anonymity')
+        relation_phraselet = dict['governor-adjective: use-anonymity']
+        self.assertEqual(relation_phraselet.child_lemma, 'anonymous')
+        self.assertEqual(relation_phraselet.child_derived_lemma, 'anonymity')
+
+    def test_noun_lemmas_preferred_control(self):
+        dict = self._get_phraselet_dict(no_ontology_coref_holmes_manager,
+                "They wanted to use anonymous.")
+        self.assertFalse('word: anonymous' in dict)
+        self.assertFalse('governor-adjective: use-anonymous' in dict)
+        word_phraselet = dict['word: anonymity']
+        self.assertEqual(word_phraselet.parent_lemma, 'anonymous')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'anonymity')
+        relation_phraselet = dict['governor-adjective: use-anonymity']
+        self.assertEqual(relation_phraselet.child_lemma, 'anonymous')
+        self.assertEqual(relation_phraselet.child_derived_lemma, 'anonymity')
+
+    def test_shorter_lemmas_preferred_shorter_lemma_first(self):
+        dict = self._get_phraselet_dict(no_ontology_coref_holmes_manager,
+                "They discussed behavior. They discussed behaviour.")
+        self.assertFalse('word: behaviour' in dict)
+        self.assertFalse('word: behavior' in dict)
+        self.assertFalse('predicate-patient: discuss-behaviour' in dict)
+        self.assertFalse('predicate-patient: discuss-behavior' in dict)
+        word_phraselet = dict['word: behave']
+        self.assertEqual(word_phraselet.parent_lemma, 'behavior')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'behave')
+        relation_phraselet = dict['predicate-patient: discuss-behave']
+        self.assertEqual(relation_phraselet.child_lemma, 'behavior')
+        self.assertEqual(relation_phraselet.child_derived_lemma, 'behave')
+
+    def test_shorter_lemmas_preferred_adm_false_control(self):
+        dict = self._get_phraselet_dict(ontology_holmes_manager_adm_false,
+                "They discussed behavior. They discussed behaviour.")
+        self.assertTrue('word: behaviour' in dict)
+        self.assertTrue('word: behavior' in dict)
+        self.assertFalse('word: behave' in dict)
+        self.assertTrue('predicate-patient: discuss-behaviour' in dict)
+        self.assertTrue('predicate-patient: discuss-behavior' in dict)
+        self.assertFalse('predicate-patient: discuss-behave' in dict)
+        word_phraselet = dict['word: behavior']
+        self.assertEqual(word_phraselet.parent_lemma, 'behavior')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'behavior')
+        relation_phraselet = dict['predicate-patient: discuss-behavior']
+        self.assertEqual(relation_phraselet.child_lemma, 'behavior')
+        self.assertEqual(relation_phraselet.child_derived_lemma, 'behavior')
+
+    def test_shorter_lemmas_preferred_shorter_lemma_second(self):
+        dict = self._get_phraselet_dict(no_ontology_coref_holmes_manager,
+                "They discussed behaviour. They discussed behavior.")
+        self.assertFalse('word: behaviour' in dict)
+        self.assertFalse('word: behavior' in dict)
+        self.assertFalse('predicate-patient: discuss-behaviour' in dict)
+        self.assertFalse('predicate-patient: discuss-behavior' in dict)
+        word_phraselet = dict['word: behave']
+        self.assertEqual(word_phraselet.parent_lemma, 'behavior')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'behave')
+        relation_phraselet = dict['predicate-patient: discuss-behave']
+        self.assertEqual(relation_phraselet.child_lemma, 'behavior')
+        self.assertEqual(relation_phraselet.child_derived_lemma, 'behave')
+
+    def test_shorter_lemmas_preferred_control(self):
+        dict = self._get_phraselet_dict(no_ontology_coref_holmes_manager,
+                "They discussed behaviour. They behaved")
+        self.assertFalse('word: behaviour' in dict)
+        self.assertFalse('word: behavior' in dict)
+        self.assertFalse('predicate-patient: discuss-behaviour' in dict)
+        self.assertFalse('predicate-patient: discuss-behavior' in dict)
+        word_phraselet = dict['word: behave']
+        self.assertEqual(word_phraselet.parent_lemma, 'behaviour')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'behave')
+        relation_phraselet = dict['predicate-patient: discuss-behave']
+        self.assertEqual(relation_phraselet.child_lemma, 'behaviour')
+        self.assertEqual(relation_phraselet.child_derived_lemma, 'behave')

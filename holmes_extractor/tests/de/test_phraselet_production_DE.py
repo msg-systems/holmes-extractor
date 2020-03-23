@@ -28,6 +28,22 @@ class GermanPhraseletProductionTest(unittest.TestCase):
         self.assertEqual(len(phraselet_labels_to_phraselet_infos.keys()),
                 len(phraselet_labels))
 
+    def _get_phraselet_dict(self, manager, text_to_match):
+        manager.remove_all_search_phrases()
+        doc = manager.semantic_analyzer.parse(text_to_match)
+        phraselet_labels_to_phraselet_infos = {}
+        manager.structural_matcher.add_phraselets_to_dict(doc,
+                phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
+                replace_with_hypernym_ancestors=False,
+                match_all_words=True,
+                returning_serialized_phraselets=False,
+                ignore_relation_phraselets=False,
+                include_reverse_only=True,
+                stop_lemmas = manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
+                reverse_only_parent_lemmas = manager.semantic_analyzer.\
+                topic_matching_reverse_only_parent_lemmas)
+        return phraselet_labels_to_phraselet_infos
+
     def test_verb_nom(self):
         self._check_equals("Eine Pflanze wächst", ['verb-nom: wachsen-pflanzen', 'word: pflanzen'])
 
@@ -317,3 +333,111 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                 'word: maßnahm'
                 ],
                 match_all_words = True)
+
+    def test_noun_lemmas_preferred_noun_lemma_first(self):
+        dict = self._get_phraselet_dict(holmes_manager,
+                "Sie besprachen die Amputation. Sie hatten ein Amputieren vor")
+        self.assertFalse('word: amputieren' in dict)
+        self.assertFalse('verb-acc: vorhaben-amputieren' in dict)
+        word_phraselet = dict['word: amputation']
+        self.assertEqual(word_phraselet.parent_lemma, 'amputation')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'amputation')
+        relation_phraselet = dict['verb-acc: vorhaben-amputation']
+        self.assertEqual(relation_phraselet.child_lemma, 'amputieren')
+        self.assertEqual(relation_phraselet.child_derived_lemma, 'amputation')
+
+    def test_noun_lemmas_preferred_noun_lemma_second(self):
+        dict = self._get_phraselet_dict(holmes_manager,
+                "Sie hatten ein Amputieren vor. Sie besprachen die Amputation.")
+        self.assertFalse('word: amputieren' in dict)
+        self.assertFalse('verb-acc: vorhaben-amputieren' in dict)
+        word_phraselet = dict['word: amputation']
+        self.assertEqual(word_phraselet.parent_lemma, 'amputieren')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'amputation')
+        relation_phraselet = dict['verb-acc: vorhaben-amputation']
+        self.assertEqual(relation_phraselet.child_lemma, 'amputieren')
+        self.assertEqual(relation_phraselet.child_derived_lemma, 'amputation')
+
+    def test_noun_lemmas_preferred_control(self):
+        dict = self._get_phraselet_dict(holmes_manager,
+                "Sie hatten ein Amputieren vor.")
+        self.assertFalse('word: amputieren' in dict)
+        self.assertFalse('verb-acc: vorhaben-amputieren' in dict)
+        word_phraselet = dict['word: amputation']
+        self.assertEqual(word_phraselet.parent_lemma, 'amputieren')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'amputation')
+        relation_phraselet = dict['verb-acc: vorhaben-amputation']
+        self.assertEqual(relation_phraselet.child_lemma, 'amputieren')
+        self.assertEqual(relation_phraselet.child_derived_lemma, 'amputation')
+
+    def test_shorter_lemmas_preferred_shorter_lemma_first(self):
+        dict = self._get_phraselet_dict(holmes_manager,
+                "Sie besprachen Information. Sie besprachen Informierung.")
+        self.assertFalse('word: informierung' in dict)
+        self.assertFalse('verb-acc: besprechen-informierung' in dict)
+        word_phraselet = dict['word: information']
+        self.assertEqual(word_phraselet.parent_lemma, 'information')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'information')
+        relation_phraselet = dict['verb-acc: besprechen-information']
+        self.assertEqual(relation_phraselet.child_lemma, 'information')
+        self.assertEqual(relation_phraselet.child_derived_lemma, 'information')
+
+    def test_shorter_lemmas_preferred_shorter_lemma_second(self):
+        dict = self._get_phraselet_dict(holmes_manager,
+                "Sie besprachen Informierung. Sie besprachen Information.")
+        self.assertFalse('word: informierung' in dict)
+        self.assertFalse('verb-acc: besprechen-informierung' in dict)
+        word_phraselet = dict['word: information']
+        self.assertEqual(word_phraselet.parent_lemma, 'information')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'information')
+        relation_phraselet = dict['verb-acc: besprechen-information']
+        self.assertEqual(relation_phraselet.child_lemma, 'information')
+        self.assertEqual(relation_phraselet.child_derived_lemma, 'information')
+
+    def test_shorter_lemmas_preferred_shorter_lemma_control(self):
+        dict = self._get_phraselet_dict(holmes_manager,
+                "Sie besprachen Informierung.")
+        self.assertFalse('word: informierung' in dict)
+        self.assertFalse('verb-acc: besprechen-informierung' in dict)
+        word_phraselet = dict['word: information']
+        self.assertEqual(word_phraselet.parent_lemma, 'informierung')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'information')
+        relation_phraselet = dict['verb-acc: besprechen-information']
+        self.assertEqual(relation_phraselet.child_lemma, 'informierung')
+        self.assertEqual(relation_phraselet.child_derived_lemma, 'information')
+
+    def test_shorter_lemmas_preferred_subwords_shorter_lemma_first(self):
+        dict = self._get_phraselet_dict(holmes_manager,
+                "Eine Informationskomitee und eine Informierungskomitee.")
+        self.assertFalse('word: informierung' in dict)
+        self.assertFalse('intcompound: komite-informierung' in dict)
+        word_phraselet = dict['word: information']
+        self.assertEqual(word_phraselet.parent_lemma, 'information')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'information')
+        relation_phraselet = dict['intcompound: komite-information']
+        self.assertEqual(relation_phraselet.child_lemma, 'information')
+        self.assertEqual(relation_phraselet.child_derived_lemma, 'information')
+
+    def test_shorter_lemmas_preferred_subwords_shorter_lemma_second(self):
+        dict = self._get_phraselet_dict(holmes_manager,
+                "Eine Informierungskomitee und eine Informationskomitee.")
+        self.assertFalse('word: informierung' in dict)
+        self.assertFalse('intcompound: komite-informierung' in dict)
+        word_phraselet = dict['word: information']
+        self.assertEqual(word_phraselet.parent_lemma, 'information')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'information')
+        relation_phraselet = dict['intcompound: komite-information']
+        self.assertEqual(relation_phraselet.child_lemma, 'information')
+        self.assertEqual(relation_phraselet.child_derived_lemma, 'information')
+
+    def test_shorter_lemmas_preferred_subwords_control(self):
+        dict = self._get_phraselet_dict(holmes_manager,
+                "Eine Informierungskomitee.")
+        self.assertFalse('word: informierung' in dict)
+        self.assertFalse('intcompound: komite-informierung' in dict)
+        word_phraselet = dict['word: information']
+        self.assertEqual(word_phraselet.parent_lemma, 'informierung')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'information')
+        relation_phraselet = dict['intcompound: komite-information']
+        self.assertEqual(relation_phraselet.child_lemma, 'informierung')
+        self.assertEqual(relation_phraselet.child_derived_lemma, 'information')
