@@ -258,7 +258,7 @@ class Manager:
             relation_score=30, reverse_only_relation_score = 20,
             single_word_score=5, single_word_any_tag_score=2,
             overlapping_relation_multiplier=1.5, embedding_penalty=0.6,
-            maximum_activation_value=1000,
+            ontology_penalty=0.9, maximum_activation_value=1000,
             maximum_number_of_single_word_matches_for_relation_matching = 500,
             maximum_number_of_single_word_matches_for_embedding_matching = 100,
             sideways_match_extent=100, only_one_result_per_document=False, number_of_results=10,
@@ -283,6 +283,11 @@ class Manager:
         embedding_penalty -- a value between 0 and 1 with which scores are multiplied when the
             match involved an embedding. The result is additionally multiplied by the overall
             similarity measure of the match.
+        ontology_penalty -- a value between 0 and 1 with which scores are multiplied for each
+            word match within a match that involved the ontology. For each such word match,
+            the score is multiplied by the value (abs(depth) + 1) times, so that the penalty is
+            higher for hyponyms and hypernyms than for synonyms and increases with the
+            depth distance.
         maximum_number_of_single_word_matches_for_relation_matching -- the maximum number
                 of single word matches that are used as the basis for matching relations. If more
                 document words than this value correspond to each of the two words within a
@@ -309,6 +314,7 @@ class Manager:
                 single_word_any_tag_score=single_word_any_tag_score,
                 overlapping_relation_multiplier=overlapping_relation_multiplier,
                 embedding_penalty=embedding_penalty,
+                ontology_penalty=ontology_penalty,
                 maximum_number_of_single_word_matches_for_relation_matching =
                 maximum_number_of_single_word_matches_for_relation_matching,
                 maximum_number_of_single_word_matches_for_embedding_matching =
@@ -322,7 +328,7 @@ class Manager:
     def topic_match_documents_returning_dictionaries_against(self, text_to_match, *,
             maximum_activation_distance=75, relation_score=30, reverse_only_relation_score = 20,
             single_word_score=5, single_word_any_tag_score=2, overlapping_relation_multiplier=1.5,
-            embedding_penalty=0.6,
+            embedding_penalty=0.6, ontology_penalty=0.9,
             maximum_number_of_single_word_matches_for_relation_matching = 500,
             maximum_number_of_single_word_matches_for_embedding_matching = 100,
             sideways_match_extent=100, only_one_result_per_document=False, number_of_results=10,
@@ -349,6 +355,11 @@ class Manager:
         embedding_penalty -- a value between 0 and 1 with which scores are multiplied when the
             match involved an embedding. The result is additionally multiplied by the overall
             similarity measure of the match.
+        ontology_penalty -- a value between 0 and 1 with which scores are multiplied for each
+            word match within a match that involved the ontology. For each such word match,
+            the score is multiplied by the value (abs(depth) + 1) times, so that the penalty is
+            higher for hyponyms and hypernyms than for synonyms and increases with the
+            depth distance.
         maximum_number_of_single_word_matches_for_relation_matching -- the maximum number
                 of single word matches that are used as the basis for matching relations. If more
                 document words than this value correspond to each of the two words within a
@@ -378,6 +389,7 @@ class Manager:
                 single_word_any_tag_score=single_word_any_tag_score,
                 overlapping_relation_multiplier=overlapping_relation_multiplier,
                 embedding_penalty=embedding_penalty,
+                ontology_penalty=ontology_penalty,
                 maximum_number_of_single_word_matches_for_relation_matching =
                 maximum_number_of_single_word_matches_for_relation_matching,
                 maximum_number_of_single_word_matches_for_embedding_matching =
@@ -587,7 +599,8 @@ class MultiprocessingManager:
     def topic_match_documents_returning_dictionaries_against(self, text_to_match, *,
             maximum_activation_distance=75, relation_score=30, reverse_only_relation_score = 20,
             single_word_score=5, single_word_any_tag_score=2, overlapping_relation_multiplier=1.5,
-            embedding_penalty=0.6,maximum_number_of_single_word_matches_for_relation_matching = 500,
+            embedding_penalty=0.6,ontology_penalty=0.9,
+            maximum_number_of_single_word_matches_for_relation_matching = 500,
             maximum_number_of_single_word_matches_for_embedding_matching = 100,
             sideways_match_extent=100, only_one_result_per_document=False, number_of_results=10,
             document_label_filter=None, tied_result_quotient=0.9):
@@ -611,6 +624,11 @@ class MultiprocessingManager:
         embedding_penalty -- a value between 0 and 1 with which scores are multiplied when the
             match involved an embedding. The result is additionally multiplied by the overall
             similarity measure of the match.
+        ontology_penalty -- a value between 0 and 1 with which scores are multiplied for each
+            word match within a match that involved the ontology. For each such word match,
+            the score is multiplied by the value (abs(depth) + 1) times, so that the penalty is
+            higher for hyponyms and hypernyms than for synonyms and increases with the
+            depth distance.
         maximum_number_of_single_word_matches_for_relation_matching -- the maximum number
                 of single word matches that are used as the basis for matching relations. If more
                 document words than this value correspond to each of the two words within a
@@ -642,7 +660,7 @@ class MultiprocessingManager:
                     self._worker.worker_topic_match_documents_returning_dictionaries_against,
                     (text_to_match, maximum_activation_distance, relation_score,
                     reverse_only_relation_score, single_word_score, single_word_any_tag_score,
-                    overlapping_relation_multiplier, embedding_penalty,
+                    overlapping_relation_multiplier, embedding_penalty, ontology_penalty,
                     maximum_number_of_single_word_matches_for_relation_matching,
                     maximum_number_of_single_word_matches_for_embedding_matching,
                     sideways_match_extent, only_one_result_per_document, number_of_results,
@@ -727,7 +745,8 @@ class Worker:
             structural_matcher, indexed_documents, text_to_match,
             maximum_activation_distance, relation_score, reverse_only_relation_score,
             single_word_score, single_word_any_tag_score, overlapping_relation_multiplier,
-            embedding_penalty,maximum_number_of_single_word_matches_for_relation_matching,
+            embedding_penalty,ontology_penalty,
+            maximum_number_of_single_word_matches_for_relation_matching,
             maximum_number_of_single_word_matches_for_embedding_matching,
             sideways_match_extent, only_one_result_per_document, number_of_results,
             document_label_filter, tied_result_quotient):
@@ -743,6 +762,7 @@ class Worker:
                 single_word_any_tag_score=single_word_any_tag_score,
                 overlapping_relation_multiplier=overlapping_relation_multiplier,
                 embedding_penalty=embedding_penalty,
+                ontology_penalty=ontology_penalty,
                 maximum_number_of_single_word_matches_for_relation_matching =
                 maximum_number_of_single_word_matches_for_relation_matching,
                 maximum_number_of_single_word_matches_for_embedding_matching =

@@ -219,15 +219,15 @@ class GermanStructuralMatchingTest(unittest.TestCase):
 
     def test_von_phrase_matches_genitive_phrase(self):
         matches = self._get_matches(holmes_manager, "Der Abschluss von einer Versicherung")
-        self.assertEqual(len(matches), 1)
+        self.assertEqual(len(matches), 2)
         self.assertFalse(matches[0].is_uncertain)
 
     def test_von_phrase_matches_genitive_phrase_with_coordination(self):
         matches = self._get_matches(holmes_manager,
                 "Der Abschluss und der Abschluss von einer Versicherung und einer Versicherung")
-        self.assertEqual(len(matches), 2)
-        for text_match in matches:
-            self.assertFalse(text_match.is_uncertain)
+        self.assertEqual(len(matches), 4)
+        for match in matches:
+            self.assertFalse(match.is_uncertain)
 
     def test_genitive_phrase_matches_von_phrase(self):
         matches = self._get_matches(holmes_manager, "Die Kündigung einer Versicherung")

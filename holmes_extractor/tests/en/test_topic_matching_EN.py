@@ -60,16 +60,36 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self._check_equals("My friend visited ENTITYNOUN", "Peter visited a city", 25,
                 holmes_manager_coref)
 
-    def test_ontology_matching(self):
-        self._check_equals("I saw an animal", "Somebody saw a cat", 34,
+    def test_ontology_matching_synonym(self):
+        self._check_equals("I saw an pussy", "Somebody saw a cat", 32,
+                holmes_manager_coref)
+
+    def test_ontology_matching_hyponym_depth_1(self):
+        self._check_equals("I saw an animal", "Somebody saw a cat", 30,
+                holmes_manager_coref)
+
+    def test_ontology_matching_hyponym_depth_2(self):
+        self._check_equals("I saw an animal", "Somebody saw a kitten", 29,
+                holmes_manager_coref)
+
+    def test_ontology_matching_hypernym_depth_1(self):
+        self._check_equals("I saw an cat", "Somebody saw an animal", 30,
+                holmes_manager_coref)
+
+    def test_ontology_matching_hypernym_depth_2(self):
+        self._check_equals("I saw a kitten", "Somebody saw an animal", 29,
+                holmes_manager_coref)
+
+    def test_ontology_matching_both_poles(self):
+        self._check_equals("A cat opens something", "An animal takes something out", 29,
                 holmes_manager_coref)
 
     def test_ontology_matching_multiword_in_document(self):
-        self._check_equals("I saw an animal", "Somebody saw Mimi Momo", 34,
+        self._check_equals("I saw an animal", "Somebody saw Mimi Momo", 29,
                 holmes_manager_coref)
 
     def test_ontology_matching_multiword_in_search_text(self):
-        self._check_equals("I saw Mimi Momo", "Somebody saw an animal", 34,
+        self._check_equals("I saw Mimi Momo", "Somebody saw an animal", 29,
                 holmes_manager_coref)
 
     def test_ontology_matching_word_only(self):

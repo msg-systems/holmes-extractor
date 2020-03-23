@@ -68,7 +68,8 @@ class TopicMatcher:
     def __init__(self, *, semantic_analyzer, structural_matcher, indexed_documents,
             maximum_activation_distance, relation_score, reverse_only_relation_score,
             single_word_score, single_word_any_tag_score, overlapping_relation_multiplier,
-            embedding_penalty, maximum_number_of_single_word_matches_for_relation_matching,
+            embedding_penalty, ontology_penalty,
+            maximum_number_of_single_word_matches_for_relation_matching,
             maximum_number_of_single_word_matches_for_embedding_matching,
             sideways_match_extent, only_one_result_per_document, number_of_results,
             document_label_filter):
@@ -90,6 +91,7 @@ class TopicMatcher:
         self.single_word_any_tag_score = single_word_any_tag_score
         self.overlapping_relation_multiplier = overlapping_relation_multiplier
         self.embedding_penalty = embedding_penalty
+        self.ontology_penalty = ontology_penalty
         self.maximum_number_of_single_word_matches_for_relation_matching = \
                 maximum_number_of_single_word_matches_for_relation_matching
         self.maximum_number_of_single_word_matches_for_embedding_matching = \
@@ -662,6 +664,9 @@ class TopicMatcher:
             overall_similarity_measure = float(match.overall_similarity_measure)
             if overall_similarity_measure < 1.0:
                 this_match_score *= self.embedding_penalty * overall_similarity_measure
+            for word_match in (word_match for word_match in match.word_matches \
+                    if word_match.type == 'ontology'):
+                this_match_score *= (self.ontology_penalty ** (abs(word_match.depth) + 1))
             if match.search_phrase_label in phraselet_labels_to_phraselet_activation_trackers:
                 phraselet_activation_tracker = phraselet_labels_to_phraselet_activation_trackers[
                         match.search_phrase_label]

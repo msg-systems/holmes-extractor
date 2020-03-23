@@ -667,6 +667,10 @@ class SemanticAnalyzer(ABC):
             return self._language_specific_derived_holmes_lemma(token, lemma)
 
     @abstractmethod
+    def normalize_hyphens(self, word):
+        pass
+
+    @abstractmethod
     def _language_specific_derived_holmes_lemma(self, token, lemma):
         pass
 
@@ -1267,6 +1271,13 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                     return ' '.join([token.lemma_.lower(), child.lemma_.lower()])
         return token.lemma_.lower()
 
+    def normalize_hyphens(self, word):
+        """ Normalizes hyphens for ontology matching. Depending on the language,
+            this may involve replacing them with spaces (English) or deleting them entirely
+            (German).
+        """
+        return word.replace('-', ' ')
+
     def _language_specific_derived_holmes_lemma(self, token, lemma):
         """Generates and returns a derived lemma where appropriate, otherwise returns *None*."""
         if (token == None or token.pos_ == 'NOUN') and len(lemma) > 9:
@@ -1514,7 +1525,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
             'pobjp': ['intcompound'],
             # intcompound is only used within extensive matching because it is not assigned
             # in the context of registering search phrases.
-            'intcompound': ['sb', 'oa', 'ag', 'og', 'nk', 'pobjo']
+            'intcompound': ['sb', 'oa', 'ag', 'og', 'nk', 'pobjo', 'pobjp']
     }
 
     _mark_child_dependencies_copied_to_siblings_as_uncertain = False
@@ -2025,6 +2036,13 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
         return token.lemma_.lower()
 
     _ung_ending_blacklist = ('sprung', 'schwung', 'nibelung')
+
+    def normalize_hyphens(self, word):
+        """ Normalizes hyphens in a multiword for ontology matching. Depending on the language,
+            this may involve replacing them with spaces (English) or deleting them entirely
+            (German).
+        """
+        return word.replace('-', '')
 
     def _language_specific_derived_holmes_lemma(self, token, lemma):
         """ token == None where *lemma* belongs to a subword """
