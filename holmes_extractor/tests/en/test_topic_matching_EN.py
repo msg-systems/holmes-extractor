@@ -509,6 +509,86 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 "Mirror of Erised", 39,
                 holmes_manager_coref)
 
+    def test_derived_form_text_to_match_single_word(self):
+        self._check_equals("information",
+                "inform", 10,
+                holmes_manager_coref)
+
+    def test_derived_form_document_text_single_word(self):
+        self._check_equals("inform",
+                "information", 5,
+                holmes_manager_coref)
+
+    def test_derived_form_text_to_match_single_word(self):
+        self._check_equals("information",
+                "inform", 10,
+                holmes_manager_coref)
+
+    def test_derived_form_single_word_control(self):
+        self._check_equals("information",
+                "information", 10,
+                holmes_manager_coref)
+
+    def test_derived_form_document_text_parent(self):
+        self._check_equals("inform quickly",
+                "quick information", 29,
+                holmes_manager_coref)
+
+    def test_derived_form_text_to_match_parent(self):
+        self._check_equals("quick information",
+                "inform quickly", 34,
+                holmes_manager_coref)
+
+    def test_derived_form_parent_control(self):
+        self._check_equals("quick information",
+                "quick information", 34,
+                holmes_manager_coref)
+
+    def test_derived_form_document_text_child(self):
+        self._check_equals("He decided to inform",
+                "He decided information", 29,
+                holmes_manager_coref)
+
+    def test_derived_form_text_to_match_child(self):
+        self._check_equals("He decided information",
+                "He decided to inform", 34,
+                holmes_manager_coref)
+
+    def test_derived_form_child_control(self):
+        self._check_equals("He decided information",
+                "He decided information", 34,
+                holmes_manager_coref)
+
+    def test_derived_forms_matched_by_ontology_1(self):
+        self._check_equals("An invitation to a politician",
+                "He explained to a politician", 36,
+                holmes_manager_coref)
+
+    def test_derived_forms_matched_by_ontology_2(self):
+        self._check_equals("He explained to a politician",
+                "An invitation to a politician", 32,
+                holmes_manager_coref)
+
+    def test_derived_multiword_child_matched_by_ontology_1(self):
+        self._check_equals("He used a vault horse",
+                "He used a vaulting horse", 30,
+                holmes_manager_coref)
+
+    def test_derived_multiword_child_matched_by_ontology_2(self):
+        self._check_equals("He used a vaulting horse",
+                "He used a vault horse", 30,
+                holmes_manager_coref)
+
+    def test_derived_multiword_parent_matched_by_ontology_1(self):
+        self._check_equals("A big vault horse",
+                "A big vaulting horse", 31,
+                holmes_manager_coref)
+
+    def test_derived_multiword_parent_matched_by_ontology_2(self):
+        self._check_equals("A big vaulting horse",
+                "A big vault horse", 31,
+                holmes_manager_coref)
+
     def test_coreference_double_match_on_governed(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document(

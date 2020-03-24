@@ -967,13 +967,15 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
             'nsubjpass': ['dobj', 'pobjo', 'poss', 'relant', 'csubjpass',
                     'compound','advmodobj', 'arg', 'dative', 'relant'],
             'dobj': ['pobjo', 'poss', 'relant', 'nsubjpass', 'csubjpass',
-                    'compound','advmodobj', 'arg'],
+                    'compound','advmodobj', 'arg', 'xcomp'],
             'nmod': ['appos', 'compound', 'nummod'],
             'poss': ['pobjo', 'nsubj', 'csubj', 'pobjb', 'advmodsubj', 'arg', 'relant',
                     'nsubjpass', 'csubjpass', 'compound', 'advmodobj'],
             'pobjo': ['poss'],
             'pobjb': ['nsubj', 'csubj', 'poss', 'advmodsubj', 'arg'],
-            'prep': ['prepposs']
+            'prep': ['prepposs'],
+            'xcomp': ['pobjo', 'poss', 'relant', 'nsubjpass', 'csubjpass',
+                    'compound','advmodobj', 'arg', 'dobj']
             }
 
     # Where dependencies from a parent to a child are copied to the parent's righthand siblings,
@@ -1001,9 +1003,10 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only = False),
         PhraseletTemplate("predicate-patient", "Somebody does a thing", 1, 3,
-                ['dobj', 'relant', 'advmodobj', 'pobjo', 'poss'],
+                ['dobj', 'relant', 'advmodobj', 'pobjo', 'poss', 'xcomp'],
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-                ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only = False),
+                ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
+                reverse_only = False),
         PhraseletTemplate("predicate-toughmovedargument", "A thing is easy to do", 5, 1,
                 ['arg'],
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
@@ -1516,7 +1519,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
     _matching_dep_dict = {
             'sb': ['pobjb', 'ag', 'arg', 'intcompound'],
             'ag': ['nk', 'pobjo', 'intcompound'],
-            'oa': ['pobjo', 'ag', 'arg', 'intcompound', 'og'],
+            'oa': ['pobjo', 'ag', 'arg', 'intcompound', 'og', 'oc'],
             'arg': ['sb', 'oa', 'ag', 'intcompound', 'pobjb', 'pobjo'],
             'mo': ['moposs', 'mnr', 'mnrposs', 'nk', 'oc'],
             'mnr': ['mnrposs', 'mo', 'moposs', 'nk', 'oc'],
@@ -1546,7 +1549,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                         'VAFIN', 'VAIMP', 'VAINF', 'VAPP', 'FM', 'NE', 'NNE', 'NN'],
                 ['FM', 'NE', 'NNE', 'NN'], reverse_only = False),
         PhraseletTemplate("verb-acc", "Jemand tut eine Sache", 1, 3,
-                ['oa', 'pobjo', 'ag', 'og'],
+                ['oa', 'pobjo', 'ag', 'og', 'oc'],
                 ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
                         'VAFIN', 'VAIMP', 'VAINF', 'VAPP', 'FM', 'NE', 'NNE', 'NN'],
                 ['FM', 'NE', 'NNE', 'NN'], reverse_only = False),

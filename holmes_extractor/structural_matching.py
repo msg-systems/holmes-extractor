@@ -334,11 +334,12 @@ class StructuralMatcher:
                         derived_lemma = textual_word
                     derived_lemmas.append(derived_lemma)
                 derived_ontology_word = ' '.join(derived_lemmas)
-                if derived_ontology_word in ontology_reverse_derivational_dict:
-                    ontology_reverse_derivational_dict[derived_ontology_word].append(
-                            ontology_word)
-                else:
-                    ontology_reverse_derivational_dict[derived_ontology_word] = [ontology_word]
+                if derived_ontology_word != ontology_word:
+                    if derived_ontology_word in ontology_reverse_derivational_dict:
+                        ontology_reverse_derivational_dict[derived_ontology_word].append(
+                                ontology_word)
+                    else:
+                        ontology_reverse_derivational_dict[derived_ontology_word] = [ontology_word]
             # sort entry lists to ensure deterministic behaviour
             for derived_ontology_word in ontology_reverse_derivational_dict:
                 ontology_reverse_derivational_dict[derived_ontology_word] = \
@@ -421,22 +422,26 @@ class StructuralMatcher:
             """ Create list of all words that match the root token of the search phrase,
                 taking any ontology into account.
             """
-            list_to_return = [self.root_token._.holmes.lemma]
+            set_to_return = {self.root_token._.holmes.lemma}
             if not self.topic_match_phraselet:
-                list_to_return.append(self.root_token.text.lower())
+                set_to_return.add(self.root_token.text.lower())
                 hyphen_normalized_text = \
                         structural_matcher.semantic_analyzer.normalize_hyphens(self.root_token.text)
                 if self.root_token.text != hyphen_normalized_text:
-                    list_to_return.append(hyphen_normalized_text.lower())
+                    set_to_return.add(hyphen_normalized_text.lower())
             if structural_matcher.analyze_derivational_morphology and \
                     self.root_token._.holmes.derived_lemma != None:
-                list_to_return.append(self.root_token._.holmes.derived_lemma)
+                set_to_return.add(self.root_token._.holmes.derived_lemma)
             if structural_matcher.ontology != None and not \
                     structural_matcher._is_entity_search_phrase_token(self.root_token,
                             self.topic_match_phraselet):
                 ontology_matching_strings = set()
                 ontology_matching_strings.update(structural_matcher.ontology.get_words_matching(
                         self.root_token._.holmes.lemma))
+                if structural_matcher.analyze_derivational_morphology and \
+                        self.root_token._.holmes.derived_lemma != None:
+                    ontology_matching_strings.update(structural_matcher.ontology.get_words_matching(
+                            self.root_token._.holmes.derived_lemma))
                 if not self.topic_match_phraselet:
                     ontology_matching_strings.update(structural_matcher.ontology.get_words_matching(
                             self.root_token.text.lower()))
@@ -451,15 +456,14 @@ class StructuralMatcher:
                                 structural_matcher.ontology.get_words_matching(
                                 reverse_derived_lemma))
                 for working_word in ontology_matching_strings:
-                    list_to_return.append(working_word)
                     if structural_matcher.analyze_derivational_morphology:
                         working_derived_lemma = \
                                 structural_matcher.semantic_analyzer.derived_holmes_lemma(
                                 self.root_token, working_word.lower())
                         if working_derived_lemma != None:
-                            list_to_return.append(working_derived_lemma)
-            return list_to_return
-
+                            set_to_return.add(working_derived_lemma)
+                set_to_return.update(ontology_matching_strings)
+            return sorted(set_to_return)
 
     class _IndexedDocument:
         """Args:
@@ -510,12 +514,14 @@ class StructuralMatcher:
                     working_text = ' '.join((working_text, token.doc[inner_pointer].text))
                     working_lemma = ' '.join((working_lemma,
                             token.doc[inner_pointer]._.holmes.lemma))
-                    this_token_derived_lemma = token.doc[inner_pointer]._.holmes.lemma
-                    if self.analyze_derivational_morphology and this_token_derived_lemma == None:
+                    if self.analyze_derivational_morphology and \
+                            token.doc[inner_pointer]._.holmes.derived_lemma != None:
+                        this_token_derived_lemma = token.doc[inner_pointer]._.holmes.derived_lemma
+                    else:
                         # if derivational morphology analysis is switched off, the derived lemma
                         # will be identical to the lemma and will not be yielded by
-                        # _loop_textual_representatations().
-                        this_token_derived_lemma = token.doc[inner_pointer]._.holmes.derived_lemma
+                        # _loop_textual_representations().
+                        this_token_derived_lemma = token.doc[inner_pointer]._.holmes.lemma
                     working_derived_lemma = ' '.join((working_derived_lemma,
                             this_token_derived_lemma))
                     working_tokens.append(token.doc[inner_pointer])
@@ -587,13 +593,13 @@ class StructuralMatcher:
                 if self.ontology.contains(token.text.lower()):
                     lemma = derived_lemma = token.text.lower()
                 # ontology contains text but not lemma, so return text
-                if self.analyze_derivational_morphology:
-                    for reverse_derived_word in self.reverse_derived_lemmas_in_ontology(token):
-                        lemma = derived_lemma = reverse_derived_word.lower()
-                        break
-                        # ontology contains a word pointing to the same derived lemma,
-                        # so return that. Note that if there are several such words the same
-                        # one will always be returned.
+            if self.ontology != None and self.analyze_derivational_morphology:
+                for reverse_derived_word in self.reverse_derived_lemmas_in_ontology(token):
+                    derived_lemma = reverse_derived_word.lower()
+                    break
+                    # ontology contains a word pointing to the same derived lemma,
+                    # so return that. Note that if there are several such words the same
+                    # one will always be returned.
             index_to_lemmas_cache[index] = lemma, derived_lemma
             return lemma, derived_lemma
 
@@ -621,9 +627,9 @@ class StructuralMatcher:
             if phraselet_label not in phraselet_labels_to_phraselet_infos:
                 phraselet_labels_to_phraselet_infos[phraselet_label] = \
                         PhraseletInfo(phraselet_label, phraselet_template.label, parent_lemma,
-                                parent_derived_lemma, parent_pos, child_lemma, child_derived_lemma,
-                                child_pos, created_without_matching_tags,
-                                is_reverse_only_parent_lemma)
+                        parent_derived_lemma, parent_pos, child_lemma, child_derived_lemma,
+                        child_pos, created_without_matching_tags,
+                        is_reverse_only_parent_lemma)
             else:
                 existing_phraselet = phraselet_labels_to_phraselet_infos[phraselet_label]
                 if lemma_replacement_indicated(existing_phraselet.parent_lemma,
@@ -877,10 +883,21 @@ class StructuralMatcher:
                 phraselet_infos}
 
     def _redefine_multiwords_on_head_tokens(self, doc):
+
+        def loop_textual_representations(multiword_span):
+            for token in doc:
+                for multiword_span in self._multiword_spans_with_head_token(token):
+                    for representation in self._loop_textual_representations(multiword_span):
+                        yield representation
+                    if self.analyze_derivational_morphology:
+                        for reverse_derived_lemma in \
+                                self.reverse_derived_lemmas_in_ontology(multiword_span):
+                            yield reverse_derived_lemma
+
         if self.ontology != None:
             for token in doc:
                 for multiword_span in self._multiword_spans_with_head_token(token):
-                    for representation in self._loop_textual_representatations(multiword_span):
+                    for representation in loop_textual_representations(multiword_span):
                         if self.ontology.contains_multiword(representation):
                             token._.holmes.lemma = representation.lower()
                             # mark the dependent tokens as grammatical and non-matchable
@@ -890,6 +907,7 @@ class StructuralMatcher:
                                 multiword_token._.holmes.children = [SemanticDependency(
                                         multiword_token.i, 0 - (token.i + 1), None)]
                                 multiword_token._.holmes.is_matchable = False
+                            break
 
     def create_search_phrase(self, search_phrase_text, search_phrase_doc,
             label, phraselet_template, topic_match_phraselet_created_without_matching_tags,
@@ -1018,10 +1036,10 @@ class StructuralMatcher:
             entity_defined_multiword = self.semantic_analyzer.get_entity_defined_multiword(token)
             if entity_defined_multiword != None:
                 add_dict_entry(words_to_token_indexes_dict, entity_defined_multiword, token.i)
-            for representation in self._loop_textual_representatations(token):
+            for representation in self._loop_textual_representations(token):
                 add_dict_entry(words_to_token_indexes_dict, representation, token.i)
             for subword in token._.holmes.subwords:
-                for representation in self._loop_textual_representatations(subword):
+                for representation in self._loop_textual_representations(subword):
                     add_dict_entry(words_to_token_indexes_dict, representation.lower(), token.i,
                             subword.index)
 
@@ -1170,76 +1188,95 @@ class StructuralMatcher:
                     structurally_matched_document_token, document_word, depth))
 
         def loop_search_phrase_word_representations():
-            yield search_phrase_token._.holmes.lemma, 'direct'
+            yield search_phrase_token._.holmes.lemma, 'direct', \
+                    search_phrase_token._.holmes.lemma_or_derived_lemma()
             hyphen_normalized_word = self.semantic_analyzer.normalize_hyphens(
                     search_phrase_token._.holmes.lemma)
             if hyphen_normalized_word != search_phrase_token._.holmes.lemma:
-                yield hyphen_normalized_word, 'direct'
+                yield hyphen_normalized_word, 'direct', \
+                        search_phrase_token._.holmes.lemma_or_derived_lemma()
             if self.analyze_derivational_morphology and \
                     search_phrase_token._.holmes.derived_lemma != None:
-                yield search_phrase_token._.holmes.derived_lemma, 'derivation'
+                yield search_phrase_token._.holmes.derived_lemma, 'derivation', \
+                        search_phrase_token._.holmes.lemma_or_derived_lemma()
             if not search_phrase.topic_match_phraselet and \
                     search_phrase_token._.holmes.lemma == search_phrase_token.lemma_ and \
                     search_phrase_token._.holmes.lemma != search_phrase_token.text:
                 # search phrase word is not multiword, phrasal or separable verb, so we can match
                 # against its text as well as its lemma
-                yield search_phrase_token.text, 'direct'
+                yield search_phrase_token.text, 'direct', \
+                        search_phrase_token._.holmes.lemma_or_derived_lemma()
             if self.analyze_derivational_morphology and self.ontology != None:
                 for reverse_lemma in self.reverse_derived_lemmas_in_ontology(
                         search_phrase_token):
-                    yield reverse_lemma, 'ontology'
+                    yield reverse_lemma, 'ontology', \
+                            search_phrase_token._.holmes.lemma_or_derived_lemma()
 
         def document_word_representations():
             list_to_return = []
             if document_subword_index != None:
                 working_document_subword = document_token._.holmes.subwords[document_subword_index]
-                list_to_return.append((working_document_subword.text, 'direct'))
+                list_to_return.append((working_document_subword.text, 'direct',
+                        working_document_subword.lemma_or_derived_lemma()))
                 hyphen_normalized_word = self.semantic_analyzer.normalize_hyphens(
                         working_document_subword.text)
                 if hyphen_normalized_word != working_document_subword.text:
-                    list_to_return.append((hyphen_normalized_word, 'direct'))
+                    list_to_return.append((hyphen_normalized_word, 'direct',
+                            working_document_subword.lemma_or_derived_lemma()))
                 if working_document_subword.lemma != working_document_subword.text:
-                    list_to_return.append((working_document_subword.lemma, 'direct'))
+                    list_to_return.append((working_document_subword.lemma, 'direct',
+                            working_document_subword.lemma_or_derived_lemma()))
                 if self.analyze_derivational_morphology and \
                         working_document_subword.derived_lemma != None:
                     list_to_return.append((working_document_subword.derived_lemma,
-                            'derivation'))
+                            'derivation', working_document_subword.lemma_or_derived_lemma()))
                 if self.analyze_derivational_morphology and self.ontology != None:
                     for reverse_lemma in self.reverse_derived_lemmas_in_ontology(
                             working_document_subword):
-                        list_to_return.append((reverse_lemma, 'ontology'))
+                        list_to_return.append((reverse_lemma, 'ontology',
+                                working_document_subword.lemma_or_derived_lemma()))
             else:
-                list_to_return.append((document_token.text, 'direct'))
+                list_to_return.append((document_token.text, 'direct',
+                        document_token._.holmes.lemma_or_derived_lemma()))
                 hyphen_normalized_word = self.semantic_analyzer.normalize_hyphens(
                         document_token.text)
                 if hyphen_normalized_word != document_token.text:
-                    list_to_return.append((hyphen_normalized_word, 'direct'))
+                    list_to_return.append((hyphen_normalized_word, 'direct',
+                            document_token._.holmes.lemma_or_derived_lemma()))
                 if document_token._.holmes.lemma != document_token.text:
-                        list_to_return.append((document_token._.holmes.lemma, 'direct'))
+                        list_to_return.append((document_token._.holmes.lemma, 'direct',
+                                document_token._.holmes.lemma_or_derived_lemma()))
                 if self.analyze_derivational_morphology:
                     if document_token._.holmes.derived_lemma != None:
                         list_to_return.append((document_token._.holmes.derived_lemma,
-                                'derivation'))
+                                'derivation', document_token._.holmes.lemma_or_derived_lemma()))
                 if self.analyze_derivational_morphology and self.ontology != None:
                     for reverse_lemma in self.reverse_derived_lemmas_in_ontology(document_token):
-                        list_to_return.append((reverse_lemma, 'ontology'))
+                        list_to_return.append((reverse_lemma, 'ontology',
+                                document_token._.holmes.lemma_or_derived_lemma()))
             return list_to_return
 
         def loop_document_multiword_representations(multiword_span):
-            yield multiword_span.text, 'direct'
+            yield multiword_span.text, 'direct', multiword_span.derived_lemma
             hyphen_normalized_word = self.semantic_analyzer.normalize_hyphens(multiword_span.text)
             if hyphen_normalized_word != multiword_span.text:
-                yield hyphen_normalized_word, 'direct'
+                yield hyphen_normalized_word, 'direct', multiword_span.derived_lemma
             if multiword_span.text != multiword_span.lemma:
-                yield multiword_span.lemma, 'direct'
+                yield multiword_span.lemma, 'direct', multiword_span.derived_lemma
             if multiword_span.derived_lemma != multiword_span.lemma:
-                yield multiword_span.derived_lemma, 'derivation'
+                yield multiword_span.derived_lemma, 'derivation', multiword_span.derived_lemma
             if self.analyze_derivational_morphology and self.ontology != None:
                 for reverse_lemma in self.reverse_derived_lemmas_in_ontology(multiword_span):
-                    yield reverse_lemma, 'ontology'
+                    yield reverse_lemma, 'ontology', multiword_span.derived_lemma
 
-        def match_type(*match_types):
-            if 'derivation' in match_types:
+        def match_type(search_phrase_and_document_derived_lemmas_identical, *match_types):
+            if 'ontology' in match_types and search_phrase_and_document_derived_lemmas_identical:
+                # an ontology entry happens to have created a derivation word match before the
+                # derivation match itself was processed, so mark the type as 'derivation'.
+                return 'derivation'
+            elif 'ontology' in match_types:
+                return 'ontology'
+            elif 'derivation' in match_types:
                 return 'derivation'
             else:
                 return 'direct'
@@ -1274,14 +1311,15 @@ class StructuralMatcher:
             return False
 
         document_word_representations = document_word_representations()
-        for search_phrase_word_representation, search_phrase_match_type in \
-                loop_search_phrase_word_representations():
-            for document_word_representation, document_match_type in \
+        for search_phrase_word_representation, search_phrase_match_type, \
+                search_phrase_derived_lemma in loop_search_phrase_word_representations():
+            for document_word_representation, document_match_type, document_derived_lemma in \
                     document_word_representations:
                 if search_phrase_word_representation.lower() == \
                         document_word_representation.lower():
                     handle_match(search_phrase_word_representation, document_word_representation,
-                            match_type(search_phrase_match_type, document_match_type), 0)
+                            match_type(search_phrase_derived_lemma == document_derived_lemma,
+                            search_phrase_match_type, document_match_type), 0)
                     return True
                 if self.ontology != None:
                     entry = self.ontology.matches(search_phrase_word_representation.lower(),
@@ -1293,7 +1331,8 @@ class StructuralMatcher:
             # multiword matches
             if document_subword_index == None:
                 for multiword_span in self._multiword_spans_with_head_token(document_token):
-                    for multiword_span_representation, document_match_type in \
+                    for multiword_span_representation, document_match_type, \
+                            multispan_derived_lemma in \
                             loop_document_multiword_representations(multiword_span):
                         if search_phrase_word_representation.lower() == \
                                 multiword_span_representation.lower():
@@ -1375,7 +1414,7 @@ class StructuralMatcher:
                 # len(document_token._.holmes.lemma.strip()) > 0: in German spaCy sometimes
                 # classifies whitespace as entities.
 
-    def _loop_textual_representatations(self, object):
+    def _loop_textual_representations(self, object):
         if isinstance(object, Token):
             yield object.text
             hyphen_normalized_text = self.semantic_analyzer.normalize_hyphens(object.text)
@@ -1483,18 +1522,18 @@ class StructuralMatcher:
                 working_entries = []
                 # First loop through getting ontology entries for all mentions in the cluster
                 for search_phrase_representation in \
-                        self._loop_textual_representatations(word_match.search_phrase_token):
+                        self._loop_textual_representations(word_match.search_phrase_token):
                     for mention in word_match.document_token._.holmes.mentions:
                         mention_root_token = word_match.document_token.doc[mention.root_index]
                         for mention_representation in \
-                                self._loop_textual_representatations(mention_root_token):
+                                self._loop_textual_representations(mention_root_token):
                             working_entries.append(
                                     self.ontology.matches(
                                     search_phrase_representation, mention_representation))
                         for multiword_span in \
                                 self._multiword_spans_with_head_token(mention_root_token):
                             for multiword_representation in \
-                                    self._loop_textual_representatations(multiword_span):
+                                    self._loop_textual_representations(multiword_span):
                                 working_entries.append(
                                         self.ontology.matches(
                                         search_phrase_representation, multiword_representation))

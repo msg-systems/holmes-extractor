@@ -32,6 +32,7 @@ holmes_manager.register_search_phrase("Extraktion der Information")
 holmes_manager.register_search_phrase("Maßnahmen der Beschaffung der Information")
 holmes_manager.register_search_phrase("Die Linguistik")
 holmes_manager.register_search_phrase("Das große Interesse")
+holmes_manager.register_search_phrase("Knochenmark wird extrahiert")
 holmes_manager_with_variable_search_phrases = holmes.Manager(model='de_core_news_md')
 holmes_manager_with_embeddings = holmes.Manager(model='de_core_news_md',
         overall_similarity_threshold=0.7, perform_coreference_resolution=False,
@@ -912,3 +913,8 @@ class GermanStructuralMatchingTest(unittest.TestCase):
         matches = self._get_matches(holmes_manager,
                 "Die Komputerlinguistik")
         self.assertEqual(len(matches), 2)
+
+    def test_derivation_matching_with_subwords(self):
+        matches = self._get_matches(holmes_manager,
+                "Knochenmarkextraktion")
+        self.assertEqual(len(matches), 1)

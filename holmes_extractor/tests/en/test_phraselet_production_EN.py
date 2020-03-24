@@ -393,3 +393,69 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
         relation_phraselet = dict['predicate-patient: discuss-behave']
         self.assertEqual(relation_phraselet.child_lemma, 'behaviour')
         self.assertEqual(relation_phraselet.child_derived_lemma, 'behave')
+
+    def test_reverse_derived_lemmas_in_ontology_one_lemma(self):
+        dict = self._get_phraselet_dict(ontology_holmes_manager,
+                "He ate moodily")
+        self.assertFalse('word: moody' in dict)
+        self.assertFalse('governor-adjective: eat-moody' in dict)
+        word_phraselet = dict['word: moodiness']
+        self.assertEqual(word_phraselet.parent_lemma, 'moodily')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'moodiness')
+        relation_phraselet = dict['governor-adjective: eat-moodiness']
+        self.assertEqual(relation_phraselet.child_lemma, 'moodily')
+        self.assertEqual(relation_phraselet.child_derived_lemma, 'moodiness')
+
+    def test_reverse_derived_lemmas_in_ontology_one_lemma(self):
+        dict = self._get_phraselet_dict(ontology_holmes_manager,
+                "He offended the cat")
+        self.assertFalse('word: offend' in dict)
+        self.assertFalse('predicate-patient: offend-cat' in dict)
+        word_phraselet = dict['word: offence']
+        self.assertEqual(word_phraselet.parent_lemma, 'offend')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'offence')
+        relation_phraselet = dict['predicate-patient: offence-cat']
+        self.assertEqual(relation_phraselet.parent_lemma, 'offend')
+        self.assertEqual(relation_phraselet.parent_derived_lemma, 'offence')
+        doc = ontology_holmes_manager.semantic_analyzer.parse('He took offense')
+        ontology_holmes_manager.structural_matcher.add_phraselets_to_dict(doc,
+                phraselet_labels_to_phraselet_infos=dict,
+                replace_with_hypernym_ancestors=False,
+                match_all_words=True,
+                returning_serialized_phraselets=False,
+                ignore_relation_phraselets=False,
+                include_reverse_only=True,
+                stop_lemmas = \
+                ontology_holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
+                reverse_only_parent_lemmas = ontology_holmes_manager.semantic_analyzer.\
+                topic_matching_reverse_only_parent_lemmas)
+        word_phraselet = dict['word: offence']
+        self.assertEqual(word_phraselet.parent_lemma, 'offense')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'offence')
+        doc = ontology_holmes_manager.semantic_analyzer.parse('He took offence')
+        ontology_holmes_manager.structural_matcher.add_phraselets_to_dict(doc,
+                phraselet_labels_to_phraselet_infos=dict,
+                replace_with_hypernym_ancestors=False,
+                match_all_words=True,
+                returning_serialized_phraselets=False,
+                ignore_relation_phraselets=False,
+                include_reverse_only=True,
+                stop_lemmas = \
+                ontology_holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
+                reverse_only_parent_lemmas = ontology_holmes_manager.semantic_analyzer.\
+                topic_matching_reverse_only_parent_lemmas)
+        word_phraselet = dict['word: offence']
+        self.assertEqual(word_phraselet.parent_lemma, 'offense')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'offence')
+
+    def test_reverse_derived_lemmas_in_ontology_multiword(self):
+        dict = self._get_phraselet_dict(ontology_holmes_manager,
+                "He used a vault horse")
+        self.assertFalse('word: vault horse' in dict)
+        self.assertFalse('predicate-patient: use-vault horse' in dict)
+        word_phraselet = dict['word: vaulting horse']
+        self.assertEqual(word_phraselet.parent_lemma, 'vaulting horse')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'vaulting horse')
+        relation_phraselet = dict['predicate-patient: use-vaulting horse']
+        self.assertEqual(relation_phraselet.child_lemma, 'vaulting horse')
+        self.assertEqual(relation_phraselet.child_derived_lemma, 'vaulting horse')

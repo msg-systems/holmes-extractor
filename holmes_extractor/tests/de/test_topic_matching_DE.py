@@ -300,6 +300,12 @@ class GermanTopicMatchingTest(unittest.TestCase):
     def test_entitynoun_matching_with_relation_subword_match(self):
         self._check_equals("Ein ENTITYNOUN setzt sich durch", "Informationsextraktion hat sich durchgesetzt", 25)
 
+    def test_derivation_in_subwords_1(self):
+        self._check_equals("Informationextraktion", "Informierung wird extrahiert", 29)
+
+    def test_derivation_in_subwords_2(self):
+        self._check_equals("Informierung wird extrahiert", "Informationsextraktion", 35)
+
     def test_indexes(self):
         holmes_manager.remove_all_documents()
         holmes_manager.parse_and_register_document(
