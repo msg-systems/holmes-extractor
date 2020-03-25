@@ -119,6 +119,18 @@ class Ontology:
         else:
             return []
 
+    def get_words_matching_and_depths(self, search_phrase_word):
+        """Returns tuples containing the synonyms, hyponyms and individual instances of
+            *search_phrase_word*, as well as the hypernyms where *symmetric_matching==True*, and
+            the corresponding depths.
+            All words are set to lower case.
+        """
+        if search_phrase_word.lower() in self._match_dict.keys():
+            return set(map(lambda entry: (entry.word.lower(), entry.depth),
+                    self._match_dict[search_phrase_word.lower()]))
+        else:
+            return []
+
     def _get_classes(self):
         """Returns all classes from the loaded ontology."""
         return self._graph.triples((None, rdflib.term.URIRef(self._owl_type_link),

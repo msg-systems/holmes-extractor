@@ -33,6 +33,14 @@ holmes_manager.register_search_phrase("Maßnahmen der Beschaffung der Informatio
 holmes_manager.register_search_phrase("Die Linguistik")
 holmes_manager.register_search_phrase("Das große Interesse")
 holmes_manager.register_search_phrase("Knochenmark wird extrahiert")
+holmes_manager.register_search_phrase("Ein großes Wort-Mit-Bindestrich")
+holmes_manager.register_search_phrase("Ein kleines Wortmitbindestrich")
+holmes_manager.register_search_phrase("Ein großes Wort-Ohne-Bindestrich")
+holmes_manager.register_search_phrase("Ein kleines Wortohnebindestrich")
+holmes_manager.register_search_phrase("Einfach-Wort-Mit-Bindestrich")
+holmes_manager.register_search_phrase("Einfachwortohnebindestrich")
+holmes_manager.register_search_phrase("Wort-Mit-Bindestrich-Nicht-In-Ontologie")
+holmes_manager.register_search_phrase("Wortohnebindestrichnichtinontologie")
 holmes_manager_with_variable_search_phrases = holmes.Manager(model='de_core_news_md')
 holmes_manager_with_embeddings = holmes.Manager(model='de_core_news_md',
         overall_similarity_threshold=0.7, perform_coreference_resolution=False,
@@ -917,4 +925,64 @@ class GermanStructuralMatchingTest(unittest.TestCase):
     def test_derivation_matching_with_subwords(self):
         matches = self._get_matches(holmes_manager,
                 "Knochenmarkextraktion")
+        self.assertEqual(len(matches), 1)
+
+    def test_hyphenation_1(self):
+        matches = self._get_matches(holmes_manager,
+                "Ein großes Wort-Mit-Bindestrich")
+        self.assertEqual(len(matches), 1)
+
+    def test_hyphenation_2(self):
+        matches = self._get_matches(holmes_manager,
+                "Ein großes Wortmitbindestrich")
+        self.assertEqual(len(matches), 1)
+
+    def test_hyphenation_3(self):
+        matches = self._get_matches(holmes_manager,
+                "Ein kleines Wort-Mit-Bindestrich")
+        self.assertEqual(len(matches), 1)
+
+    def test_hyphenation_4(self):
+        matches = self._get_matches(holmes_manager,
+                "Ein kleines Wortmitbindestrich")
+        self.assertEqual(len(matches), 1)
+
+    def test_hyphenation_5(self):
+        matches = self._get_matches(holmes_manager,
+                "Ein großes Wort-Ohne-Bindestrich")
+        self.assertEqual(len(matches), 1)
+
+    def test_hyphenation_6(self):
+        matches = self._get_matches(holmes_manager,
+                "Ein großes Wortohnebindestrich")
+        self.assertEqual(len(matches), 1)
+
+    def test_hyphenation_7(self):
+        matches = self._get_matches(holmes_manager,
+                "Ein kleines Wort-Ohne-Bindestrich")
+        self.assertEqual(len(matches), 1)
+
+    def test_hyphenation_8(self):
+        matches = self._get_matches(holmes_manager,
+                "Ein kleines Wortohnebindestrich")
+        self.assertEqual(len(matches), 1)
+
+    def test_hyphenation_9(self):
+        matches = self._get_matches(holmes_manager,
+                "Einfachwortmitbindestrich")
+        self.assertEqual(len(matches), 1)
+
+    def test_hyphenation_10(self):
+        matches = self._get_matches(holmes_manager,
+                "Einfach-Wort-Ohne-Bindestrich")
+        self.assertEqual(len(matches), 1)
+
+    def test_hyphenation_11(self):
+        matches = self._get_matches(holmes_manager,
+                "Wortmitbindestrichnichtinontologie")
+        self.assertEqual(len(matches), 1)
+
+    def test_hyphenation_10(self):
+        matches = self._get_matches(holmes_manager,
+                "Wort-Ohne-Bindestrich-Nicht-In-Ontologie")
         self.assertEqual(len(matches), 1)

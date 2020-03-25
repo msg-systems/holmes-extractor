@@ -1279,7 +1279,10 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
             this may involve replacing them with spaces (English) or deleting them entirely
             (German).
         """
-        return word.replace('-', ' ')
+        if word.strip().startswith('-') or word.endswith('-'):
+            return word
+        else:
+            return word.replace('-', ' ')
 
     def _language_specific_derived_holmes_lemma(self, token, lemma):
         """Generates and returns a derived lemma where appropriate, otherwise returns *None*."""
@@ -2045,7 +2048,10 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
             this may involve replacing them with spaces (English) or deleting them entirely
             (German).
         """
-        return word.replace('-', '')
+        if word.strip().startswith('-') or word.endswith('-'):
+            return word
+        else:
+            return word.replace('-', '')
 
     def _language_specific_derived_holmes_lemma(self, token, lemma):
         """ token == None where *lemma* belongs to a subword """

@@ -316,15 +316,10 @@ class TopicMatcher:
                     phraselet_info = phraselet_labels_to_phraselet_infos[match.search_phrase_label]
                     word = phraselet_info.parent_derived_lemma
                     phraselet_word_match_info = get_phraselet_word_match_info(word)
-                    if len(match.word_matches) == 0:
-                        phraselet_word_match_info.single_word_match_corpus_words.add(
-                                CorpusWordPosition(match.document_label,
-                                Index(match.index_within_document, None)))
-                    else: # the word match contains the subword information
-                        word_match = match.word_matches[0]
-                        phraselet_word_match_info.single_word_match_corpus_words.add(
-                                CorpusWordPosition(match.document_label,
-                                word_match.get_document_index()))
+                    word_match = match.word_matches[0]
+                    phraselet_word_match_info.single_word_match_corpus_words.add(
+                            CorpusWordPosition(match.document_label,
+                            word_match.get_document_index()))
                 else:
                     process_word_match(match, True)
                     process_word_match(match, False)
@@ -457,9 +452,6 @@ class TopicMatcher:
                     if this_match.document_label != previous_match.document_label:
                         matches_to_return.append(this_match)
                     elif len(this_match.word_matches) != len(previous_match.word_matches):
-                        matches_to_return.append(this_match)
-                    elif len(this_match.word_matches) == 0 and this_match.index_within_document != \
-                            previous_match.index_within_document:
                         matches_to_return.append(this_match)
                     else:
                         this_word_matches_indexes = [word_match.get_document_index() for
@@ -847,49 +839,37 @@ class TopicMatcher:
                     len(doc[topic_match.sentences_end_index].text)
             word_infos_to_word_infos = {}
             for match in topic_match.structural_matches:
-                if len(match.word_matches) == 0: # single word phraselets can have word matches
-                                                 # if the search phrase token is a multiword or
-                                                 # if a subword has been matched within the document
-                    relative_start_index = doc[match.index_within_document].idx - \
-                            sentences_character_start_index_in_document
-                    relative_end_index = doc[match.index_within_document].idx + \
-                            len(doc[match.index_within_document].text) - \
-                            sentences_character_start_index_in_document
-                    word_info = WordInfo(relative_start_index, relative_end_index, 'single')
-                    if not word_info in word_infos_to_word_infos:
+                for word_match in match.word_matches:
+                    if word_match.document_subword != None:
+                        subword = word_match.document_subword
+                        relative_start_index = word_match.document_token.idx + \
+                                subword.char_start_index - \
+                                sentences_character_start_index_in_document
+                        relative_end_index = relative_start_index + len(subword.text)
+                    else:
+                        relative_start_index = word_match.first_document_token.idx - \
+                                sentences_character_start_index_in_document
+                        relative_end_index = word_match.last_document_token.idx + \
+                                len(word_match.last_document_token.text) - \
+                                sentences_character_start_index_in_document
+                    if match.is_overlapping_relation:
+                        word_info = WordInfo(relative_start_index, relative_end_index,
+                                'overlapping_relation')
+                    elif match.from_single_word_phraselet:
+                        word_info = WordInfo(relative_start_index, relative_end_index,
+                                'single')
+                    else:
+                        word_info = WordInfo(relative_start_index, relative_end_index,
+                                'relation')
+                    if word_info in word_infos_to_word_infos:
+                        existing_word_info = word_infos_to_word_infos[word_info]
+                        if not existing_word_info.type == 'overlapping_relation':
+                            if match.is_overlapping_relation:
+                                existing_word_info.type = 'overlapping_relation'
+                            elif not match.from_single_word_phraselet:
+                                existing_word_info.type = 'relation'
+                    else:
                         word_infos_to_word_infos[word_info] = word_info
-                else:
-                    for word_match in match.word_matches:
-                        if word_match.document_subword != None:
-                            subword = word_match.document_subword
-                            relative_start_index = word_match.document_token.idx + \
-                                    subword.char_start_index - \
-                                    sentences_character_start_index_in_document
-                            relative_end_index = relative_start_index + len(subword.text)
-                        else:
-                            relative_start_index = word_match.first_document_token.idx - \
-                                    sentences_character_start_index_in_document
-                            relative_end_index = word_match.last_document_token.idx + \
-                                    len(word_match.last_document_token.text) - \
-                                    sentences_character_start_index_in_document
-                        if match.is_overlapping_relation:
-                            word_info = WordInfo(relative_start_index, relative_end_index,
-                                    'overlapping_relation')
-                        elif match.from_single_word_phraselet:
-                            word_info = WordInfo(relative_start_index, relative_end_index,
-                                    'single')
-                        else:
-                            word_info = WordInfo(relative_start_index, relative_end_index,
-                                    'relation')
-                        if word_info in word_infos_to_word_infos:
-                            existing_word_info = word_infos_to_word_infos[word_info]
-                            if not existing_word_info.type == 'overlapping_relation':
-                                if match.is_overlapping_relation:
-                                    existing_word_info.type = 'overlapping_relation'
-                                elif not match.from_single_word_phraselet:
-                                    existing_word_info.type = 'relation'
-                        else:
-                            word_infos_to_word_infos[word_info] = word_info
             for word_info in list(word_infos_to_word_infos.keys()):
                 if get_containing_word_info_key(word_infos_to_word_infos, word_info) != None:
                     del word_infos_to_word_infos[word_info]
@@ -1003,7 +983,8 @@ class SupervisedTopicTrainingUtils:
             # Where there are subwords, we suppress relation matches with the
             # entire word. The same rule is not applied to single-word matches because
             # it still makes sense to track words with more than three subwords.
-            return len([word_match for word_match in match.word_matches if
+            return len(match.word_matches) > 1 and \
+                    len([word_match for word_match in match.word_matches if
                     len(word_match.document_token._.holmes.subwords) > 0 and
                     word_match.document_subword == None]) > 0
 

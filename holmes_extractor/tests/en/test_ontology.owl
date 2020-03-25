@@ -128,6 +128,18 @@
     
 
 
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#hypenated-multiword -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#hypenated-multiword"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#hypenated-single-multiword -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#hypenated-single-multiword"/>
+    
+
+
     <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#invite -->
 
     <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#invite"/>
@@ -215,6 +227,18 @@
     <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#take_out -->
 
     <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#take_out"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#unhyphenated_multiword -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#unhyphenated_multiword"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#unhyphenated_single_multiword -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#unhyphenated_single_multiword"/>
     
 
 

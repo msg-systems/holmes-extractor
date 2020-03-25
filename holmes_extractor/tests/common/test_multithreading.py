@@ -149,7 +149,7 @@ class MultithreadingTest(unittest.TestCase):
             t.start()
 
         last_number_of_matches = 0
-        for counter in range(50):
+        for counter in range(100):
             matches = [match for match in manager.match() if
                     match.search_phrase_label == "People discuss irrelevancies"]
             for match in matches:
@@ -181,4 +181,4 @@ class MultithreadingTest(unittest.TestCase):
             last_number_of_matches = this_number_of_matches
             if this_number_of_matches == NUMBER_OF_THREADS * NUMBER_OF_THREADS:
                 break
-            self.assertFalse(counter == 49)
+            self.assertFalse(counter == 99)

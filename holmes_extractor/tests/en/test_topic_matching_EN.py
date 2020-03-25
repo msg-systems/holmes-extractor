@@ -61,47 +61,47 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 holmes_manager_coref)
 
     def test_ontology_matching_synonym(self):
-        self._check_equals("I saw an pussy", "Somebody saw a cat", 32,
+        self._check_equals("I saw an pussy", "Somebody saw a cat", 31,
                 holmes_manager_coref)
 
     def test_ontology_matching_hyponym_depth_1(self):
-        self._check_equals("I saw an animal", "Somebody saw a cat", 30,
+        self._check_equals("I saw an animal", "Somebody saw a cat", 28,
                 holmes_manager_coref)
 
     def test_ontology_matching_hyponym_depth_2(self):
-        self._check_equals("I saw an animal", "Somebody saw a kitten", 29,
+        self._check_equals("I saw an animal", "Somebody saw a kitten", 26,
                 holmes_manager_coref)
 
     def test_ontology_matching_hypernym_depth_1(self):
-        self._check_equals("I saw an cat", "Somebody saw an animal", 30,
+        self._check_equals("I saw an cat", "Somebody saw an animal", 28,
                 holmes_manager_coref)
 
     def test_ontology_matching_hypernym_depth_2(self):
-        self._check_equals("I saw a kitten", "Somebody saw an animal", 29,
+        self._check_equals("I saw a kitten", "Somebody saw an animal", 26,
                 holmes_manager_coref)
 
     def test_ontology_matching_both_poles(self):
-        self._check_equals("A cat opens something", "An animal takes something out", 29,
+        self._check_equals("A cat opens something", "An animal takes something out", 27,
                 holmes_manager_coref)
 
     def test_ontology_matching_multiword_in_document(self):
-        self._check_equals("I saw an animal", "Somebody saw Mimi Momo", 29,
+        self._check_equals("I saw an animal", "Somebody saw Mimi Momo", 26,
                 holmes_manager_coref)
 
     def test_ontology_matching_multiword_in_search_text(self):
-        self._check_equals("I saw Mimi Momo", "Somebody saw an animal", 29,
+        self._check_equals("I saw Mimi Momo", "Somebody saw an animal", 26,
                 holmes_manager_coref)
 
     def test_ontology_matching_word_only(self):
-        self._check_equals("I saw an animal", "Somebody chased a cat", 10,
+        self._check_equals("I saw an animal", "Somebody chased a cat", 8,
                 holmes_manager_coref)
 
     def test_ontology_matching_word_only_multiword_in_document(self):
-        self._check_equals("I saw an animal", "Somebody chased Mimi Momo", 10,
+        self._check_equals("I saw an animal", "Somebody chased Mimi Momo", 7,
                 holmes_manager_coref)
 
     def test_ontology_matching_word_only_multiword_in_search_text(self):
-        self._check_equals("I saw Mimi Momo", "Somebody chased an animal", 10,
+        self._check_equals("I saw Mimi Momo", "Somebody chased an animal", 7,
                 holmes_manager_coref)
 
     def test_embedding_matching_not_root(self):
@@ -431,7 +431,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     def test_multiword_in_text_to_search_and_in_document_not_root(self):
         self._check_equals("Richard Paul Hudson came",
-                "I saw Richard Paul Hudson", 24,
+                "I saw Richard Paul Hudson", 19,
                 holmes_manager_coref)
 
     def test_multiword_in_text_to_search_single_word_in_document_not_root(self):
@@ -446,7 +446,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     def test_multiword_in_text_to_search_multiword_in_document_with_coref_not_root(self):
         self._check_equals("Richard Paul Hudson came",
-                "I saw Richard Paul Hudson. He came", 48,
+                "I saw Richard Paul Hudson. He came", 44,
                 holmes_manager_coref)
 
     def test_multiword_in_text_to_search_multiword_in_document_with_noun_coref_not_root(self):
@@ -461,7 +461,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     def test_multiword_in_text_to_search_and_in_document_root(self):
         self._check_equals("the tired Richard Paul Hudson",
-                "I saw Richard Paul Hudson", 24,
+                "I saw Richard Paul Hudson", 19,
                 holmes_manager_coref)
 
     def test_multiword_in_text_to_search_single_word_in_document_root(self):
@@ -476,7 +476,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     def test_multiword_in_text_to_search_multiword_in_document_with_coref_root(self):
         self._check_equals("the tired Richard Paul Hudson",
-                "I saw Richard Paul Hudson. He came", 24,
+                "I saw Richard Paul Hudson. He came", 19,
                 holmes_manager_coref)
 
     def test_multiword_in_text_to_search_single_in_document_with_coref_root(self):
@@ -561,12 +561,12 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     def test_derived_forms_matched_by_ontology_1(self):
         self._check_equals("An invitation to a politician",
-                "He explained to a politician", 36,
+                "He explained to a politician", 35,
                 holmes_manager_coref)
 
     def test_derived_forms_matched_by_ontology_2(self):
         self._check_equals("He explained to a politician",
-                "An invitation to a politician", 32,
+                "An invitation to a politician", 31,
                 holmes_manager_coref)
 
     def test_derived_multiword_child_matched_by_ontology_1(self):
@@ -745,7 +745,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
                 "Richard Paul Hudson was coming")
         self.assertEqual(topic_match_dictionaries,
-        [{'document_label': '', 'text': 'Richard Paul Hudson came home', 'text_to_match': 'Richard Paul Hudson was coming', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 29, 'score': 42.77333333333333, 'word_infos': [[0, 19, 'relation', False], [20, 24, 'relation', True]]}])
+        [{'document_label': '', 'text': 'Richard Paul Hudson came home', 'text_to_match': 'Richard Paul Hudson was coming', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 29, 'score': 40.8, 'word_infos': [[0, 19, 'relation', False], [20, 24, 'relation', True]]}])
 
     def test_dictionaries_with_multiword_alone(self):
         holmes_manager_coref.remove_all_documents()
@@ -755,7 +755,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
                 "Richard Paul Hudson")
         self.assertEqual(topic_match_dictionaries,
-        [{'document_label': '', 'text': 'Richard Paul Hudson', 'text_to_match': 'Richard Paul Hudson', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'score': 10.92, 'word_infos': [[0, 19, 'single', True]]}])
+        [{'document_label': '', 'text': 'Richard Paul Hudson', 'text_to_match': 'Richard Paul Hudson', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'score': 8.92, 'word_infos': [[0, 19, 'single', True]]}])
 
     def test_dictionaries_with_multiword_alone_and_entity_token_in_text_to_match(self):
         holmes_manager_coref.remove_all_documents()

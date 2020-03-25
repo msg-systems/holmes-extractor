@@ -130,7 +130,7 @@ class GermanTopicMatchingTest(unittest.TestCase):
 
     def test_multiword_in_text_to_search_and_in_document_not_root(self):
         self._check_equals("Richard Paul Hudson kam",
-                "Ich sah Richard Paul Hudson", 24,
+                "Ich sah Richard Paul Hudson", 19,
                 holmes_manager)
 
     def test_multiword_in_text_to_search_single_word_in_document_not_root(self):
@@ -145,7 +145,7 @@ class GermanTopicMatchingTest(unittest.TestCase):
 
     def test_multiword_in_text_to_search_and_in_document_root(self):
         self._check_equals("der müde Richard Paul Hudson",
-                "Ich sah Richard Paul Hudson", 24,
+                "Ich sah Richard Paul Hudson", 19,
                 holmes_manager)
 
     def test_multiword_in_text_to_search_single_word_in_document_root(self):
@@ -228,7 +228,7 @@ class GermanTopicMatchingTest(unittest.TestCase):
 
     def test_word_with_subwords_matches_single_word_linked_via_ontology(self):
         self._check_equals("Komputerlinguistik",
-                "Linguistik", 10,
+                "Linguistik", 9,
                 holmes_manager)
 
     def test_word_with_subwords_matches_single_word_linked_via_ontology_control(self):
@@ -238,7 +238,7 @@ class GermanTopicMatchingTest(unittest.TestCase):
 
     def test_single_word_matches_word_with_subwords_linked_via_ontology(self):
         self._check_equals("Linguistik",
-                "Komputerlinguistik", 10,
+                "Komputerlinguistik", 9,
                 holmes_manager)
 
     def test_single_word_matches_word_with_subwords_linked_via_ontology_control(self):
