@@ -1648,8 +1648,12 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
     # Blacklisted subwords
     _subword_blacklist = ('igkeit', 'igkeiten', 'digkeit', 'digkeiten', 'schaft', 'schaften',
             'keit', 'keiten', 'lichkeit', 'lichkeiten', 'tigten', 'tigung', 'tigungen', 'barkeit',
-            'barkeiten', 'heit', 'heiten', 'ung', 'ungen', 'aften', 'erung', 'erungen', 'mungen',
-            'chen', 'lein')
+            'barkeiten', 'heit', 'heiten', 'ung', 'ungen', 'aften', 'erung', 'erungen', 'mungen')
+
+    # Subwords used in analysis but not recorded on the Holmes dictionary instances. At present
+    # the code only supports these in word-final position; word-initial position would require
+    # a code change.
+    _non_recorded_subword_list = ('lein', 'chen')
 
     def _add_subwords(self, token, subword_cache):
 
@@ -1810,9 +1814,18 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                         if first_sibling_possible_subwords != None:
                             first_sibling_lemmatization_doc = get_lemmatization_doc(
                                     first_sibling_possible_subwords, token.pos_)
-                            for counter in range(len(first_sibling_possible_subwords) - 1):
+                            final_subword_counter = len(first_sibling_possible_subwords) - 1
+                            if final_subword_counter > 0 and \
+                                    first_sibling_possible_subwords[
+                                    final_subword_counter].text in \
+                                    self._non_recorded_subword_list:
+                                final_subword_counter -= 1
+                            for counter in range(final_subword_counter):
                                 first_sibling_possible_subword = \
                                         first_sibling_possible_subwords[counter]
+                                if first_sibling_possible_subword.text in \
+                                        self._non_recorded_subword_list:
+                                    continue
                                 text = first_sibling.text[
                                         first_sibling_possible_subword.char_start_index:
                                         first_sibling_possible_subword.char_start_index +
@@ -1827,6 +1840,9 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                 lemmatization_doc = get_lemmatization_doc(possible_subwords, token.pos_)
                 for counter in range(len(possible_subwords)):
                     possible_subword = possible_subwords[counter]
+                    if possible_subword.text in \
+                            self._non_recorded_subword_list:
+                        continue
                     text = token.text[possible_subword.char_start_index:
                             possible_subword.char_start_index + len(possible_subword.text)]
                     lemma = lemmatization_doc[counter*2].lemma_.lower()
@@ -1851,6 +1867,9 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                                 for counter in range(1, len(last_sibling_possible_subwords)):
                                     last_sibling_possible_subword = \
                                             last_sibling_possible_subwords[counter]
+                                    if last_sibling_possible_subword.text in \
+                                            self._non_recorded_subword_list:
+                                        continue
                                     text = last_sibling.text[
                                             last_sibling_possible_subword.char_start_index:
                                             last_sibling_possible_subword.char_start_index +

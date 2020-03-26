@@ -112,6 +112,22 @@
     
 
 
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#harry -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#harry">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#harry_potter"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#harry_potter -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#harry_potter">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#potter"/>
+    </owl:Class>
+    
+
+
     <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#horse -->
 
     <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#horse">
@@ -191,6 +207,12 @@
     <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#open">
         <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#take_out"/>
     </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#potter -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#potter"/>
     
 
 

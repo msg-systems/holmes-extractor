@@ -41,6 +41,7 @@ holmes_manager.register_search_phrase("Einfach-Wort-Mit-Bindestrich")
 holmes_manager.register_search_phrase("Einfachwortohnebindestrich")
 holmes_manager.register_search_phrase("Wort-Mit-Bindestrich-Nicht-In-Ontologie")
 holmes_manager.register_search_phrase("Wortohnebindestrichnichtinontologie")
+holmes_manager.register_search_phrase("Information eines Messers")
 holmes_manager_with_variable_search_phrases = holmes.Manager(model='de_core_news_md')
 holmes_manager_with_embeddings = holmes.Manager(model='de_core_news_md',
         overall_similarity_threshold=0.7, perform_coreference_resolution=False,
@@ -985,4 +986,9 @@ class GermanStructuralMatchingTest(unittest.TestCase):
     def test_hyphenation_10(self):
         matches = self._get_matches(holmes_manager,
                 "Wort-Ohne-Bindestrich-Nicht-In-Ontologie")
+        self.assertEqual(len(matches), 1)
+
+    def test_matching_across_non_reported_subword(self):
+        matches = self._get_matches(holmes_manager,
+                "Messerleininformation")
         self.assertEqual(len(matches), 1)

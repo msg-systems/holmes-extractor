@@ -1916,3 +1916,39 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
     def test_derived_lemma_subword_conjunction_last_word(self):
         doc = analyzer.parse("Investitionsanfänge und -auswirkungen.")
         self.assertEqual(doc[0]._.holmes.subwords[0].derived_lemma, 'investieren')
+
+    def test_non_recorded_subword_alone(self):
+        doc = analyzer.parse('Messerlein.')
+        self.assertEqual(len(doc[0]._.holmes.subwords), 0)
+
+    def test_non_recorded_subword_at_end(self):
+        doc = analyzer.parse('Informationsmesserlein.')
+        self.assertEqual(len(doc[0]._.holmes.subwords), 2)
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'information')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'messer')
+
+    def test_non_recorded_subword_in_middle(self):
+        doc = analyzer.parse('Messerleininformation.')
+        self.assertEqual(len(doc[0]._.holmes.subwords), 2)
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'messer')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'information')
+
+    def test_non_recorded_subword_at_beginning(self):
+        doc = analyzer.parse('Leinmesserinformation.')
+        self.assertEqual(len(doc[0]._.holmes.subwords), 2)
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'messer')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'information')
+
+    def test_non_recorded_subword_as_first_member_of_compound(self):
+        doc = analyzer.parse('Messerlein- und Tellerleingespräche.')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'messer')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'gespräch')
+        self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'teller')
+        self.assertEqual(doc[2]._.holmes.subwords[1].lemma, 'gespräch')
+
+    def test_non_recorded_subword_as_second_member_of_compound(self):
+        doc = analyzer.parse('Nahrungsmesserlein und -tellerlein.')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'nahrung')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'messer')
+        self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'nahrung')
+        self.assertEqual(doc[2]._.holmes.subwords[1].lemma, 'teller')

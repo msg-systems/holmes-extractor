@@ -1370,21 +1370,6 @@ class StructuralMatcher:
         document_word_representations = document_word_representations()
         for search_phrase_word_representation, search_phrase_match_type, \
                 search_phrase_derived_lemma in loop_search_phrase_word_representations():
-            for document_word_representation, document_match_type, document_derived_lemma in \
-                    document_word_representations:
-                if search_phrase_word_representation.lower() == \
-                        document_word_representation.lower():
-                    handle_match(search_phrase_word_representation, document_word_representation,
-                            self._match_type(search_phrase_derived_lemma == document_derived_lemma,
-                            search_phrase_match_type, document_match_type), 0)
-                    return True
-                if self.ontology != None:
-                    entry = self.ontology.matches(search_phrase_word_representation.lower(),
-                            document_word_representation.lower())
-                    if entry != None:
-                        handle_match(search_phrase_word_representation, entry.word, 'ontology',
-                                entry.depth)
-                        return True
             # multiword matches
             if document_subword_index == None:
                 for multiword_span in self._multiword_spans_with_head_token(document_token):
@@ -1417,6 +1402,21 @@ class StructuralMatcher:
                                         first_document_token=multiword_span.tokens[0],
                                         last_document_token=multiword_span.tokens[-1])
                                 return True
+            for document_word_representation, document_match_type, document_derived_lemma in \
+                    document_word_representations:
+                if search_phrase_word_representation.lower() == \
+                        document_word_representation.lower():
+                    handle_match(search_phrase_word_representation, document_word_representation,
+                            self._match_type(search_phrase_derived_lemma == document_derived_lemma,
+                            search_phrase_match_type, document_match_type), 0)
+                    return True
+                if self.ontology != None:
+                    entry = self.ontology.matches(search_phrase_word_representation.lower(),
+                            document_word_representation.lower())
+                    if entry != None:
+                        handle_match(search_phrase_word_representation, entry.word, 'ontology',
+                                entry.depth)
+                        return True
 
         if self.overall_similarity_threshold < 1.0 and (compare_embeddings_on_non_root_words or
                 search_phrase.root_token.i == search_phrase_token.i) and search_phrase_token.i in \

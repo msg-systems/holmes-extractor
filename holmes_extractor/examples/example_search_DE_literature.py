@@ -108,5 +108,5 @@ if __name__ in ('__main__', 'example_search_DE_literature'):
                     req.params['entry'][0:200], only_one_result_per_document=True))
             resp.cache_control = ["s-maxage=31536000"]
 
-    application = falcon.API()
+    application = falcon.App()
     application.add_route('/german', RestHandler())

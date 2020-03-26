@@ -569,24 +569,24 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 "An invitation to a politician", 31,
                 holmes_manager_coref)
 
-    def test_derived_multiword_child_matched_by_ontology_1(self):
+    def test_derived_multiword_child_also_matched_by_ontology_1(self):
         self._check_equals("He used a vault horse",
-                "He used a vaulting horse", 30,
+                "He used a vaulting horse", 34,
                 holmes_manager_coref)
 
-    def test_derived_multiword_child_matched_by_ontology_2(self):
+    def test_derived_multiword_child_also_matched_by_ontology_2(self):
         self._check_equals("He used a vaulting horse",
-                "He used a vault horse", 30,
+                "He used a vault horse", 32,
                 holmes_manager_coref)
 
-    def test_derived_multiword_parent_matched_by_ontology_1(self):
+    def test_derived_multiword_parent_also_matched_by_ontology_1(self):
         self._check_equals("A big vault horse",
-                "A big vaulting horse", 31,
+                "A big vaulting horse", 34,
                 holmes_manager_coref)
 
-    def test_derived_multiword_parent_matched_by_ontology_2(self):
+    def test_derived_multiword_parent_also_matched_by_ontology_2(self):
         self._check_equals("A big vaulting horse",
-                "A big vault horse", 31,
+                "A big vault horse", 32,
                 holmes_manager_coref)
 
     def test_coreference_double_match_on_governed(self):
@@ -766,6 +766,17 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 "ENTITYPERSON")
         self.assertEqual(topic_match_dictionaries,
         [{'document_label': '', 'text': 'Richard Paul Hudson', 'text_to_match': 'ENTITYPERSON', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'score': 5.0, 'word_infos': [[0, 19, 'single', True, "Matches the ENTITYPERSON placeholder."]]}])
+
+    def test_dictionaries_with_multiword_as_single_word_and_relation(self):
+        holmes_manager_coref_no_embeddings.remove_all_documents()
+        holmes_manager_coref_no_embeddings.remove_all_search_phrases()
+        holmes_manager_coref_no_embeddings.parse_and_register_document(
+                "Can somebody give Harry Potter his present")
+        topic_match_dictionaries = \
+                holmes_manager_coref_no_embeddings.topic_match_documents_returning_dictionaries_against(
+                "Somebody gives a present to Harry")
+        self.assertEqual(topic_match_dictionaries,
+        [{'document_label': '', 'text': 'Can somebody give Harry Potter his present', 'text_to_match': 'Somebody gives a present to Harry', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 42, 'score': 92.6351111111111, 'word_infos': [[13, 17, 'overlapping_relation', False, "Matches 'give' directly."], [18, 30, 'overlapping_relation', False, "Is a synonym of 'harry' in the ontology."], [35, 42, 'overlapping_relation', True, "Matches 'present' directly."]]}])
 
     def test_result_ordering_by_match_length_different_documents(self):
         holmes_manager_coref.remove_all_documents()
