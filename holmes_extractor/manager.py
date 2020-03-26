@@ -206,7 +206,8 @@ class Manager:
                         'match_type': word_match.type,
                         'similarity_measure': str(word_match.similarity_measure),
                         'involves_coreference': word_match.involves_coreference,
-                        'extracted_word': word_match.extracted_word})
+                        'extracted_word': word_match.extracted_word,
+                        'explanation': word_match.explain()})
             match_dict['word_matches']=text_word_matches
             match_dicts.append(match_dict)
         return match_dicts

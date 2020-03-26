@@ -5,6 +5,10 @@ from threading import Lock
 from functools import total_ordering
 from spacy.tokens.token import Token
 
+ONTOLOGY_DEPTHS_TO_NAMES = {-4: 'an ancestor', -3: 'a great-grandparent', -2: 'a grandparent',
+        -1: 'a parent', 0: 'a synonym', 1: 'a child', 2: 'a grandchild', 3: 'a great-grandchild',
+        4: 'a descendant'}
+
 class WordMatch:
     """A match between a searched phrase word and a document word.
 
@@ -68,6 +72,31 @@ class WordMatch:
         else:
             subword_index = None
         return Index(self.document_token.i, subword_index)
+
+    def explain(self):
+        """ Creates a human-readable explanation of the word match from the perspective of the
+            document word (e.g. to be used as a tooltip over it)."""
+        search_phrase_display_word = self.search_phrase_token._.holmes.lemma
+        if self.type == 'direct':
+            return ''.join(("Matches '", search_phrase_display_word, "' directly."))
+        elif self.type == 'derivation':
+            return ''.join(("Has a common stem with '", search_phrase_display_word, "'."))
+        elif self.type == 'entity':
+            return ''.join(("Matches the ", search_phrase_display_word.upper(), " placeholder."))
+        elif self.type == 'embedding':
+            printable_similarity = str(int(self.similarity_measure * 100))
+            return ''.join(("Has a word embedding that is ", printable_similarity,
+                    "% similar to '", search_phrase_display_word, "'."))
+        elif self.type == 'ontology':
+            working_depth = self.depth
+            if working_depth > 4:
+                working_depth = 4
+            elif working_depth < -4:
+                working_depth = -4
+            return ''.join(("Is ", ONTOLOGY_DEPTHS_TO_NAMES[working_depth], " of '",
+                    search_phrase_display_word, "' in the ontology."))
+        else:
+            raise RuntimeError(' '.join(('Unrecognized type', self.type)))
 
 class Match:
     """A match between a search phrase and a document.
@@ -426,7 +455,8 @@ class StructuralMatcher:
             """
 
             def add_word_information(word, match_type, depth):
-                set_to_return.add(word)
+                if word not in list_to_return:
+                    list_to_return.append(word)
                 if not word in root_word_to_match_info_dict:
                     root_word_to_match_info_dict[word] = (match_type, depth)
 
@@ -441,7 +471,7 @@ class StructuralMatcher:
                         if working_derived_lemma != None:
                             add_word_information(working_derived_lemma, 'ontology', entry_depth)
 
-            set_to_return = set()
+            list_to_return = []
             root_word_to_match_info_dict = {}
 
             add_word_information(self.root_token._.holmes.lemma, 'direct', 0)
@@ -469,7 +499,7 @@ class StructuralMatcher:
                     for reverse_derived_lemma in \
                             structural_matcher.reverse_derived_lemmas_in_ontology(self.root_token):
                         add_word_information_from_ontology(reverse_derived_lemma)
-            return sorted(set_to_return), root_word_to_match_info_dict
+            return list_to_return, root_word_to_match_info_dict
 
     class _IndexedDocument:
         """Args:

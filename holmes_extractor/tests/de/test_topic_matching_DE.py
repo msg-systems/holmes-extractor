@@ -392,7 +392,7 @@ class GermanTopicMatchingTest(unittest.TestCase):
                 holmes_manager.topic_match_documents_returning_dictionaries_against(
                 "Symphonie von Information und Entführung von Löwen")
         self.assertEqual(topic_match_dictionaries,
-        [{'document_label': '', 'text': 'Informationssymphonieentführung von Löwen', 'text_to_match': 'Symphonie von Information und Entführung von Löwen', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 41, 'score': 78, 'word_infos': [[0, 11, 'relation', False], [12, 21, 'relation', False], [21, 31, 'relation', False], [36, 41, 'relation', True]]}])
+        [{'document_label': '', 'text': 'Informationssymphonieentführung von Löwen', 'text_to_match': 'Symphonie von Information und Entführung von Löwen', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 41, 'score': 78.0, 'word_infos': [[0, 11, 'relation', False, "Matches 'information' directly."], [12, 21, 'relation', False, "Matches 'symphonie' directly."], [21, 31, 'relation', False, "Matches 'entführung' directly."], [36, 41, 'relation', True, "Matches 'löwe' directly."]]}])
 
     def test_overlapping_relation_mapping_within_subword_dictionaries(self):
         holmes_manager.remove_all_documents()
@@ -401,8 +401,10 @@ class GermanTopicMatchingTest(unittest.TestCase):
         topic_match_dictionaries = \
                 holmes_manager.topic_match_documents_returning_dictionaries_against(
                 "Extraktion von Information und Löwen")
+        print(topic_match_dictionaries)
+
         self.assertEqual(topic_match_dictionaries,
-        [{'document_label': '', 'text': 'Informationsextraktion von Löwen', 'text_to_match': 'Extraktion von Information und Löwen', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 32, 'score': 102.33333333333334, 'word_infos': [[0, 11, 'overlapping_relation', False], [12, 22, 'overlapping_relation', False], [27, 32, 'overlapping_relation', True]]}])
+        [{'document_label': '', 'text': 'Informationsextraktion von Löwen', 'text_to_match': 'Extraktion von Information und Löwen', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 32, 'score': 102.33333333333334, 'word_infos': [[0, 11, 'overlapping_relation', False, "Matches 'information' directly."], [12, 22, 'overlapping_relation', False, "Matches 'extraktion' directly."], [27, 32, 'overlapping_relation', True, "Matches 'löwe' directly."]]}])
 
     def test_subword_dictionaries_subword_is_not_peak(self):
         holmes_manager.remove_all_documents()
@@ -411,5 +413,6 @@ class GermanTopicMatchingTest(unittest.TestCase):
         topic_match_dictionaries = \
                 holmes_manager.topic_match_documents_returning_dictionaries_against(
                 "Informationsnehmen der Löwen")
+        print(topic_match_dictionaries)
         self.assertEqual(topic_match_dictionaries,
-        [{'document_label': '', 'text': 'Information und Löwen wurden genommen', 'text_to_match': 'Informationsnehmen der Löwen', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 37, 'score': 98.75999999999999, 'word_infos': [[0, 11, 'overlapping_relation', False], [16, 21, 'overlapping_relation', False], [29, 37, 'overlapping_relation', True]]}])
+        [{'document_label': '', 'text': 'Information und Löwen wurden genommen', 'text_to_match': 'Informationsnehmen der Löwen', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 37, 'score': 98.75999999999999, 'word_infos': [[0, 11, 'overlapping_relation', False, "Matches 'information' directly."], [16, 21, 'overlapping_relation', False, "Matches 'löwe' directly."], [29, 37, 'overlapping_relation', True, "Matches 'nehmen' directly."]]}])

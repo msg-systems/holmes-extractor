@@ -29,6 +29,8 @@ second_holmes_manager_coref.register_search_phrase('A king wakes up')
 second_holmes_manager_coref.register_search_phrase('A kitten goes to bed')
 second_holmes_manager_coref.register_search_phrase('Mimi Momo goes to bed')
 second_holmes_manager_coref.register_search_phrase('A dog goes to bed')
+second_holmes_manager_coref.register_search_phrase('unouno')
+second_holmes_manager_coref.register_search_phrase('sześć')
 
 class WordMatchingTest(unittest.TestCase):
 
@@ -37,6 +39,8 @@ class WordMatchingTest(unittest.TestCase):
         self.assertEqual(len(text_matches), 2)
         self.assertEqual(text_matches[0]['search_phrase'], 'A dog chases a cat')
         self.assertEqual(text_matches[0]['word_matches'][0]['match_type'], 'direct')
+        self.assertEqual(text_matches[0]['word_matches'][0]['explanation'],
+                "Matches 'dog' directly.")
         self.assertEqual(text_matches[0]['word_matches'][1]['match_type'], 'direct')
         self.assertEqual(text_matches[0]['word_matches'][2]['match_type'], 'direct')
 
@@ -44,16 +48,24 @@ class WordMatchingTest(unittest.TestCase):
         text_matches = holmes_manager_coref.match_search_phrases_against(entry='Richard Hudson chased the horse')
         self.assertEqual(len(text_matches), 1)
         self.assertEqual(text_matches[0]['word_matches'][0]['match_type'], 'entity')
+        self.assertEqual(text_matches[0]['word_matches'][0]['explanation'],
+                "Matches the ENTITYPERSON placeholder.")
 
     def test_ontology_matching(self):
         text_matches = holmes_manager_coref.match_search_phrases_against(entry='The dog chased the kitten')
         self.assertEqual(len(text_matches), 2)
         self.assertEqual(text_matches[0]['word_matches'][2]['match_type'], 'ontology')
+        self.assertEqual(text_matches[0]['word_matches'][2]['explanation'],
+                "Is a child of 'cat' in the ontology.")
 
     def test_embedding_matching(self):
         text_matches = holmes_manager_coref.match_search_phrases_against(entry='The queen woke up')
         self.assertEqual(len(text_matches), 1)
         self.assertEqual(text_matches[0]['word_matches'][0]['match_type'], 'embedding')
+        self.assertEqual(text_matches[0]['word_matches'][0]['explanation'],
+                "Has a word embedding that is 72% similar to 'king'.")
+        self.assertEqual(text_matches[0]['word_matches'][1]['explanation'],
+                "Matches 'wake up' directly.")
 
     def test_embedding_matching_on_root_node(self):
         text_matches = holmes_manager_coref.match_search_phrases_against(entry='An industrious queen loved by all')
@@ -188,6 +200,8 @@ class WordMatchingTest(unittest.TestCase):
                 entry='A strong belief')
         self.assertEqual(len(text_matches), 1)
         self.assertEqual(text_matches[0]['word_matches'][0]['match_type'], 'derivation')
+        self.assertEqual(text_matches[0]['word_matches'][0]['explanation'],
+                "Has a common stem with 'believe'.")
         self.assertEqual(text_matches[0]['word_matches'][1]['match_type'], 'derivation')
 
     def test_derivation_matching_2(self):
@@ -196,3 +210,91 @@ class WordMatchingTest(unittest.TestCase):
         self.assertEqual(len(text_matches), 1)
         self.assertEqual(text_matches[0]['word_matches'][0]['match_type'], 'derivation')
         self.assertEqual(text_matches[0]['word_matches'][1]['match_type'], 'derivation')
+
+    def test_ontology_matching_depth_0(self):
+        text_matches = second_holmes_manager_coref.match_search_phrases_against(
+                entry='oans')
+        self.assertEqual(len(text_matches), 1)
+        self.assertEqual(text_matches[0]['word_matches'][0]['match_type'], 'ontology')
+        self.assertEqual(text_matches[0]['word_matches'][0]['explanation'],
+                "Is a synonym of 'unouno' in the ontology.")
+
+    def test_ontology_matching_depth_1(self):
+        text_matches = second_holmes_manager_coref.match_search_phrases_against(
+                entry='dos')
+        self.assertEqual(len(text_matches), 1)
+        self.assertEqual(text_matches[0]['word_matches'][0]['match_type'], 'ontology')
+        self.assertEqual(text_matches[0]['word_matches'][0]['explanation'],
+                "Is a child of 'unouno' in the ontology.")
+
+    def test_ontology_matching_depth_2(self):
+        text_matches = second_holmes_manager_coref.match_search_phrases_against(
+                entry='tres')
+        self.assertEqual(len(text_matches), 1)
+        self.assertEqual(text_matches[0]['word_matches'][0]['match_type'], 'ontology')
+        self.assertEqual(text_matches[0]['word_matches'][0]['explanation'],
+                "Is a grandchild of 'unouno' in the ontology.")
+
+    def test_ontology_matching_depth_3(self):
+        text_matches = second_holmes_manager_coref.match_search_phrases_against(
+                entry='cuatro')
+        self.assertEqual(len(text_matches), 1)
+        self.assertEqual(text_matches[0]['word_matches'][0]['match_type'], 'ontology')
+        self.assertEqual(text_matches[0]['word_matches'][0]['explanation'],
+                "Is a great-grandchild of 'unouno' in the ontology.")
+
+    def test_ontology_matching_depth_4(self):
+        text_matches = second_holmes_manager_coref.match_search_phrases_against(
+                entry='cinco')
+        self.assertEqual(len(text_matches), 1)
+        self.assertEqual(text_matches[0]['word_matches'][0]['match_type'], 'ontology')
+        self.assertEqual(text_matches[0]['word_matches'][0]['explanation'],
+                "Is a descendant of 'unouno' in the ontology.")
+
+    def test_ontology_matching_depth_5(self):
+        text_matches = second_holmes_manager_coref.match_search_phrases_against(
+                entry='seis')
+        self.assertEqual(len(text_matches), 1)
+        self.assertEqual(text_matches[0]['word_matches'][0]['match_type'], 'ontology')
+        self.assertEqual(text_matches[0]['word_matches'][0]['explanation'],
+                "Is a descendant of 'unouno' in the ontology.")
+
+    def test_ontology_matching_depth_minus_1(self):
+        text_matches = second_holmes_manager_coref.match_search_phrases_against(
+                entry='pięć')
+        self.assertEqual(len(text_matches), 1)
+        self.assertEqual(text_matches[0]['word_matches'][0]['match_type'], 'ontology')
+        self.assertEqual(text_matches[0]['word_matches'][0]['explanation'],
+                "Is a parent of 'sześć' in the ontology.")
+
+    def test_ontology_matching_depth_minus_2(self):
+        text_matches = second_holmes_manager_coref.match_search_phrases_against(
+                entry='cztery')
+        self.assertEqual(len(text_matches), 1)
+        self.assertEqual(text_matches[0]['word_matches'][0]['match_type'], 'ontology')
+        self.assertEqual(text_matches[0]['word_matches'][0]['explanation'],
+                "Is a grandparent of 'sześć' in the ontology.")
+
+    def test_ontology_matching_depth_minus_3(self):
+        text_matches = second_holmes_manager_coref.match_search_phrases_against(
+                entry='trzy')
+        self.assertEqual(len(text_matches), 1)
+        self.assertEqual(text_matches[0]['word_matches'][0]['match_type'], 'ontology')
+        self.assertEqual(text_matches[0]['word_matches'][0]['explanation'],
+                "Is a great-grandparent of 'sześć' in the ontology.")
+
+    def test_ontology_matching_depth_minus_4(self):
+        text_matches = second_holmes_manager_coref.match_search_phrases_against(
+                entry='dwa')
+        self.assertEqual(len(text_matches), 1)
+        self.assertEqual(text_matches[0]['word_matches'][0]['match_type'], 'ontology')
+        self.assertEqual(text_matches[0]['word_matches'][0]['explanation'],
+                "Is an ancestor of 'sześć' in the ontology.")
+
+    def test_ontology_matching_depth_minus_5(self):
+        text_matches = second_holmes_manager_coref.match_search_phrases_against(
+                entry='jeden')
+        self.assertEqual(len(text_matches), 1)
+        self.assertEqual(text_matches[0]['word_matches'][0]['match_type'], 'ontology')
+        self.assertEqual(text_matches[0]['word_matches'][0]['explanation'],
+                "Is an ancestor of 'sześć' in the ontology.")

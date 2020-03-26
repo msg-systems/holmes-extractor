@@ -805,10 +805,11 @@ class TopicMatcher:
 
         class WordInfo:
 
-            def __init__(self, relative_start_index, relative_end_index, type):
+            def __init__(self, relative_start_index, relative_end_index, type, explanation):
                 self.relative_start_index = relative_start_index
                 self.relative_end_index = relative_end_index
                 self.type = type
+                self.explanation = explanation
                 self.is_highest_activation = False
 
             def __eq__(self, other):
@@ -854,13 +855,13 @@ class TopicMatcher:
                                 sentences_character_start_index_in_document
                     if match.is_overlapping_relation:
                         word_info = WordInfo(relative_start_index, relative_end_index,
-                                'overlapping_relation')
+                                'overlapping_relation', word_match.explain())
                     elif match.from_single_word_phraselet:
                         word_info = WordInfo(relative_start_index, relative_end_index,
-                                'single')
+                                'single', word_match.explain())
                     else:
                         word_info = WordInfo(relative_start_index, relative_end_index,
-                                'relation')
+                                'relation', word_match.explain())
                     if word_info in word_infos_to_word_infos:
                         existing_word_info = word_infos_to_word_infos[word_info]
                         if not existing_word_info.type == 'overlapping_relation':
@@ -890,7 +891,7 @@ class TopicMatcher:
                         + len(doc[topic_match.index_within_document].text) - \
                         sentences_character_start_index_in_document
             highest_activation_word_info = WordInfo(highest_activation_relative_start_index,
-                    highest_activation_relative_end_index, 'temp')
+                    highest_activation_relative_end_index, 'temp', 'temp')
             containing_word_info = get_containing_word_info_key(word_infos_to_word_infos,
                     highest_activation_word_info)
             if containing_word_info != None:
@@ -910,8 +911,8 @@ class TopicMatcher:
                         sentences_character_end_index_in_document,
                 'score': topic_match.score,
                 'word_infos': [[word_info.relative_start_index, word_info.relative_end_index,
-                        word_info.type, word_info.is_highest_activation] for word_info
-                        in word_infos]
+                        word_info.type, word_info.is_highest_activation, word_info.explanation]
+                        for word_info in word_infos]
                 # The word infos are labelled by array index alone to prevent the JSON from
                 # becoming too bloated
             }
