@@ -960,7 +960,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
             'arg': ['nsubj', 'csubj', 'poss', 'pobjb', 'advmodsubj', 'dobj', 'pobjo', 'relant',
                     'nsubjpass', 'csubjpass', 'compound', 'advmodobj', 'dative'],
             'compound': ['nmod', 'appos', 'nounmod', 'nsubj', 'csubj', 'poss', 'pobjb',
-                    'advmodsubj', 'dobj', 'pobjo', 'relant',
+                    'advmodsubj', 'dobj', 'pobjo', 'relant', 'pobjp',
                     'nsubjpass', 'csubjpass', 'arg', 'advmodobj', 'dative'],
             'dative': ['pobjt', 'relant', 'nsubjpass'],
             'pobjt': ['dative', 'relant'],
@@ -973,6 +973,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                     'nsubjpass', 'csubjpass', 'compound', 'advmodobj'],
             'pobjo': ['poss'],
             'pobjb': ['nsubj', 'csubj', 'poss', 'advmodsubj', 'arg'],
+            'pobjp': ['compound'],
             'prep': ['prepposs'],
             'xcomp': ['pobjo', 'poss', 'relant', 'nsubjpass', 'csubjpass',
                     'compound','advmodobj', 'arg', 'dobj']
