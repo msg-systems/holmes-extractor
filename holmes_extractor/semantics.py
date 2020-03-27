@@ -1101,7 +1101,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
     # When a word A has a dependency from this list to word B, the dependency should not be added
     # to a word C that is to the right of B.
     _dependencies_not_to_add_to_siblings_further_right = ('dobj', 'dative', 'prep', 'pobjo',
-            'pobjb', 'pobjt', 'pobjp', 'prepposs', 'prt')
+            'pobjb', 'pobjt', 'pobjp', 'prepposs', 'prt', 'xcomp')
 
     def _add_subwords(self, token, subword_cache):
         """ Analyses the internal structure of the word to find atomic semantic elements. Is
