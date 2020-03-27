@@ -307,7 +307,6 @@ class SemanticAnalyzerFactory():
             raise ValueError(
                 ' '.join(['No semantic analyzer for model', language]))
 
-
 class SemanticAnalyzer(ABC):
     """Abstract *SemanticAnalyzer* parent class. Functionality is placed here that is common to all
         current implementations. It follows that some functionality will probably have to be moved
@@ -572,6 +571,17 @@ class SemanticAnalyzer(ABC):
         else:
             return None
 
+    def embedding_matching_permitted(self, object):
+        if isinstance(object, Token):
+            if len(object._.holmes.lemma.split()) > 1:
+                working_lemma = object.lemma_
+            else:
+                working_lemma = object._.holmes.lemma
+            return object.pos_ in self._permissible_embedding_pos and \
+                    len(working_lemma) >= self._minimum_embedding_match_word_length
+        elif isinstance(object, Subword):
+            return len(object.lemma) >= self._minimum_embedding_match_word_length
+
     language_name = NotImplemented
 
     noun_pos = NotImplemented
@@ -631,6 +641,12 @@ class SemanticAnalyzer(ABC):
     topic_matching_reverse_only_parent_lemmas = NotImplemented
 
     preferred_phraselet_pos = NotImplemented
+
+    _permissible_embedding_pos = NotImplemented
+
+    _minimum_embedding_match_word_length = NotImplemented
+
+    _dependencies_not_to_add_to_siblings_further_right = NotImplemented
 
     @abstractmethod
     def _add_subwords(self, token, subword_cache):
@@ -723,8 +739,12 @@ class SemanticAnalyzer(ABC):
                             token.i, child_index_to_add, dependency.label, dependency.is_uncertain))
             # where a token has a dependent token and the parent token has righthand siblings,
             # add dependencies from the siblings to the dependent token
-            for righthand_sibling in [righthand_sibling for righthand_sibling in \
-             token._.holmes.righthand_siblings if righthand_sibling != dependency.child_index]:
+            for righthand_sibling in (righthand_sibling for righthand_sibling in \
+                    token._.holmes.righthand_siblings if righthand_sibling !=
+                    dependency.child_index and
+                    (righthand_sibling < dependency.child_index or
+                    dependency.label not in
+                    self._dependencies_not_to_add_to_siblings_further_right)):
                 # unless the sibling already contains a dependency with the same label
                 # or the sibling has this token as a dependent child
                 righthand_sibling_token = token.doc[righthand_sibling]
@@ -953,12 +973,12 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
     # as occurring within documents being searched. This is the main source of the asymmetry
     # in matching from search phrases to documents versus from documents to search phrases.
     _matching_dep_dict = {
-            'nsubj': ['csubj', 'poss', 'pobjb', 'advmodsubj', 'arg'],
+            'nsubj': ['csubj', 'poss', 'pobjb', 'pobjo', 'advmodsubj', 'arg'],
             'acomp': ['amod', 'advmod', 'npmod', 'advcl'],
             'amod': ['acomp', 'advmod', 'npmod', 'advcl'],
             'advmod': ['acomp', 'amod', 'npmod', 'advcl'],
             'arg': ['nsubj', 'csubj', 'poss', 'pobjb', 'advmodsubj', 'dobj', 'pobjo', 'relant',
-                    'nsubjpass', 'csubjpass', 'compound', 'advmodobj', 'dative'],
+                    'nsubjpass', 'csubjpass', 'compound', 'advmodobj', 'dative', 'pobjp'],
             'compound': ['nmod', 'appos', 'nounmod', 'nsubj', 'csubj', 'poss', 'pobjb',
                     'advmodsubj', 'dobj', 'pobjo', 'relant', 'pobjp',
                     'nsubjpass', 'csubjpass', 'arg', 'advmodobj', 'dative'],
@@ -971,7 +991,8 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
             'nmod': ['appos', 'compound', 'nummod'],
             'poss': ['pobjo', 'nsubj', 'csubj', 'pobjb', 'advmodsubj', 'arg', 'relant',
                     'nsubjpass', 'csubjpass', 'compound', 'advmodobj'],
-            'pobjo': ['poss'],
+            'pobjo': ['poss', 'dobj', 'relant', 'nsubjpass', 'csubjpass',
+                    'compound','advmodobj', 'arg', 'xcomp', 'nsubj', 'csubj', 'advmodsubj'],
             'pobjb': ['nsubj', 'csubj', 'poss', 'advmodsubj', 'arg'],
             'pobjp': ['compound'],
             'prep': ['prepposs'],
@@ -1004,7 +1025,12 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only = False),
         PhraseletTemplate("predicate-patient", "Somebody does a thing", 1, 3,
-                ['dobj', 'relant', 'advmodobj', 'pobjo', 'poss', 'xcomp'],
+                ['dobj', 'relant', 'advmodobj', 'xcomp'],
+                ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
+                ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
+                reverse_only = False),
+        PhraseletTemplate("word-ofword", "A thing of a thing", 1, 4,
+                ['pobjo', 'poss'],
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
                 ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
                 reverse_only = False),
@@ -1051,7 +1077,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
 
     # Lemmas that should be suppressed within relation phraselets or as words of
     # single-word phraselets during topic matching.
-    topic_matching_phraselet_stop_lemmas = ('then', 'therefore', 'so')
+    topic_matching_phraselet_stop_lemmas = ('then', 'therefore', 'so', '-pron-')
 
     # Lemmas that should be suppressed within relation phraselets or as words of
     # single-word phraselets during supervised document classification.
@@ -1064,6 +1090,18 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
 
     # Parts of speech that are preferred as lemmas within phraselets
     preferred_phraselet_pos = ('NOUN', 'PROPN')
+
+    # Parts of speech for which embedding matching is attempted
+    _permissible_embedding_pos = ('NOUN', 'PROPN', 'ADJ', 'ADV')
+
+    # Minimum length of a word taking part in an embedding-based match.
+    # Necessary because of the proliferation of short nonsense strings in the vocabularies.
+    _minimum_embedding_match_word_length = 3
+
+    # When a word A has a dependency from this list to word B, the dependency should not be added
+    # to a word C that is to the right of B.
+    _dependencies_not_to_add_to_siblings_further_right = ('dobj', 'dative', 'prep', 'pobjo',
+            'pobjb', 'pobjt', 'pobjp', 'prepposs', 'prt')
 
     def _add_subwords(self, token, subword_cache):
         """ Analyses the internal structure of the word to find atomic semantic elements. Is
@@ -1141,14 +1179,14 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                         if element.label == 'auxpass']) > 0:
                             if not child._.holmes.has_dependency_with_child_index(
                                     other_dependency.child_index) and \
-                                    dependency.child_index != other_dependency.child_index:
+                                    dependency.child_index > other_dependency.child_index:
                                 child._.holmes.children.append(SemanticDependency(
                                     dependency.child_index, other_dependency.child_index,
                                     'nsubjpass', True))
                         else:
                             if not child._.holmes.has_dependency_with_child_index(
                                     other_dependency.child_index) and \
-                                    dependency.child_index != other_dependency.child_index:
+                                    dependency.child_index > other_dependency.child_index:
                                 child._.holmes.children.append(SemanticDependency(
                                     dependency.child_index, other_dependency.child_index,
                                     'nsubj', True))
@@ -1527,12 +1565,12 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
             'arg': ['sb', 'oa', 'ag', 'intcompound', 'pobjb', 'pobjo'],
             'mo': ['moposs', 'mnr', 'mnrposs', 'nk', 'oc'],
             'mnr': ['mnrposs', 'mo', 'moposs', 'nk', 'oc'],
-            'nk': ['ag', 'pobjo', 'intcompound', 'oc'],
+            'nk': ['ag', 'pobjo', 'intcompound', 'oc', 'mo'],
             'pobjo': ['ag', 'intcompound'],
             'pobjp': ['intcompound'],
             # intcompound is only used within extensive matching because it is not assigned
             # in the context of registering search phrases.
-            'intcompound': ['sb', 'oa', 'ag', 'og', 'nk', 'pobjo', 'pobjp']
+            'intcompound': ['sb', 'oa', 'ag', 'og', 'nk', 'mo', 'pobjo', 'pobjp']
     }
 
     _mark_child_dependencies_copied_to_siblings_as_uncertain = False
@@ -1600,7 +1638,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                 ['FM', 'NE', 'NNE', 'NN'],
                 None, reverse_only = False)]
 
-    topic_matching_phraselet_stop_lemmas = ('dann', 'danach', 'so')
+    topic_matching_phraselet_stop_lemmas = ('dann', 'danach', 'so', 'ich')
 
     supervised_document_classification_phraselet_stop_lemmas = ('sein', 'haben')
 
@@ -1608,6 +1646,12 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
             ('haben', 'AUX'), ('sagen', 'VERB'), ('machen', 'VERB'), ('tun', 'VERB'))
 
     preferred_phraselet_pos = ('NOUN', 'PROPN')
+
+    _permissible_embedding_pos = ('NOUN', 'PROPN', 'ADJ', 'ADV')
+
+    _minimum_embedding_match_word_length = 4
+
+    _dependencies_not_to_add_to_siblings_further_right = ()
 
     # Only words at least this long are examined for possible subwords
     _minimum_length_for_subword_search = 10
@@ -2095,6 +2139,9 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                     return None
             if lemma.endswith('erung') or lemma.endswith('elung'):
                 return ''.join((lemma[:-3], 'n'))
+            elif lemma.endswith('lung') and len(lemma) >= 5 and \
+                    lemma[-5] not in ('a','e','i','o','u','ä','ö','ü','h'):
+                return ''.join((lemma[:-4], 'eln'))
             return ''.join((lemma[:-3], 'en'))
         # nominalization with 'heit', 'keit'
         if (token == None or token.tag_ == 'NN') and (lemma.endswith('keit') or
@@ -2140,7 +2187,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
             for child_dependency in (child_dependency for child_dependency in
                     child._.holmes.children if child_dependency.label == 'nk' and
                     token.i != child_dependency.child_index and child.pos_ == 'ADP'):
-                if dependency.label in ('mnr', 'pg') and \
+                if dependency.label in ('mnr', 'pg', 'op') and \
                         dependency.child_token(token.doc)._.holmes.lemma in ('von', 'vom'):
                     token._.holmes.children.append(SemanticDependency(
                         token.i, child_dependency.child_index, 'pobjo'))

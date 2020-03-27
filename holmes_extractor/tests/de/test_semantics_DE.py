@@ -620,6 +620,11 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = analyzer.parse("Häuser im Dorf.")
         self.assertEqual(doc[2]._.holmes.parent_dependencies, [[0, 'pobjp'],[1, 'nk']])
 
+    def test_von_phrase_with_op(self):
+        doc = analyzer.parse("Die Verwandlung von einem Mädchen")
+        self.assertEqual(doc[1]._.holmes.string_representation_of_children(),
+                '2:op; 4:pobjo')
+
     def test_subwords_without_fugen_s(self):
         doc = analyzer.parse("Telefaxnummer.")
         self.assertEqual(len(doc[0]._.holmes.subwords), 2)
@@ -1916,6 +1921,14 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
     def test_derived_lemma_subword_conjunction_last_word(self):
         doc = analyzer.parse("Investitionsanfänge und -auswirkungen.")
         self.assertEqual(doc[0]._.holmes.subwords[0].derived_lemma, 'investieren')
+
+    def test_derived_lemma_lung_after_consonant(self):
+        doc = analyzer.parse("Verwandlung.")
+        self.assertEqual(doc[0]._.holmes.derived_lemma, 'verwandeln')
+
+    def test_derived_lemma_lung_after_vowel_sound(self):
+        doc = analyzer.parse("Erzählung.")
+        self.assertEqual(doc[0]._.holmes.derived_lemma, 'erzählen')
 
     def test_non_recorded_subword_alone(self):
         doc = analyzer.parse('Messerlein.')

@@ -373,18 +373,6 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 "An engine with a car", "I saw a car. There was an engine with it", 76,
                 holmes_manager_coref_no_embeddings)
 
-    def test_reverse_matching_verb(self):
-        self._check_equals("A company is bought", "A company is purchased", 20,
-                holmes_manager_coref)
-
-    def test_reverse_matching_verb_control_no_embeddings(self):
-        self._check_equals("A company is bought", "A company is purchased", 10,
-                holmes_manager_coref_no_embeddings)
-
-    def test_reverse_matching_verb_control_same_word(self):
-        self._check_equals("A company is bought", "A company is bought", 34,
-                holmes_manager_coref_no_embeddings)
-
     def test_reverse_matching_verb_with_coreference_and_conjunction(self):
         self._check_equals("A company is bought", "A company is bought and purchased", 34,
                 holmes_manager_coref)

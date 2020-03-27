@@ -51,6 +51,9 @@ holmes_manager_with_embeddings.register_search_phrase("Der Himmel ist grün")
 holmes_manager_with_embeddings.register_search_phrase("Ein König tritt zurück")
 holmes_manager_with_embeddings.register_search_phrase("Die Abdankung eines Königs")
 holmes_manager_with_embeddings.register_search_phrase("Informationskönig")
+holmes_manager_with_embeddings.register_search_phrase("Teller")
+holmes_manager_with_embeddings.register_search_phrase("herabfallen")
+holmes_manager_with_embeddings.register_search_phrase("Jemand isst von einem Jeden")
 
 class GermanStructuralMatchingTest(unittest.TestCase):
 
@@ -557,11 +560,6 @@ class GermanStructuralMatchingTest(unittest.TestCase):
                 "Richard Hudson möchte ein Konto für sein Kind eröffnen")
         self.assertEqual(len(matches), 1)
 
-    def test_separable_verbs_with_embeddings(self):
-        matches = self._get_matches(holmes_manager_with_embeddings,
-                "Der König dankt ab")
-        self.assertEqual(len(matches), 1)
-
     def test_objective_deverbal_subword_phrase_with_durch_no_conjunction(self):
         matches = self._get_matches(holmes_manager,
                 "Die Katzenjagd durch den Hund")
@@ -991,4 +989,24 @@ class GermanStructuralMatchingTest(unittest.TestCase):
     def test_matching_across_non_reported_subword(self):
         matches = self._get_matches(holmes_manager,
                 "Messerleininformation")
+        self.assertEqual(len(matches), 1)
+
+    def test_no_embedding_match_word_too_short(self):
+        matches = self._get_matches(holmes_manager_with_embeddings,
+                "Ein Jeden hat das gemacht")
+        self.assertEqual(len(matches), 0)
+
+    def test_no_embedding_wrong_pos(self):
+        matches = self._get_matches(holmes_manager_with_embeddings,
+                "hervorkommen")
+        self.assertEqual(len(matches), 0)
+
+    def test_no_embedding_subword_too_short(self):
+        matches = self._get_matches(holmes_manager_with_embeddings,
+                "Jedeninteresse")
+        self.assertEqual(len(matches), 0)
+
+    def test_no_embedding_search_phrase_word_too_short(self):
+        matches = self._get_matches(holmes_manager_with_embeddings,
+                "Jemand isst von einem Teller")
         self.assertEqual(len(matches), 1)

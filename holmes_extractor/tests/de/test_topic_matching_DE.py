@@ -111,18 +111,6 @@ class GermanTopicMatchingTest(unittest.TestCase):
         self._check_equals("Ein König mit einem Land", "Ein König mit einem Land", 75,
                 holmes_manager)
 
-    def test_reverse_matching_verb(self):
-        self._check_equals("Ein Kind schrie", "Das Kind weinte", 20,
-                holmes_manager_with_embeddings)
-
-    def test_reverse_matching_verb_control_no_embeddings(self):
-        self._check_equals("Ein Kind schrie", "Das Kind weinte", 10,
-                holmes_manager)
-
-    def test_reverse_matching_verb_control_same_word(self):
-        self._check_equals("Ein Kind schrie", "Das Kind schrie", 34,
-                holmes_manager)
-
     def test_reverse_matching_only(self):
         self._check_equals("mit einer Idee",
                 "mit einer Idee", 29,

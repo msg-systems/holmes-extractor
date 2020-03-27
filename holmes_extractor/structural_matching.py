@@ -1420,15 +1420,22 @@ class StructuralMatcher:
 
         if self.overall_similarity_threshold < 1.0 and (compare_embeddings_on_non_root_words or
                 search_phrase.root_token.i == search_phrase_token.i) and search_phrase_token.i in \
-                search_phrase.matchable_non_entity_tokens_to_lexemes.keys():
+                search_phrase.matchable_non_entity_tokens_to_lexemes.keys() and \
+                self.semantic_analyzer.embedding_matching_permitted(search_phrase_token):
             search_phrase_lexeme = \
                     search_phrase.matchable_non_entity_tokens_to_lexemes[search_phrase_token.i]
             if document_subword_index != None:
+                if not self.semantic_analyzer.embedding_matching_permitted(
+                        document_token._.holmes.subwords[document_subword_index]):
+                    return False
                 document_lemma = document_token._.holmes.subwords[document_subword_index].lemma
-            elif len(document_token._.holmes.lemma.split()) > 1:
-                document_lemma = document_token.lemma_
             else:
-                document_lemma = document_token._.holmes.lemma
+                if not self.semantic_analyzer.embedding_matching_permitted(document_token):
+                    return False
+                if len(document_token._.holmes.lemma.split()) > 1:
+                    document_lemma = document_token.lemma_
+                else:
+                    document_lemma = document_token._.holmes.lemma
 
             document_lexeme = self.semantic_analyzer.nlp.vocab[document_lemma]
             if search_phrase_lexeme.vector_norm > 0 and document_lexeme.vector_norm > 0:
@@ -1975,7 +1982,9 @@ class StructuralMatcher:
                                 matched_indexes_set.update(direct_matching_indexes)
                 if compare_embeddings_on_root_words and not \
                         self._is_entity_search_phrase_token(search_phrase.root_token,
-                        search_phrase.topic_match_phraselet) and not search_phrase.reverse_only:
+                        search_phrase.topic_match_phraselet) and not search_phrase.reverse_only and\
+                        self.semantic_analyzer.embedding_matching_permitted(
+                        search_phrase.root_token):
                     if not search_phrase.topic_match_phraselet and \
                             len(search_phrase.root_token._.holmes.lemma.split()) > 1:
                         root_token_lemma_to_use = search_phrase.root_token.lemma_
@@ -2001,12 +2010,20 @@ class StructuralMatcher:
                             example_index = indexes_to_match[0]
                             example_document_token = doc[example_index.token_index]
                             if example_index.is_subword():
+                                if not self.semantic_analyzer.embedding_matching_permitted(
+                                        example_document_token._.holmes.subwords[
+                                        example_index.subword_index]):
+                                    continue
                                 document_lemma = example_document_token._.holmes.subwords[
                                         example_index.subword_index].lemma
-                            elif len(example_document_token._.holmes.lemma.split()) > 1:
-                                document_lemma = example_document_token.lemma_
                             else:
-                                document_lemma = example_document_token._.holmes.lemma
+                                if not self.semantic_analyzer.embedding_matching_permitted(
+                                        example_document_token):
+                                    continue
+                                if len(example_document_token._.holmes.lemma.split()) > 1:
+                                    document_lemma = example_document_token.lemma_
+                                else:
+                                    document_lemma = example_document_token._.holmes.lemma
                             document_lexeme = self.semantic_analyzer.nlp.vocab[document_lemma]
                             if search_phrase_lexeme.vector_norm > 0 and \
                                     document_lexeme.vector_norm > 0:

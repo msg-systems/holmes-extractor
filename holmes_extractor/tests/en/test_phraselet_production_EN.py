@@ -96,13 +96,13 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
 
     def test_possessor_possessed_no_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "A gardener's plant",
-                ['predicate-patient: plant-gardener', 'word: plant', 'word: gardener'])
+                ['word-ofword: plant-gardener', 'word: plant', 'word: gardener'])
 
     def test_combined_no_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager,
                 "A gardener's healthy hobby plant grows in the sun",
                 ['predicate-actor: grow-plant', 'governor-adjective: plant-healthy',
-                'noun-noun: plant-hobby', 'predicate-patient: plant-gardener',
+                'noun-noun: plant-hobby', 'word-ofword: plant-gardener',
                 'prepgovernor-noun: grow-sun', 'word: plant', 'word: hobby', 'word: gardener',
                 'word: sun'])
 
@@ -286,7 +286,7 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                 "I saw a dog. He was chasing a cat and a cat",
                 ['predicate-actor: chase-dog', 'predicate-patient: chase-cat',
                 'predicate-patient: see-dog', 'word: dog', 'word: cat',
-                'word: see', 'word: chase', 'word: -pron-'], False, True)
+                'word: see', 'word: chase'], False, True)
 
     def test_entity_defined_multiword_not_match_all_words(self):
         self._check_equals(no_ontology_coref_holmes_manager,

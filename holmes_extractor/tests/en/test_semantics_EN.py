@@ -564,14 +564,14 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[7]._.holmes.string_representation_of_children(),
                 '1:nsubj(U); 4:nsubj(U)')
         self.assertEqual(doc[9]._.holmes.string_representation_of_children(),
-                '1:nsubj(U); 4:nsubj(U); 6:prt(U); 7:xcomp(U)')
+                '1:nsubj(U); 4:nsubj(U); 7:xcomp(U)')
 
     def test_verb_p_c_with_conjunction_of_dependent_verb_and_coreferring_pronoun(self):
         doc = analyzer.parse("I saw a cat. It kept on singing and shouting")
         self.assertEqual(doc[8]._.holmes.string_representation_of_children(),
                 '5:nsubj(U)')
         self.assertEqual(doc[10]._.holmes.string_representation_of_children(),
-                '5:nsubj(U); 7:prt(U); 8:xcomp(U)')
+                '5:nsubj(U); 8:xcomp(U)')
 
     def test_verb_p_c_with_conjunction_of_dependent_verb_and_non_coreferring_pronoun(self):
         doc = analyzer.parse("It kept on singing and shouting")
@@ -621,6 +621,11 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         doc = analyzer.parse("The employee needs it for the next five years")
         self.assertEqual(doc[3]._.holmes.string_representation_of_children(),
                 '')
+
+    def test_dependencies_not_added_to_sibling_to_the_right(self):
+        doc = analyzer.parse("He saw them and laughed")
+        self.assertEqual(doc[4]._.holmes.string_representation_of_children(),
+                '0:nsubj(U)')
 
     def test_coreference_within_sentence(self):
         doc = analyzer.parse("The employee got home and he was surprised")
