@@ -646,8 +646,6 @@ class SemanticAnalyzer(ABC):
 
     _minimum_embedding_match_word_length = NotImplemented
 
-    _dependencies_not_to_add_to_siblings_further_right = NotImplemented
-
     @abstractmethod
     def _add_subwords(self, token, subword_cache):
         pass
@@ -738,13 +736,13 @@ class SemanticAnalyzer(ABC):
                         token._.holmes.children.append(SemanticDependency(
                             token.i, child_index_to_add, dependency.label, dependency.is_uncertain))
             # where a token has a dependent token and the parent token has righthand siblings,
-            # add dependencies from the siblings to the dependent token
+            # add dependencies from the siblings to the dependent token, unless the dependent
+            # token is to the right of the parent token but to the left of the sibling.
             for righthand_sibling in (righthand_sibling for righthand_sibling in \
                     token._.holmes.righthand_siblings if righthand_sibling !=
                     dependency.child_index and
                     (righthand_sibling < dependency.child_index or
-                    dependency.label not in
-                    self._dependencies_not_to_add_to_siblings_further_right)):
+                    dependency.child_index < token.i)):
                 # unless the sibling already contains a dependency with the same label
                 # or the sibling has this token as a dependent child
                 righthand_sibling_token = token.doc[righthand_sibling]
@@ -1097,11 +1095,6 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
     # Minimum length of a word taking part in an embedding-based match.
     # Necessary because of the proliferation of short nonsense strings in the vocabularies.
     _minimum_embedding_match_word_length = 3
-
-    # When a word A has a dependency from this list to word B, the dependency should not be added
-    # to a word C that is to the right of B.
-    _dependencies_not_to_add_to_siblings_further_right = ('dobj', 'dative', 'prep', 'pobjo',
-            'pobjb', 'pobjt', 'pobjp', 'prepposs', 'prt', 'xcomp')
 
     def _add_subwords(self, token, subword_cache):
         """ Analyses the internal structure of the word to find atomic semantic elements. Is
@@ -1650,8 +1643,6 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
     _permissible_embedding_pos = ('NOUN', 'PROPN', 'ADJ', 'ADV')
 
     _minimum_embedding_match_word_length = 4
-
-    _dependencies_not_to_add_to_siblings_further_right = ()
 
     # Only words at least this long are examined for possible subwords
     _minimum_length_for_subword_search = 10

@@ -616,6 +616,20 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[13]._.holmes.string_representation_of_children(),
                 '1:pobjp(U); 4:pobjp; 6:mo; 8:sb; 10:sb')
 
+    def test_conjunction_with_subject_object_and_verb_further_right(self):
+        doc = analyzer.parse("Der Mann aß das Fleisch und trank.")
+        self.assertEqual(doc[6]._.holmes.string_representation_of_children(),
+                '1:sb')
+
+    def test_conjunction_with_subject_object_modal_and_verb_further_Right(self):
+        doc = analyzer.parse("Der Mann hat das Fleisch gegessen und getrunken.")
+        self.assertEqual(doc[7]._.holmes.string_representation_of_children(),
+                '1:sb; 4:oa')
+
+    def test_conjunction_with_prepositional_phrase_and_noun_further_right(self):
+        doc = analyzer.parse("Eine Versicherung für die nächsten fünf Jahre und eine Police")
+        self.assertEqual(doc[9]._.holmes.string_representation_of_children(), '')
+
     def test_parent_token_indexes(self):
         doc = analyzer.parse("Häuser im Dorf.")
         self.assertEqual(doc[2]._.holmes.parent_dependencies, [[0, 'pobjp'],[1, 'nk']])

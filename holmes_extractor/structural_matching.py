@@ -76,25 +76,25 @@ class WordMatch:
     def explain(self):
         """ Creates a human-readable explanation of the word match from the perspective of the
             document word (e.g. to be used as a tooltip over it)."""
-        search_phrase_display_word = self.search_phrase_token._.holmes.lemma
+        search_phrase_display_word = self.search_phrase_token._.holmes.lemma.upper()
         if self.type == 'direct':
-            return ''.join(("Matches '", search_phrase_display_word, "' directly."))
+            return ''.join(("Matches ", search_phrase_display_word, " directly."))
         elif self.type == 'derivation':
-            return ''.join(("Has a common stem with '", search_phrase_display_word, "'."))
+            return ''.join(("Has a common stem with ", search_phrase_display_word, "."))
         elif self.type == 'entity':
-            return ''.join(("Matches the ", search_phrase_display_word.upper(), " placeholder."))
+            return ''.join(("Matches the ", search_phrase_display_word, " placeholder."))
         elif self.type == 'embedding':
             printable_similarity = str(int(self.similarity_measure * 100))
             return ''.join(("Has a word embedding that is ", printable_similarity,
-                    "% similar to '", search_phrase_display_word, "'."))
+                    "% similar to ", search_phrase_display_word, "."))
         elif self.type == 'ontology':
             working_depth = self.depth
             if working_depth > 4:
                 working_depth = 4
             elif working_depth < -4:
                 working_depth = -4
-            return ''.join(("Is ", ONTOLOGY_DEPTHS_TO_NAMES[working_depth], " of '",
-                    search_phrase_display_word, "' in the ontology."))
+            return ''.join(("Is ", ONTOLOGY_DEPTHS_TO_NAMES[working_depth], " of ",
+                    search_phrase_display_word, " in the ontology."))
         else:
             raise RuntimeError(' '.join(('Unrecognized type', self.type)))
 
