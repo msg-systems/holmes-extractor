@@ -831,3 +831,53 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
                 "The dog chased the cat", document_label_filter="X")
         self.assertEqual(len(topic_match_dictionaries), 0)
+
+    def test_adjective_describing_ontology_multiword_with_topic_match_dictionaries(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.remove_all_search_phrases()
+        holmes_manager_coref.parse_and_register_document("A big Unhyphenated Single Multiword")
+        topic_match_dictionaries = \
+                holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
+                "A big Unhyphenated Single Multiword")
+        self.assertEqual(topic_match_dictionaries,
+        [{'document_label': '', 'text': 'A big Unhyphenated Single Multiword', 'text_to_match': 'A big Unhyphenated Single Multiword', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 35, 'score': 36.92, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [6, 35, 'relation', True, 'Matches UNHYPHENATED SINGLE MULTIWORD directly.']]}])
+
+    def test_adjective_describing_entity_multiword_with_topic_match_dictionaries(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.remove_all_search_phrases()
+        holmes_manager_coref.parse_and_register_document("A big Richard Paul Hudson")
+        topic_match_dictionaries = \
+                holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
+                "A big Richard Paul Hudson")
+        self.assertEqual(topic_match_dictionaries,
+        [{'document_label': '', 'text': 'A big Richard Paul Hudson', 'text_to_match': 'A big Richard Paul Hudson', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 25, 'score': 40.84, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [6, 25, 'relation', True, 'Matches RICHARD PAUL HUDSON directly.']]}])
+
+    def test_adjective_describing_double_multiword_with_topic_match_dictionaries_1(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.remove_all_search_phrases()
+        holmes_manager_coref.parse_and_register_document("A big Richard Mimi Momo")
+        topic_match_dictionaries = \
+                holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
+                "A big Richard Mimi Momo")
+        self.assertEqual(topic_match_dictionaries,
+        [{'document_label': '', 'text': 'A big Richard Mimi Momo', 'text_to_match': 'A big Richard Mimi Momo', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 23, 'score': 101.78666666666666, 'word_infos': [[2, 5, 'overlapping_relation', False, 'Matches BIG directly.'], [6, 13, 'overlapping_relation', False, 'Matches RICHARD directly.'], [14, 23, 'overlapping_relation', True, 'Matches MIMI MOMO directly.']]}])
+
+    def test_adjective_describing_double_multiword_with_topic_match_dictionaries_2(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.remove_all_search_phrases()
+        holmes_manager_coref.parse_and_register_document("A big Richard Mimi Momo")
+        topic_match_dictionaries = \
+                holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
+                "A big Mimi Momo")
+        self.assertEqual(topic_match_dictionaries,
+        [{'document_label': '', 'text': 'A big Richard Mimi Momo', 'text_to_match': 'A big Mimi Momo', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 23, 'score': 36.92, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [14, 23, 'relation', True, 'Matches MIMI MOMO directly.']]}])
+
+    def test_adjective_describing_double_multiword_with_topic_match_dictionaries_3(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.remove_all_search_phrases()
+        holmes_manager_coref.parse_and_register_document("A big Richard Mimi Momo")
+        topic_match_dictionaries = \
+                holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
+                "A big Momo")
+        self.assertEqual(topic_match_dictionaries,
+        [{'document_label': '', 'text': 'A big Richard Mimi Momo', 'text_to_match': 'A big Momo', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 23, 'score': 31.92, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [19, 23, 'relation', True, 'Matches MOMO directly.']]}])

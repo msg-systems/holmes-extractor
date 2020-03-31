@@ -75,7 +75,7 @@ class Subword:
     """A semantically atomic part of a word. Currently only used for German.
 
         containing_token_index -- the index of the containing token within the document.
-        index -- the index of the subword within the containing word.
+        index -- the index of the subword within the word.
         text -- the original subword string.
         lemma -- the model-normalized representation of the subword string.
         derived_lemma -- where relevant, another lemma with which *lemma* is derivationally related
@@ -549,27 +549,30 @@ class SemanticAnalyzer(ABC):
 
     def get_entity_defined_multiword(self, token):
         """ If this token is at the head of a multiword recognized by spaCy named entity processing,
-            returns the multiword string in lower case, otherwise *None*.
+            returns the multiword string in lower case and the indexes of the tokens that make up
+            the multiword, otherwise *None, None*.
         """
         if not self.belongs_to_entity_defined_multiword(token) or (token.dep_ != 'ROOT' and
                 self.belongs_to_entity_defined_multiword(token.head)) or token.ent_type_ == '' or \
                 token.left_edge.i == token.right_edge.i:
-            return None
+            return None, None
         working_ent = token.ent_type_
         working_text = ''
+        working_indexes = []
         for counter in range(token.left_edge.i, token.right_edge.i +1):
             multiword_token = token.doc[counter]
             if not self.belongs_to_entity_defined_multiword(multiword_token) or \
                     multiword_token.ent_type_ != working_ent:
                 if working_text != '':
-                    return None
+                    return None, None
                 else:
                     continue
             working_text = ' '.join((working_text, multiword_token.text))
+            working_indexes.append(multiword_token.i)
         if len(working_text.split()) > 1:
-            return working_text.strip().lower()
+            return working_text.strip().lower(), working_indexes
         else:
-            return None
+            return None, None
 
     def embedding_matching_permitted(self, object):
         if isinstance(object, Token):
@@ -1690,6 +1693,10 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
     # a code change.
     _non_recorded_subword_list = ('lein', 'chen')
 
+    # Subword solutions that scored higher than this are regarded as probably wrong and so are
+    # not recorded.
+    _maximum_acceptable_subword_score = 8
+
     def _add_subwords(self, token, subword_cache):
 
         class PossibleSubword:
@@ -1830,7 +1837,8 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
         else:
             working_subwords = []
             possible_subwords = scan_recursively_for_subwords(token._.holmes.lemma)
-            if possible_subwords == None:
+            if possible_subwords == None or score(possible_subwords) > \
+                    self._maximum_acceptable_subword_score:
                 return
             if len(possible_subwords) == 1 and token._.holmes.lemma.isalpha():
                 # not ... isalpha(): hyphenation
@@ -2128,7 +2136,8 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
             for word in self._ung_ending_blacklist:
                 if lemma.endswith(word):
                     return None
-            if lemma.endswith('erung') or lemma.endswith('elung'):
+            if (lemma.endswith('erung') and not lemma.endswith('ierung')) or \
+                    lemma.endswith('elung'):
                 return ''.join((lemma[:-3], 'n'))
             elif lemma.endswith('lung') and len(lemma) >= 5 and \
                     lemma[-5] not in ('a','e','i','o','u','ä','ö','ü','h'):

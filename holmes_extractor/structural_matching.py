@@ -153,16 +153,12 @@ class Match:
         return match_to_return
 
     def get_subword_index(self):
-        if len(self.word_matches) == 0:
-            return None
         if self.word_matches[0].document_subword == None:
             return None
         return self.word_matches[0].document_subword.index
 
     def get_subword_index_for_sorting(self):
         # returns *-1* rather than *None* in the absence of a subword
-        if len(self.word_matches) == 0:
-            return -1
         if self.word_matches[0].document_subword == None:
             return -1
         return self.word_matches[0].document_subword.index
@@ -723,15 +719,15 @@ class StructuralMatcher:
         self._redefine_multiwords_on_head_tokens(doc)
         token_indexes_to_multiword_lemmas = {}
         token_indexes_within_multiwords_to_ignore = []
-        for token in doc:
-            entity_defined_multiword = self.semantic_analyzer.get_entity_defined_multiword(token)
+        for token in (token for token in doc if len(token._.holmes.lemma.split()) == 1):
+            entity_defined_multiword, indexes = \
+                    self.semantic_analyzer.get_entity_defined_multiword(token)
             if entity_defined_multiword != None:
-                for counter in range(token.left_edge.i, token.right_edge.i + 1):
-                    multiword_token = doc[counter]
-                    if counter == token.i:
+                for index in indexes:
+                    if index == token.i:
                         token_indexes_to_multiword_lemmas[token.i] = entity_defined_multiword
                     else:
-                        token_indexes_within_multiwords_to_ignore.append(multiword_token.i)
+                        token_indexes_within_multiwords_to_ignore.append(index)
         for token in doc:
             if token.i in token_indexes_within_multiwords_to_ignore:
                 if match_all_words:
@@ -923,21 +919,21 @@ class StructuralMatcher:
     def _redefine_multiwords_on_head_tokens(self, doc):
 
         def loop_textual_representations(multiword_span):
-            for token in doc:
-                for multiword_span in self._multiword_spans_with_head_token(token):
-                    for representation, _ in self._loop_textual_representations(multiword_span):
-                        yield representation, multiword_span.derived_lemma
-                    if self.analyze_derivational_morphology:
-                        for reverse_derived_lemma in \
-                                self.reverse_derived_lemmas_in_ontology(multiword_span):
-                            yield reverse_derived_lemma, multiword_span.derived_lemma
+            for representation, _ in self._loop_textual_representations(multiword_span):
+                yield representation, multiword_span.derived_lemma
+            if self.analyze_derivational_morphology:
+                for reverse_derived_lemma in \
+                        self.reverse_derived_lemmas_in_ontology(multiword_span):
+                    yield reverse_derived_lemma, multiword_span.derived_lemma
 
         if self.ontology != None:
-            for token in doc:
+            for token in (token for token in doc if len(token._.holmes.lemma.split()) == 1):
+                matched = False
                 for multiword_span in self._multiword_spans_with_head_token(token):
                     for representation, derived_lemma in \
                             loop_textual_representations(multiword_span):
                         if self.ontology.contains_multiword(representation):
+                            matched = True
                             token._.holmes.lemma = representation.lower()
                             token._.holmes.derived_lemma = derived_lemma
                             # mark the dependent tokens as grammatical and non-matchable
@@ -948,6 +944,8 @@ class StructuralMatcher:
                                         multiword_token.i, 0 - (token.i + 1), None)]
                                 multiword_token._.holmes.is_matchable = False
                             break
+                    if matched:
+                        break
 
     def create_search_phrase(self, search_phrase_text, search_phrase_doc,
             label, phraselet_template, topic_match_phraselet_created_without_matching_tags,
@@ -1089,7 +1087,7 @@ class StructuralMatcher:
                     add_dict_entry(words_to_token_info_dict, ontology_defined_multiword,
                             token.i, None, match_type)
                     continue
-            entity_defined_multiword = self.semantic_analyzer.get_entity_defined_multiword(token)
+            entity_defined_multiword, _ = self.semantic_analyzer.get_entity_defined_multiword(token)
             if entity_defined_multiword != None:
                 add_dict_entry(words_to_token_info_dict, entity_defined_multiword,
                         token.i, None, 'direct')

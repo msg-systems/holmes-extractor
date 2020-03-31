@@ -694,8 +694,8 @@ class TopicMatcher:
         def match_contained_within_existing_topic_match(topic_matches, match):
             for topic_match in topic_matches:
                 if match.document_label == topic_match.document_label and \
-                match.index_within_document >= topic_match.start_index and \
-                match.index_within_document <= topic_match.end_index:
+                        match.index_within_document >= topic_match.start_index and \
+                        match.index_within_document <= topic_match.end_index:
                     return True
             return False
 
@@ -706,11 +706,17 @@ class TopicMatcher:
             for word_match in match.word_matches:
                 if word_match.first_document_token.i < start_index:
                     start_index = word_match.first_document_token.i
+                if word_match.document_subword != None and \
+                        word_match.document_subword.containing_token_index < start_index:
+                    start_index = word_match.document_subword.containing_token_index
             if match.index_within_document > end_index:
                 end_index = match.index_within_document
             for word_match in match.word_matches:
                 if word_match.last_document_token.i > end_index:
                     end_index = word_match.last_document_token.i
+                if word_match.document_subword != None and \
+                        word_match.document_subword.containing_token_index > end_index:
+                    end_index = word_match.document_subword.containing_token_index
             return start_index, end_index
 
         if self.only_one_result_per_document:
@@ -843,7 +849,7 @@ class TopicMatcher:
                 for word_match in match.word_matches:
                     if word_match.document_subword != None:
                         subword = word_match.document_subword
-                        relative_start_index = word_match.document_token.idx + \
+                        relative_start_index = doc[subword.containing_token_index].idx + \
                                 subword.char_start_index - \
                                 sentences_character_start_index_in_document
                         relative_end_index = relative_start_index + len(subword.text)
@@ -878,7 +884,7 @@ class TopicMatcher:
                 subword = doc[topic_match.index_within_document]._.holmes.subwords\
                         [topic_match.subword_index]
                 highest_activation_relative_start_index = \
-                        doc[topic_match.index_within_document].idx + \
+                        doc[subword.containing_token_index].idx + \
                         subword.char_start_index - \
                         sentences_character_start_index_in_document
                 highest_activation_relative_end_index = \

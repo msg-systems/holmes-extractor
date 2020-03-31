@@ -244,41 +244,6 @@ class GermanTopicMatchingTest(unittest.TestCase):
                 "Der Prinz dankte ab", 5,
                 holmes_manager)
 
-    def test_sibling_match_with_higher_similarity_and_subwords_1(self):
-        self._check_equals("Das Abdanken eines Königs",
-                "Ein Königs- und Prinzenabdanken", 40,
-                holmes_manager_with_embeddings)
-
-    def test_sibling_match_with_higher_similarity_no_embeddings_control(self):
-        self._check_equals("Das Abdanken eines Königs",
-                "Ein Königs- und Prinzenabdanken", 40,
-                holmes_manager)
-
-    def test_sibling_match_with_higher_similarity_and_subwords_2(self):
-        self._check_equals("Das Abdanken eines Königs",
-                "Ein Prinzen- und Königsabdanken", 40,
-                holmes_manager_with_embeddings)
-
-    def test_sibling_match_with_higher_similarity_and_subwords_3(self):
-        self._check_equals("Ein Königs- und Prinzenabdanken",
-                "Das Abdanken eines Königs", 29,
-                holmes_manager_with_embeddings)
-
-    def test_sibling_match_with_higher_similarity_and_subwords_4(self):
-        self._check_equals("Ein Prinzen- und Königsabdanken",
-                "Das Abdanken eines Königs", 29,
-                holmes_manager_with_embeddings)
-
-    def test_sibling_match_with_higher_similarity_and_subwords_control_1(self):
-        self._check_equals("Das Abdanken eines Königs",
-                "Ein Prinzen- und Informationsabdanken", 19,
-                holmes_manager_with_embeddings)
-
-    def test_sibling_match_with_higher_similarity_and_subwords_control_2(self):
-        self._check_equals("Ein Prinzen- und Informationsabdanken",
-                "Das Abdanken eines Königs", 14,
-                holmes_manager_with_embeddings)
-
     def test_entity_matching_with_single_word_subword_match(self):
         self._check_equals("Ein ENTITYLOC singt", "Informationsextraktion hat sich durchgesetzt", 10)
 
@@ -389,7 +354,6 @@ class GermanTopicMatchingTest(unittest.TestCase):
         topic_match_dictionaries = \
                 holmes_manager.topic_match_documents_returning_dictionaries_against(
                 "Extraktion von Information und Löwen")
-        print(topic_match_dictionaries)
 
         self.assertEqual(topic_match_dictionaries,
         [{'document_label': '', 'text': 'Informationsextraktion von Löwen', 'text_to_match': 'Extraktion von Information und Löwen', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 32, 'score': 102.33333333333334, 'word_infos': [[0, 11, 'overlapping_relation', False, "Matches INFORMATION directly."], [12, 22, 'overlapping_relation', False, "Matches EXTRAKTION directly."], [27, 32, 'overlapping_relation', True, "Matches LÖWE directly."]]}])
@@ -401,6 +365,47 @@ class GermanTopicMatchingTest(unittest.TestCase):
         topic_match_dictionaries = \
                 holmes_manager.topic_match_documents_returning_dictionaries_against(
                 "Informationsnehmen der Löwen")
-        print(topic_match_dictionaries)
+
         self.assertEqual(topic_match_dictionaries,
         [{'document_label': '', 'text': 'Information und Löwen wurden genommen', 'text_to_match': 'Informationsnehmen der Löwen', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 37, 'score': 98.75999999999999, 'word_infos': [[0, 11, 'overlapping_relation', False, "Matches INFORMATION directly."], [16, 21, 'overlapping_relation', False, "Matches LÖWE directly."], [29, 37, 'overlapping_relation', True, "Matches NEHMEN directly."]]}])
+
+    def test_subword_conjunction_within_dictionaries_single_word_hyphen_first_word(self):
+        holmes_manager.remove_all_documents()
+        holmes_manager.remove_all_search_phrases()
+        holmes_manager.parse_and_register_document("Informations- und Informationsextraktion")
+        topic_match_dictionaries = \
+                holmes_manager.topic_match_documents_returning_dictionaries_against(
+                "Extraktion")
+
+        self.assertEqual(topic_match_dictionaries,
+        [{'document_label': '', 'text': 'Informations- und Informationsextraktion', 'text_to_match': 'Extraktion', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 40, 'score': 5.0, 'word_infos': [[30, 40, 'single', True, 'Matches EXTRAKTION directly.']]}])
+
+    def test_subword_conjunction_within_dictionaries_single_word_hyphen_second_word(self):
+        holmes_manager.remove_all_documents()
+        holmes_manager.remove_all_search_phrases()
+        holmes_manager.parse_and_register_document("Informationsextraktion und -extraktion")
+        topic_match_dictionaries = \
+                holmes_manager.topic_match_documents_returning_dictionaries_against(
+                "Information")
+        self.assertEqual(topic_match_dictionaries,
+        [{'document_label': '', 'text': 'Informationsextraktion und -extraktion', 'text_to_match': 'Information', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 38, 'score': 5.0, 'word_infos': [[0, 11, 'single', True, 'Matches INFORMATION directly.']]}])
+
+    def test_subword_conjunction_within_dictionaries_relation_hyphen_first_word(self):
+        holmes_manager.remove_all_documents()
+        holmes_manager.remove_all_search_phrases()
+        holmes_manager.parse_and_register_document("Ein Königs- und Prinzenabdanken")
+        topic_match_dictionaries = \
+                holmes_manager.topic_match_documents_returning_dictionaries_against(
+                "Das Abdanken eines Königs")
+        self.assertEqual(topic_match_dictionaries,
+        [{'document_label': '', 'text': 'Ein Königs- und Prinzenabdanken', 'text_to_match': 'Das Abdanken eines Königs', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 31, 'score': 40.0, 'word_infos': [[4, 9, 'relation', False, 'Matches KÖNIG directly.'], [23, 31, 'relation', True, 'Matches ABDANKEN directly.']]}])
+
+    def test_subword_conjunction_within_dictionaries_relation_hyphen_second_word(self):
+        holmes_manager.remove_all_documents()
+        holmes_manager.remove_all_search_phrases()
+        holmes_manager.parse_and_register_document("Ein Königsabdanken und -prinz")
+        topic_match_dictionaries = \
+                holmes_manager.topic_match_documents_returning_dictionaries_against(
+                "Das Prinz eines Königs")
+        self.assertEqual(topic_match_dictionaries,
+        [{'document_label': '', 'text': 'Ein Königsabdanken und -prinz', 'text_to_match': 'Das Prinz eines Königs', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 29, 'score': 40.0, 'word_infos': [[4, 9, 'relation', False, 'Matches KÖNIG directly.'], [24, 29, 'relation', True, 'Matches PRINZ directly.']]}])

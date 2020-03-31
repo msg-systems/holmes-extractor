@@ -817,6 +817,11 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[0]._.holmes.subwords[1].text, 'versicherung')
         self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'versicherung')
 
+    def test_subwords_score_too_high(self):
+
+        doc = analyzer.parse("Requalifizierung")
+        self.assertEqual(len(doc[0]._.holmes.subwords), 0)
+
     def test_final_blacklisted_subword(self):
 
         doc = analyzer.parse("Gemütlichkeit")
@@ -1939,6 +1944,10 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
     def test_derived_lemma_lung_after_consonant(self):
         doc = analyzer.parse("Verwandlung.")
         self.assertEqual(doc[0]._.holmes.derived_lemma, 'verwandeln')
+
+    def test_derived_lemma_ierung_without_ation(self):
+        doc = analyzer.parse("Bilanzierung.")
+        self.assertEqual(doc[0]._.holmes.derived_lemma, 'bilanzieren')
 
     def test_derived_lemma_lung_after_vowel_sound(self):
         doc = analyzer.parse("Erzählung.")

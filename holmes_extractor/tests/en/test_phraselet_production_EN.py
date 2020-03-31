@@ -294,11 +294,47 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                 ['predicate-actor: come-richard paul hudson',
                 'word: richard paul hudson'], False, False)
 
+    def test_entity_defined_multiword_not_match_all_words_with_adjective(self):
+        self._check_equals(no_ontology_coref_holmes_manager,
+                "The big Richard Paul Hudson",
+                ['governor-adjective: richard paul hudson-big',
+                'word: richard paul hudson'], False, False)
+
+    def test_ontology_defined_multiword_not_match_all_words_with_adjective(self):
+        self._check_equals(ontology_holmes_manager,
+                "The big Mimi Momo",
+                ['governor-adjective: mimi momo-big',
+                'word: mimi momo'], False, False)
+
+    def test_ontology_and_entity_defined_multiword_not_match_all_words_with_adjective(self):
+        self._check_equals(ontology_holmes_manager,
+                "The big Richard Mimi Momo",
+                ['governor-adjective: richard mimi momo-big',
+                'word: richard mimi momo'], False, False)
+
     def test_entity_defined_multiword_match_all_words(self):
         self._check_equals(no_ontology_coref_holmes_manager,
                 "Richard Paul Hudson came",
                 ['predicate-actor: come-richard paul hudson',
                 'word: richard', 'word: paul', 'word: hudson', 'word: come'], False, True)
+
+    def test_entity_defined_multiword_match_all_words_with_adjective(self):
+        self._check_equals(no_ontology_coref_holmes_manager,
+                "The big Richard Paul Hudson",
+                ['governor-adjective: richard paul hudson-big',
+                'word: richard', 'word: paul', 'word: hudson', 'word: big'], False, True)
+
+    def test_ontology_defined_multiword_match_all_words_with_adjective(self):
+        self._check_equals(ontology_holmes_manager,
+                "The big Mimi Momo",
+                ['governor-adjective: mimi momo-big',
+                'word: mimi momo', 'word: big'], False, True)
+
+    def test_ontology_and_entity_defined_multiword_not_match_all_words_with_adjective(self):
+        self._check_equals(ontology_holmes_manager,
+                "The big Richard Mimi Momo",
+                ['governor-adjective: mimi momo-big', 'noun-noun: mimi momo-richard', 
+                'word: mimi momo', 'word: richard', 'word: big'], False, True)
 
     def test_noun_lemmas_preferred_noun_lemma_first(self):
         dict = self._get_phraselet_dict(no_ontology_coref_holmes_manager,
