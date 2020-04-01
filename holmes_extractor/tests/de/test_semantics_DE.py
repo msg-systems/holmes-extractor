@@ -827,6 +827,11 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = analyzer.parse("Gemütlichkeit")
         self.assertEqual(len(doc[0]._.holmes.subwords), 0)
 
+    def test_subword_rejected_because_of_bigraphs(self):
+
+        doc = analyzer.parse("Verantwortung")
+        self.assertEqual(len(doc[0]._.holmes.subwords), 0)
+
     def test_nonsense_word(self):
 
         doc = analyzer.parse("WiderrufsbelehrungWiderrufsrechtSie")

@@ -1688,6 +1688,26 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
             'keit', 'keiten', 'lichkeit', 'lichkeiten', 'tigten', 'tigung', 'tigungen', 'barkeit',
             'barkeiten', 'heit', 'heiten', 'ung', 'ungen', 'aften', 'erung', 'erungen', 'mungen')
 
+    # Bigraphs of two consonants that can occur at the start of a subword.
+    _subword_start_consonant_bigraph_whitelist = ('bl', 'br', 'ch', 'cl', 'cr', 'dr', 'fl', 'fr',
+            'gl', 'gm', 'gn', 'gr', 'kl', 'kn', 'kr', 'kw', 'pf', 'ph', 'pl', 'pn', 'pr', 'ps',
+            'rh', 'sc', 'sh', 'sk', 'sl', 'sm', 'sp', 'st', 'sw', 'sz', 'th', 'tr', 'vl', 'vr',
+            'wr', 'zw')
+
+    # Bigraphs of two consonants that can occur at the end of a subword.
+    # Bigraphs where the second consonant is 's' are always allowed.
+    _subword_end_consonant_bigraph_whitelist = ('bb', 'bs', 'bt', 'ch', 'ck', 'ct', 'dd', 'ds',
+            'dt', 'ff', 'fs', 'ft', 'gd', 'gg', 'gn', 'gs', 'gt', 'hb', 'hd', 'hf', 'hg', 'hk',
+            'hl', 'hm', 'hn', 'hp', 'hr', 'hs', 'ht', 'ks', 'kt', 'lb', 'lc', 'ld', 'lf', 'lg',
+            'lk', 'll', 'lm', 'ln', 'lp', 'ls', 'lt', 'lx', 'lz', 'mb', 'md', 'mk', 'mm', 'mp',
+            'ms', 'mt', 'mx', 'nb', 'nd', 'nf', 'ng', 'nk', 'nn', 'np', 'ns', 'nt', 'nx', 'nz',
+            'pf', 'ph', 'pp', 'ps', 'pt', 'rb', 'rc', 'rd', 'rf', 'rg', 'rk', 'rl', 'rm', 'rn',
+            'rp', 'rr', 'rs', 'rt', 'rx', 'rz', 'sk', 'sl', 'sp', 'ss', 'st', 'th', 'ts', 'tt',
+            'tz', 'xt', 'zt', 'ßt')
+
+    # Letters that can represent vowel sounds
+    _vowels = ('a', 'e', 'i', 'o', 'u', 'ä', 'ö', 'ü', 'y')
+
     # Subwords used in analysis but not recorded on the Holmes dictionary instances. At present
     # the code only supports these in word-final position; word-initial position would require
     # a code change.
@@ -1721,7 +1741,11 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
             # is necessary because of the large number of nonsensical short vocabulary entries.
             for end_index in range(initial_index + length, len(lemma) + 1):
                 possible_word = lemma[initial_index: end_index]
-                if not self.nlp.vocab[possible_word].is_oov:
+                if not self.nlp.vocab[possible_word].is_oov and len(possible_word) >= 2 and \
+                        (possible_word[0] in self._vowels or possible_word[1] in self._vowels or
+                        possible_word[:2] in self._subword_start_consonant_bigraph_whitelist) and \
+                        (possible_word[-1] in self._vowels or possible_word[-2] in self._vowels or
+                        possible_word[-2:] in self._subword_end_consonant_bigraph_whitelist):
                     return possible_word
                 elif length < self._minimum_long_subword_length:
                     break

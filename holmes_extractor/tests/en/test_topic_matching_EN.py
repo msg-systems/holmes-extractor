@@ -567,6 +567,16 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 "He used a vault horse", 32,
                 holmes_manager_coref)
 
+    def test_derived_multiword_child_also_matched_by_ontology_3(self):
+        self._check_equals("He used a vault horse",
+                "He used gymnastics equipment", 26,
+                holmes_manager_coref)
+
+    def test_derived_multiword_child_also_matched_by_ontology_4(self):
+        self._check_equals("He used gymnastics equipment",
+                "He used a vault horse", 26,
+                holmes_manager_coref)
+
     def test_derived_multiword_parent_also_matched_by_ontology_1(self):
         self._check_equals("A big vault horse",
                 "A big vaulting horse", 34,
@@ -575,6 +585,16 @@ class EnglishTopicMatchingTest(unittest.TestCase):
     def test_derived_multiword_parent_also_matched_by_ontology_2(self):
         self._check_equals("A big vaulting horse",
                 "A big vault horse", 32,
+                holmes_manager_coref)
+
+    def test_derived_multiword_parent_also_matched_by_ontology_3(self):
+        self._check_equals("A big vault horse",
+                "A big gymnastics equipment", 26,
+                holmes_manager_coref)
+
+    def test_derived_multiword_parent_also_matched_by_ontology_4(self):
+        self._check_equals("A big gymnastics equipment",
+                "A big vault horse", 26,
                 holmes_manager_coref)
 
     def test_coreference_double_match_on_governed(self):
