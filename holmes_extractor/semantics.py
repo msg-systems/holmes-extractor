@@ -1680,8 +1680,8 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
             'sicht', 'ung')
 
     # Endings after which a Fugen_S is normally disallowed
-    _fugen_s_ending_blacklist = ('a', 'ä', 'e', 'i', 'o', 'ö', 'u', 'ü', 'sch', 's', 'ß', 'st',
-            'tz', 'z')
+    _fugen_s_ending_blacklist = ('a', 'ä', 'e', 'i', 'o', 'ö', 'u', 'ü', 'nt', 'sch', 's', 'ß',
+            'st', 'tz', 'z')
 
     # Blacklisted subwords
     _subword_blacklist = ('igkeit', 'igkeiten', 'digkeit', 'digkeiten', 'schaft', 'schaften',
