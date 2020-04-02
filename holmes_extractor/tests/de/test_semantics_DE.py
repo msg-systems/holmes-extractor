@@ -1926,6 +1926,10 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = analyzer.parse("Das große Auge.")
         self.assertEqual(doc[2]._.holmes.derived_lemma, 'aug')
 
+    def test_derived_lemma_e_with_preceding_vowel(self):
+        doc = analyzer.parse("Die große Lappalie.")
+        self.assertEqual(doc[2]._.holmes.derived_lemma, None)
+
     def test_derived_lemma_e_1_char(self):
         doc = analyzer.parse("Das große E.")
         self.assertEqual(doc[2]._.holmes.derived_lemma, None)

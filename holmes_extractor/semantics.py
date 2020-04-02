@@ -2192,7 +2192,8 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                 if not self.nlp.vocab[second_working_lemma].is_oov:
                     return second_working_lemma
             return working_lemma
-        if (token == None or token.tag_ == 'NN') and lemma.endswith('e') and len(lemma) > 1:
+        if (token == None or token.tag_ == 'NN') and lemma.endswith('e') and len(lemma) > 1 and \
+                not lemma[-2] in self._vowels:
             # for comparability with diminutive forms, e.g. äuglein <-> auge
             return lemma[:-1]
         return None

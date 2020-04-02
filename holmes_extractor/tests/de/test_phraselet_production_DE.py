@@ -410,11 +410,11 @@ class GermanPhraseletProductionTest(unittest.TestCase):
         dict = self._get_phraselet_dict(holmes_manager,
                 "Eine Informationskomitee und eine Informierungskomitee.")
         self.assertFalse('word: informierung' in dict)
-        self.assertFalse('intcompound: komite-informierung' in dict)
+        self.assertFalse('intcompound: komitee-informierung' in dict)
         word_phraselet = dict['word: information']
         self.assertEqual(word_phraselet.parent_lemma, 'information')
         self.assertEqual(word_phraselet.parent_derived_lemma, 'information')
-        relation_phraselet = dict['intcompound: komite-information']
+        relation_phraselet = dict['intcompound: komitee-information']
         self.assertEqual(relation_phraselet.child_lemma, 'information')
         self.assertEqual(relation_phraselet.child_derived_lemma, 'information')
 
@@ -422,11 +422,11 @@ class GermanPhraseletProductionTest(unittest.TestCase):
         dict = self._get_phraselet_dict(holmes_manager,
                 "Eine Informierungskomitee und eine Informationskomitee.")
         self.assertFalse('word: informierung' in dict)
-        self.assertFalse('intcompound: komite-informierung' in dict)
+        self.assertFalse('intcompound: komitee-informierung' in dict)
         word_phraselet = dict['word: information']
         self.assertEqual(word_phraselet.parent_lemma, 'information')
         self.assertEqual(word_phraselet.parent_derived_lemma, 'information')
-        relation_phraselet = dict['intcompound: komite-information']
+        relation_phraselet = dict['intcompound: komitee-information']
         self.assertEqual(relation_phraselet.child_lemma, 'information')
         self.assertEqual(relation_phraselet.child_derived_lemma, 'information')
 
@@ -434,10 +434,10 @@ class GermanPhraseletProductionTest(unittest.TestCase):
         dict = self._get_phraselet_dict(holmes_manager,
                 "Eine Informierungskomitee.")
         self.assertFalse('word: informierung' in dict)
-        self.assertFalse('intcompound: komite-informierung' in dict)
+        self.assertFalse('intcompound: komitee-informierung' in dict)
         word_phraselet = dict['word: information']
         self.assertEqual(word_phraselet.parent_lemma, 'informierung')
         self.assertEqual(word_phraselet.parent_derived_lemma, 'information')
-        relation_phraselet = dict['intcompound: komite-information']
+        relation_phraselet = dict['intcompound: komitee-information']
         self.assertEqual(relation_phraselet.child_lemma, 'informierung')
         self.assertEqual(relation_phraselet.child_derived_lemma, 'information')
