@@ -1321,9 +1321,8 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
 
     def _language_specific_derived_holmes_lemma(self, token, lemma):
         """Generates and returns a derived lemma where appropriate, otherwise returns *None*."""
-        if (token == None or token.pos_ == 'NOUN') and len(lemma) > 9:
+        if (token == None or token.pos_ == 'NOUN') and len(lemma) >= 10:
             possible_lemma = None
-            lemma_to_test_in_vocab = possible_lemma
             if lemma.endswith('isation') or lemma.endswith('ization'):
                 possible_lemma = ''.join((lemma[:-5], 'e')) # 'isation', 'ization' -> 'ise', 'ize'
                 if possible_lemma.endswith('ise'):
@@ -1340,6 +1339,16 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                 lemma_to_test_in_vocab = possible_lemma
             if possible_lemma != None and not self.nlp.vocab[lemma_to_test_in_vocab].is_oov:
                 return possible_lemma
+        # deadjectival nouns in -ness
+        if (token == None or token.pos_ == 'NOUN') and len(lemma) >= 7 and lemma.endswith('ness'):
+            working_possible_lemma = lemma[:-4]
+            # 'bawdiness'
+            if working_possible_lemma[-1] == 'i':
+                working_possible_lemma = ''.join((working_possible_lemma[:-1], 'y'))
+            if not self.nlp.vocab[working_possible_lemma].is_oov:
+                return working_possible_lemma
+            else:
+                return None
         # adverb with 'ly' -> adjective without 'ly'
         if token == None or token.tag_ == 'RB':
             # domestically -> domestic

@@ -771,6 +771,14 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         doc = analyzer.parse("It went swingingly.")
         self.assertEqual(doc[2]._.holmes.derived_lemma, 'swinging')
 
+    def test_derived_lemma_ness(self):
+        doc = analyzer.parse("There was a certain laxness.")
+        self.assertEqual(doc[4]._.holmes.derived_lemma, 'lax')
+
+    def test_derived_lemma_ness_with_y(self):
+        doc = analyzer.parse("There was a certain bawdiness.")
+        self.assertEqual(doc[4]._.holmes.derived_lemma, 'bawdy')
+
     def test_derived_lemma_ing(self):
         doc = analyzer.parse("The playing was very loud.")
         self.assertEqual(doc[1]._.holmes.derived_lemma, 'play')
