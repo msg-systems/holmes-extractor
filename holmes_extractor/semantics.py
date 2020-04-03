@@ -80,7 +80,7 @@ class Subword:
         lemma -- the model-normalized representation of the subword string.
         derived_lemma -- where relevant, another lemma with which *lemma* is derivationally related
         and which can also be useful for matching in some usecases; otherwise *None*
-        char_start_index -- the character index of *lemma* within the containing word.
+        char_start_index -- the character index of the subword within the containing word.
         is_head -- **True**, if this subword is the head within its word, **False** otherwise.
         dependent_index -- the index of a subword that is dependent on this subword, or *None*
             if there is no such subword.
