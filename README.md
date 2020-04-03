@@ -69,8 +69,7 @@ Author: <a href="mailto:richard.hudson@msg.group">Richard Paul Hudson, msg syste
     -   [6.9  `Subword` (returned from `word_match.subword`)](#subword)
     -   [6.10 Dictionary returned from
         `Manager.match_returning_dictionaries()`)](#dictionary)
-    -   [6.11 `TopicMatch`](#topic-match)
-    (returned from `Manager.topic_match_documents_against()`)
+    -   [6.11 `TopicMatch`(returned from `Manager.topic_match_documents_against()`)](#topic-match)
     -   [6.12 Dictionary returned from
         `Manager.topic_match_documents_returning_dictionaries_against()` and  `MultiprocessingManager.topic_match_documents_returning_dictionaries_against()`](#topic-match-dictionary)
 -   [7 A note on the license](#a-note-on-the-license)
@@ -1251,8 +1250,7 @@ classification tasks, this is exactly what is required; but there are tasks (e.g
 to the frequency of grammatical constructions typical for each author) where it is not. For the right task,
 Holmes achieves impressive results. For the BBC Documents benchmark
 processed by the example script, Holmes performs slightly better than benchmarks available online
-(see [here](https://github.com/suraj-deshmukh/BBC-Dataset-News-Classification)
-and [here](https://cloud.google.com/blog/products/gcp/problem-solving-with-ml-automatic-document-classification))
+(see [here](https://github.com/suraj-deshmukh/BBC-Dataset-News-Classification))
 although the difference is probably too slight to be significant, especially given that the different
 training/test splits were used in each case: Holmes has been observed to learn models that predict the
 correct result between 96.9% and 98.7% of the time. The range is explained by the fact that the behaviour
@@ -2237,12 +2235,6 @@ use cases are both configured with a number of hyperparameters that are presentl
 derived on a purely theoretical basis. Results could be further improved by testing the use cases with a variety
 of hyperparameters to learn the optimal values.
 
-<a id="convert-documentation-to-asciidoc"></a>
-##### 8.3.6 Convert documentation to Asciidoc
-
-[Asciidoc](http://asciidoc.org/) has a number of advantages over Markdown and this documentation should be
-converted to Asciidoc.
-
 <a id="version-history"></a>
 #### 8.4 Version history
 
@@ -2274,7 +2266,7 @@ same stem.
 -  Ontology implication rules are now calculated eagerly to improve runtime performance.
 -  [Ontology-based matching](#ontology-based-matching) now includes special rules to handle hyphens within ontology entries.
 -  Word-match information is now included in all matches including single-word matches.
--  Word matches(#wordmatch) and dictionaries derived from them now include human-readable explanations designed to be used as tooltips.
+-  [Word matches](#wordmatch) and dictionaries derived from them now include human-readable explanations designed to be used as tooltips.
 -  In [topic matching](#manager-topic-match-function), a penalty is now applied to ontology-based matches as well as to embedding-based matches..
 -  [Topic matching](#manager-topic-match-function) now includes a filter facility that specifies
 that only documents whose labels begin with a certain string should be searched.
