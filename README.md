@@ -88,7 +88,6 @@ Author: <a href="mailto:richard.hudson@msg.group">Richard Paul Hudson, msg syste
         -   [8.3.3 Remove names from supervised document classification models](#remove-names-from-supervised-document-classification-models)
         -   [8.3.4 Improve the performance of supervised document classification training](#improve-performance-of-supervised-document-classification-training)
         -   [8.3.5 Explore the optimal hyperparameters for topic matching and supervised document classification](#explore-hyperparameters)
-        -   [8.3.6 Convert documentation to Asciidoc](#convert-documentation-to-asciidoc)
     -   [8.4 Version history](#version-history)
         -   [8.4.1 Version 2.0.x](#version-20x)
         -   [8.4.2 Version 2.1.0](#version-210)
