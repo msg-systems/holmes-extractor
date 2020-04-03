@@ -280,7 +280,7 @@ all documents are of a fairly similar length.
 
 Usually, multiprocessing involves a physical copy of working process memory on Windows but not on Linux. Because of
 an issue with `neuralcoref` memory management, however, the MultiprocessingManager has to start a separate instance
-of the spaCy model for each worker process. In a typically configured environment, this makes it likely that
+of the spaCy model for each worker process on all operating systems. In a typically configured environment, this makes it likely that
 memory will be exhausted before CPU, which should be taken into account when deciding how many processes to start.
 
 The parent process communicates with its workers via queues. On one occasion, the MultiprocessingManager was observed
@@ -523,8 +523,8 @@ For more examples, please see [section 5](#use-cases-and-examples).
 The same word-level matching strategies are employed with [all use cases](#use-cases-and-examples) and most
 of the comments that follow apply equally to all use cases. An exception to this principle
 is that there are different ways of configuring
-[ontology-based matching](#ontology-based-matching) and that different choices are normal
-for different use cases.
+[ontology-based matching](#ontology-based-matching) and that the choices that are typically
+recommended are different for different use cases.
 
 <a id="direct-matching"></a>
 #### 2.1 Direct matching (`word_match.type=='direct'`)
@@ -770,10 +770,7 @@ except the [chatbot](#chatbot) use case essentially unusable.
 To avoid the typically unnecessary performance hit that results from embedding-based matching
 of search phrase root words, it is controlled separately from embedding-based matching in general
 using the `embedding_based_matching_on_root_words` parameter, which is set when instantiating the
-[Manager](#manager) and [MultiprocessingManager](#multiprocessing-manager) classes. You are advised to keep this setting switched off (value `False`) for most use cases. At the same time, it is
-worth noting that the root words of typical Holmes search phrases
-and phraselets are verbs, for which embedding-based matching is not activated in the first place.
-
+[Manager](#manager) and [MultiprocessingManager](#multiprocessing-manager) classes. You are advised to keep this setting switched off (value `False`) for most use cases.
 
 Note that with [topic matching](#topic-matching), embeddings are automatically investigated in
 [certain circumstances](#how-it-works-topic-matching) regardless of the value of the
@@ -838,7 +835,7 @@ The concept of search phrases has [already been introduced](#getting-started) an
 chatbot use case, the structural extraction use case and to [preselection](#preselection) within the supervised
 document classification use case.
 
-**It is crucial to understand that the tips and limitations set out in this section do not apply in any way to search queries in topic matching. If you are using
+**It is crucial to understand that the tips and limitations set out in Section 4 do not apply in any way to search queries in topic matching. If you are using
 Holmes for topic matching only, you can completely ignore this section!**
 
 Structural matching between search phrases and documents is not symmetric: there
@@ -1198,7 +1195,9 @@ Consistency and predictability can be ensured by setting each of the
 of all the words matched within a structure. In topic matching used in the normal situation where
 `embedding_based_matching_on_root_words==False`, there are always two words involved in a match and the similarity for
 one of these words is always 1. A target value for the second word can thus be specified by setting the overall
-similarity threshold to the *square root* of that target value.
+similarity threshold to the *square root* of that target value. For example, if pairs of words
+whose embedding similarity is higher than 0.75 are to be matched, the threshold should be set to
+the square root of 0.75, which is around 0.866.
 
 <a id="supervised-document-classification"></a>
 #### 5.4 Supervised document classification
@@ -1249,7 +1248,7 @@ classification tasks, this is exactly what is required; but there are tasks (e.g
 to the frequency of grammatical constructions typical for each author) where it is not. For the right task,
 Holmes achieves impressive results. For the BBC Documents benchmark
 processed by the example script, Holmes performs slightly better than benchmarks available online
-(see [here](https://github.com/suraj-deshmukh/BBC-Dataset-News-Classification))
+(see e.g. [here](https://github.com/suraj-deshmukh/BBC-Dataset-News-Classification))
 although the difference is probably too slight to be significant, especially given that the different
 training/test splits were used in each case: Holmes has been observed to learn models that predict the
 correct result between 96.9% and 98.7% of the time. The range is explained by the fact that the behaviour
@@ -1873,7 +1872,7 @@ explain() -- returns a human-readable explanation of the word match from the per
 #### 6.9 `Subword` (returned from `word_match.subword`)
 
 ``` {.python}
-"""A semantically atomic part of a word. Currently only used for German.
+A semantically atomic part of a word. Currently only used for German.
 
 containing_token_index -- the index of the containing token within the document.
 index -- the index of the subword within the word.
@@ -1937,6 +1936,8 @@ Properties:
 
 document_label -- the document label.
 index_within_document -- the index within the document where 'score' was achieved.
+subword_index -- the index of the subword within the token within the document where 'score'
+  was achieved, or *None* if the match involved the whole word.
 start_index -- the start index of the topic match within the document.
 end_index -- the end index of the topic match within the document.
 sentences_start_index -- the start index within the document of the sentence that contains
@@ -2102,7 +2103,7 @@ is determined for each word in each document.
   the match, unless the existing activation is already greater than that score.
   - For as long as the activation score for a phraselet has a value above zero, it is reduced by 1 divided by a
   configurable number ('maximum_activation_distance'; default: 75) as each new word is read.
-  - The score returned by a match depends on whether the match was produced by a single-word noun phraselet ('single_word_score'; default: 5), another type of single-word phraselet ('single_word_any_tag_score'; default: 2),
+  - The score returned by a match depends on whether the match was produced by a single-word noun phraselet that matched an entire word ('single_word_score'; default: 5), another type of single-word phraselet or a noun phraselet that matched a subword ('single_word_any_tag_score'; default: 2),
   a relation phraselet produced by a reverse-only template ('reverse_only_relation_score'; default: 20) or
   any other (normally matched) relation phraselet ('relation_score'; default: 30).
   - Where a match involves embedding-based matching, the resulting inexactitude is
@@ -2126,7 +2127,7 @@ threshold, the topic match will only consist of the peak word.
 11. Setting `only_one_result_per_document = True` prevents more than one result from being returned from the same
 document; only the result from each document with the highest score will then be returned.
 12. If the results are being returned as dictionaries, the score for each topic match is used to calculate a rank.
-Adjacent topic matches whose scores differ by less than 'tied_result_quotient' (default:0.9) are labelled as tied.
+Adjacent topic matches whose scores differ by less than 'tied_result_quotient' (default: 0.9) are labelled as tied.
 
 <a id="how-it-works-supervised-document-classification"></a>
 ##### 8.1.3 Supervised document classification
@@ -2259,14 +2260,14 @@ The initial open-source version.
 
 -  Addition of derivational morphology analysis allowing the matching of related words with the
 same stem.
--  Addition of new dependency types and dependency matching rules to make full use of the derivational morphology information.
--  For German, analysis of and matching with constituent parts of compound words.
+-  Addition of new dependency types and dependency matching rules to make full use of the new derivational morphology information.
+-  For German, analysis of and matching with subwords: constituent parts of compound words, e.g. *Information* and *Extraktion* are the subwords within *Informationsextraktion*.
 -  It is now possible to supply multiple ontology files to the [Ontology](#ontology) constructor.
 -  Ontology implication rules are now calculated eagerly to improve runtime performance.
--  [Ontology-based matching](#ontology-based-matching) now includes special rules to handle hyphens within ontology entries.
+-  [Ontology-based matching](#ontology-based-matching) now includes special, language-specific rules to handle hyphens within ontology entries.
 -  Word-match information is now included in all matches including single-word matches.
 -  [Word matches](#wordmatch) and dictionaries derived from them now include human-readable explanations designed to be used as tooltips.
--  In [topic matching](#manager-topic-match-function), a penalty is now applied to ontology-based matches as well as to embedding-based matches..
+-  In [topic matching](#manager-topic-match-function), a penalty is now applied to ontology-based matches as well as to embedding-based matches.
 -  [Topic matching](#manager-topic-match-function) now includes a filter facility that specifies
 that only documents whose labels begin with a certain string should be searched.
 -  Numerous minor improvements and bugfixes.
