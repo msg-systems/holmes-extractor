@@ -264,7 +264,8 @@ class TopicMatcher:
                     doc = self.indexed_documents[corpus_word_position.document_label].doc
                     working_index = corpus_word_position.index
                     working_token = doc[working_index.token_index]
-                    if not working_index.is_subword():
+                    if not working_index.is_subword() or \
+                            working_token._.holmes.subwords[working_index.subword_index].is_head:
                         for parent_dependency in working_token._.holmes.parent_dependencies:
                             if self._semantic_analyzer.dependency_labels_match(
                                     search_phrase_dependency_label=linking_dependency,

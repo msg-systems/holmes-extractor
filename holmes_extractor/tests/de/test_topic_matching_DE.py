@@ -116,6 +116,11 @@ class GermanTopicMatchingTest(unittest.TestCase):
                 "mit einer Idee", 29,
                 holmes_manager)
 
+    def test_reverse_matching_only_with_subword(self):
+        self._check_equals("mit einer Extraktion",
+                "mit einer Informationsextraktion", 29,
+                holmes_manager)
+
     def test_multiword_in_text_to_search_and_in_document_not_root(self):
         self._check_equals("Richard Paul Hudson kam",
                 "Ich sah Richard Paul Hudson", 19,
