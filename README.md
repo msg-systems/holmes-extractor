@@ -40,6 +40,7 @@ Author: <a href="mailto:richard.hudson@msg.group">Richard Paul Hudson, msg syste
             expressions](#ungrammatical-expressions)
         -   [4.3.2 Complex verb tenses](#complex-verb-tenses)
         -   [4.3.3 Questions](#questions)
+        -   [4.3.4 Compound words](#compound-words)
     -   [4.4 Structures to be used with caution in search
         phrases](#structures-to-be-used-with-caution-in-search-phrases)
         -   [4.4.1 Very complex
@@ -1023,6 +1024,19 @@ Questions should be re-phrased as statements, in this case
 
 ***Something chases the cat*** (English)  
 ***Etwas jagt die Katze*** (German).
+
+<a id="compound-words"></a>
+##### 4.3.4 Compound words (relates to German only)
+
+***Informationsextraktion*** (German)  
+***Eine Zeltfeier*** (German)
+
+The internal structure of German compound words is analysed within searched documents as well as
+within query phrases in the [topic matching](#topic-matching) use case, but not within search
+phrases. Compound words should be reexpressed using multiple words, which in any case enables the relationship between the elements to be expressed less ambiguously. Compound words can often but not always  be reexpressed as genitive phrases:
+
+***Extraktion der Information*** (German).  
+***Eine Feier in einem Zelt*** (German).
 
 <a id="structures-to-be-used-with-caution-in-search-phrases"></a>
 #### 4.4 Structures to be used with caution in search phrases

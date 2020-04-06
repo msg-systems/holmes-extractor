@@ -277,8 +277,7 @@ class TopicMatcher:
                     else:
                         working_subword = \
                                 working_token._.holmes.subwords[working_index.subword_index]
-                        if working_subword.governor_index != None and \
-                                self._semantic_analyzer.dependency_labels_match(
+                        if self._semantic_analyzer.dependency_labels_match(
                                 search_phrase_dependency_label=linking_dependency,
                                 document_dependency_label=
                                 working_subword.governing_dependency_label):

@@ -81,7 +81,6 @@ class Subword:
         derived_lemma -- where relevant, another lemma with which *lemma* is derivationally related
         and which can also be useful for matching in some usecases; otherwise *None*
         char_start_index -- the character index of the subword within the containing word.
-        is_head -- **True**, if this subword is the head within its word, **False** otherwise.
         dependent_index -- the index of a subword that is dependent on this subword, or *None*
             if there is no such subword.
         dependency_label -- the label of the dependency between this subword and its dependent,
@@ -92,14 +91,13 @@ class Subword:
             governor, or *None* if it has no governor.
     """
     def __init__(self, containing_token_index, index, text, lemma, derived_lemma, char_start_index,
-            is_head, dependent_index, dependency_label, governor_index, governing_dependency_label):
+            dependent_index, dependency_label, governor_index, governing_dependency_label):
         self.containing_token_index = containing_token_index
         self.index = index
         self.text = text
         self.lemma = lemma
         self.derived_lemma = derived_lemma
         self.char_start_index = char_start_index
-        self.is_head = is_head
         self.dependent_index = dependent_index
         self.dependency_label = dependency_label
         self.governor_index = governor_index
@@ -110,6 +108,10 @@ class Subword:
             return self.derived_lemma
         else:
             return self.lemma
+
+    @property
+    def is_head(self):
+        return self.governor_index == None
 
     def __str__(self):
         if self.derived_lemma != None:
@@ -1864,9 +1866,9 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
             for cached_subword in cached_subwords:
                 token._.holmes.subwords.append(Subword(token.i, cached_subword.index,
                         cached_subword.text, cached_subword.lemma, cached_subword.derived_lemma,
-                        cached_subword.char_start_index, cached_subword.is_head,
-                        cached_subword.dependent_index, cached_subword.dependency_label,
-                        cached_subword.governor_index, cached_subword.governing_dependency_label))
+                        cached_subword.char_start_index, cached_subword.dependent_index,
+                        cached_subword.dependency_label, cached_subword.governor_index,
+                        cached_subword.governing_dependency_label))
         else:
             working_subwords = []
             possible_subwords = scan_recursively_for_subwords(token._.holmes.lemma)
@@ -1911,7 +1913,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                                 working_subwords.append(Subword(first_sibling.i, index,
                                         text, lemma, derived_lemma,
                                         first_sibling_possible_subword.char_start_index,
-                                        None, None, None, None, None))
+                                        None, None, None, None))
                                 index += 1
                 lemmatization_doc = get_lemmatization_doc(possible_subwords, token.pos_)
                 for counter in range(len(possible_subwords)):
@@ -1924,7 +1926,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                     lemma = lemmatization_doc[counter*2].lemma_.lower()
                     derived_lemma = self.derived_holmes_lemma(None, lemma)
                     working_subwords.append(Subword(token.i, index, text, lemma, derived_lemma,
-                            possible_subword.char_start_index, None, None, None, None, None))
+                            possible_subword.char_start_index, None, None, None, None))
                     index += 1
                 if token._.holmes.lemma[-1] == '-':
                     # with truncated nouns, the righthand siblings may actually occur to the left
@@ -1955,7 +1957,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                                     working_subwords.append(Subword(last_sibling.i, index, text,
                                             lemma, derived_lemma,
                                             last_sibling_possible_subword.char_start_index,
-                                            None, None, None, None, None))
+                                            None, None, None, None))
                                     index += 1
 
                 if index > 1: # if only one subword was found, no need to record it on ._.holmes
@@ -1977,8 +1979,8 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                                 working_subword.containing_token_index,
                                 working_subword.index, working_subword.text, working_subword.lemma,
                                 working_subword.derived_lemma, working_subword.char_start_index,
-                                counter + 1 == len(working_subwords), dependent_index,
-                                dependency_label, governor_index, governing_dependency_label))
+                                dependent_index, dependency_label, governor_index,
+                                governing_dependency_label))
                 if token._.holmes.lemma.isalpha(): # caching only where no hyphenation
                     subword_cache[token.text] = token._.holmes.subwords
         if len(token._.holmes.subwords) > 1 and 'nicht' in (subword.lemma for subword in
