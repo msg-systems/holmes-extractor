@@ -1035,8 +1035,8 @@ The internal structure of German compound words is analysed within searched docu
 within query phrases in the [topic matching](#topic-matching) use case, but not within search
 phrases. Compound words should be reexpressed using multiple words, which in any case enables the relationship between the elements to be expressed less ambiguously. Compound words can often but not always  be reexpressed as genitive phrases:
 
-***Extraktion der Information*** (German).  
-***Eine Feier in einem Zelt*** (German).
+***Extraktion der Information*** (German)  
+***Eine Feier in einem Zelt*** (German)
 
 <a id="structures-to-be-used-with-caution-in-search-phrases"></a>
 #### 4.4 Structures to be used with caution in search phrases
