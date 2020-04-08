@@ -12,6 +12,7 @@ Author: <a href="mailto:richard.hudson@msg.group">Richard Paul Hudson, msg syste
             enterprise
             environment](#comments-about-deploying-holmes-in-an-enterprise-environment)
         -   [1.2.5 Using multiprocessing](#using-multiprocessing)
+    -   -   [1.2.6 Resource requirements](#resource-requirements)
     -   [1.3 Getting started](#getting-started)
 -   [2. Word-level matching strategies](#word-level-matching-strategies)
     -   [2.1 Direct matching](#direct-matching)
@@ -289,6 +290,13 @@ to stop working and the culprit was an old worker process that had not completed
 objects that were destined for a process that had been started subsequently. If the MultiprocessingManager hangs shortly
 after being started, the probable solution is therefore to ensure all Python processes have been killed before
 trying again.
+
+<a id="resource-requirements"></a>
+##### 1.2.6 Resource requirements
+
+Because Holmes performs complex, intelligent analysis, it is inevitable that it requires more hardware resources than more traditional search frameworks. The use cases that involve loading documents — [structural extraction](#structural-extraction) and [topic matching](#topic-matching) — are most immediately applicable to large but not massive corpora (e.g. all the documents belonging to a certain organisation, all the patents on a certain topic, all the books by a certain author). For cost reasons, Holmes would not be an appropriate tool with which to analyse the content of the entire Internet! That said, Holmes is both vertically and horizontally scalable. With sufficient hardware, both these use cases can be applied to an essentially unlimited number of documents by running Holmes on multiple machines, loading a different set of documents on to each one and conflating the results. Note that this is the strategy employed the [MultiprocessingManager](#multiprocessing-manager) to distribute processing amongst multiple cores on a single machine and that the [TopicMatchDictionaryOrderer](https://github.com/msg-systems/holmes-extractor/blob/master/holmes_extractor/extensive_matching.py) class, which is used to conflate results from several cores, could easily be reused to conflate results received from multiple machines over the network.
+
+Holmes holds loaded documents in memory. On the one hand, this ties in with its intended use with large but not massive corpora; on the other hand, documents that have been analysed using [coreference resolution](#coreference-resolution) are not serializable, so that it would not be technically possible to offer a persistent storage option. The performance of document loading, [structural extraction](#structural-extraction) and [topic matching](#topic-matching) all degrade heavily as the operating system swaps memory pages to secondary storage, because Holmes uses a reverse index that can require memory from a variety of pages to be addressed when processing a single sentence. This means it is important to supply enough RAM to hold the reverse index information for all loaded documents.
 
 <a id="getting-started"></a>
 #### 1.3 Getting started
