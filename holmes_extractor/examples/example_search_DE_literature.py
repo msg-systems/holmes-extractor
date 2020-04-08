@@ -24,7 +24,6 @@ if __name__ in ('__main__', 'example_search_DE_literature'):
 
         front_page = urllib.request.urlopen(front_page_uri)
         front_page_soup = BeautifulSoup(front_page, 'html.parser')
-        raw_documents = {}
         # For each story ...
         for anchor in front_page_soup.find_all('a'):
             if not anchor['href'].startswith('/') and not anchor['href'].startswith('https'):
