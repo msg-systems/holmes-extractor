@@ -8,6 +8,7 @@ from .extensive_matching import *
 from .consoles import HolmesConsoles
 from multiprocessing import Process, Queue, Manager as Multiprocessing_manager, cpu_count
 from threading import Lock
+import traceback
 
 def validate_options(semantic_analyzer, overall_similarity_threshold,
         embedding_based_matching_on_root_words, perform_coreference_resolution):
@@ -720,9 +721,11 @@ class Worker:
             try:
                 reply = method(semantic_analyzer, structural_matcher, indexed_documents, *args)
             except Exception as err:
+                print(traceback.format_exc())
                 reply_queue.put((worker_label, err))
                 break
             except:
+                print(traceback.format_exc())
                 err_identifier = str(sys.exc_info()[0])
                 reply_queue.put((worker_label, err_identifier))
                 break
