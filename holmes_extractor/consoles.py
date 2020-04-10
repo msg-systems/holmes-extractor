@@ -39,7 +39,7 @@ class HolmesConsoles:
 
     def _common(self):
         """Contains functionality common to both consoles."""
-        print("Holmes version 2.1 written by richard.hudson@msg.group")
+        print("Holmes version 2.2 written by richard.hudson@msg.group")
         print("Language is", self._semantic_analyzer.language_name)
         print("Model is", self._semantic_analyzer.model)
         if self._structural_matcher.ontology == None:
