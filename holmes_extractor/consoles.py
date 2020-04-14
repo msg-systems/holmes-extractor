@@ -39,7 +39,7 @@ class HolmesConsoles:
 
     def _common(self):
         """Contains functionality common to both consoles."""
-        print("Holmes version 2.1 written by richard.hudson@msg.group")
+        print("Holmes version 2.2 written by richard.hudson@msg.group")
         print("Language is", self._semantic_analyzer.language_name)
         print("Model is", self._semantic_analyzer.model)
         if self._structural_matcher.ontology == None:
@@ -54,6 +54,10 @@ class HolmesConsoles:
             print("Coreference resolution is ON")
         else:
             print("Coreference resolution is OFF")
+        if self._structural_matcher.analyze_derivational_morphology:
+            print("Derivational morphology analysis is ON")
+        else:
+            print("Derivational morphology analysis is OFF")
         print("Overall similarity threshold is", str(
                 self._structural_matcher.overall_similarity_threshold))
         if self._structural_matcher.overall_similarity_threshold < 1.0:

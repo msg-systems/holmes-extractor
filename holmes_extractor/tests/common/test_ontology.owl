@@ -81,9 +81,33 @@
     
 
 
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#cinco -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#cinco">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#cuatro"/>
+    </owl:Class>
+    
+
+
     <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#company -->
 
     <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#company"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#cuatro -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#cuatro">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#tres"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#cztery -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#cztery">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#trzy"/>
+    </owl:Class>
     
 
 
@@ -92,6 +116,22 @@
     <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#dog">
         <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#hound"/>
         <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#animal"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#dos -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#dos">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#unouno"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#dwa -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#dwa">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#jeden"/>
     </owl:Class>
     
 
@@ -120,6 +160,12 @@
     
 
 
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#jeden -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#jeden"/>
+    
+
+
     <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#kitten -->
 
     <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#kitten">
@@ -128,10 +174,26 @@
     
 
 
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#oans -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#oans">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#unouno"/>
+    </owl:Class>
+    
+
+
     <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#open -->
 
     <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#open">
         <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#take_out"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#pięć -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#pięć">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#cztery"/>
     </owl:Class>
     
 
@@ -166,9 +228,47 @@
     
 
 
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#seis -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#seis">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#cinco"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#sześć -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#sześć">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#pięć"/>
+    </owl:Class>
+    
+
+
     <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#take_out -->
 
     <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#take_out"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#tres -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#tres">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#dos"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#trzy -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#trzy">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#dwa"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#unouno -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#unouno"/>
     
 
 
@@ -237,5 +337,5 @@
 
 
 
-<!-- Generated by the OWL API (version 4.5.7.2018-12-02T02:23:35Z) https://github.com/owlcs/owlapi -->
+<!-- Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi -->
 

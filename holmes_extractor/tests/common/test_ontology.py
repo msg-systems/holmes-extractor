@@ -6,11 +6,12 @@ script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join((script_directory,'test_ontology.owl')))
 symmetric_ontology = holmes.Ontology(os.sep.join((script_directory,'test_ontology.owl')),
         symmetric_matching=True)
-for term in ['horse', 'football', 'gymnastics equipment', 'dog', 'cat', 'hound', 'pussy', 'animal',
-        'foal', 'fido', 'mimi momo', 'absent', 'cat creature']:
-    ontology.add_to_dictionary(term)
-    symmetric_ontology.add_to_dictionary(term)
-symmetric_ontology.add_to_dictionary('vaulting horse')
+combined_ontology_1 = holmes.Ontology([os.sep.join((script_directory,'test_ontology.owl')),
+        os.sep.join((script_directory,'test_ontology2.owl'))])
+combined_ontology_2 = holmes.Ontology([os.sep.join((script_directory,'test_ontology2.owl')),
+        os.sep.join((script_directory,'test_ontology.owl'))])
+combined_ontology_symmetric = holmes.Ontology([os.sep.join((script_directory,'test_ontology.owl')),
+        os.sep.join((script_directory,'test_ontology2.owl'))], symmetric_matching=True)
 
 class OntologyTest(unittest.TestCase):
 
@@ -165,3 +166,64 @@ class OntologyTest(unittest.TestCase):
     def test_most_general_hypernym_ancestor_not_in_ontology_symmetric(self):
         self.assertEqual(symmetric_ontology.get_most_general_hypernym_ancestor('toolbox'),
                 'toolbox')
+
+    def _test_combined_ontologies_nonsymmetric_class(self, ontology):
+        self.assertEqual(ontology.get_words_matching('dog'),
+                {'german shepherd dog', 'puppy', 'hound', 'fido', 'poodle'})
+        self.assertEqual(len(ontology.get_words_matching('poodle')), 0)
+        self.assertEqual(ontology.get_most_general_hypernym_ancestor('poodle'), 'animal')
+        entry = ontology.matches('animal', 'poodle')
+        self.assertEqual(entry.depth, 2)
+        self.assertFalse(entry.is_individual)
+        entry = ontology.matches('poodle', 'animal')
+        self.assertEqual(entry, None)
+
+    def test_combined_ontologies_nonsymmetric_class_1(self):
+        self._test_combined_ontologies_nonsymmetric_class(combined_ontology_1)
+
+    def test_combined_ontologies_nonsymmetric_class_2(self):
+        self._test_combined_ontologies_nonsymmetric_class(combined_ontology_2)
+
+    def _test_combined_ontologies_nonsymmetric_individual(self, ontology):
+        self.assertEqual(ontology.get_words_matching('cat'),
+                {'kitten', 'pussy', 'mimi momo', 'cat creature', 'schneeglöckchen'})
+        self.assertEqual(len(ontology.get_words_matching('schneeglöckchen')), 0)
+        self.assertEqual(ontology.get_most_general_hypernym_ancestor('schneeglöckchen'), 'animal')
+        entry = ontology.matches('animal', 'schneeglöckchen')
+        self.assertEqual(entry.depth, 2)
+        self.assertTrue(entry.is_individual)
+        entry = ontology.matches('schneeglöckchen', 'animal')
+        self.assertEqual(entry, None)
+
+    def test_combined_ontologies_nonsymmetric_individual_1(self):
+        self._test_combined_ontologies_nonsymmetric_individual(combined_ontology_1)
+
+    def test_combined_ontologies_nonsymmetric_individual_2(self):
+        self._test_combined_ontologies_nonsymmetric_individual(combined_ontology_2)
+
+    def test_combined_ontologies_symmetric_class(self):
+        self.assertEqual(combined_ontology_symmetric.get_words_matching('dog'),
+                {'german shepherd dog', 'puppy', 'hound', 'fido', 'poodle', 'animal'})
+        self.assertEqual(combined_ontology_symmetric.get_words_matching('poodle'),
+                {'dog', 'hound', 'animal'})
+        self.assertEqual(combined_ontology_symmetric.get_most_general_hypernym_ancestor('poodle'), 'animal')
+        entry = combined_ontology_symmetric.matches('animal', 'poodle')
+        self.assertEqual(entry.depth, 2)
+        self.assertFalse(entry.is_individual)
+        entry = combined_ontology_symmetric.matches('poodle', 'animal')
+        self.assertEqual(entry.depth, -2)
+        self.assertFalse(entry.is_individual)
+
+    def test_combined_ontologies_symmetric_individual(self):
+        self.assertEqual(combined_ontology_symmetric.get_words_matching('cat'),
+                {'kitten', 'mimi momo', 'cat creature', 'schneeglöckchen', 'animal', 'pussy'})
+        self.assertEqual(combined_ontology_symmetric.get_words_matching('schneeglöckchen'),
+                {'cat', 'cat creature', 'pussy', 'animal'})
+        self.assertEqual(combined_ontology_symmetric.get_most_general_hypernym_ancestor(
+                'schneeglöckchen'), 'animal')
+        entry = combined_ontology_symmetric.matches('animal', 'schneeglöckchen')
+        self.assertEqual(entry.depth, 2)
+        self.assertTrue(entry.is_individual)
+        entry = combined_ontology_symmetric.matches('schneeglöckchen', 'animal')
+        self.assertEqual(entry.depth, -2)
+        self.assertFalse(entry.is_individual)

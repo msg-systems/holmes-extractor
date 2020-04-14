@@ -8,6 +8,7 @@ from .extensive_matching import *
 from .consoles import HolmesConsoles
 from multiprocessing import Process, Queue, Manager as Multiprocessing_manager, cpu_count
 from threading import Lock
+import traceback
 
 def validate_options(semantic_analyzer, overall_similarity_threshold,
         embedding_based_matching_on_root_words, perform_coreference_resolution):
@@ -39,6 +40,8 @@ class Manager:
         matching should be attempted on search-phrase root tokens, which has a considerable
         performance hit. Defaults to *False*.
     ontology -- an *Ontology* object. Defaults to *None* (no ontology).
+    analyze_derivational_morphology -- *True* if matching should be attempted between different
+        words from the same word family. Defaults to *True*.
     perform_coreference_resolution -- *True*, *False*, or *None* if coreference resolution
         should be performed depending on whether the model supports it. Defaults to *None*.
     debug -- a boolean value specifying whether debug representations should be outputted
@@ -47,7 +50,7 @@ class Manager:
 
     def __init__(self, model, *, overall_similarity_threshold=1.0,
             embedding_based_matching_on_root_words=False, ontology=None,
-            perform_coreference_resolution=None, debug=False):
+            analyze_derivational_morphology=True, perform_coreference_resolution=None, debug=False):
         self.semantic_analyzer = SemanticAnalyzerFactory().semantic_analyzer(model=model,
                 perform_coreference_resolution=perform_coreference_resolution, debug=debug)
         if perform_coreference_resolution == None:
@@ -62,7 +65,7 @@ class Manager:
         self.perform_coreference_resolution = perform_coreference_resolution
         self.structural_matcher = StructuralMatcher(self.semantic_analyzer, ontology,
                 overall_similarity_threshold, embedding_based_matching_on_root_words,
-                perform_coreference_resolution)
+                analyze_derivational_morphology, perform_coreference_resolution)
         self.threadsafe_container = ThreadsafeContainer()
 
     def parse_and_register_document(self, document_text, label=''):
@@ -200,11 +203,12 @@ class Manager:
                         'search_phrase_word': word_match.search_phrase_word,
                         'document_word': word_match.document_word,
                         'document_phrase': self.semantic_analyzer.get_dependent_phrase(
-                                word_match.document_token),
+                                word_match.document_token, word_match.document_subword),
                         'match_type': word_match.type,
                         'similarity_measure': str(word_match.similarity_measure),
                         'involves_coreference': word_match.involves_coreference,
-                        'extracted_word': word_match.extracted_word})
+                        'extracted_word': word_match.extracted_word,
+                        'explanation': word_match.explain()})
             match_dict['word_matches']=text_word_matches
             match_dicts.append(match_dict)
         return match_dicts
@@ -256,10 +260,11 @@ class Manager:
             relation_score=30, reverse_only_relation_score = 20,
             single_word_score=5, single_word_any_tag_score=2,
             overlapping_relation_multiplier=1.5, embedding_penalty=0.6,
-            maximum_activation_value=1000,
+            ontology_penalty=0.9, maximum_activation_value=1000,
             maximum_number_of_single_word_matches_for_relation_matching = 500,
             maximum_number_of_single_word_matches_for_embedding_matching = 100,
-            sideways_match_extent=100, only_one_result_per_document=False, number_of_results=10):
+            sideways_match_extent=100, only_one_result_per_document=False, number_of_results=10,
+            document_label_filter=None):
         """Returns the results of a topic match between an entered text and the loaded documents.
 
         Properties:
@@ -280,6 +285,11 @@ class Manager:
         embedding_penalty -- a value between 0 and 1 with which scores are multiplied when the
             match involved an embedding. The result is additionally multiplied by the overall
             similarity measure of the match.
+        ontology_penalty -- a value between 0 and 1 with which scores are multiplied for each
+            word match within a match that involved the ontology. For each such word match,
+            the score is multiplied by the value (abs(depth) + 1) times, so that the penalty is
+            higher for hyponyms and hypernyms than for synonyms and increases with the
+            depth distance.
         maximum_number_of_single_word_matches_for_relation_matching -- the maximum number
                 of single word matches that are used as the basis for matching relations. If more
                 document words than this value correspond to each of the two words within a
@@ -293,9 +303,9 @@ class Manager:
         only_one_result_per_document -- if 'True', prevents multiple results from being returned
             for the same document.
         number_of_results -- the number of topic match objects to return.
+        document_label_filter -- optionally, a string with which document labels must start to
+            be considered for inclusion in the results.
         """
-        maximum_number_of_single_word_matches_for_relation_matching,
-        maximum_number_of_single_word_matches_for_embedding_matching,
         topic_matcher = TopicMatcher(semantic_analyzer = self.semantic_analyzer,
                 structural_matcher = self.structural_matcher,
                 indexed_documents = self.threadsafe_container.get_indexed_documents(),
@@ -306,23 +316,25 @@ class Manager:
                 single_word_any_tag_score=single_word_any_tag_score,
                 overlapping_relation_multiplier=overlapping_relation_multiplier,
                 embedding_penalty=embedding_penalty,
+                ontology_penalty=ontology_penalty,
                 maximum_number_of_single_word_matches_for_relation_matching =
                 maximum_number_of_single_word_matches_for_relation_matching,
                 maximum_number_of_single_word_matches_for_embedding_matching =
                 maximum_number_of_single_word_matches_for_embedding_matching,
                 sideways_match_extent=sideways_match_extent,
                 only_one_result_per_document=only_one_result_per_document,
-                number_of_results=number_of_results)
+                number_of_results=number_of_results,
+                document_label_filter=document_label_filter)
         return topic_matcher.topic_match_documents_against(text_to_match)
 
     def topic_match_documents_returning_dictionaries_against(self, text_to_match, *,
             maximum_activation_distance=75, relation_score=30, reverse_only_relation_score = 20,
             single_word_score=5, single_word_any_tag_score=2, overlapping_relation_multiplier=1.5,
-            embedding_penalty=0.6,
+            embedding_penalty=0.6, ontology_penalty=0.9,
             maximum_number_of_single_word_matches_for_relation_matching = 500,
             maximum_number_of_single_word_matches_for_embedding_matching = 100,
             sideways_match_extent=100, only_one_result_per_document=False, number_of_results=10,
-            tied_result_quotient=0.9):
+            document_label_filter=None, tied_result_quotient=0.9):
         """Returns a list of dictionaries representing the results of a topic match between an
             entered text and the loaded documents. Callers of this method do not have to manage any
             further dependencies on spaCy or Holmes.
@@ -345,6 +357,11 @@ class Manager:
         embedding_penalty -- a value between 0 and 1 with which scores are multiplied when the
             match involved an embedding. The result is additionally multiplied by the overall
             similarity measure of the match.
+        ontology_penalty -- a value between 0 and 1 with which scores are multiplied for each
+            word match within a match that involved the ontology. For each such word match,
+            the score is multiplied by the value (abs(depth) + 1) times, so that the penalty is
+            higher for hyponyms and hypernyms than for synonyms and increases with the
+            depth distance.
         maximum_number_of_single_word_matches_for_relation_matching -- the maximum number
                 of single word matches that are used as the basis for matching relations. If more
                 document words than this value correspond to each of the two words within a
@@ -360,8 +377,10 @@ class Manager:
         number_of_results -- the number of topic match objects to return.
         tied_result_quotient -- the quotient between a result and following results above which
             the results are interpreted as tied.
-
+        document_label_filter -- optionally, a string with which document labels must start to
+            be considered for inclusion in the results.
         """
+
         topic_matcher = TopicMatcher(semantic_analyzer = self.semantic_analyzer,
                 structural_matcher = self.structural_matcher,
                 indexed_documents = self.threadsafe_container.get_indexed_documents(),
@@ -372,13 +391,15 @@ class Manager:
                 single_word_any_tag_score=single_word_any_tag_score,
                 overlapping_relation_multiplier=overlapping_relation_multiplier,
                 embedding_penalty=embedding_penalty,
+                ontology_penalty=ontology_penalty,
                 maximum_number_of_single_word_matches_for_relation_matching =
                 maximum_number_of_single_word_matches_for_relation_matching,
                 maximum_number_of_single_word_matches_for_embedding_matching =
                 maximum_number_of_single_word_matches_for_embedding_matching,
                 sideways_match_extent=sideways_match_extent,
                 only_one_result_per_document=only_one_result_per_document,
-                number_of_results=number_of_results)
+                number_of_results=number_of_results,
+                document_label_filter=document_label_filter)
         return topic_matcher.topic_match_documents_returning_dictionaries_against(text_to_match,
                 tied_result_quotient=tied_result_quotient)
 
@@ -471,6 +492,8 @@ class MultiprocessingManager:
         matching should be attempted on root (parent) tokens, which has a considerable
         performance hit. Defaults to *False*.
     ontology -- an *Ontology* object. Defaults to *None* (no ontology).
+    analyze_derivational_morphology -- *True* if matching should be attempted between different
+        words from the same word family. Defaults to *True*.
     perform_coreference_resolution -- *True*, *False* or *None* if coreference resolution
         should be performed depending on whether the model supports it. Defaults to *None*.
     debug -- a boolean value specifying whether debug representations should be outputted
@@ -482,8 +505,8 @@ class MultiprocessingManager:
     """
     def __init__(self, model, *, overall_similarity_threshold=1.0,
             embedding_based_matching_on_root_words=False, ontology=None,
-            perform_coreference_resolution=None, debug=False, verbose=True,
-            number_of_workers=None):
+            analyze_derivational_morphology=True, perform_coreference_resolution=None,
+            debug=False, verbose=True, number_of_workers=None):
         self.semantic_analyzer = SemanticAnalyzerFactory().semantic_analyzer(model=model,
                 perform_coreference_resolution=perform_coreference_resolution, debug=debug)
         if perform_coreference_resolution == None:
@@ -493,7 +516,7 @@ class MultiprocessingManager:
                 embedding_based_matching_on_root_words, perform_coreference_resolution)
         self.structural_matcher = StructuralMatcher(self.semantic_analyzer, ontology,
                 overall_similarity_threshold, embedding_based_matching_on_root_words,
-                perform_coreference_resolution)
+                analyze_derivational_morphology, perform_coreference_resolution)
         self._perform_coreference_resolution = perform_coreference_resolution
 
         self._verbose = verbose
@@ -527,8 +550,6 @@ class MultiprocessingManager:
     def _handle_reply(self, worker_label, return_value):
         """ If 'return_value' is an exception, return it, otherwise return 'None'. """
         if isinstance(return_value, Exception):
-            with self._lock:
-                print('Exception', type(return_value), worker_label, return_value)
             return return_value
         elif self._verbose:
             if not type(return_value) is list:
@@ -546,10 +567,14 @@ class MultiprocessingManager:
                 self._next_worker_to_use += 1
                 if self._next_worker_to_use == self._number_of_workers:
                     self._next_worker_to_use = 0
+        recorded_exception = None
         for _ in range(0, len(dict)):
             possible_exception = self._handle_reply(*reply_queue.get())
-            if possible_exception != None:
-                self.close()
+            if possible_exception != None and recorded_exception == None:
+                recorded_exception = possible_exception
+        if recorded_exception != None:
+            with(self._lock):
+                print ('ERROR: not all documents were registered successfully. Please examine the above output from the worker processes to identify the problem.')
 
     def parse_and_register_documents(self, document_dictionary):
         """Parameters:
@@ -578,10 +603,11 @@ class MultiprocessingManager:
     def topic_match_documents_returning_dictionaries_against(self, text_to_match, *,
             maximum_activation_distance=75, relation_score=30, reverse_only_relation_score = 20,
             single_word_score=5, single_word_any_tag_score=2, overlapping_relation_multiplier=1.5,
-            embedding_penalty=0.6,maximum_number_of_single_word_matches_for_relation_matching = 500,
+            embedding_penalty=0.6,ontology_penalty=0.9,
+            maximum_number_of_single_word_matches_for_relation_matching = 500,
             maximum_number_of_single_word_matches_for_embedding_matching = 100,
             sideways_match_extent=100, only_one_result_per_document=False, number_of_results=10,
-            tied_result_quotient=0.9):
+            document_label_filter=None, tied_result_quotient=0.9):
         """Returns the results of a topic match between an entered text and the loaded documents.
 
         Properties:
@@ -602,6 +628,11 @@ class MultiprocessingManager:
         embedding_penalty -- a value between 0 and 1 with which scores are multiplied when the
             match involved an embedding. The result is additionally multiplied by the overall
             similarity measure of the match.
+        ontology_penalty -- a value between 0 and 1 with which scores are multiplied for each
+            word match within a match that involved the ontology. For each such word match,
+            the score is multiplied by the value (abs(depth) + 1) times, so that the penalty is
+            higher for hyponyms and hypernyms than for synonyms and increases with the
+            depth distance.
         maximum_number_of_single_word_matches_for_relation_matching -- the maximum number
                 of single word matches that are used as the basis for matching relations. If more
                 document words than this value correspond to each of the two words within a
@@ -615,6 +646,8 @@ class MultiprocessingManager:
         only_one_result_per_document -- if 'True', prevents multiple results from being returned
             for the same document.
         number_of_results -- the number of topic match objects to return.
+        document_label_filter -- optionally, a string with which document labels must start to
+            be considered for inclusion in the results.
         tied_result_quotient -- the quotient between a result and following results above which
             the results are interpreted as tied.
         """
@@ -631,22 +664,24 @@ class MultiprocessingManager:
                     self._worker.worker_topic_match_documents_returning_dictionaries_against,
                     (text_to_match, maximum_activation_distance, relation_score,
                     reverse_only_relation_score, single_word_score, single_word_any_tag_score,
-                    overlapping_relation_multiplier, embedding_penalty,
+                    overlapping_relation_multiplier, embedding_penalty, ontology_penalty,
                     maximum_number_of_single_word_matches_for_relation_matching,
                     maximum_number_of_single_word_matches_for_embedding_matching,
                     sideways_match_extent, only_one_result_per_document, number_of_results,
-                    tied_result_quotient), reply_queue))
+                    document_label_filter, tied_result_quotient), reply_queue))
         topic_match_dicts = []
+        recorded_exception = None
         for _ in range(0, self._number_of_workers):
             worker_label, worker_topic_match_dicts = reply_queue.get()
-            possible_exception = self._handle_reply(worker_label, worker_topic_match_dicts)
-            if possible_exception != None:
-                self.close()
-                break
-            topic_match_dicts.extend(worker_topic_match_dicts)
-        else:
-            return TopicMatchDictionaryOrderer().order(topic_match_dicts, number_of_results,
-                    tied_result_quotient)
+            if recorded_exception == None:
+                recorded_exception = self._handle_reply(worker_label, worker_topic_match_dicts)
+            if not isinstance(worker_topic_match_dicts, Exception):
+                topic_match_dicts.extend(worker_topic_match_dicts)
+        if recorded_exception != None:
+            with(self._lock):
+                print ('ERROR: not all workers returned results. Please examine the above output from the worker processes to identify the problem.')
+        return TopicMatchDictionaryOrderer().order(topic_match_dicts, number_of_results,
+                tied_result_quotient)
 
     def start_topic_matching_search_mode_console(self, only_one_result_per_document=False,
             maximum_number_of_single_word_matches_for_relation_matching=500,
@@ -682,6 +717,14 @@ class Worker:
     """Worker implementation used by *MultiprocessingManager*.
     """
 
+    def _error_header(self, method, args, worker_label):
+        if method.__name__.endswith('register_document'):
+            return ''.join((worker_label, ' - error registering document ', args[1],
+                    '. Please submit a Github issue including the following stack trace for analysis:'))
+        else:
+            return ''.join((worker_label,
+                    ' - error. Please submit a Github issue including the following stack trace for analysis:'))
+
     def listen(self, semantic_analyzer, structural_matcher, input_queue, worker_label):
         semantic_analyzer.reload_model() # necessary to avoid neuralcoref MemoryError on Linux
         indexed_documents = {}
@@ -689,14 +732,18 @@ class Worker:
             method, args, reply_queue = input_queue.get()
             try:
                 reply = method(semantic_analyzer, structural_matcher, indexed_documents, *args)
+                reply_queue.put((worker_label, reply))
             except Exception as err:
+                print(self._error_header(method, args,
+                        worker_label))
+                print(traceback.format_exc())
                 reply_queue.put((worker_label, err))
-                break
             except:
+                print(self._error_header(method, args,
+                        worker_label))
+                print(traceback.format_exc())
                 err_identifier = str(sys.exc_info()[0])
                 reply_queue.put((worker_label, err_identifier))
-                break
-            reply_queue.put((worker_label, reply))
 
     def worker_parse_and_register_document(self, semantic_analyzer, structural_matcher,
             indexed_documents, document_text, label):
@@ -716,10 +763,11 @@ class Worker:
             structural_matcher, indexed_documents, text_to_match,
             maximum_activation_distance, relation_score, reverse_only_relation_score,
             single_word_score, single_word_any_tag_score, overlapping_relation_multiplier,
-            embedding_penalty,maximum_number_of_single_word_matches_for_relation_matching,
+            embedding_penalty,ontology_penalty,
+            maximum_number_of_single_word_matches_for_relation_matching,
             maximum_number_of_single_word_matches_for_embedding_matching,
             sideways_match_extent, only_one_result_per_document, number_of_results,
-            tied_result_quotient):
+            document_label_filter, tied_result_quotient):
         if len(indexed_documents) == 0:
             return []
         topic_matcher = TopicMatcher(semantic_analyzer = semantic_analyzer,
@@ -732,13 +780,15 @@ class Worker:
                 single_word_any_tag_score=single_word_any_tag_score,
                 overlapping_relation_multiplier=overlapping_relation_multiplier,
                 embedding_penalty=embedding_penalty,
+                ontology_penalty=ontology_penalty,
                 maximum_number_of_single_word_matches_for_relation_matching =
                 maximum_number_of_single_word_matches_for_relation_matching,
                 maximum_number_of_single_word_matches_for_embedding_matching =
                 maximum_number_of_single_word_matches_for_embedding_matching,
                 sideways_match_extent=sideways_match_extent,
                 only_one_result_per_document=only_one_result_per_document,
-                number_of_results=number_of_results)
+                number_of_results=number_of_results,
+                document_label_filter=document_label_filter)
         topic_match_dicts = \
                 topic_matcher.topic_match_documents_returning_dictionaries_against(text_to_match,
                 tied_result_quotient=tied_result_quotient)

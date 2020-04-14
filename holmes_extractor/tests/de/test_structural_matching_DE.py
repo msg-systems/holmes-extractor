@@ -1,7 +1,10 @@
 import unittest
 import holmes_extractor as holmes
+import os
 
-holmes_manager = holmes.Manager(model='de_core_news_md')
+script_directory = os.path.dirname(os.path.realpath(__file__))
+ontology = holmes.Ontology(os.sep.join((script_directory,'test_ontology.owl')))
+holmes_manager = holmes.Manager(model='de_core_news_md', ontology=ontology)
 holmes_manager.register_search_phrase("Ein Hund jagt eine Katze")
 holmes_manager.register_search_phrase("Ein Hund jagt einen Bären")
 holmes_manager.register_search_phrase("Ein Hund frisst einen Knochen")
@@ -25,6 +28,20 @@ holmes_manager.register_search_phrase("Ein Mann singt")
 holmes_manager.register_search_phrase("Eine Party in den Bergen")
 holmes_manager.register_search_phrase("Jemand wandert in den Bergen")
 holmes_manager.register_search_phrase("Jemand eröffnet ein Konto für ein Kind")
+holmes_manager.register_search_phrase("Extraktion der Information")
+holmes_manager.register_search_phrase("Maßnahmen der Beschaffung der Information")
+holmes_manager.register_search_phrase("Die Linguistik")
+holmes_manager.register_search_phrase("Das große Interesse")
+holmes_manager.register_search_phrase("Knochenmark wird extrahiert")
+holmes_manager.register_search_phrase("Ein großes Wort-Mit-Bindestrich")
+holmes_manager.register_search_phrase("Ein kleines Wortmitbindestrich")
+holmes_manager.register_search_phrase("Ein großes Wort-Ohne-Bindestrich")
+holmes_manager.register_search_phrase("Ein kleines Wortohnebindestrich")
+holmes_manager.register_search_phrase("Einfach-Wort-Mit-Bindestrich")
+holmes_manager.register_search_phrase("Einfachwortohnebindestrich")
+holmes_manager.register_search_phrase("Wort-Mit-Bindestrich-Nicht-In-Ontologie")
+holmes_manager.register_search_phrase("Wortohnebindestrichnichtinontologie")
+holmes_manager.register_search_phrase("Information eines Messers")
 holmes_manager_with_variable_search_phrases = holmes.Manager(model='de_core_news_md')
 holmes_manager_with_embeddings = holmes.Manager(model='de_core_news_md',
         overall_similarity_threshold=0.7, perform_coreference_resolution=False,
@@ -32,6 +49,11 @@ holmes_manager_with_embeddings = holmes.Manager(model='de_core_news_md',
 holmes_manager_with_embeddings.register_search_phrase("Ein Mann sieht einen großen Hund")
 holmes_manager_with_embeddings.register_search_phrase("Der Himmel ist grün")
 holmes_manager_with_embeddings.register_search_phrase("Ein König tritt zurück")
+holmes_manager_with_embeddings.register_search_phrase("Die Abdankung eines Königs")
+holmes_manager_with_embeddings.register_search_phrase("Informationskönig")
+holmes_manager_with_embeddings.register_search_phrase("Teller")
+holmes_manager_with_embeddings.register_search_phrase("herabfallen")
+holmes_manager_with_embeddings.register_search_phrase("Jemand isst von einem Jeden")
 
 class GermanStructuralMatchingTest(unittest.TestCase):
 
@@ -210,15 +232,15 @@ class GermanStructuralMatchingTest(unittest.TestCase):
 
     def test_von_phrase_matches_genitive_phrase(self):
         matches = self._get_matches(holmes_manager, "Der Abschluss von einer Versicherung")
-        self.assertEqual(len(matches), 1)
+        self.assertEqual(len(matches), 2)
         self.assertFalse(matches[0].is_uncertain)
 
     def test_von_phrase_matches_genitive_phrase_with_coordination(self):
         matches = self._get_matches(holmes_manager,
                 "Der Abschluss und der Abschluss von einer Versicherung und einer Versicherung")
-        self.assertEqual(len(matches), 2)
-        for text_match in matches:
-            self.assertFalse(text_match.is_uncertain)
+        self.assertEqual(len(matches), 4)
+        for match in matches:
+            self.assertFalse(match.is_uncertain)
 
     def test_genitive_phrase_matches_von_phrase(self):
         matches = self._get_matches(holmes_manager, "Die Kündigung einer Versicherung")
@@ -359,7 +381,7 @@ class GermanStructuralMatchingTest(unittest.TestCase):
         holmes_manager_with_variable_search_phrases.register_search_phrase(
                 "Ein ENTITYNOUN")
         matches = self._get_matches(holmes_manager_with_variable_search_phrases,
-                "Hunde, Katzen, Löwen und Elefanten")
+                "Hunde, Katzen, Löwen und Elefantenelefanten")
         self.assertEqual(len(matches), 4)
 
     def test_entitynoun_as_non_root_node(self):
@@ -368,7 +390,21 @@ class GermanStructuralMatchingTest(unittest.TestCase):
         holmes_manager_with_variable_search_phrases.register_search_phrase(
                 "Ich sah ein ENTITYNOUN")
         matches = self._get_matches(holmes_manager_with_variable_search_phrases,
-                "Ich sah einen Hund und eine Katze")
+                "Ich sah einen Hund und eine Elefantenkatze")
+        self.assertEqual(len(matches), 2)
+
+    def test_entity_token_does_not_match_subwords(self):
+        holmes_manager_with_variable_search_phrases.remove_all_search_phrases()
+        holmes_manager_with_variable_search_phrases.register_search_phrase(
+                "Ein ENTITYMISC")
+
+    def test_entitynoun_as_non_root_node(self):
+        matches = self._get_matches(holmes_manager, "Das Fahrzeug hat einen Fehler.")
+        holmes_manager_with_variable_search_phrases.remove_all_search_phrases()
+        holmes_manager_with_variable_search_phrases.register_search_phrase(
+                "Ich sah ein ENTITYNOUN")
+        matches = self._get_matches(holmes_manager_with_variable_search_phrases,
+                "Ich sah einen Hund und eine Elefantenkatze")
         self.assertEqual(len(matches), 2)
 
     def test_separable_verb_in_main_and_dependent_clauses(self):
@@ -524,7 +560,453 @@ class GermanStructuralMatchingTest(unittest.TestCase):
                 "Richard Hudson möchte ein Konto für sein Kind eröffnen")
         self.assertEqual(len(matches), 1)
 
-    def test_separable_verbs_with_embeddings(self):
+    def test_objective_deverbal_subword_phrase_with_durch_no_conjunction(self):
+        matches = self._get_matches(holmes_manager,
+                "Die Katzenjagd durch den Hund")
+        self.assertEqual(len(matches), 1)
+
+    def test_objective_deverbal_subword_phrase_with_durch_conjunction_within_subwords(self):
+        matches = self._get_matches(holmes_manager,
+                "Die Katzen- und Katzenjagd durch den Hund")
+        self.assertEqual(len(matches), 2)
+
+    def test_objective_deverbal_subword_phrase_with_durch(self):
+        matches = self._get_matches(holmes_manager,
+                "Die Katzenjagd durch den Hund und den Hund")
+        self.assertEqual(len(matches), 2)
+
+    def test_subjective_deverbal_subword_phrase_with_durch(self):
+        matches = self._get_matches(holmes_manager,
+                "Die Hundenjagd durch die Katze")
+        self.assertEqual(len(matches), 0)
+
+    def test_subjective_deverbal_subword_phrase_with_von(self):
+        matches = self._get_matches(holmes_manager,
+                "Die Hundenjagd von der Katze und der Katze")
+        self.assertEqual(len(matches), 2)
+
+    def test_adjectival_subword(self):
+        matches = self._get_matches(holmes_manager,
+                "Das Großinteresse")
+        self.assertEqual(len(matches), 1)
+
+    def test_two_subwords_filling_same_word(self):
+        matches = self._get_matches(holmes_manager,
+                "Informationsextraktion")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_subword.index, 1)
+        self.assertEqual(matches[0].word_matches[1].document_subword.index, 0)
+
+    def test_two_subwords_at_beginning_of_same_word(self):
+        matches = self._get_matches(holmes_manager,
+                "Informationsextraktionsmaßnahmen")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_subword.index, 1)
+        self.assertEqual(matches[0].word_matches[1].document_subword.index, 0)
+
+    def test_two_subwords_at_end_of_same_word(self):
+        matches = self._get_matches(holmes_manager,
+                "Maßnahmeninformationsextraktion")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_subword.index, 2)
+        self.assertEqual(matches[0].word_matches[1].document_subword.index, 1)
+
+    def test_two_subwords_in_different_words(self):
+        matches = self._get_matches(holmes_manager,
+                "Maßnahmenextraktion der Maßnahmeninformation")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_token.i, 0)
+        self.assertEqual(matches[0].word_matches[0].document_subword.index, 1)
+        self.assertEqual(matches[0].word_matches[1].document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[1].document_subword.index, 1)
+
+    def test_two_subwords_two_word_conjunction_first_element(self):
+        matches = self._get_matches(holmes_manager,
+                "Informationsentnahme und -extraktion")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[0].document_subword.index, 1)
+        self.assertEqual(matches[0].word_matches[0].document_subword.containing_token_index, 2)
+        self.assertEqual(matches[0].word_matches[1].document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[1].document_subword.index, 0)
+        self.assertEqual(matches[0].word_matches[1].document_subword.containing_token_index, 0)
+
+    def test_two_subwords_three_word_conjunction_first_element(self):
+        matches = self._get_matches(holmes_manager,
+                "Informationsentnahme, -extraktion und -freude")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[0].document_subword.index, 1)
+        self.assertEqual(matches[0].word_matches[0].document_subword.containing_token_index, 2)
+        self.assertEqual(matches[0].word_matches[1].document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[1].document_subword.index, 0)
+        self.assertEqual(matches[0].word_matches[1].document_subword.containing_token_index, 0)
+
+    def test_two_subwords_two_word_conjunction_last_element(self):
+        matches = self._get_matches(holmes_manager,
+                "Informations- und Entnahmeextraktion")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_token.i, 0)
+        self.assertEqual(matches[0].word_matches[0].document_subword.index, 1)
+        self.assertEqual(matches[0].word_matches[0].document_subword.containing_token_index, 2)
+        self.assertEqual(matches[0].word_matches[1].document_token.i, 0)
+        self.assertEqual(matches[0].word_matches[1].document_subword.index, 0)
+        self.assertEqual(matches[0].word_matches[1].document_subword.containing_token_index, 0)
+
+    def test_two_subwords_three_word_conjunction_last_element(self):
+        matches = self._get_matches(holmes_manager,
+                "Freude-, Informations- und Entnahmeextraktion")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[0].document_subword.index, 1)
+        self.assertEqual(matches[0].word_matches[0].document_subword.containing_token_index, 4)
+        self.assertEqual(matches[0].word_matches[1].document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[1].document_subword.index, 0)
+        self.assertEqual(matches[0].word_matches[1].document_subword.containing_token_index, 2)
+
+    def test_two_subwords_in_middle_element(self):
+        matches = self._get_matches(holmes_manager,
+                "Freudeverwaltungs--, -informationsextraktions- und -entnahmeverwaltung")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[0].document_subword.index, 1)
+        self.assertEqual(matches[0].word_matches[0].document_subword.containing_token_index, 2)
+        self.assertEqual(matches[0].word_matches[1].document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[1].document_subword.index, 0)
+        self.assertEqual(matches[0].word_matches[1].document_subword.containing_token_index, 2)
+
+    def test_three_subwords_filling_same_word_initial_position(self):
+        matches = self._get_matches(holmes_manager,
+                "Informationsbeschaffungsmaßnahmen waren das, worüber wir sprachen.")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_subword.index, 2)
+        self.assertEqual(matches[0].word_matches[1].document_subword.index, 1)
+        self.assertEqual(matches[0].word_matches[2].document_subword.index, 0)
+
+    def test_three_subwords_filling_same_word_later_position(self):
+        matches = self._get_matches(holmes_manager,
+                "Wir redeten über Informationsbeschaffungsmaßnahmen.")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_token.i, 3)
+        self.assertEqual(matches[0].word_matches[0].document_subword.index, 2)
+        self.assertEqual(matches[0].word_matches[1].document_token.i, 3)
+        self.assertEqual(matches[0].word_matches[1].document_subword.index, 1)
+        self.assertEqual(matches[0].word_matches[1].document_token.i, 3)
+        self.assertEqual(matches[0].word_matches[2].document_subword.index, 0)
+
+    def test_three_subwords_filling_same_word_beginning_of_word(self):
+        matches = self._get_matches(holmes_manager,
+                "Informationsbeschaffungsmaßnahmenextraktion.")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_subword.index, 2)
+        self.assertEqual(matches[0].word_matches[1].document_subword.index, 1)
+        self.assertEqual(matches[0].word_matches[2].document_subword.index, 0)
+
+    def test_three_subwords_filling_same_word_end_of_word(self):
+        matches = self._get_matches(holmes_manager,
+                "Extraktionsinformationsbeschaffungsmaßnahmen.")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_subword.index, 3)
+        self.assertEqual(matches[0].word_matches[1].document_subword.index, 2)
+        self.assertEqual(matches[0].word_matches[2].document_subword.index, 1)
+
+    def test_three_subwords_split_two_one(self):
+        matches = self._get_matches(holmes_manager,
+                "Maßnahmen der Informationsbeschaffung")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_token.i, 0)
+        self.assertEqual(matches[0].word_matches[0].document_subword, None)
+        self.assertEqual(matches[0].word_matches[1].document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[1].document_subword.index, 1)
+        self.assertEqual(matches[0].word_matches[1].document_subword.containing_token_index, 2)
+        self.assertEqual(matches[0].word_matches[2].document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[2].document_subword.index, 0)
+        self.assertEqual(matches[0].word_matches[2].document_subword.containing_token_index, 2)
+
+    def test_three_subwords_split_two_one_with_more_subwords(self):
+        matches = self._get_matches(holmes_manager,
+                "Extraktionsmaßnahmen der Extraktionsinformationsbeschaffung")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_token.i, 0)
+        self.assertEqual(matches[0].word_matches[0].document_subword.index, 1)
+        self.assertEqual(matches[0].word_matches[0].document_subword.containing_token_index, 0)
+        self.assertEqual(matches[0].word_matches[1].document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[1].document_subword.index, 2)
+        self.assertEqual(matches[0].word_matches[1].document_subword.containing_token_index, 2)
+        self.assertEqual(matches[0].word_matches[2].document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[2].document_subword.index, 1)
+        self.assertEqual(matches[0].word_matches[2].document_subword.containing_token_index, 2)
+
+    def test_three_subwords_split_one_two(self):
+        matches = self._get_matches(holmes_manager,
+                "Beschaffungsmaßnahmen der Information")
+        self.assertEqual(len(matches), 0)
+
+    def test_three_subwords_split_one_two_with_more_subwords(self):
+        matches = self._get_matches(holmes_manager,
+                "Extraktionsbeschaffungsmaßnahmen der Extraktionsinformation")
+        self.assertEqual(len(matches), 0)
+
+    def test_three_subwords_two_word_conjunction_first_elements_two_one(self):
+        matches = self._get_matches(holmes_manager,
+                "Informationsbeschaffungsprobleme und -maßnahmen")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[0].document_subword.index, 2)
+        self.assertEqual(matches[0].word_matches[0].document_subword.containing_token_index, 2)
+        self.assertEqual(matches[0].word_matches[1].document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[1].document_subword.index, 1)
+        self.assertEqual(matches[0].word_matches[1].document_subword.containing_token_index, 0)
+        self.assertEqual(matches[0].word_matches[2].document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[2].document_subword.index, 0)
+        self.assertEqual(matches[0].word_matches[2].document_subword.containing_token_index, 0)
+
+    def test_three_subwords_three_word_conjunction_first_elements_two_one(self):
+        matches = self._get_matches(holmes_manager,
+                "Informationsbeschaffungsprobleme, -maßnahmen und -interessen")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[0].document_subword.index, 2)
+        self.assertEqual(matches[0].word_matches[0].document_subword.containing_token_index, 2)
+        self.assertEqual(matches[0].word_matches[1].document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[1].document_subword.index, 1)
+        self.assertEqual(matches[0].word_matches[1].document_subword.containing_token_index, 0)
+        self.assertEqual(matches[0].word_matches[2].document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[2].document_subword.index, 0)
+        self.assertEqual(matches[0].word_matches[2].document_subword.containing_token_index, 0)
+
+    def test_three_subwords_two_word_conjunction_first_elements_one_two(self):
+        matches = self._get_matches(holmes_manager,
+                "Informationsprobleme und -beschaffungsmaßnahmen")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[0].document_subword.index, 2)
+        self.assertEqual(matches[0].word_matches[0].document_subword.containing_token_index, 2)
+        self.assertEqual(matches[0].word_matches[1].document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[1].document_subword.index, 1)
+        self.assertEqual(matches[0].word_matches[1].document_subword.containing_token_index, 2)
+        self.assertEqual(matches[0].word_matches[2].document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[2].document_subword.index, 0)
+        self.assertEqual(matches[0].word_matches[2].document_subword.containing_token_index, 0)
+
+    def test_three_subwords_three_word_conjunction_first_elements_one_two(self):
+        matches = self._get_matches(holmes_manager,
+                "Informationsprobleme, -interessen und -beschaffungsmaßnahmen")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_token.i, 4)
+        self.assertEqual(matches[0].word_matches[0].document_subword.index, 2)
+        self.assertEqual(matches[0].word_matches[0].document_subword.containing_token_index, 4)
+        self.assertEqual(matches[0].word_matches[1].document_token.i, 4)
+        self.assertEqual(matches[0].word_matches[1].document_subword.index, 1)
+        self.assertEqual(matches[0].word_matches[1].document_subword.containing_token_index, 4)
+        self.assertEqual(matches[0].word_matches[2].document_token.i, 4)
+        self.assertEqual(matches[0].word_matches[2].document_subword.index, 0)
+        self.assertEqual(matches[0].word_matches[2].document_subword.containing_token_index, 0)
+
+    def test_three_subwords_two_word_conjunction_last_elements_one_two(self):
+        matches = self._get_matches(holmes_manager,
+                "Informations- und Interessenbeschaffungsmaßnahmen")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_token.i, 0)
+        self.assertEqual(matches[0].word_matches[0].document_subword.index, 2)
+        self.assertEqual(matches[0].word_matches[0].document_subword.containing_token_index, 2)
+        self.assertEqual(matches[0].word_matches[1].document_token.i, 0)
+        self.assertEqual(matches[0].word_matches[1].document_subword.index, 1)
+        self.assertEqual(matches[0].word_matches[1].document_subword.containing_token_index, 2)
+        self.assertEqual(matches[0].word_matches[2].document_token.i, 0)
+        self.assertEqual(matches[0].word_matches[2].document_subword.index, 0)
+        self.assertEqual(matches[0].word_matches[2].document_subword.containing_token_index, 0)
+
+    def test_three_subwords_three_word_conjunction_last_elements_one_two(self):
+        matches = self._get_matches(holmes_manager,
+                "Informations-, Problem- und Interessenbeschaffungsmaßnahmen")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_token.i, 0)
+        self.assertEqual(matches[0].word_matches[0].document_subword.index, 2)
+        self.assertEqual(matches[0].word_matches[0].document_subword.containing_token_index, 4)
+        self.assertEqual(matches[0].word_matches[0].document_word, 'maßnahme')
+        self.assertEqual(matches[0].word_matches[1].document_token.i, 0)
+        self.assertEqual(matches[0].word_matches[1].document_subword.index, 1)
+        self.assertEqual(matches[0].word_matches[1].document_subword.containing_token_index, 4)
+        self.assertEqual(matches[0].word_matches[1].document_word, 'beschaffung')
+        self.assertEqual(matches[0].word_matches[2].document_token.i, 0)
+        self.assertEqual(matches[0].word_matches[2].document_subword.index, 0)
+        self.assertEqual(matches[0].word_matches[2].document_subword.containing_token_index, 0)
+        self.assertEqual(matches[0].word_matches[2].document_word, 'Information')
+
+    def test_three_subwords_two_word_conjunction_last_elements_two_one(self):
+        matches = self._get_matches(holmes_manager,
+                "Informationsbeschaffungs- und Interessenmaßnahmen")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_token.i, 0)
+        self.assertEqual(matches[0].word_matches[0].document_subword.index, 2)
+        self.assertEqual(matches[0].word_matches[0].document_subword.containing_token_index, 2)
+        self.assertEqual(matches[0].word_matches[1].document_token.i, 0)
+        self.assertEqual(matches[0].word_matches[1].document_subword.index, 1)
+        self.assertEqual(matches[0].word_matches[1].document_subword.containing_token_index, 0)
+        self.assertEqual(matches[0].word_matches[2].document_token.i, 0)
+        self.assertEqual(matches[0].word_matches[2].document_subword.index, 0)
+        self.assertEqual(matches[0].word_matches[2].document_subword.containing_token_index, 0)
+
+    def test_three_subwords_three_word_conjunction_last_elements_two_one(self):
+        matches = self._get_matches(holmes_manager,
+                "Informationsbeschaffungs-, Problem- und Interessenmaßnahmen")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_token.i, 0)
+        self.assertEqual(matches[0].word_matches[0].document_subword.index, 2)
+        self.assertEqual(matches[0].word_matches[0].document_subword.containing_token_index, 4)
+        self.assertEqual(matches[0].word_matches[1].document_token.i, 0)
+        self.assertEqual(matches[0].word_matches[1].document_subword.index, 1)
+        self.assertEqual(matches[0].word_matches[1].document_subword.containing_token_index, 0)
+        self.assertEqual(matches[0].word_matches[2].document_token.i, 0)
+        self.assertEqual(matches[0].word_matches[2].document_subword.index, 0)
+        self.assertEqual(matches[0].word_matches[2].document_subword.containing_token_index, 0)
+
+    def test_three_subwords_three_word_conjunction(self):
+        matches = self._get_matches(holmes_manager,
+                "Informationsinteressen, -beschaffungs- und Problemmaßnahmen")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[0].document_subword.index, 2)
+        self.assertEqual(matches[0].word_matches[0].document_subword.containing_token_index, 4)
+        self.assertEqual(matches[0].word_matches[1].document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[1].document_subword.index, 1)
+        self.assertEqual(matches[0].word_matches[1].document_subword.containing_token_index, 2)
+        self.assertEqual(matches[0].word_matches[2].document_token.i, 2)
+        self.assertEqual(matches[0].word_matches[2].document_subword.index, 0)
+        self.assertEqual(matches[0].word_matches[2].document_subword.containing_token_index, 0)
+
+    def test_three_subwords_three_word_conjunction_with_other_words(self):
+        matches = self._get_matches(holmes_manager,
+                "Informationsinteressen, -interessen-, -beschaffungs-, -interessen- und Problemmaßnahmen")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].document_token.i, 4)
+        self.assertEqual(matches[0].word_matches[0].document_subword.index, 2)
+        self.assertEqual(matches[0].word_matches[0].document_subword.containing_token_index, 8)
+        self.assertEqual(matches[0].word_matches[1].document_token.i, 4)
+        self.assertEqual(matches[0].word_matches[1].document_subword.index, 1)
+        self.assertEqual(matches[0].word_matches[1].document_subword.containing_token_index, 4)
+        self.assertEqual(matches[0].word_matches[2].document_token.i, 4)
+        self.assertEqual(matches[0].word_matches[2].document_subword.index, 0)
+        self.assertEqual(matches[0].word_matches[2].document_subword.containing_token_index, 0)
+
+    def test_uncertain_subword_match_with_or_conjunction(self):
+        matches = self._get_matches(holmes_manager,
+                "Informationsinteressen oder -extraktion")
+        self.assertEqual(len(matches), 1)
+        self.assertTrue(matches[0].is_uncertain)
+
+    def test_embedding_match_on_root_subword(self):
         matches = self._get_matches(holmes_manager_with_embeddings,
-                "Der König dankt ab")
+                "Ein Informationskönig")
+        self.assertEqual(len(matches), 1)
+
+    def test_embedding_match_on_non_root_subword(self):
+        matches = self._get_matches(holmes_manager_with_embeddings,
+                "Die Prinzenabdankung")
+        self.assertEqual(len(matches), 1)
+
+    def test_ontology_matching_with_subwords(self):
+        matches = self._get_matches(holmes_manager,
+                "Die Literaturlinguistik")
+        self.assertEqual(len(matches), 1)
+
+    def test_ontology_matching_with_whole_word_containing_subwords(self):
+        matches = self._get_matches(holmes_manager,
+                "Die Sprachwissenschaft")
+        self.assertEqual(len(matches), 1)
+
+    def test_ontology_matching_with_whole_word_and_subword(self):
+        matches = self._get_matches(holmes_manager,
+                "Die Komputerlinguistik")
+        self.assertEqual(len(matches), 2)
+
+    def test_derivation_matching_with_subwords(self):
+        matches = self._get_matches(holmes_manager,
+                "Knochenmarkextraktion")
+        self.assertEqual(len(matches), 1)
+
+    def test_hyphenation_1(self):
+        matches = self._get_matches(holmes_manager,
+                "Ein großes Wort-Mit-Bindestrich")
+        self.assertEqual(len(matches), 1)
+
+    def test_hyphenation_2(self):
+        matches = self._get_matches(holmes_manager,
+                "Ein großes Wortmitbindestrich")
+        self.assertEqual(len(matches), 1)
+
+    def test_hyphenation_3(self):
+        matches = self._get_matches(holmes_manager,
+                "Ein kleines Wort-Mit-Bindestrich")
+        self.assertEqual(len(matches), 1)
+
+    def test_hyphenation_4(self):
+        matches = self._get_matches(holmes_manager,
+                "Ein kleines Wortmitbindestrich")
+        self.assertEqual(len(matches), 1)
+
+    def test_hyphenation_5(self):
+        matches = self._get_matches(holmes_manager,
+                "Ein großes Wort-Ohne-Bindestrich")
+        self.assertEqual(len(matches), 1)
+
+    def test_hyphenation_6(self):
+        matches = self._get_matches(holmes_manager,
+                "Ein großes Wortohnebindestrich")
+        self.assertEqual(len(matches), 1)
+
+    def test_hyphenation_7(self):
+        matches = self._get_matches(holmes_manager,
+                "Ein kleines Wort-Ohne-Bindestrich")
+        self.assertEqual(len(matches), 1)
+
+    def test_hyphenation_8(self):
+        matches = self._get_matches(holmes_manager,
+                "Ein kleines Wortohnebindestrich")
+        self.assertEqual(len(matches), 1)
+
+    def test_hyphenation_9(self):
+        matches = self._get_matches(holmes_manager,
+                "Einfachwortmitbindestrich")
+        self.assertEqual(len(matches), 1)
+
+    def test_hyphenation_10(self):
+        matches = self._get_matches(holmes_manager,
+                "Einfach-Wort-Ohne-Bindestrich")
+        self.assertEqual(len(matches), 1)
+
+    def test_hyphenation_11(self):
+        matches = self._get_matches(holmes_manager,
+                "Wortmitbindestrichnichtinontologie")
+        self.assertEqual(len(matches), 1)
+
+    def test_hyphenation_10(self):
+        matches = self._get_matches(holmes_manager,
+                "Wort-Ohne-Bindestrich-Nicht-In-Ontologie")
+        self.assertEqual(len(matches), 1)
+
+    def test_matching_across_non_reported_subword(self):
+        matches = self._get_matches(holmes_manager,
+                "Messerleininformation")
+        self.assertEqual(len(matches), 1)
+
+    def test_no_embedding_match_word_too_short(self):
+        matches = self._get_matches(holmes_manager_with_embeddings,
+                "Ein Jeden hat das gemacht")
+        self.assertEqual(len(matches), 0)
+
+    def test_no_embedding_wrong_pos(self):
+        matches = self._get_matches(holmes_manager_with_embeddings,
+                "hervorkommen")
+        self.assertEqual(len(matches), 0)
+
+    def test_no_embedding_subword_too_short(self):
+        matches = self._get_matches(holmes_manager_with_embeddings,
+                "Jedeninteresse")
+        self.assertEqual(len(matches), 0)
+
+    def test_no_embedding_search_phrase_word_too_short(self):
+        matches = self._get_matches(holmes_manager_with_embeddings,
+                "Jemand isst von einem Teller")
         self.assertEqual(len(matches), 1)

@@ -77,5 +77,5 @@ if __name__ in ('__main__', 'example_search_EN_literature'):
                     req.params['entry'][0:200]))
             resp.cache_control = ["s-maxage=31536000"]
 
-    application = falcon.API()
+    application = falcon.App()
     application.add_route('/english', RestHandler())

@@ -18,8 +18,8 @@ class Ontology:
 
     Args:
 
-    ontology_path -- the path from where the ontology is to be loaded.
-        See https://github.com/RDFLib/rdflib/.
+    ontology_path -- the path from where the ontology is to be loaded, or a list of
+        several such paths. See https://github.com/RDFLib/rdflib/.
     owl_class_type -- optionally overrides the OWL 2 URL for types.
     owl_individual_type -- optionally overrides the OWL 2 URL for individuals.
     owl_type_link -- optionally overrides the RDF URL for types.
@@ -37,15 +37,20 @@ class Ontology:
                  symmetric_matching=False):
         self.path = ontology_path
         self._graph = rdflib.Graph()
-        self._graph.load(ontology_path)
+        if isinstance(self.path, list):
+            for entry in ontology_path:
+                self._graph.load(entry)
+        else:
+            self._graph.load(ontology_path)
         self._owl_class_type = owl_class_type
         self._owl_individual_type = owl_individual_type
         self._owl_type_link = owl_type_link
         self._owl_synonym_type = owl_synonym_type
         self._owl_hyponym_type = owl_hyponym_type
-        self._words, self._multiwords = self._get_words()
+        self.words, self._multiwords = self._get_words()
         self._match_dict = {}
         self.symmetric_matching=symmetric_matching
+        self._populate_dictionary()
 
     class Entry:
         """Args:
@@ -61,28 +66,31 @@ class Ontology:
             self.depth = depth
             self.is_individual = is_individual
 
-    def add_to_dictionary(self, search_phrase_word):
-        """Generates the dictionary for a search_phrase word."""
-        search_phrase_word = search_phrase_word.lower()
-        if search_phrase_word not in self._match_dict:
-            entry_set = set()
-            self._match_dict[search_phrase_word] = entry_set
-            for class_id, type_link, metaclass_id in self._get_classes():
-                entry_word = self._get_entry_word(class_id).lower()
-                if entry_word == search_phrase_word:
-                    self._recursive_add_to_dict(
-                            entry_set, entry_word, class_id, set(), 0, False, False,
-                            self.symmetric_matching)
-            for class_id, type_link, metaclass_id in self._get_individuals():
-                entry_word = self._get_entry_word(class_id).lower()
-                if entry_word == search_phrase_word:
-                    self._recursive_add_to_dict(
-                            entry_set, entry_word, class_id, set(), 0, True, False,
-                            self.symmetric_matching)
+    def _populate_dictionary(self):
+        """Generates the dictionary from search phrase words to matching document words."""
+
+        for class_id, type_link, metaclass_id in self._get_classes():
+            entry_word = self._get_entry_word(class_id).lower()
+            if entry_word in self._match_dict:
+                entry_set = self._match_dict[entry_word]
+            else:
+                self._match_dict[entry_word] = entry_set = set()
+            self._recursive_add_to_dict(
+                    entry_set, entry_word, class_id, set(), 0, False, False,
+                    self.symmetric_matching)
+        for class_id, type_link, metaclass_id in self._get_individuals():
+            entry_word = self._get_entry_word(class_id).lower()
+            if entry_word in self._match_dict:
+                entry_set = self._match_dict[entry_word]
+            else:
+                self._match_dict[entry_word] = entry_set = set()
+            self._recursive_add_to_dict(
+                    entry_set, entry_word, class_id, set(), 0, True, False,
+                    self.symmetric_matching)
 
     def contains(self, word):
         """Returns whether or not a word is present in the loaded ontology."""
-        return word.lower() in self._words
+        return word.lower() in self.words
 
     def contains_multiword(self, multiword):
         """Returns whether or not a multiword is present in the loaded ontology."""
@@ -107,6 +115,18 @@ class Ontology:
         """
         if search_phrase_word.lower() in self._match_dict.keys():
             return set(map(lambda entry: entry.word.lower(),
+                    self._match_dict[search_phrase_word.lower()]))
+        else:
+            return []
+
+    def get_words_matching_and_depths(self, search_phrase_word):
+        """Returns tuples containing the synonyms, hyponyms and individual instances of
+            *search_phrase_word*, as well as the hypernyms where *symmetric_matching==True*, and
+            the corresponding depths.
+            All words are set to lower case.
+        """
+        if search_phrase_word.lower() in self._match_dict.keys():
+            return set(map(lambda entry: (entry.word.lower(), entry.depth),
                     self._match_dict[search_phrase_word.lower()]))
         else:
             return []

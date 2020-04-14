@@ -10,6 +10,7 @@ nocoref_holmes_manager.register_search_phrase("A dog chases a cat")
 nocoref_holmes_manager.register_search_phrase("The man was poor")
 nocoref_holmes_manager.register_search_phrase("The rich man")
 nocoref_holmes_manager.register_search_phrase("Someone eats a sandwich")
+nocoref_holmes_manager.register_search_phrase("The giving to a beneficiary")
 nocoref_holmes_manager.register_search_phrase("A colleague's computer")
 nocoref_holmes_manager.register_search_phrase("An ENTITYPERSON opens an account")
 nocoref_holmes_manager.register_search_phrase("A dog eats a bone")
@@ -26,6 +27,26 @@ nocoref_holmes_manager.register_search_phrase("A man sings")
 nocoref_holmes_manager.register_search_phrase("Somebody finds insurance")
 nocoref_holmes_manager.register_search_phrase("A salesman lives in ENTITYGPE")
 nocoref_holmes_manager.register_search_phrase("A salesman has a house in ENTITYGPE")
+nocoref_holmes_manager.register_search_phrase("Somebody attempts to explain")
+nocoref_holmes_manager.register_search_phrase("Somebody demands an explanation")
+nocoref_holmes_manager.register_search_phrase("Somebody shouts an invitation")
+nocoref_holmes_manager.register_search_phrase("An invitation to a salesman")
+nocoref_holmes_manager.register_search_phrase("music")
+nocoref_holmes_manager.register_search_phrase("neatness")
+nocoref_holmes_manager.register_search_phrase("modest")
+nocoref_holmes_manager.register_search_phrase("monthly")
+nocoref_holmes_manager.register_search_phrase("Somebody uses a vaulting horse")
+nocoref_holmes_manager.register_search_phrase("A big vaulting horse")
+nocoref_holmes_manager.register_search_phrase("Somebody sees a vault horse")
+nocoref_holmes_manager.register_search_phrase("A small vault horse")
+nocoref_holmes_manager.register_search_phrase("a vaulting horse")
+nocoref_holmes_manager.register_search_phrase("a big hyphenated multiword")
+nocoref_holmes_manager.register_search_phrase("a small hyphenated-multiword")
+nocoref_holmes_manager.register_search_phrase("a big unhyphenated multiword")
+nocoref_holmes_manager.register_search_phrase("a small unhyphenated-multiword")
+nocoref_holmes_manager.register_search_phrase("hyphenated single multiword")
+nocoref_holmes_manager.register_search_phrase("unhyphenated single multiword")
+
 holmes_manager_with_variable_search_phrases = holmes.Manager(model='en_core_web_lg',
         ontology=ontology, perform_coreference_resolution=False)
 holmes_manager_with_embeddings = holmes.Manager(model='en_core_web_lg',
@@ -53,8 +74,12 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
         self.assertEqual(len(matches), 0)
 
     def test_different_object(self):
-        matches = self._get_matches(nocoref_holmes_manager, "The dog chased the horse")
+        matches = self._get_matches(nocoref_holmes_manager, "The dog chased the tiger")
         self.assertEqual(len(matches), 0)
+
+    def test_different_object_matching_ontology_within_sentence(self):
+        matches = self._get_matches(nocoref_holmes_manager, "The dog chased the horse")
+        self.assertEqual(len(matches), 1)
 
     def test_verb_negation(self):
         matches = self._get_matches(nocoref_holmes_manager, "The dog did not chase the cat")
@@ -538,6 +563,184 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
         self.assertEqual(len(matches), 3)
         for match in matches:
             self.assertFalse(match.is_uncertain)
+
+    def test_derivation_in_document_on_root(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "The eating of a bone by a puppy")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[1].type, 'derivation')
+
+    def test_derivation_in_search_phrase_on_root(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "Somebody gives to a beneficiary")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].type, 'derivation')
+
+    def test_derivation_in_document_on_non_root(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "Somebody attempts an explanation")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[1].type, 'derivation')
+
+    def test_derivation_in_search_phrase_on_non_root(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "Somebody demands to explain")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[1].type, 'derivation')
+
+    def test_derivation_in_document_on_non_root_with_conjunction(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "Somebody attempts an explanation and an explanation")
+        self.assertEqual(len(matches), 2)
+        self.assertEqual(matches[0].word_matches[1].type, 'derivation')
+        self.assertEqual(matches[1].word_matches[1].type, 'derivation')
+
+    def test_derivation_in_search_phrase_on_non_root_with_conjunction(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "Somebody demands to explain and to explain")
+        self.assertEqual(len(matches), 2)
+        self.assertEqual(matches[0].word_matches[1].type, 'derivation')
+        self.assertEqual(matches[1].word_matches[1].type, 'derivation')
+
+    def test_derivation_in_document_on_single_word(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "neat")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].type, 'derivation')
+
+    def test_derivation_in_search_phrase_on_single_word(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "musical")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].type, 'derivation')
+
+    def test_derivation_in_document_on_single_word_with_ontology(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "month")
+        self.assertEqual(len(matches), 2)
+        self.assertEqual(matches[0].word_matches[0].type, 'ontology')
+        self.assertEqual(matches[1].word_matches[0].type, 'derivation')
+
+    def test_derivation_in_search_phrase_on_single_word_with_ontology(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "modestly")
+        self.assertEqual(len(matches), 2)
+        self.assertEqual(matches[0].word_matches[0].type, 'derivation')
+        self.assertEqual(matches[1].word_matches[0].type, 'ontology')
+
+    def test_derivation_in_document_on_non_root_with_ontology(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "Somebody attempts an invitation")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[1].type, 'ontology')
+
+    def test_derivation_in_search_phrase_on_non_root_with_ontology(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "Somebody shouts to explain")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[1].type, 'ontology')
+
+    def test_derivation_in_search_phrase_and_document_on_root_with_ontology(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "Somebody explains to a salesman")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].type, 'ontology')
+
+    def test_derivation_in_document_with_multiword_root_word(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "A big vault horse")
+        self.assertEqual(len(matches), 2)
+        self.assertEqual(matches[0].word_matches[1].type, 'derivation')
+
+    def test_derivation_in_document_with_multiword_non_root_word(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "A vault horse was used")
+        self.assertEqual(len(matches), 2)
+        self.assertEqual(matches[0].word_matches[1].type, 'derivation')
+
+    def test_derivation_in_document_with_multiword_single_word(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "a vault horse")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].type, 'derivation')
+
+    def test_derivation_in_document_with_multiword_single_word_control(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "a vaulting horse")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[0].type, 'direct')
+
+    def test_derivation_in_search_phrase_with_multiword_root_word(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "A small vaulting horse")
+        self.assertEqual(len(matches), 2)
+        self.assertEqual(matches[0].word_matches[1].type, 'direct')
+
+    def test_derivation_in_search_phrase_with_multiword_non_root_word(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "A vaulting horse was seen")
+        self.assertEqual(len(matches), 2)
+        self.assertEqual(matches[0].word_matches[1].type, 'direct')
+
+    def test_hyphenation_1(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "A big hyphenated-multiword")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[1].type, 'direct')
+
+    def test_hyphenation_2(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "A big hyphenated multiword")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[1].type, 'direct')
+
+    def test_hyphenation_3(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "A small hyphenated-multiword")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[1].type, 'direct')
+
+    def test_hyphenation_4(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "A small hyphenated multiword")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[1].type, 'direct')
+
+    def test_hyphenation_5(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "A big unhyphenated-multiword")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[1].type, 'direct')
+
+    def test_hyphenation_6(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "A big unhyphenated multiword")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[1].type, 'direct')
+
+    def test_hyphenation_7(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "A small unhyphenated-multiword")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[1].type, 'direct')
+
+    def test_hyphenation_8(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "A small unhyphenated multiword")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[1].type, 'direct')
+
+    def test_hyphenation_9(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "hyphenated-single-multiword")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[1].type, 'direct')
+
+    def test_hyphenation_10(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                "unhyphenated-single-multiword")
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[1].type, 'direct')
 
     def test_ontology_multiword_information_in_word_match_objects_at_sentence_boundaries(self):
         holmes_manager_with_variable_search_phrases.remove_all_documents()

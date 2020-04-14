@@ -1,4 +1,4 @@
-**Holmes** is a Python 3 library (tested with version 3.7.3) that supports a number of
+**Holmes** is a Python 3 library (tested with version 3.7.7) that supports a number of
 use cases involving information extraction from English and German texts. In all use cases, the information extraction
 is based on analysing the semantic relationships expressed by the component parts of each sentence:
 

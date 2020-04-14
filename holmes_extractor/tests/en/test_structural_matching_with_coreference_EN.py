@@ -22,6 +22,7 @@ coref_holmes_manager.register_search_phrase("A man sings")
 coref_holmes_manager.register_search_phrase("Somebody finds a policy")
 coref_holmes_manager.register_search_phrase("Somebody writes a book about an animal")
 coref_holmes_manager.register_search_phrase("Hermione breaks")
+coref_holmes_manager.register_search_phrase("Somebody attempts to explain")
 no_coref_holmes_manager = holmes.Manager(model='en_core_web_lg', ontology=ontology,
         perform_coreference_resolution=False)
 no_coref_holmes_manager.register_search_phrase("A dog chases a cat")
@@ -41,7 +42,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         coref_holmes_manager.parse_and_register_document("I saw a dog and it was chasing a cat.")
         matches = coref_holmes_manager.match()
         self._check_word_match(matches[0], 0, 3, 'dog')
-        self._check_word_match(matches[0], 1, 7, 'chase')
+        self._check_word_match(matches[0], 1, 7, 'chasing')
         self._check_word_match(matches[0], 2, 9, 'cat')
 
     def test_perform_coreference_resolution_false(self):
@@ -138,7 +139,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         coref_holmes_manager.parse_and_register_document("I saw a cat. A dog was chasing it.")
         matches = coref_holmes_manager.match()
         self._check_word_match(matches[0], 0, 6, 'dog')
-        self._check_word_match(matches[0], 1, 8, 'chase')
+        self._check_word_match(matches[0], 1, 8, 'chasing')
         self._check_word_match(matches[0], 2, 3, 'cat')
 
     def test_simple_pronoun_coreference_diff_sentence_wrong_structure(self):
@@ -812,6 +813,14 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
                 """Harry asked weakly, and when nothing happened except that Ron and Hermione gripped each other still more firmly and swayed on the spot, he raised his voice. “01! There’s a war going on here!” Ron and Hermione broke apart, their arms still around each other. “I know, mate,” said Ron, who looked as though he had recently been hit on the back of the head with a Bludger, “so it’s now or never, isn’t it?” “Never mind that, what about the Horcrux?” Harry shouted. “D’you think you could just — just hold it in until we’ve got the diadem?” “Yeah — right — sorry — ” said Ron, and he and Hermione set about gathering up fangs, both pink in the face.""")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
+
+    def test_coreference_and_derivation(self):
+        coref_holmes_manager.remove_all_documents()
+        coref_holmes_manager.parse_and_register_document(
+                """They demanded an explanation. Somebody attempted it.""")
+        matches = coref_holmes_manager.match()
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0].word_matches[1].type, 'derivation')
 
     def test_parent_token_indexes(self):
         coref_holmes_manager.remove_all_documents()

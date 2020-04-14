@@ -6,6 +6,9 @@ script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join((script_directory,'test_ontology.owl')))
 ontology_holmes_manager = holmes.Manager(model='en_core_web_lg',
         perform_coreference_resolution=False, ontology=ontology)
+ontology_holmes_manager_adm_false = holmes.Manager(model='en_core_web_lg',
+        perform_coreference_resolution=False, ontology=ontology,
+        analyze_derivational_morphology=False)
 symmetric_ontology = holmes.Ontology(os.sep.join((script_directory,'test_ontology.owl')),
         symmetric_matching = True)
 symmetric_ontology_nocoref_holmes_manager = holmes.Manager(model='en_core_web_lg',
@@ -20,9 +23,9 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
             include_reverse_only = False):
         manager.remove_all_search_phrases()
         doc = manager.semantic_analyzer.parse(text_to_match)
-        phraselet_labels_to_search_phrases = {}
+        phraselet_labels_to_phraselet_infos = {}
         manager.structural_matcher.add_phraselets_to_dict(doc,
-                phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
+                phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
                 replace_with_hypernym_ancestors=replace_with_hypernym_ancestors,
                 match_all_words=match_all_words,
                 returning_serialized_phraselets=False,
@@ -32,10 +35,26 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                 reverse_only_parent_lemmas = manager.semantic_analyzer.\
                 topic_matching_reverse_only_parent_lemmas)
         self.assertEqual(
-                set(phraselet_labels_to_search_phrases.keys()),
+                set(phraselet_labels_to_phraselet_infos.keys()),
                 set(phraselet_labels))
-        self.assertEqual(len(phraselet_labels_to_search_phrases.keys()),
+        self.assertEqual(len(phraselet_labels_to_phraselet_infos.keys()),
                 len(phraselet_labels))
+
+    def _get_phraselet_dict(self, manager, text_to_match):
+        manager.remove_all_search_phrases()
+        doc = manager.semantic_analyzer.parse(text_to_match)
+        phraselet_labels_to_phraselet_infos = {}
+        manager.structural_matcher.add_phraselets_to_dict(doc,
+                phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
+                replace_with_hypernym_ancestors=False,
+                match_all_words=True,
+                returning_serialized_phraselets=False,
+                ignore_relation_phraselets=False,
+                include_reverse_only=True,
+                stop_lemmas = manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
+                reverse_only_parent_lemmas = manager.semantic_analyzer.\
+                topic_matching_reverse_only_parent_lemmas)
+        return phraselet_labels_to_phraselet_infos
 
     def test_verb_subject_no_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "A plant grows",
@@ -43,12 +62,17 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
 
     def test_phrasal_verb_subject_no_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "A plant grows up quickly",
+                ['governor-adjective: grow up-quick', 'predicate-actor: grow up-plant',
+                        'word: plant'])
+
+    def test_phrasal_verb_subject_no_entry_in_ontology_adm_false(self):
+        self._check_equals(ontology_holmes_manager_adm_false, "A plant grows up quickly",
                 ['governor-adjective: grow up-quickly', 'predicate-actor: grow up-plant',
                         'word: plant'])
 
     def test_verb_direct_object_no_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "A plant is grown",
-                ['predicate-patient: grow-plant', 'word: plant'])
+                ['predicate-passivesubject: grow-plant', 'word: plant'])
 
     def test_verb_indirect_object_no_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "Somebody gives something to a plant",
@@ -60,6 +84,10 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
 
     def test_verb_adverb_no_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "They sailed rapidly",
+                ['governor-adjective: sail-rapid'])
+
+    def test_verb_adverb_no_entry_in_ontology_adm_false(self):
+        self._check_equals(ontology_holmes_manager_adm_false, "They sailed rapidly",
                 ['governor-adjective: sail-rapidly'])
 
     def test_noun_noun_no_entry_in_ontology(self):
@@ -68,13 +96,13 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
 
     def test_possessor_possessed_no_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "A gardener's plant",
-                ['possessor-possessed: plant-gardener', 'word: plant', 'word: gardener'])
+                ['word-ofword: plant-gardener', 'word: plant', 'word: gardener'])
 
     def test_combined_no_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager,
                 "A gardener's healthy hobby plant grows in the sun",
                 ['predicate-actor: grow-plant', 'governor-adjective: plant-healthy',
-                'noun-noun: plant-hobby', 'possessor-possessed: plant-gardener',
+                'noun-noun: plant-hobby', 'word-ofword: plant-gardener',
                 'prepgovernor-noun: grow-sun', 'word: plant', 'word: hobby', 'word: gardener',
                 'word: sun'])
 
@@ -116,6 +144,12 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
 
     def test_multiword_not_in_ontology(self):
         self._check_equals(ontology_holmes_manager,
+                "Information extraction progresses with information",
+                ['predicate-actor: progress-extract', 'noun-noun: extract-inform',
+                'prepgovernor-noun: progress-inform', 'word: inform', 'word: extract'])
+
+    def test_multiword_not_in_ontology_analyze_derivational_morphology_false(self):
+        self._check_equals(ontology_holmes_manager_adm_false,
                 "Information extraction progresses with information",
                 ['predicate-actor: progress-extraction', 'noun-noun: extraction-information',
                 'prepgovernor-noun: progress-information', 'word: information', 'word: extraction'])
@@ -164,8 +198,8 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
 
     def test_multiword_not_in_ontology_symmetric_ontology(self):
         self._check_equals(symmetric_ontology_nocoref_holmes_manager, "Information extraction progresses",
-                ['predicate-actor: progress-extraction', 'noun-noun: extraction-information',
-                        'word: information', 'word: extraction'])
+                ['predicate-actor: progress-extract', 'noun-noun: extract-inform',
+                        'word: inform', 'word: extract'])
 
     def test_text_in_ontology_lemma_not_in_ontology_symmetric_ontology(self):
         self._check_equals(symmetric_ontology_nocoref_holmes_manager,
@@ -217,15 +251,14 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                 "So he did it at home", ['word: home'],
                 include_reverse_only=False)
 
-    def test_coref_and_serialization(self):
+    def test_coref_and_phraselet_labels(self):
         no_ontology_coref_holmes_manager.remove_all_search_phrases()
         doc = no_ontology_coref_holmes_manager.semantic_analyzer.parse(
                 "I saw a dog. He was chasing a cat and a cat")
-        phraselet_labels_to_search_phrases = {}
-        serialized_phraselets = \
-                no_ontology_coref_holmes_manager.structural_matcher.add_phraselets_to_dict(
+        phraselet_labels_to_phraselet_infos = {}
+        no_ontology_coref_holmes_manager.structural_matcher.add_phraselets_to_dict(
                 doc,
-                phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
+                phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
                 replace_with_hypernym_ancestors=False,
                 match_all_words=False,
                 include_reverse_only=False,
@@ -235,11 +268,8 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                 semantic_analyzer.topic_matching_phraselet_stop_lemmas,
                 reverse_only_parent_lemmas = no_ontology_coref_holmes_manager.semantic_analyzer.\
                 topic_matching_reverse_only_parent_lemmas)
-        deserialized_phraselet_labels_to_search_phrases = \
-                no_ontology_coref_holmes_manager.structural_matcher.deserialize_phraselets(
-                serialized_phraselets)
         self.assertEqual(set(
-                deserialized_phraselet_labels_to_search_phrases.keys()),
+                phraselet_labels_to_phraselet_infos.keys()),
                 set(['predicate-patient: see-dog', 'predicate-actor: chase-dog',
                 'predicate-patient: chase-cat', 'word: dog', 'word: cat']))
 
@@ -256,7 +286,7 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                 "I saw a dog. He was chasing a cat and a cat",
                 ['predicate-actor: chase-dog', 'predicate-patient: chase-cat',
                 'predicate-patient: see-dog', 'word: dog', 'word: cat',
-                'word: see', 'word: chase', 'word: -pron-'], False, True)
+                'word: see', 'word: chase'], False, True)
 
     def test_entity_defined_multiword_not_match_all_words(self):
         self._check_equals(no_ontology_coref_holmes_manager,
@@ -264,8 +294,204 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                 ['predicate-actor: come-richard paul hudson',
                 'word: richard paul hudson'], False, False)
 
+    def test_entity_defined_multiword_not_match_all_words_with_adjective(self):
+        self._check_equals(no_ontology_coref_holmes_manager,
+                "The big Richard Paul Hudson",
+                ['governor-adjective: richard paul hudson-big',
+                'word: richard paul hudson'], False, False)
+
+    def test_ontology_defined_multiword_not_match_all_words_with_adjective(self):
+        self._check_equals(ontology_holmes_manager,
+                "The big Mimi Momo",
+                ['governor-adjective: mimi momo-big',
+                'word: mimi momo'], False, False)
+
+    def test_ontology_and_entity_defined_multiword_not_match_all_words_with_adjective(self):
+        self._check_equals(ontology_holmes_manager,
+                "The big Richard Mimi Momo",
+                ['governor-adjective: richard mimi momo-big',
+                'word: richard mimi momo'], False, False)
+
     def test_entity_defined_multiword_match_all_words(self):
         self._check_equals(no_ontology_coref_holmes_manager,
                 "Richard Paul Hudson came",
                 ['predicate-actor: come-richard paul hudson',
                 'word: richard', 'word: paul', 'word: hudson', 'word: come'], False, True)
+
+    def test_entity_defined_multiword_match_all_words_with_adjective(self):
+        self._check_equals(no_ontology_coref_holmes_manager,
+                "The big Richard Paul Hudson",
+                ['governor-adjective: richard paul hudson-big',
+                'word: richard', 'word: paul', 'word: hudson', 'word: big'], False, True)
+
+    def test_ontology_defined_multiword_match_all_words_with_adjective(self):
+        self._check_equals(ontology_holmes_manager,
+                "The big Mimi Momo",
+                ['governor-adjective: mimi momo-big',
+                'word: mimi momo', 'word: big'], False, True)
+
+    def test_ontology_and_entity_defined_multiword_not_match_all_words_with_adjective(self):
+        self._check_equals(ontology_holmes_manager,
+                "The big Richard Mimi Momo",
+                ['governor-adjective: mimi momo-big', 'noun-noun: mimi momo-richard', 
+                'word: mimi momo', 'word: richard', 'word: big'], False, True)
+
+    def test_noun_lemmas_preferred_noun_lemma_first(self):
+        dict = self._get_phraselet_dict(no_ontology_coref_holmes_manager,
+                "They discussed anonymity. They wanted to use anonymous.")
+        self.assertFalse('word: anonymous' in dict)
+        self.assertFalse('governor-adjective: use-anonymous' in dict)
+        word_phraselet = dict['word: anonymity']
+        self.assertEqual(word_phraselet.parent_lemma, 'anonymity')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'anonymity')
+        relation_phraselet = dict['governor-adjective: use-anonymity']
+        self.assertEqual(relation_phraselet.child_lemma, 'anonymous')
+        self.assertEqual(relation_phraselet.child_derived_lemma, 'anonymity')
+
+    def test_noun_lemmas_preferred_noun_lemma_second(self):
+        dict = self._get_phraselet_dict(no_ontology_coref_holmes_manager,
+                "They wanted to use anonymous. They discussed anonymity.")
+        self.assertFalse('word: anonymous' in dict)
+        self.assertFalse('governor-adjective: use-anonymous' in dict)
+        word_phraselet = dict['word: anonymity']
+        self.assertEqual(word_phraselet.parent_lemma, 'anonymity')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'anonymity')
+        relation_phraselet = dict['governor-adjective: use-anonymity']
+        self.assertEqual(relation_phraselet.child_lemma, 'anonymous')
+        self.assertEqual(relation_phraselet.child_derived_lemma, 'anonymity')
+
+    def test_noun_lemmas_preferred_control(self):
+        dict = self._get_phraselet_dict(no_ontology_coref_holmes_manager,
+                "They wanted to use anonymous.")
+        self.assertFalse('word: anonymous' in dict)
+        self.assertFalse('governor-adjective: use-anonymous' in dict)
+        word_phraselet = dict['word: anonymity']
+        self.assertEqual(word_phraselet.parent_lemma, 'anonymous')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'anonymity')
+        relation_phraselet = dict['governor-adjective: use-anonymity']
+        self.assertEqual(relation_phraselet.child_lemma, 'anonymous')
+        self.assertEqual(relation_phraselet.child_derived_lemma, 'anonymity')
+
+    def test_shorter_lemmas_preferred_shorter_lemma_first(self):
+        dict = self._get_phraselet_dict(no_ontology_coref_holmes_manager,
+                "They discussed behavior. They discussed behaviour.")
+        self.assertFalse('word: behaviour' in dict)
+        self.assertFalse('word: behavior' in dict)
+        self.assertFalse('predicate-patient: discuss-behaviour' in dict)
+        self.assertFalse('predicate-patient: discuss-behavior' in dict)
+        word_phraselet = dict['word: behave']
+        self.assertEqual(word_phraselet.parent_lemma, 'behavior')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'behave')
+        relation_phraselet = dict['predicate-patient: discuss-behave']
+        self.assertEqual(relation_phraselet.child_lemma, 'behavior')
+        self.assertEqual(relation_phraselet.child_derived_lemma, 'behave')
+
+    def test_shorter_lemmas_preferred_adm_false_control(self):
+        dict = self._get_phraselet_dict(ontology_holmes_manager_adm_false,
+                "They discussed behavior. They discussed behaviour.")
+        self.assertTrue('word: behaviour' in dict)
+        self.assertTrue('word: behavior' in dict)
+        self.assertFalse('word: behave' in dict)
+        self.assertTrue('predicate-patient: discuss-behaviour' in dict)
+        self.assertTrue('predicate-patient: discuss-behavior' in dict)
+        self.assertFalse('predicate-patient: discuss-behave' in dict)
+        word_phraselet = dict['word: behavior']
+        self.assertEqual(word_phraselet.parent_lemma, 'behavior')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'behavior')
+        relation_phraselet = dict['predicate-patient: discuss-behavior']
+        self.assertEqual(relation_phraselet.child_lemma, 'behavior')
+        self.assertEqual(relation_phraselet.child_derived_lemma, 'behavior')
+
+    def test_shorter_lemmas_preferred_shorter_lemma_second(self):
+        dict = self._get_phraselet_dict(no_ontology_coref_holmes_manager,
+                "They discussed behaviour. They discussed behavior.")
+        self.assertFalse('word: behaviour' in dict)
+        self.assertFalse('word: behavior' in dict)
+        self.assertFalse('predicate-patient: discuss-behaviour' in dict)
+        self.assertFalse('predicate-patient: discuss-behavior' in dict)
+        word_phraselet = dict['word: behave']
+        self.assertEqual(word_phraselet.parent_lemma, 'behavior')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'behave')
+        relation_phraselet = dict['predicate-patient: discuss-behave']
+        self.assertEqual(relation_phraselet.child_lemma, 'behavior')
+        self.assertEqual(relation_phraselet.child_derived_lemma, 'behave')
+
+    def test_shorter_lemmas_preferred_control(self):
+        dict = self._get_phraselet_dict(no_ontology_coref_holmes_manager,
+                "They discussed behaviour. They behaved")
+        self.assertFalse('word: behaviour' in dict)
+        self.assertFalse('word: behavior' in dict)
+        self.assertFalse('predicate-patient: discuss-behaviour' in dict)
+        self.assertFalse('predicate-patient: discuss-behavior' in dict)
+        word_phraselet = dict['word: behave']
+        self.assertEqual(word_phraselet.parent_lemma, 'behaviour')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'behave')
+        relation_phraselet = dict['predicate-patient: discuss-behave']
+        self.assertEqual(relation_phraselet.child_lemma, 'behaviour')
+        self.assertEqual(relation_phraselet.child_derived_lemma, 'behave')
+
+    def test_reverse_derived_lemmas_in_ontology_one_lemma(self):
+        dict = self._get_phraselet_dict(ontology_holmes_manager,
+                "He ate moodily")
+        self.assertFalse('word: moody' in dict)
+        self.assertFalse('governor-adjective: eat-moody' in dict)
+        word_phraselet = dict['word: moodiness']
+        self.assertEqual(word_phraselet.parent_lemma, 'moodily')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'moodiness')
+        relation_phraselet = dict['governor-adjective: eat-moodiness']
+        self.assertEqual(relation_phraselet.child_lemma, 'moodily')
+        self.assertEqual(relation_phraselet.child_derived_lemma, 'moodiness')
+
+    def test_reverse_derived_lemmas_in_ontology_one_lemma(self):
+        dict = self._get_phraselet_dict(ontology_holmes_manager,
+                "He offended the cat")
+        self.assertFalse('word: offend' in dict)
+        self.assertFalse('predicate-patient: offend-cat' in dict)
+        word_phraselet = dict['word: offence']
+        self.assertEqual(word_phraselet.parent_lemma, 'offend')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'offence')
+        relation_phraselet = dict['predicate-patient: offence-cat']
+        self.assertEqual(relation_phraselet.parent_lemma, 'offend')
+        self.assertEqual(relation_phraselet.parent_derived_lemma, 'offence')
+        doc = ontology_holmes_manager.semantic_analyzer.parse('He took offense')
+        ontology_holmes_manager.structural_matcher.add_phraselets_to_dict(doc,
+                phraselet_labels_to_phraselet_infos=dict,
+                replace_with_hypernym_ancestors=False,
+                match_all_words=True,
+                returning_serialized_phraselets=False,
+                ignore_relation_phraselets=False,
+                include_reverse_only=True,
+                stop_lemmas = \
+                ontology_holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
+                reverse_only_parent_lemmas = ontology_holmes_manager.semantic_analyzer.\
+                topic_matching_reverse_only_parent_lemmas)
+        word_phraselet = dict['word: offence']
+        self.assertEqual(word_phraselet.parent_lemma, 'offense')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'offence')
+        doc = ontology_holmes_manager.semantic_analyzer.parse('He took offence')
+        ontology_holmes_manager.structural_matcher.add_phraselets_to_dict(doc,
+                phraselet_labels_to_phraselet_infos=dict,
+                replace_with_hypernym_ancestors=False,
+                match_all_words=True,
+                returning_serialized_phraselets=False,
+                ignore_relation_phraselets=False,
+                include_reverse_only=True,
+                stop_lemmas = \
+                ontology_holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
+                reverse_only_parent_lemmas = ontology_holmes_manager.semantic_analyzer.\
+                topic_matching_reverse_only_parent_lemmas)
+        word_phraselet = dict['word: offence']
+        self.assertEqual(word_phraselet.parent_lemma, 'offense')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'offence')
+
+    def test_reverse_derived_lemmas_in_ontology_multiword(self):
+        dict = self._get_phraselet_dict(ontology_holmes_manager,
+                "He used a vault horse")
+        self.assertFalse('word: vault horse' in dict)
+        self.assertFalse('predicate-patient: use-vault horse' in dict)
+        word_phraselet = dict['word: vaulting horse']
+        self.assertEqual(word_phraselet.parent_lemma, 'vaulting horse')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'vaulting horse')
+        relation_phraselet = dict['predicate-patient: use-vaulting horse']
+        self.assertEqual(relation_phraselet.child_lemma, 'vaulting horse')
+        self.assertEqual(relation_phraselet.child_derived_lemma, 'vaulting horse')

@@ -3,7 +3,8 @@ import holmes_extractor as holmes
 from holmes_extractor.errors import *
 import jsonpickle
 
-nocoref_holmes_manager = holmes.Manager('en_core_web_lg', perform_coreference_resolution=False)
+nocoref_holmes_manager = holmes.Manager('en_core_web_lg', analyze_derivational_morphology=False,
+        perform_coreference_resolution=False)
 coref_holmes_manager = holmes.Manager('en_core_web_lg', perform_coreference_resolution=True)
 german_holmes_manager = holmes.Manager('de_core_news_md')
 
@@ -190,6 +191,30 @@ class ErrorsTest(unittest.TestCase):
             stc = sttb.train(minimum_occurrences=0, cv_threshold=0).classifier()
             serialized_supervised_topic_classifier_model = stc.serialize_model()
             stc2 = coref_holmes_manager.deserialize_supervised_topic_classifier(
+                    serialized_supervised_topic_classifier_model)
+
+    def test_derivational_morphology_deserialization_error_supervised_models_true_false(self):
+        with self.assertRaises(IncompatibleAnalyzeDerivationalMorphologyDeserializationError) \
+                as context:
+            sttb = nocoref_holmes_manager.get_supervised_topic_training_basis()
+            sttb.parse_and_register_training_document("cat", 'animal', 't1')
+            sttb.parse_and_register_training_document("mouse", 'IT', 't2')
+            sttb.prepare()
+            stc = sttb.train(minimum_occurrences=0, cv_threshold=0).classifier()
+            serialized_supervised_topic_classifier_model = stc.serialize_model()
+            stc2 = coref_holmes_manager.deserialize_supervised_topic_classifier(
+                    serialized_supervised_topic_classifier_model)
+
+    def test_derivational_morphology_deserialization_error_supervised_models_false_true(self):
+        with self.assertRaises(IncompatibleAnalyzeDerivationalMorphologyDeserializationError) \
+                as context:
+            sttb = coref_holmes_manager.get_supervised_topic_training_basis()
+            sttb.parse_and_register_training_document("cat", 'animal', 't1')
+            sttb.parse_and_register_training_document("mouse", 'IT', 't2')
+            sttb.prepare()
+            stc = sttb.train(minimum_occurrences=0, cv_threshold=0).classifier()
+            serialized_supervised_topic_classifier_model = stc.serialize_model()
+            stc2 = nocoref_holmes_manager.deserialize_supervised_topic_classifier(
                     serialized_supervised_topic_classifier_model)
 
     def test_fewer_than_two_classifications_error(self):

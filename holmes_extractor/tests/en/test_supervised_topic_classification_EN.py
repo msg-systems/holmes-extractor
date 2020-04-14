@@ -20,9 +20,9 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
         sttb.parse_and_register_training_document("fast", 'dummy')
         sttb.prepare()
         freq = sttb.labels_to_classification_frequencies
-        self.assertEqual(freq['predicate-actor: chase-lion'], {'animals': 1})
-        self.assertEqual(freq['predicate-patient: chase-tiger'], {'animals': 1})
-        self.assertEqual(freq['predicate-actor: chase-lion/predicate-patient: chase-tiger'],
+        self.assertEqual(freq['predicate-actor: chasing-lion'], {'animals': 1})
+        self.assertEqual(freq['predicate-patient: chasing-tiger'], {'animals': 1})
+        self.assertEqual(freq['predicate-actor: chasing-lion/predicate-patient: chasing-tiger'],
                 {'animals': 1})
         self.assertEqual(freq['word: lion'], {'animals': 1})
         self.assertEqual(freq['word: tiger'], {'animals': 1})
@@ -33,9 +33,9 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
         sttb.parse_and_register_training_document("fast", 'dummy')
         sttb.prepare()
         freq = sttb.labels_to_classification_frequencies
-        self.assertEqual(freq['predicate-actor: chase-animal'], {'animals': 1})
-        self.assertEqual(freq['predicate-patient: chase-animal'], {'animals': 1})
-        self.assertEqual(freq['predicate-actor: chase-animal/predicate-patient: chase-animal'],
+        self.assertEqual(freq['predicate-actor: chasing-animal'], {'animals': 1})
+        self.assertEqual(freq['predicate-patient: chasing-animal'], {'animals': 1})
+        self.assertEqual(freq['predicate-actor: chasing-animal/predicate-patient: chasing-animal'],
                 {'animals': 1})
         self.assertEqual(freq['word: animal'], {'animals': 2})
 
@@ -145,19 +145,19 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
                 'animals2')
         sttb2.prepare()
         freq2 = sttb2.labels_to_classification_frequencies
-        self.assertEqual(freq1['predicate-actor: chase-animal/predicate-patient: chase-animal'],
+        self.assertEqual(freq1['predicate-actor: chasing-animal/predicate-patient: chasing-animal'],
                 {'animals': 4, 'animals2': 4})
-        self.assertEqual(freq1['predicate-actor: chase-animal'],
+        self.assertEqual(freq1['predicate-actor: chasing-animal'],
                 {'animals': 4, 'animals2': 4})
-        self.assertEqual(freq1['predicate-patient: chase-animal'],
+        self.assertEqual(freq1['predicate-patient: chasing-animal'],
                 {'animals': 4, 'animals2': 4})
         self.assertEqual(freq1['word: animal'],
                 {'animals': 8, 'animals2': 8})
-        self.assertEqual(freq2['predicate-actor: chase-animal/predicate-patient: chase-animal'],
+        self.assertEqual(freq2['predicate-actor: chasing-animal/predicate-patient: chasing-animal'],
                 {'animals': 2, 'animals2': 2})
-        self.assertEqual(freq2['predicate-actor: chase-animal'],
+        self.assertEqual(freq2['predicate-actor: chasing-animal'],
                 {'animals': 2, 'animals2': 2})
-        self.assertEqual(freq2['predicate-patient: chase-animal'],
+        self.assertEqual(freq2['predicate-patient: chasing-animal'],
                 {'animals': 2, 'animals2': 2})
         self.assertEqual(freq2['word: animal'],
                 {'animals': 2, 'animals2': 2})
@@ -172,10 +172,10 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
         sttb.parse_and_register_training_document("A gymnast jumps over a vaulting horse", 'gym')
         sttb.prepare()
         freq = sttb.labels_to_classification_frequencies
-        self.assertEqual(freq['predicate-actor: chase-animal'], {'animals': 4})
+        self.assertEqual(freq['predicate-actor: chasing-animal'], {'animals': 4})
         self.assertEqual(freq['predicate-actor: jump-gymnast'], {'gym': 2})
-        self.assertEqual(freq['predicate-patient: chase-animal'], {'animals': 4})
-        self.assertEqual(freq['predicate-actor: chase-animal/predicate-patient: chase-animal'],
+        self.assertEqual(freq['predicate-patient: chasing-animal'], {'animals': 4})
+        self.assertEqual(freq['predicate-actor: chasing-animal/predicate-patient: chasing-animal'],
                 {'animals': 4})
         self.assertEqual(freq['word: animal'], {'animals': 8, 'gym': 1})
         self.assertEqual(freq['word: gymnast'], {'gym': 2})
@@ -291,17 +291,17 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
         sttb.prepare()
         trainer = sttb.train(minimum_occurrences=4, cv_threshold=0.0)
         self.assertEqual(list(trainer._sorted_label_dict.keys()),
-                ['predicate-actor: chase-animal',
-                'predicate-actor: chase-animal/predicate-patient: chase-animal',
-                'predicate-patient: chase-animal', 'word: animal'])
-        self.assertEqual(set(map(lambda phr: phr.label, trainer._serialized_phraselets)),
-                {'predicate-actor: chase-animal',
-                'predicate-patient: chase-animal', 'word: animal'})
+                ['predicate-actor: chasing-animal',
+                'predicate-actor: chasing-animal/predicate-patient: chasing-animal',
+                'predicate-patient: chasing-animal', 'word: animal'])
+        self.assertEqual(set(map(lambda phr: phr.label, trainer._phraselet_infos)),
+                {'predicate-actor: chasing-animal',
+                'predicate-patient: chasing-animal', 'word: animal'})
         trainer2 = sttb.train(minimum_occurrences=4, cv_threshold=1)
         self.assertEqual(list(trainer2._sorted_label_dict.keys()),
-                ['predicate-actor: chase-animal',
-                'predicate-actor: chase-animal/predicate-patient: chase-animal',
-                'predicate-patient: chase-animal'])
-        self.assertEqual(set(map(lambda phr: phr.label, trainer2._serialized_phraselets)),
-                {'predicate-actor: chase-animal',
-                'predicate-patient: chase-animal'})
+                ['predicate-actor: chasing-animal',
+                'predicate-actor: chasing-animal/predicate-patient: chasing-animal',
+                'predicate-patient: chasing-animal'])
+        self.assertEqual(set(map(lambda phr: phr.label, trainer2._phraselet_infos)),
+                {'predicate-actor: chasing-animal',
+                'predicate-patient: chasing-animal'})
