@@ -2285,7 +2285,7 @@ The initial open-source version.
 -  Addition of derivational morphology analysis allowing the matching of related words with the
 same stem.
 -  Addition of new dependency types and dependency matching rules to make full use of the new derivational morphology information.
--  For German, analysis of and matching with subwords: constituent parts of compound words, e.g. *Information* and *Extraktion* are the subwords within *Informationsextraktion*.
+-  For German, analysis of and matching with subwords (constituent parts of compound words), e.g. *Information* and *Extraktion* are the subwords within *Informationsextraktion*.
 -  It is now possible to supply multiple ontology files to the [Ontology](#ontology) constructor.
 -  Ontology implication rules are now calculated eagerly to improve runtime performance.
 -  [Ontology-based matching](#ontology-based-matching) now includes special, language-specific rules to handle hyphens within ontology entries.
