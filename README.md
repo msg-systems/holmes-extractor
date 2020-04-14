@@ -2292,7 +2292,7 @@ same stem.
 -  Word-match information is now included in all matches including single-word matches.
 -  [Word matches](#wordmatch) and dictionaries derived from them now include human-readable explanations designed to be used as tooltips.
 -  In [topic matching](#manager-topic-match-function), a penalty is now applied to ontology-based matches as well as to embedding-based matches.
--  [Topic matching](#manager-topic-match-function) now includes a filter facility that specifies
+-  [Topic matching](#manager-topic-match-function) now includes a filter facility to specify
 that only documents whose labels begin with a certain string should be searched.
 -  Error handling and reporting have been improved for the
 [MultiprocessingManager](#multiprocessing-manager).
