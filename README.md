@@ -2297,3 +2297,4 @@ that only documents whose labels begin with a certain string should be searched.
 -  Error handling and reporting have been improved for the
 [MultiprocessingManager](#multiprocessing-manager).
 -  Numerous minor improvements and bugfixes.
+-  The [demo website](http://holmes-demo.xt.msg.team/) has been updated to reflect the changes.
