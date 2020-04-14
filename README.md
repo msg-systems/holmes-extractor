@@ -804,7 +804,7 @@ Coreference resolution is performed using the [neuralcoref](https://github.com/h
 library running on top of spaCy. The `neuralcoref` library detects chains of coreferring nouns and pronouns that can
 grow to considerable lengths when longer texts are analysed. For Holmes, it has been found
 to be appropriate to limit the consideration of coreference resolution information to a small
-number of mentions either side of a noun or pronoun within a chain: the threshold is currently set to 3.
+number of mentions either side of a noun or pronoun within a chain — the threshold is currently set to 3 — as well as to suppress coreference between elements more than 300 words apart.
 
 Alongside the main use of coreference resolution information to increase the scope of
 structural matching between search phrases and documents, Holmes also looks for situations
@@ -2294,4 +2294,6 @@ same stem.
 -  In [topic matching](#manager-topic-match-function), a penalty is now applied to ontology-based matches as well as to embedding-based matches.
 -  [Topic matching](#manager-topic-match-function) now includes a filter facility that specifies
 that only documents whose labels begin with a certain string should be searched.
+-  Error handling and reporting have been improved for the
+[MultiprocessingManager](#multiprocessing-manager).
 -  Numerous minor improvements and bugfixes.

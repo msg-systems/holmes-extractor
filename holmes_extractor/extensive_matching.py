@@ -699,19 +699,13 @@ class TopicMatcher:
                     return True
             return False
 
-        def alter_start_and_end_indexes_for_match(start_index, end_index, match,
-                reference_match_index_within_document):
-            if match.index_within_document < start_index:
-                start_index = match.index_within_document
+        def alter_start_and_end_indexes_for_match(start_index, end_index, match):
             for word_match in match.word_matches:
                 if word_match.first_document_token.i < start_index:
                     start_index = word_match.first_document_token.i
                 if word_match.document_subword != None and \
                         word_match.document_subword.containing_token_index < start_index:
                     start_index = word_match.document_subword.containing_token_index
-            if match.index_within_document > end_index:
-                end_index = match.index_within_document
-            for word_match in match.word_matches:
                 if word_match.last_document_token.i > end_index:
                     end_index = word_match.last_document_token.i
                 if word_match.document_subword != None and \
@@ -735,7 +729,7 @@ class TopicMatcher:
             start_index, end_index = alter_start_and_end_indexes_for_match(
                     score_sorted_match.index_within_document,
                     score_sorted_match.index_within_document,
-                    score_sorted_match, score_sorted_match.index_within_document)
+                    score_sorted_match)
             previous_index_within_list = score_sorted_match.original_index_within_list
             while previous_index_within_list > 0 and position_sorted_structural_matches[
                     previous_index_within_list-1].document_label == \
@@ -755,8 +749,7 @@ class TopicMatcher:
                 previous_index_within_list -= 1
                 start_index, end_index = alter_start_and_end_indexes_for_match(
                         start_index, end_index,
-                        position_sorted_structural_matches[previous_index_within_list],
-                        score_sorted_match.index_within_document)
+                        position_sorted_structural_matches[previous_index_within_list])
             next_index_within_list = score_sorted_match.original_index_within_list
             while next_index_within_list + 1 < len(score_sorted_structural_matches) and \
                     position_sorted_structural_matches[next_index_within_list+1].document_label == \
@@ -774,8 +767,7 @@ class TopicMatcher:
                 next_index_within_list += 1
                 start_index, end_index = alter_start_and_end_indexes_for_match(
                         start_index, end_index,
-                        position_sorted_structural_matches[next_index_within_list],
-                        score_sorted_match.index_within_document)
+                        position_sorted_structural_matches[next_index_within_list])
             working_document = \
                     self.indexed_documents[score_sorted_match.document_label].doc
             relevant_sentences = [sentence for sentence in working_document.sents

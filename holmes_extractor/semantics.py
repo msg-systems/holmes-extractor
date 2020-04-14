@@ -514,7 +514,8 @@ class SemanticAnalyzer(ABC):
             for span in cluster:
                 for candidate in span.root._.holmes.loop_token_and_righthand_siblings(
                         token.doc):
-                    if candidate.i == token.i:
+                    if candidate.i == token.i and candidate.i >= span.start and candidate.i < \
+                            span.end:
                         this_token_mention_index = counter
                         if token._.holmes.mention_root_index == None:
                             token._.holmes.mention_root_index = span.root.i
@@ -526,15 +527,16 @@ class SemanticAnalyzer(ABC):
             if this_token_mention_index > -1:
                 for span in cluster:
                     if abs(counter - this_token_mention_index) <= \
-                            self._maximum_mentions_in_coreference_chain:
-                        indexes = []
-                        for candidate in span.root._.holmes.loop_token_and_righthand_siblings(
-                                token.doc):
-                            if candidate.i >= span.start and candidate.i <= span.end and not \
-                                    (token.i >= span.start and token.i <= span.end and
-                                    candidate.i != token.i):
-                                indexes.append(candidate.i)
-                        token._.holmes.mentions.append(Mention(span.root.i, indexes))
+                            self._maximum_mentions_in_coreference_chain and abs(span.root.i -
+                            token.i) < self._maximum_word_distance_in_coreference_chain:
+                        siblings_of_span_root = [span.root.i]
+                        siblings_of_span_root.extend(span.root._.holmes.righthand_siblings)
+                        indexes_within_mention = []
+                        for candidate in siblings_of_span_root:
+                            if candidate >= span.start and candidate < span.end and not \
+                                    (candidate != token.i and token.i in siblings_of_span_root):
+                                indexes_within_mention.append(candidate)
+                        token._.holmes.mentions.append(Mention(span.root.i, indexes_within_mention))
                     counter += 1
         working_set = set()
         for mention in token._.holmes.mentions:
@@ -630,6 +632,8 @@ class SemanticAnalyzer(ABC):
     _mark_child_dependencies_copied_to_siblings_as_uncertain = NotImplemented
 
     _maximum_mentions_in_coreference_chain = NotImplemented
+
+    _maximum_word_distance_in_coreference_chain = NotImplemented
 
     _model_supports_coreference_resolution = NotImplemented
 
@@ -1011,6 +1015,10 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
     # Coreference chains are only processed up to this number of mentions away from the currently
     # matched document location
     _maximum_mentions_in_coreference_chain = 3
+
+    # Coreference chains are only processed up to this number of words away from the currently
+    # matched document location
+    _maximum_word_distance_in_coreference_chain = 300
 
     # Presently depends purely on the language
     _model_supports_coreference_resolution = True
@@ -1584,6 +1592,9 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
 
     # Never used at the time of writing
     _maximum_mentions_in_coreference_chain = 3
+
+    # Never used at the time of writing
+    _maximum_word_distance_in_coreference_chain = 300
 
     _model_supports_coreference_resolution = False
 

@@ -550,8 +550,6 @@ class MultiprocessingManager:
     def _handle_reply(self, worker_label, return_value):
         """ If 'return_value' is an exception, return it, otherwise return 'None'. """
         if isinstance(return_value, Exception):
-            with self._lock:
-                print('Exception', type(return_value), worker_label, return_value)
             return return_value
         elif self._verbose:
             if not type(return_value) is list:
@@ -569,10 +567,14 @@ class MultiprocessingManager:
                 self._next_worker_to_use += 1
                 if self._next_worker_to_use == self._number_of_workers:
                     self._next_worker_to_use = 0
+        recorded_exception = None
         for _ in range(0, len(dict)):
             possible_exception = self._handle_reply(*reply_queue.get())
-            if possible_exception != None:
-                self.close()
+            if possible_exception != None and recorded_exception == None:
+                recorded_exception = possible_exception
+        if recorded_exception != None:
+            with(self._lock):
+                print ('ERROR: not all documents were registered successfully. Please examine the above output from the worker processes to identify the problem.')
 
     def parse_and_register_documents(self, document_dictionary):
         """Parameters:
@@ -668,16 +670,18 @@ class MultiprocessingManager:
                     sideways_match_extent, only_one_result_per_document, number_of_results,
                     document_label_filter, tied_result_quotient), reply_queue))
         topic_match_dicts = []
+        recorded_exception = None
         for _ in range(0, self._number_of_workers):
             worker_label, worker_topic_match_dicts = reply_queue.get()
-            possible_exception = self._handle_reply(worker_label, worker_topic_match_dicts)
-            if possible_exception != None:
-                self.close()
-                break
-            topic_match_dicts.extend(worker_topic_match_dicts)
-        else:
-            return TopicMatchDictionaryOrderer().order(topic_match_dicts, number_of_results,
-                    tied_result_quotient)
+            if recorded_exception == None:
+                recorded_exception = self._handle_reply(worker_label, worker_topic_match_dicts)
+            if not isinstance(worker_topic_match_dicts, Exception):
+                topic_match_dicts.extend(worker_topic_match_dicts)
+        if recorded_exception != None:
+            with(self._lock):
+                print ('ERROR: not all workers returned results. Please examine the above output from the worker processes to identify the problem.')
+        return TopicMatchDictionaryOrderer().order(topic_match_dicts, number_of_results,
+                tied_result_quotient)
 
     def start_topic_matching_search_mode_console(self, only_one_result_per_document=False,
             maximum_number_of_single_word_matches_for_relation_matching=500,
@@ -713,6 +717,14 @@ class Worker:
     """Worker implementation used by *MultiprocessingManager*.
     """
 
+    def _error_header(self, method, args, worker_label):
+        if method.__name__.endswith('register_document'):
+            return ''.join((worker_label, ' - error registering document ', args[1],
+                    '. Please submit a Github issue including the following stack trace for analysis:'))
+        else:
+            return ''.join((worker_label,
+                    ' - error. Please submit a Github issue including the following stack trace for analysis:'))
+
     def listen(self, semantic_analyzer, structural_matcher, input_queue, worker_label):
         semantic_analyzer.reload_model() # necessary to avoid neuralcoref MemoryError on Linux
         indexed_documents = {}
@@ -720,16 +732,18 @@ class Worker:
             method, args, reply_queue = input_queue.get()
             try:
                 reply = method(semantic_analyzer, structural_matcher, indexed_documents, *args)
+                reply_queue.put((worker_label, reply))
             except Exception as err:
+                print(self._error_header(method, args,
+                        worker_label))
                 print(traceback.format_exc())
                 reply_queue.put((worker_label, err))
-                break
             except:
+                print(self._error_header(method, args,
+                        worker_label))
                 print(traceback.format_exc())
                 err_identifier = str(sys.exc_info()[0])
                 reply_queue.put((worker_label, err_identifier))
-                break
-            reply_queue.put((worker_label, reply))
 
     def worker_parse_and_register_document(self, semantic_analyzer, structural_matcher,
             indexed_documents, document_text, label):

@@ -653,6 +653,11 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[7]._.holmes.token_and_coreference_chain_indexes, [7,0,2])
         self.assertEqual(doc[3]._.holmes.token_and_coreference_chain_indexes, [3])
 
+    def test_coreference_within_relative_clause(self):
+        doc = analyzer.parse("The man who knows himself has an advantage")
+        self.assertEqual(doc[1]._.holmes.token_and_coreference_chain_indexes, [1,4])
+        self.assertEqual(doc[4]._.holmes.token_and_coreference_chain_indexes, [4,1])
+
     def test_coreference_repeated_conjunctions(self):
         doc = analyzer.parse("A dog and a man came. A dog and a man sang")
         # suboptimal situation that has to be rectified during structural matching
@@ -802,3 +807,6 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
     def test_no_derived_lemma(self):
         doc = analyzer.parse("vehicle.")
         self.assertEqual(doc[0]._.holmes.derived_lemma, None)
+
+    def test_formerly_problematic_sentence_no_exception_thrown(self):
+        analyzer.parse("Mothers with vouchers for themselves and their young childrenwere finding that many eligible products were gone.")
