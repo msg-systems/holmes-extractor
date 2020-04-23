@@ -992,7 +992,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
             'dative': ['pobjt', 'relant', 'nsubjpass'],
             'pobjt': ['dative', 'relant'],
             'nsubjpass': ['dobj', 'pobjo', 'poss', 'relant', 'csubjpass',
-                    'compound','advmodobj', 'arg', 'dative', 'relant'],
+                    'compound','advmodobj', 'arg', 'dative'],
             'dobj': ['pobjo', 'poss', 'relant', 'nsubjpass', 'csubjpass',
                     'compound','advmodobj', 'arg', 'xcomp'],
             'nmod': ['appos', 'compound', 'nummod'],

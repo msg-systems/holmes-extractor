@@ -260,7 +260,7 @@ class Manager:
             relation_score=30, reverse_only_relation_score = 20,
             single_word_score=5, single_word_any_tag_score=2,
             overlapping_relation_multiplier=1.5, embedding_penalty=0.6,
-            ontology_penalty=0.9, maximum_activation_value=1000,
+            ontology_penalty=0.9,
             maximum_number_of_single_word_matches_for_relation_matching = 500,
             maximum_number_of_single_word_matches_for_embedding_matching = 100,
             sideways_match_extent=100, only_one_result_per_document=False, number_of_results=10,
