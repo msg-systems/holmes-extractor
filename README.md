@@ -94,6 +94,7 @@ Author: <a href="mailto:richard.hudson@msg.group">Richard Paul Hudson, msg syste
         -   [8.4.1 Version 2.0.x](#version-20x)
         -   [8.4.2 Version 2.1.0](#version-210)
         -   [8.4.3 Version 2.2.0](#version-220)
+        -   [8.4.4 Version 2.2.1](#version-221)
 
 <a id="introduction"></a>
 ### 1. Introduction
@@ -2298,3 +2299,9 @@ that only documents whose labels begin with a certain string should be searched.
 [MultiprocessingManager](#multiprocessing-manager).
 -  Numerous minor improvements and bugfixes.
 -  The [demo website](http://holmes-demo.xt.msg.team/) has been updated to reflect the changes.
+
+<a id="version-221"></a>
+##### 8.4.4 Version 2.2.1
+
+-  Fixed bug with reverse derived lemmas and subwords (only affects German).
+-  Removed dead code.
