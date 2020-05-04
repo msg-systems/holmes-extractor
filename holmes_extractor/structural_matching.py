@@ -616,24 +616,28 @@ class StructuralMatcher:
                             lemma_or_derived_lemma()
                 else:
                     derived_lemma = lemma
+                if self.ontology != None and self.analyze_derivational_morphology:
+                    for reverse_derived_word in self.reverse_derived_lemmas_in_ontology(
+                            token._.holmes.subwords[index.subword_index]):
+                        derived_lemma = reverse_derived_word.lower()
+                        break
             else:
                 lemma = token._.holmes.lemma
                 if self.analyze_derivational_morphology:
                     derived_lemma = token._.holmes.lemma_or_derived_lemma()
                 else:
                     derived_lemma = lemma
-            # the normal situation
-            if self.ontology != None and not self.ontology.contains(lemma):
-                if self.ontology.contains(token.text.lower()):
-                    lemma = derived_lemma = token.text.lower()
-                # ontology contains text but not lemma, so return text
-            if self.ontology != None and self.analyze_derivational_morphology:
-                for reverse_derived_word in self.reverse_derived_lemmas_in_ontology(token):
-                    derived_lemma = reverse_derived_word.lower()
-                    break
-                    # ontology contains a word pointing to the same derived lemma,
-                    # so return that. Note that if there are several such words the same
-                    # one will always be returned.
+                if self.ontology != None and not self.ontology.contains(lemma):
+                    if self.ontology.contains(token.text.lower()):
+                        lemma = derived_lemma = token.text.lower()
+                    # ontology contains text but not lemma, so return text
+                if self.ontology != None and self.analyze_derivational_morphology:
+                    for reverse_derived_word in self.reverse_derived_lemmas_in_ontology(token):
+                        derived_lemma = reverse_derived_word.lower()
+                        break
+                        # ontology contains a word pointing to the same derived lemma,
+                        # so return that. Note that if there are several such words the same
+                        # one will always be returned.
             index_to_lemmas_cache[index] = lemma, derived_lemma
             return lemma, derived_lemma
 

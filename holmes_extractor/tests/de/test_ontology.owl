@@ -90,6 +90,12 @@
     
 
 
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2020/1/subwordtests#abfliegen -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2020/1/subwordtests#abfliegen"/>
+    
+
+
     <!-- http://www.semanticweb.org/hudsonr/ontologies/2020/1/subwordtests#jagen -->
 
     <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2020/1/subwordtests#jagen"/>

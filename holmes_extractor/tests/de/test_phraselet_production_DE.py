@@ -441,3 +441,15 @@ class GermanPhraseletProductionTest(unittest.TestCase):
         relation_phraselet = dict['intcompound: komitee-information']
         self.assertEqual(relation_phraselet.child_lemma, 'informierung')
         self.assertEqual(relation_phraselet.child_derived_lemma, 'information')
+
+    def test_intcompound_when_word_in_ontology(self):
+        dict = self._get_phraselet_dict(holmes_manager,
+                "Sprachwissenschaft.")
+        self.assertEqual(set(dict.keys()), {'word: sprachwissenschaft', 'word: sprach',
+                'word: wissenschaft', 'intcompound: wissenschaft-sprach'})
+
+    def test_intcompound_when_reverse_derived_lemma_in_ontology(self):
+        dict = self._get_phraselet_dict(holmes_manager,
+                "Sammelabflug.")
+        self.assertEqual(set(dict.keys()), {'word: sammelabflug', 'word: sammel', 'word: abfliegen',
+                'intcompound: abfliegen-sammel'})
