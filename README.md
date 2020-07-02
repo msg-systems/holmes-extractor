@@ -1776,8 +1776,8 @@ cv_threshold -- the minimum coefficient of variation with which a word or relati
 mlp_* -- see https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPClassifier.html.
 oneshot -- whether the same word or relationship matched multiple times within a single
   document should be counted once only (value 'True') or multiple times (value 'False')
-overlap_memory_size -- how many non-word phraselet matches to the left should be
-  checked for words in common with a current match.
+overlap_memory_size -- No longer has any effect - the value defined in __init__()
+  is used instead. Retained for backwards compatibility.
 hidden_layer_sizes -- a list where each entry is the size of a hidden layer, or 'None'
   if the topology should be determined automatically.
 ```

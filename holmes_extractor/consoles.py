@@ -14,14 +14,16 @@ class HolmesConsoles:
         if match_dict['negated']:
             match_description_to_return = '; negated'
         if match_dict['uncertain']:
-            match_description_to_return = ''.join((match_description_to_return, '; uncertain'))
+            match_description_to_return = ''.join((
+                match_description_to_return, '; uncertain'))
         if match_dict['involves_coreference']:
-            match_description_to_return = ''.join((match_description_to_return,
-                    '; involves coreference'))
+            match_description_to_return = ''.join((
+                match_description_to_return, '; involves coreference'))
         overall_similarity_measure = float(match_dict['overall_similarity_measure'])
         if overall_similarity_measure < 1.0:
-            match_description_to_return = ''.join((match_description_to_return,
-                    '; overall similarity measure=', str(overall_similarity_measure)))
+            match_description_to_return = ''.join((
+                match_description_to_return, '; overall similarity measure=',
+                str(overall_similarity_measure)))
         return match_description_to_return
 
     def _string_representation_of_word_match(self, word_match):
@@ -30,8 +32,9 @@ class HolmesConsoles:
             extracted_word = ''.join(("(refers to '", word_match['extracted_word'], "')"))
         else:
             extracted_word = ''
-        string = ''.join(("'", word_match['document_phrase'], "'", extracted_word, "->'",
-                word_match['search_phrase_word'], "' (", word_match['match_type']))
+        string = ''.join((
+            "'", word_match['document_phrase'], "'", extracted_word, "->'",
+            word_match['search_phrase_word'], "' (", word_match['match_type']))
         if float(word_match['similarity_measure']) < 1.0:
             string = ''.join((string, ': ', word_match['similarity_measure']))
         string = ''.join((string, ")"))
@@ -42,7 +45,7 @@ class HolmesConsoles:
         print("Holmes version 2.2 written by richard.hudson@msg.group")
         print("Language is", self._semantic_analyzer.language_name)
         print("Model is", self._semantic_analyzer.model)
-        if self._structural_matcher.ontology == None:
+        if self._structural_matcher.ontology is None:
             print("No ontology is being used")
         else:
             print("Ontology is", self._structural_matcher.ontology.path)
@@ -58,7 +61,8 @@ class HolmesConsoles:
             print("Derivational morphology analysis is ON")
         else:
             print("Derivational morphology analysis is OFF")
-        print("Overall similarity threshold is", str(
+        print(
+            "Overall similarity threshold is", str(
                 self._structural_matcher.overall_similarity_threshold))
         if self._structural_matcher.overall_similarity_threshold < 1.0:
             if self._structural_matcher.embedding_based_matching_on_root_words:
@@ -81,11 +85,11 @@ class HolmesConsoles:
             print(''.join(("Search phrase '", search_phrase.doc.text, "'")))
             # only has an effect when debug==True
             self._semantic_analyzer.debug_structures(search_phrase.doc)
-            if self._structural_matcher.ontology != None:
+            if self._structural_matcher.ontology is not None:
                 for token in search_phrase.matchable_tokens:
                     lemma = token._.holmes.lemma
                     matching_terms = self._structural_matcher.ontology.get_words_matching(
-                            lemma)
+                        lemma)
                     if len(matching_terms) > 0:
                         print(lemma, 'also matches', matching_terms)
             print()
@@ -101,11 +105,12 @@ class HolmesConsoles:
             match_dicts = self._holmes.match_search_phrases_against(entry=search_sentence)
             for match_dict in match_dicts:
                 print()
-                print(''.join(("Matched search phrase '",
-                        match_dict['search_phrase'], "'", self._match_description(match_dict),
-                        ":")))
-                word_matches_string = '; '.join(
-                    map(self._string_representation_of_word_match, match_dict['word_matches']))
+                print(''.join((
+                    "Matched search phrase '",
+                    match_dict['search_phrase'], "'", self._match_description(match_dict),
+                    ":")))
+                word_matches_string = '; '.join(map(
+                    self._string_representation_of_word_match, match_dict['word_matches']))
                 print(word_matches_string)
 
     def start_structural_search_mode(self):
@@ -131,7 +136,7 @@ class HolmesConsoles:
             if search_phrase in ('exit', 'exit()', 'bye'):
                 break
             print()
-            match_dicts=[]
+            match_dicts = []
             try:
                 match_dicts = self._holmes.match_documents_against(search_phrase_text=search_phrase)
                 if len(match_dicts) == 0:
@@ -139,32 +144,44 @@ class HolmesConsoles:
                 else:
                     print('Structural matching results:')
             except SearchPhraseContainsNegationError:
-                print('Structural matching was not attempted because the search phrase contained negation (not, never).')
+                print(
+                    'Structural matching was not attempted because the search phrase contained '\
+                    'negation (not, never).')
                 print()
             except SearchPhraseContainsConjunctionError:
-                print('Structural matching was not attempted because the search phrase contained conjunction (and, or).')
+                print(
+                    'Structural matching was not attempted because the search phrase contained '\
+                    'conjunction (and, or).')
                 print()
             except SearchPhraseContainsCoreferringPronounError:
-                print('Structural matching was not attempted because the search phrase contained a pronoun that referred back to a noun.')
+                print(
+                    'Structural matching was not attempted because the search phrase contained a '\
+                    'pronoun that referred back to a noun.')
                 print()
             except SearchPhraseWithoutMatchableWordsError:
-                print('Structural matching was not attempted because the search phrase did not contain any words that could be matched.')
+                print(
+                    'Structural matching was not attempted because the search phrase did not '\
+                    ' contain any words that could be matched.')
                 print()
             except SearchPhraseContainsMultipleClausesError:
-                print('Structural matching was not attempted because the search phrase contained multiple clauses.')
+                print(
+                    'Structural matching was not attempted because the search phrase contained '\
+                    'multiple clauses.')
                 print()
             print()
             for match_dict in match_dicts:
                 print()
-                print(''.join(("Matched document '", match_dict['document'],
-                        "' at index ", str(match_dict['index_within_document']),
-                        self._match_description(match_dict), ":")))
+                print(''.join((
+                    "Matched document '", match_dict['document'],
+                    "' at index ", str(match_dict['index_within_document']),
+                    self._match_description(match_dict), ":")))
                 print(''.join(('"', match_dict['sentences_within_document'], '"')))
-                word_matches_string = '; '.join(map(self._string_representation_of_word_match,
-                        match_dict['word_matches']))
+                word_matches_string = '; '.join(
+                    map(self._string_representation_of_word_match, match_dict['word_matches']))
                 print(word_matches_string)
 
-    def start_topic_matching_search_mode(self, only_one_result_per_document,
+    def start_topic_matching_search_mode(
+            self, only_one_result_per_document,
             maximum_number_of_single_word_matches_for_relation_matching,
             maximum_number_of_single_word_matches_for_embedding_matching):
         """Starts a topic matching search mode console enabling the matching of pre-registered
@@ -195,21 +212,20 @@ class HolmesConsoles:
                 break
             print()
             print('Performing topic matching ...')
-            topic_matches = {}
             try:
                 print()
                 topic_match_dicts = \
                         self._holmes.topic_match_documents_returning_dictionaries_against(
-                        search_text,
-                        number_of_results = 5,
-                        only_one_result_per_document=only_one_result_per_document,
-                        maximum_number_of_single_word_matches_for_relation_matching =
-                        maximum_number_of_single_word_matches_for_relation_matching,
-                        maximum_number_of_single_word_matches_for_embedding_matching =
-                        maximum_number_of_single_word_matches_for_embedding_matching)
+                            search_text,
+                            number_of_results=5,
+                            only_one_result_per_document=only_one_result_per_document,
+                            maximum_number_of_single_word_matches_for_relation_matching=
+                            maximum_number_of_single_word_matches_for_relation_matching,
+                            maximum_number_of_single_word_matches_for_embedding_matching=
+                            maximum_number_of_single_word_matches_for_embedding_matching)
             except NoSearchPhraseError:
                 pass
-            if topic_match_dicts == None or len(topic_match_dicts) == 0:
+            if topic_match_dicts is None or len(topic_match_dicts) == 0:
                 print('No topic match results were returned.')
                 print()
                 continue
@@ -218,7 +234,7 @@ class HolmesConsoles:
             else:
                 print('Topic matching results:')
             print()
-            for index, topic_match_dict in enumerate(topic_match_dicts):
+            for topic_match_dict in topic_match_dicts:
                 output = ''.join((
                     topic_match_dict['rank'],
                     '. Document ',
@@ -231,8 +247,8 @@ class HolmesConsoles:
                     str(topic_match_dict['score']),
                     ':'
                 ))
-                print (output)
+                print(output)
                 print()
-                print (topic_match_dict['text'])
+                print(topic_match_dict['text'])
                 print()
             print()

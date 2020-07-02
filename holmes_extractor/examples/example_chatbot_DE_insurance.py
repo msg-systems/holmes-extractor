@@ -1,9 +1,9 @@
-import holmes_extractor as holmes
 import os
+import holmes_extractor as holmes
 
 script_directory = os.path.dirname(os.path.realpath(__file__))
-ontology = holmes.Ontology(os.sep.join((script_directory,
-        'example_chatbot_DE_insurance_ontology.owl')))
+ontology = holmes.Ontology(os.sep.join((
+    script_directory, 'example_chatbot_DE_insurance_ontology.owl')))
 holmes_manager = holmes.Manager(model='de_core_news_md', ontology=ontology)
 holmes_manager.register_search_phrase('Jemand benötigt eine Versicherung')
 holmes_manager.register_search_phrase('Ein ENTITYPER schließt eine Versicherung ab')

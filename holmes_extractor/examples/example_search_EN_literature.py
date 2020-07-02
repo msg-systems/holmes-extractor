@@ -1,21 +1,22 @@
 import urllib.request
-import holmes_extractor as holmes
 import re
 import os
 import json
 import falcon
+import holmes_extractor as holmes
 
 if __name__ in ('__main__', 'example_search_EN_literature'):
 
     script_directory = os.path.dirname(os.path.realpath(__file__))
     ontology = holmes.Ontology(os.sep.join((
-            script_directory,'example_search_EN_literature_ontology.owl')))
+        script_directory, 'example_search_EN_literature_ontology.owl')))
     print('Initializing Holmes...')
     #Start the Holmes manager with the English model
-    holmes_manager = holmes.MultiprocessingManager(model='en_core_web_lg',
-            overall_similarity_threshold=0.9, ontology=ontology, number_of_workers=4)
-            # set number_of_workers to prevent memory exhaustion / swapping; it should never be more
-            # than the number of cores
+    holmes_manager = holmes.MultiprocessingManager(
+        model='en_core_web_lg', overall_similarity_threshold=0.9, ontology=ontology,
+        number_of_workers=4)
+        # set number_of_workers to prevent memory exhaustion / swapping; it should never be more
+        # than the number of cores
 
     def extract_chapters_from_book(book_uri, title):
         """ Download and save the chapters from a book."""
@@ -35,8 +36,9 @@ if __name__ in ('__main__', 'example_search_EN_literature'):
         chapter_counter = 1
         chapter_dict = {}
         for chapter_heading in chapter_headings:
-            label = ''.join(('Book ', title, '; Ch ', str(chapter_counter), ': ',
-                    chapter_heading.group().replace('\n', ''))).strip()
+            label = ''.join((
+                'Book ', title, '; Ch ', str(chapter_counter), ': ',
+                chapter_heading.group().replace('\n', ''))).strip()
             if chapter_counter == len(chapter_headings): # last chapter
                 content = book[chapter_heading.end():]
             else:
@@ -73,8 +75,9 @@ if __name__ in ('__main__', 'example_search_EN_literature'):
     class RestHandler():
         def on_get(self, req, resp):
             resp.body = \
-                    json.dumps(holmes_manager.topic_match_documents_returning_dictionaries_against(
-                    req.params['entry'][0:200]))
+                json.dumps(
+                    holmes_manager.topic_match_documents_returning_dictionaries_against(
+                        req.params['entry'][0:200]))
             resp.cache_control = ["s-maxage=31536000"]
 
     application = falcon.App()
