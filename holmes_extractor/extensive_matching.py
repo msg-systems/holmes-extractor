@@ -626,7 +626,9 @@ class TopicMatcher:
         document_labels_to_indexes_to_phraselet_labels = {}
         for match in (
                 match for match in position_sorted_structural_matches if not
-                match.from_single_word_phraselet):
+                match.from_single_word_phraselet and
+                        match.word_matches[0].document_token.i !=
+                        match.word_matches[1].document_token.i): # two subwords within word):
             if match.document_label in document_labels_to_indexes_to_phraselet_labels:
                 inner_dict = document_labels_to_indexes_to_phraselet_labels[match.document_label]
             else:
@@ -647,7 +649,9 @@ class TopicMatcher:
                 indexes_to_phraselet_labels = document_labels_to_indexes_to_phraselet_labels.get(
                     current_document_label, {})
             match.is_overlapping_relation = False
-            if match.from_single_word_phraselet:
+            if match.from_single_word_phraselet or \
+                    match.word_matches[0].document_token.i == \
+                    match.word_matches[1].document_token.i: # two subwords within word
                 if match.from_topic_match_phraselet_created_without_matching_tags:
                     this_match_score = self.single_word_any_tag_score
                 else:
@@ -823,7 +827,7 @@ class TopicMatcher:
             def __init__(self, relative_start_index, relative_end_index, typ, explanation):
                 self.relative_start_index = relative_start_index
                 self.relative_end_index = relative_end_index
-                self.typ = typ
+                self.type = typ
                 self.explanation = explanation
                 self.is_highest_activation = False
 
@@ -871,7 +875,9 @@ class TopicMatcher:
                         word_info = WordInfo(
                             relative_start_index, relative_end_index, 'overlapping_relation',
                             word_match.explain())
-                    elif match.from_single_word_phraselet:
+                    elif match.from_single_word_phraselet or \
+                            match.word_matches[0].document_token.i == \
+                            match.word_matches[1].document_token.i: # two subwords within word:
                         word_info = WordInfo(
                             relative_start_index, relative_end_index, 'single',
                             word_match.explain())
@@ -881,11 +887,14 @@ class TopicMatcher:
                             word_match.explain())
                     if word_info in word_infos_to_word_infos:
                         existing_word_info = word_infos_to_word_infos[word_info]
-                        if not existing_word_info.typ == 'overlapping_relation':
+                        if not existing_word_info.type == 'overlapping_relation':
                             if match.is_overlapping_relation:
-                                existing_word_info.typ = 'overlapping_relation'
-                            elif not match.from_single_word_phraselet:
-                                existing_word_info.typ = 'relation'
+                                existing_word_info.type = 'overlapping_relation'
+                            elif not match.from_single_word_phraselet and not \
+                                    match.word_matches[0].document_token.i == \
+                                    match.word_matches[1].document_token.i:
+                                    # two subwords within word::
+                                existing_word_info.type = 'relation'
                     else:
                         word_infos_to_word_infos[word_info] = word_info
             for word_info in list(word_infos_to_word_infos.keys()):
@@ -932,7 +941,7 @@ class TopicMatcher:
                 'word_infos': [
                     [
                         word_info.relative_start_index, word_info.relative_end_index,
-                        word_info.typ, word_info.is_highest_activation, word_info.explanation]
+                        word_info.type, word_info.is_highest_activation, word_info.explanation]
                     for word_info in word_infos]
                     # The word infos are labelled by array index alone to prevent the JSON from
                     # becoming too bloated

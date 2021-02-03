@@ -161,12 +161,12 @@ class GermanTopicMatchingTest(unittest.TestCase):
 
     def test_separate_words_in_text_to_match_subwords_in_document_text_with_fugen_s(self):
         self._check_equals("Die Extraktion der Information",
-                           "Informationsextraktion", 40,
+                           "Informationsextraktion", 30,
                            holmes_manager)
 
     def test_separate_words_in_text_to_match_subwords_in_document_text_without_fugen_s(self):
         self._check_equals("Eine Symphonie des Mozarts",
-                           "Mozartsymphonien", 40,
+                           "Mozartsymphonien", 30,
                            holmes_manager)
 
     def test_subwords_in_text_to_match_separate_words_in_document_text_with_fugen_s(self):
@@ -191,22 +191,22 @@ class GermanTopicMatchingTest(unittest.TestCase):
 
     def test_subwords_in_text_to_match_subwords_in_document_text_lemmatization_failed(self):
         self._check_equals("Mozartsymphonien",
-                           "Mozartsymphonie", 30,
+                           "Mozartsymphonie", 20,
                            holmes_manager)
 
     def test_subwords_conjunction_in_text_to_match(self):
         self._check_equals("Mozart- und Beethovensymphonie",
-                           "Mozartsymphonie", 30,
+                           "Mozartsymphonie", 20,
                            holmes_manager)
 
     def test_subwords_conjunction_in_document_text(self):
         self._check_equals("Mozartsymphonie",
-                           "Mozart- und Beethovensymphonie", 30,
+                           "Mozart- und Beethovensymphonie", 20,
                            holmes_manager)
 
     def test_subwords_conjunction_in_text_to_match_and_document_text(self):
         self._check_equals("Mozart- und Mahlersymphonie",
-                           "Mozart- und Beethovensymphonie", 30,
+                           "Mozart- und Beethovensymphonie", 20,
                            holmes_manager)
 
     def test_subword_matches_verbal_expression(self):
@@ -216,11 +216,11 @@ class GermanTopicMatchingTest(unittest.TestCase):
 
     def test_disjunct_relation_mapping_within_subword(self):
         self._check_equals("Extraktion von Information und Entführung von Löwen",
-                           "Informationsextraktionsentführung von Löwen", 78)
+                           "Informationsextraktionsentführung von Löwen", 68)
 
     def test_overlapping_relation_mapping_within_subword(self):
         self._check_equals("Extraktion von Information und Löwen",
-                           "Informationsextraktion von Löwen", 87)
+                           "Informationsextraktion von Löwen", 58)
 
     def test_word_with_subwords_matches_single_word_linked_via_ontology(self):
         self._check_equals("Komputerlinguistik",
@@ -270,7 +270,7 @@ class GermanTopicMatchingTest(unittest.TestCase):
 
     def test_derivation_in_subwords_2(self):
         self._check_equals("Informierung wird extrahiert",
-                           "Informationsextraktion", 35)
+                           "Informationsextraktion", 25)
 
     def test_indexes(self):
         holmes_manager.remove_all_documents()
@@ -365,7 +365,7 @@ class GermanTopicMatchingTest(unittest.TestCase):
             holmes_manager.topic_match_documents_returning_dictionaries_against(
                 "Symphonie von Information und Entführung von Löwen")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'Informationssymphonieentführung von Löwen', 'text_to_match': 'Symphonie von Information und Entführung von Löwen', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 41, 'score': 78.0, 'word_infos': [[0, 11, 'relation', False, "Matches INFORMATION directly."], [12, 21, 'relation', False, "Matches SYMPHONIE directly."], [21, 31, 'relation', False, "Matches ENTFÜHRUNG directly."], [36, 41, 'relation', True, "Matches LÖWE directly."]]}])
+                         [{'document_label': '', 'text': 'Informationssymphonieentführung von Löwen', 'text_to_match': 'Symphonie von Information und Entführung von Löwen', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 41, 'score': 53.66666666666667, 'word_infos': [[0, 11, 'single', False, "Matches INFORMATION directly."], [12, 21, 'single', False, "Matches SYMPHONIE directly."], [21, 31, 'relation', False, "Matches ENTFÜHRUNG directly."], [36, 41, 'relation', True, "Matches LÖWE directly."]]}])
 
     def test_overlapping_relation_mapping_within_subword_dictionaries(self):
         holmes_manager.remove_all_documents()
@@ -377,7 +377,7 @@ class GermanTopicMatchingTest(unittest.TestCase):
                 "Extraktion von Information und Löwen")
 
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'Informationsextraktion von Löwen', 'text_to_match': 'Extraktion von Information und Löwen', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 32, 'score': 102.33333333333334, 'word_infos': [[0, 11, 'overlapping_relation', False, "Matches INFORMATION directly."], [12, 22, 'overlapping_relation', False, "Matches EXTRAKTION directly."], [27, 32, 'overlapping_relation', True, "Matches LÖWE directly."]]}])
+                         [{'document_label': '', 'text': 'Informationsextraktion von Löwen', 'text_to_match': 'Extraktion von Information und Löwen', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 32, 'score': 48.800000000000004, 'word_infos': [[0, 11, 'single', False, "Matches INFORMATION directly."], [12, 22, 'relation', False, "Matches EXTRAKTION directly."], [27, 32, 'relation', True, "Matches LÖWE directly."]]}])
 
     def test_subword_dictionaries_subword_is_not_peak(self):
         holmes_manager.remove_all_documents()
@@ -423,7 +423,7 @@ class GermanTopicMatchingTest(unittest.TestCase):
             holmes_manager.topic_match_documents_returning_dictionaries_against(
                 "Das Abdanken eines Königs")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'Ein Königs- und Prinzenabdanken', 'text_to_match': 'Das Abdanken eines Königs', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 31, 'score': 40.0, 'word_infos': [[4, 9, 'relation', False, 'Matches KÖNIG directly.'], [23, 31, 'relation', True, 'Matches ABDANKEN directly.']]}])
+                         [{'document_label': '', 'text': 'Ein Königs- und Prinzenabdanken', 'text_to_match': 'Das Abdanken eines Königs', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 31, 'score': 15.0, 'word_infos': [[4, 9, 'single', False, 'Matches KÖNIG directly.'], [23, 31, 'single', True, 'Matches ABDANKEN directly.']]}])
 
     def test_subword_conjunction_within_dictionaries_relation_hyphen_second_word(self):
         holmes_manager.remove_all_documents()
@@ -434,4 +434,4 @@ class GermanTopicMatchingTest(unittest.TestCase):
             holmes_manager.topic_match_documents_returning_dictionaries_against(
                 "Das Prinz eines Königs")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'Ein Königsabdanken und -prinz', 'text_to_match': 'Das Prinz eines Königs', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 29, 'score': 40.0, 'word_infos': [[4, 9, 'relation', False, 'Matches KÖNIG directly.'], [24, 29, 'relation', True, 'Matches PRINZ directly.']]}])
+                         [{'document_label': '', 'text': 'Ein Königsabdanken und -prinz', 'text_to_match': 'Das Prinz eines Königs', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 29, 'score': 15.0, 'word_infos': [[4, 9, 'single', False, 'Matches KÖNIG directly.'], [24, 29, 'single', True, 'Matches PRINZ directly.']]}])
