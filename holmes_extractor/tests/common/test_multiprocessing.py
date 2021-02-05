@@ -26,7 +26,12 @@ class MultiprocessingTest(unittest.TestCase):
         self.assertEqual(m.document_labels(), ['exact', 'exact-reversed', 'specific',
                                                'specific-reversed'])
         self.assertEqual(m.topic_match_documents_returning_dictionaries_against(
-            "A dog chases an animal"),
+            "A dog chases an animal",
+            relation_score=30,
+            reverse_only_relation_score=20,
+            single_word_score=5,
+            single_word_any_tag_score=2,
+            different_match_cutoff_score=5),
             [{'document_label': 'exact', 'text': 'The dog chased the animal', 'text_to_match': 'A dog chases an animal', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 25, 'score': 44.27418511677267, 'word_infos': [[4, 7, 'overlapping_relation', False, "Matches DOG directly."], [8, 14, 'overlapping_relation', False, "Matches CHASE directly."], [19, 25, 'overlapping_relation', True, "Matches ANIMAL directly."]]}, {'document_label': 'specific', 'text': 'I saw a dog. It was chasing a cat', 'text_to_match': 'A dog chases an animal', 'rank': '2', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 33, 'score': 35.641203421657025, 'word_infos': [[8, 11, 'overlapping_relation', False, "Matches DOG directly."], [20, 27, 'overlapping_relation', False, "Is a synonym of CHASE in the ontology."], [30, 33, 'overlapping_relation', True, "Is a child of ANIMAL in the ontology."]]}, {'document_label': 'exact-reversed', 'text': 'The animal chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 25, 'score': 19.954440383093182, 'word_infos': [[4, 10, 'single', False, "Matches ANIMAL directly."], [11, 17, 'relation', False, "Matches CHASE directly."], [22, 25, 'relation', True, "Is a child of ANIMAL in the ontology."]]}, {'document_label': 'specific-reversed', 'text': 'The cat chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 22, 'score': 19.302449037645065, 'word_infos': [[4, 7, 'single', False, "Is a child of ANIMAL in the ontology."], [8, 14, 'relation', False, "Matches CHASE directly."], [19, 22, 'relation', True, "Is a child of ANIMAL in the ontology."]]}])
         m.close()
 
@@ -40,7 +45,12 @@ class MultiprocessingTest(unittest.TestCase):
         self.assertEqual(m.document_labels(), ['exact', 'exact-reversed', 'specific',
                                                'specific-reversed'])
         self.assertEqual(m.topic_match_documents_returning_dictionaries_against(
-            "A dog chases an animal"),
+            "A dog chases an animal",
+            relation_score=30,
+            reverse_only_relation_score=20,
+            single_word_score=5,
+            single_word_any_tag_score=2,
+            different_match_cutoff_score=5),
             [{'document_label': 'exact', 'text': 'The dog chased the animal', 'text_to_match': 'A dog chases an animal', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 25, 'score': 44.27418511677267, 'word_infos': [[4, 7, 'overlapping_relation', False, "Matches DOG directly."], [8, 14, 'overlapping_relation', False, "Matches CHASE directly."], [19, 25, 'overlapping_relation', True, "Matches ANIMAL directly."]]}, {'document_label': 'specific', 'text': 'I saw a dog. It was chasing a cat', 'text_to_match': 'A dog chases an animal', 'rank': '2', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 33, 'score': 35.641203421657025, 'word_infos': [[8, 11, 'overlapping_relation', False, "Matches DOG directly."], [20, 27, 'overlapping_relation', False, "Is a synonym of CHASE in the ontology."], [30, 33, 'overlapping_relation', True, "Is a child of ANIMAL in the ontology."]]}, {'document_label': 'exact-reversed', 'text': 'The animal chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 25, 'score': 19.954440383093182, 'word_infos': [[4, 10, 'single', False, "Matches ANIMAL directly."], [11, 17, 'relation', False, "Matches CHASE directly."], [22, 25, 'relation', True, "Is a child of ANIMAL in the ontology."]]}, {'document_label': 'specific-reversed', 'text': 'The cat chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 22, 'score': 19.302449037645065, 'word_infos': [[4, 7, 'single', False, "Is a child of ANIMAL in the ontology."], [8, 14, 'relation', False, "Matches CHASE directly."], [19, 22, 'relation', True, "Is a child of ANIMAL in the ontology."]]}])
         m.close()
 
@@ -54,7 +64,12 @@ class MultiprocessingTest(unittest.TestCase):
         self.assertEqual(m.document_labels(), ['exact', 'exact-reversed', 'specific',
                                                'specific-reversed'])
         self.assertEqual(m.topic_match_documents_returning_dictionaries_against(
-            "A dog chases an animal", use_frequency_factor=False),
+            "A dog chases an animal", use_frequency_factor=False,
+            relation_score=30,
+            reverse_only_relation_score=20,
+            single_word_score=5,
+            single_word_any_tag_score=2,
+            different_match_cutoff_score=5),
             [{'document_label': 'exact', 'text': 'The dog chased the animal', 'text_to_match': 'A dog chases an animal', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 25, 'score': 99.34666666666668, 'word_infos': [[4, 7, 'overlapping_relation', False, "Matches DOG directly."], [8, 14, 'overlapping_relation', False, "Matches CHASE directly."], [19, 25, 'overlapping_relation', True, "Matches ANIMAL directly."]]}, {'document_label': 'specific', 'text': 'I saw a dog. It was chasing a cat', 'text_to_match': 'A dog chases an animal', 'rank': '2', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 33, 'score': 81.94686666666668, 'word_infos': [[8, 11, 'overlapping_relation', False, "Matches DOG directly."], [20, 27, 'overlapping_relation', False, "Is a synonym of CHASE in the ontology."], [30, 33, 'overlapping_relation', True, "Is a child of ANIMAL in the ontology."]]}, {'document_label': 'exact-reversed', 'text': 'The animal chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 25, 'score': 35.39866666666667, 'word_infos': [[4, 10, 'single', False, "Matches ANIMAL directly."], [11, 17, 'relation', False, "Matches CHASE directly."], [22, 25, 'relation', True, "Is a child of ANIMAL in the ontology."]]}, {'document_label': 'specific-reversed', 'text': 'The cat chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 22, 'score': 34.486666666666665, 'word_infos': [[4, 7, 'single', False, "Is a child of ANIMAL in the ontology."], [8, 14, 'relation', False, "Matches CHASE directly."], [19, 22, 'relation', True, "Is a child of ANIMAL in the ontology."]]}])
         m.close()
 
@@ -67,7 +82,12 @@ class MultiprocessingTest(unittest.TestCase):
         self.assertEqual(m.document_labels(), ['exact', 'exact-reversed', 'specific',
                                                'specific-reversed'])
         self.assertEqual(m.topic_match_documents_returning_dictionaries_against(
-            "A dog chases an animal"),
+            "A dog chases an animal",
+            relation_score=30,
+            reverse_only_relation_score=20,
+            single_word_score=5,
+            single_word_any_tag_score=2,
+            different_match_cutoff_score=5),
             [{'document_label': 'exact', 'text': 'The dog chased the animal', 'text_to_match': 'A dog chases an animal', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 25, 'score': 44.27418511677267, 'word_infos': [[4, 7, 'overlapping_relation', False, "Matches DOG directly."], [8, 14, 'overlapping_relation', False, "Matches CHASE directly."], [19, 25, 'overlapping_relation', True, "Matches ANIMAL directly."]]}, {'document_label': 'specific', 'text': 'I saw a dog. It was chasing a cat', 'text_to_match': 'A dog chases an animal', 'rank': '2', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 33, 'score': 35.641203421657025, 'word_infos': [[8, 11, 'overlapping_relation', False, "Matches DOG directly."], [20, 27, 'overlapping_relation', False, "Is a synonym of CHASE in the ontology."], [30, 33, 'overlapping_relation', True, "Is a child of ANIMAL in the ontology."]]}, {'document_label': 'exact-reversed', 'text': 'The animal chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 25, 'score': 19.954440383093182, 'word_infos': [[4, 10, 'single', False, "Matches ANIMAL directly."], [11, 17, 'relation', False, "Matches CHASE directly."], [22, 25, 'relation', True, "Is a child of ANIMAL in the ontology."]]}, {'document_label': 'specific-reversed', 'text': 'The cat chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 22, 'score': 19.302449037645065, 'word_infos': [[4, 7, 'single', False, "Is a child of ANIMAL in the ontology."], [8, 14, 'relation', False, "Matches CHASE directly."], [19, 22, 'relation', True, "Is a child of ANIMAL in the ontology."]]}])
         m.close()
 
@@ -96,7 +116,12 @@ class MultiprocessingTest(unittest.TestCase):
         self.assertEqual(m.document_labels(), ['exact', 'exact-reversed', 'specific',
                                                'specific-reversed'])
         self.assertEqual(m.topic_match_documents_returning_dictionaries_against(
-            "A dog chases an animal"),
+            "A dog chases an animal",
+            relation_score=30,
+            reverse_only_relation_score=20,
+            single_word_score=5,
+            single_word_any_tag_score=2,
+            different_match_cutoff_score=5),
             [{'document_label': 'exact', 'text': 'The dog chased the animal', 'text_to_match': 'A dog chases an animal', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 25, 'score': 44.27418511677267, 'word_infos': [[4, 7, 'overlapping_relation', False, "Matches DOG directly."], [8, 14, 'overlapping_relation', False, "Matches CHASE directly."], [19, 25, 'overlapping_relation', True, "Matches ANIMAL directly."]]}, {'document_label': 'exact-reversed', 'text': 'The animal chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '2=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 25, 'score': 19.954440383093182, 'word_infos': [[4, 10, 'single', False, "Matches ANIMAL directly."], [11, 17, 'relation', False, "Matches CHASE directly."], [22, 25, 'relation', True, "Is a child of ANIMAL in the ontology."]]}, {'document_label': 'specific-reversed', 'text': 'The cat chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '2=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 22, 'score': 19.302449037645065, 'word_infos': [[4, 7, 'single', False, "Is a child of ANIMAL in the ontology."], [8, 14, 'relation', False, "Matches CHASE directly."], [19, 22, 'relation', True, "Is a child of ANIMAL in the ontology."]]}, {'document_label': 'specific', 'text': 'I saw a dog. It was chasing a cat', 'text_to_match': 'A dog chases an animal', 'rank': '4', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 33, 'score': 17.955272564870686, 'word_infos': [[8, 11, 'single', False, "Matches DOG directly."], [20, 27, 'relation', False, "Is a synonym of CHASE in the ontology."], [30, 33, 'relation', True, "Is a child of ANIMAL in the ontology."]]}])
         m.close()
 
@@ -110,7 +135,12 @@ class MultiprocessingTest(unittest.TestCase):
         self.assertEqual(m.document_labels(), ['exact', 'exact-reversed', 'specific',
                                                'specific-reversed'])
         self.assertEqual(m.topic_match_documents_returning_dictionaries_against(
-            "A dog chases an animal", number_of_results=3, use_frequency_factor=False),
+            "A dog chases an animal", number_of_results=3, use_frequency_factor=False,
+            relation_score=30,
+            reverse_only_relation_score=20,
+            single_word_score=5,
+            single_word_any_tag_score=2,
+            different_match_cutoff_score=5),
             [{'document_label': 'exact', 'text': 'The dog chased the animal', 'text_to_match': 'A dog chases an animal', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 25, 'score': 99.34666666666668, 'word_infos': [[4, 7, 'overlapping_relation', False, "Matches DOG directly."], [8, 14, 'overlapping_relation', False, "Matches CHASE directly."], [19, 25, 'overlapping_relation', True, "Matches ANIMAL directly."]]}, {'document_label': 'specific', 'text': 'I saw a dog. It was chasing a cat', 'text_to_match': 'A dog chases an animal', 'rank': '2', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 33, 'score': 81.94686666666668, 'word_infos': [[8, 11, 'overlapping_relation', False, "Matches DOG directly."], [20, 27, 'overlapping_relation', False, "Is a synonym of CHASE in the ontology."], [30, 33, 'overlapping_relation', True, "Is a child of ANIMAL in the ontology."]]}, {'document_label': 'exact-reversed', 'text': 'The animal chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 25, 'score': 35.39866666666667, 'word_infos': [[4, 10, 'single', False, "Matches ANIMAL directly."], [11, 17, 'relation', False, "Matches CHASE directly."], [22, 25, 'relation', True, "Is a child of ANIMAL in the ontology."]]}])
         m.close()
 
@@ -169,9 +199,19 @@ class MultiprocessingTest(unittest.TestCase):
 
         def topic_match_within_thread():
             normal_dict = m.topic_match_documents_returning_dictionaries_against(
-                "A dog chases an animal", use_frequency_factor=False)
+                "A dog chases an animal", use_frequency_factor=False,
+                relation_score=30,
+                reverse_only_relation_score=20,
+                single_word_score=5,
+                single_word_any_tag_score=2,
+                different_match_cutoff_score=5)
             reversed_dict = m.topic_match_documents_returning_dictionaries_against(
-                "The animal chased the dog", use_frequency_factor=False)
+                "The animal chased the dog", use_frequency_factor=False,
+                relation_score=30,
+                reverse_only_relation_score=20,
+                single_word_score=5,
+                single_word_any_tag_score=2,
+                different_match_cutoff_score=5)
             queue.put((normal_dict, reversed_dict))
 
         m = holmes.MultiprocessingManager('en_core_web_sm', ontology=ontology,
@@ -228,3 +268,21 @@ class MultiprocessingTest(unittest.TestCase):
                 "The dog chased the cat", document_label_filter="X")
         self.assertEqual(len(topic_match_dictionaries), 0)
         m.close()
+
+    def test_different_match_cutoff_score_high(self):
+        m = holmes.MultiprocessingManager('en_core_web_sm', number_of_workers=2,
+                                          ontology=ontology, verbose=False)
+        m.parse_and_register_documents({'': "A dog then and then and then and then and then a dog"})
+        topic_match_dictionaries = \
+            m.topic_match_documents_returning_dictionaries_against(
+                "A dog", different_match_cutoff_score=10000)
+        self.assertEqual(len(topic_match_dictionaries), 2)
+
+    def test_different_match_cutoff_score_control(self):
+        m = holmes.MultiprocessingManager('en_core_web_sm', number_of_workers=2,
+                                          ontology=ontology, verbose=False)
+        m.parse_and_register_documents({'': "A dog then and then and then and then and then a dog"})
+        topic_match_dictionaries = \
+            m.topic_match_documents_returning_dictionaries_against(
+                "A dog")
+        self.assertEqual(len(topic_match_dictionaries), 1)

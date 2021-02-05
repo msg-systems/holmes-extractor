@@ -269,8 +269,8 @@ class Manager:
 
     def topic_match_documents_against(
             self, text_to_match, *, use_frequency_factor=True, maximum_activation_distance=75,
-            relation_score=30, reverse_only_relation_score=20,
-            single_word_score=5, single_word_any_tag_score=2,
+            relation_score=300, reverse_only_relation_score=200,
+            single_word_score=50, single_word_any_tag_score=20, different_match_cutoff_score=15,
             overlapping_relation_multiplier=1.5, embedding_penalty=0.6,
             ontology_penalty=0.9,
             maximum_number_of_single_word_matches_for_relation_matching=500,
@@ -295,6 +295,9 @@ class Manager:
             word is matched.
         single_word_any_tag_score -- the activation score added when a single word is matched
             whose tag did not correspond to the template specification.
+        different_match_cutoff_score -- the activation threshold under which topic matches are
+            separated from one another. Note that the default value will probably be too low if
+            *use_frequency_factor* is set to *False*.
         overlapping_relation_multiplier -- the value by which the activation score is multiplied
             when two relations were matched and the matches involved a common document word.
         embedding_penalty -- a value between 0 and 1 with which scores are multiplied when the
@@ -338,6 +341,7 @@ class Manager:
             reverse_only_relation_score=reverse_only_relation_score,
             single_word_score=single_word_score,
             single_word_any_tag_score=single_word_any_tag_score,
+            different_match_cutoff_score=different_match_cutoff_score,
             overlapping_relation_multiplier=overlapping_relation_multiplier,
             embedding_penalty=embedding_penalty,
             ontology_penalty=ontology_penalty,
@@ -353,9 +357,9 @@ class Manager:
 
     def topic_match_documents_returning_dictionaries_against(
             self, text_to_match, *, use_frequency_factor=True,
-            maximum_activation_distance=75, relation_score=30, reverse_only_relation_score=20,
-            single_word_score=5, single_word_any_tag_score=2, overlapping_relation_multiplier=1.5,
-            embedding_penalty=0.6, ontology_penalty=0.9,
+            maximum_activation_distance=75, relation_score=300, reverse_only_relation_score=200,
+            single_word_score=50, single_word_any_tag_score=20, different_match_cutoff_score=15,
+            overlapping_relation_multiplier=1.5, embedding_penalty=0.6, ontology_penalty=0.9,
             maximum_number_of_single_word_matches_for_relation_matching=500,
             maximum_number_of_single_word_matches_for_embedding_matching=100,
             sideways_match_extent=100, only_one_result_per_document=False, number_of_results=10,
@@ -380,6 +384,9 @@ class Manager:
             word is matched.
         single_word_any_tag_score -- the activation score added when a single word is matched
             whose tag did not correspond to the template specification.
+        different_match_cutoff_score -- the activation threshold under which topic matches are
+            separated from one another. Note that the default value will probably be too low if
+            *use_frequency_factor* is set to *False*.
         overlapping_relation_multiplier -- the value by which the activation score is multiplied
             when two relations were matched and the matches involved a common document word.
         embedding_penalty -- a value between 0 and 1 with which scores are multiplied when the
@@ -425,6 +432,7 @@ class Manager:
             reverse_only_relation_score=reverse_only_relation_score,
             single_word_score=single_word_score,
             single_word_any_tag_score=single_word_any_tag_score,
+            different_match_cutoff_score=different_match_cutoff_score,
             overlapping_relation_multiplier=overlapping_relation_multiplier,
             embedding_penalty=embedding_penalty,
             ontology_penalty=ontology_penalty,
@@ -646,8 +654,8 @@ class MultiprocessingManager:
 
     def topic_match_documents_returning_dictionaries_against(
             self, text_to_match, *, use_frequency_factor=True,
-            maximum_activation_distance=75, relation_score=30, reverse_only_relation_score=20,
-            single_word_score=5, single_word_any_tag_score=2,
+            maximum_activation_distance=75, relation_score=300, reverse_only_relation_score=200,
+            single_word_score=50, single_word_any_tag_score=20, different_match_cutoff_score=15,
             overlapping_relation_multiplier=1.5, embedding_penalty=0.6, ontology_penalty=0.9,
             maximum_number_of_single_word_matches_for_relation_matching=500,
             maximum_number_of_single_word_matches_for_embedding_matching=100,
@@ -671,6 +679,9 @@ class MultiprocessingManager:
             word is matched.
         single_word_any_tag_score -- the activation score added when a single word is matched
             whose tag did not correspond to the template specification.
+        different_match_cutoff_score -- the activation threshold under which topic matches are
+            separated from one another. Note that the default value will probably be too low if
+            *use_frequency_factor* is set to *False*.
         overlapping_relation_multiplier -- the value by which the activation score is multiplied
             when two relations were matched and the matches involved a common document word.
         embedding_penalty -- a value between 0 and 1 with which scores are multiplied when the
@@ -748,8 +759,8 @@ class MultiprocessingManager:
                 (
                     text_to_match, words_to_corpus_frequencies, maximum_corpus_frequency,
                     maximum_activation_distance, relation_score, reverse_only_relation_score,
-                    single_word_score, single_word_any_tag_score, overlapping_relation_multiplier,
-                    embedding_penalty, ontology_penalty,
+                    single_word_score, single_word_any_tag_score, different_match_cutoff_score,
+                    overlapping_relation_multiplier, embedding_penalty, ontology_penalty,
                     maximum_number_of_single_word_matches_for_relation_matching,
                     maximum_number_of_single_word_matches_for_embedding_matching,
                     sideways_match_extent, only_one_result_per_document, number_of_results,
@@ -867,7 +878,8 @@ class Worker:
             self, semantic_analyzer, structural_matcher, indexed_documents, text_to_match,
             words_to_corpus_frequencies, maximum_corpus_frequency, maximum_activation_distance,
             relation_score, reverse_only_relation_score, single_word_score,
-            single_word_any_tag_score, overlapping_relation_multiplier, embedding_penalty,
+            single_word_any_tag_score, different_match_cutoff_score,
+            overlapping_relation_multiplier, embedding_penalty,
             ontology_penalty, maximum_number_of_single_word_matches_for_relation_matching,
             maximum_number_of_single_word_matches_for_embedding_matching,
             sideways_match_extent, only_one_result_per_document, number_of_results,
@@ -885,6 +897,7 @@ class Worker:
             reverse_only_relation_score=reverse_only_relation_score,
             single_word_score=single_word_score,
             single_word_any_tag_score=single_word_any_tag_score,
+            different_match_cutoff_score=different_match_cutoff_score,
             overlapping_relation_multiplier=overlapping_relation_multiplier,
             embedding_penalty=embedding_penalty,
             ontology_penalty=ontology_penalty,

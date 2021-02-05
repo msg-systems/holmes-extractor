@@ -69,8 +69,8 @@ class TopicMatcher:
             self, *, semantic_analyzer, structural_matcher, indexed_documents,
             words_to_corpus_frequencies, maximum_corpus_frequency,
             maximum_activation_distance, relation_score, reverse_only_relation_score,
-            single_word_score, single_word_any_tag_score, overlapping_relation_multiplier,
-            embedding_penalty, ontology_penalty,
+            single_word_score, single_word_any_tag_score, different_match_cutoff_score,
+            overlapping_relation_multiplier, embedding_penalty, ontology_penalty,
             maximum_number_of_single_word_matches_for_relation_matching,
             maximum_number_of_single_word_matches_for_embedding_matching,
             sideways_match_extent, only_one_result_per_document, number_of_results,
@@ -93,6 +93,7 @@ class TopicMatcher:
         self.reverse_only_relation_score = reverse_only_relation_score
         self.single_word_score = single_word_score
         self.single_word_any_tag_score = single_word_any_tag_score
+        self.different_match_cutoff_score = different_match_cutoff_score
         self.overlapping_relation_multiplier = overlapping_relation_multiplier
         self.embedding_penalty = embedding_penalty
         self.ontology_penalty = ontology_penalty
@@ -768,7 +769,7 @@ class TopicMatcher:
             while previous_index_within_list > 0 and position_sorted_structural_matches[
                     previous_index_within_list-1].document_label == \
                     score_sorted_match.document_label and position_sorted_structural_matches[
-                        previous_index_within_list].topic_score > self.single_word_score:
+                        previous_index_within_list].topic_score > self.different_match_cutoff_score:
                     # previous_index_within_list rather than previous_index_within_list -1 :
                     # when a complex structure is matched, it will often begin with a single noun
                     # that should be included within the topic match indexes
@@ -789,7 +790,7 @@ class TopicMatcher:
                     position_sorted_structural_matches[next_index_within_list+1].document_label == \
                     score_sorted_match.document_label and \
                     position_sorted_structural_matches[next_index_within_list+1].topic_score >= \
-                    self.single_word_score:
+                    self.different_match_cutoff_score:
                 if match_contained_within_existing_topic_match(
                         topic_matches, position_sorted_structural_matches[
                             next_index_within_list+1]):

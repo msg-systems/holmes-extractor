@@ -22,6 +22,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         manager.parse_and_register_document(document_text)
         topic_matches = manager.topic_match_documents_against(text_to_match, relation_score=20,
                                                               reverse_only_relation_score=15, single_word_score=10, single_word_any_tag_score=5,
+                                                              different_match_cutoff_score=10,
                                                               use_frequency_factor=use_frequency_factor)
         self.assertEqual(int(topic_matches[0].score), highest_score)
 
@@ -830,12 +831,12 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
                 "The dog chased the cat", use_frequency_factor=False)
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'A dog chased a cat. A cat.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'sentences_character_start_index_in_document': 515, 'sentences_character_end_index_in_document': 541, 'score': 99.34666666666668, 'word_infos': [[2, 5, 'overlapping_relation', False, "Matches DOG directly."], [6, 12, 'overlapping_relation', False, "Matches CHASE directly."], [15, 18, 'overlapping_relation', True, "Matches CAT directly."], [22, 25, 'single', False, "Matches CAT directly."]]}, {'document_label': '', 'text': 'A dog chased a cat.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'score': 99.34666666666668, 'word_infos': [[2, 5, 'overlapping_relation', False, "Matches DOG directly."], [6, 12, 'overlapping_relation', False, "Matches CHASE directly."], [15, 18, 'overlapping_relation', True, "Matches CAT directly."]]}, {'document_label': 'animals', 'text': 'Dogs and cats.', 'text_to_match': 'The dog chased the cat', 'rank': '3', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 14, 'score': 9.866666666666667, 'word_infos': [[0, 4, 'single', False, "Matches DOG directly."], [9, 13, 'single', True, "Matches CAT directly."]]}])
+                         [{'document_label': '', 'text': 'A dog chased a cat. A cat.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'sentences_character_start_index_in_document': 515, 'sentences_character_end_index_in_document': 541, 'score': 993.4666666666667, 'word_infos': [[2, 5, 'overlapping_relation', False, 'Matches DOG directly.'], [6, 12, 'overlapping_relation', False, 'Matches CHASE directly.'], [15, 18, 'overlapping_relation', True, 'Matches CAT directly.'], [22, 25, 'single', False, 'Matches CAT directly.']]}, {'document_label': '', 'text': 'A dog chased a cat.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'score': 993.4666666666667, 'word_infos': [[2, 5, 'overlapping_relation', False, 'Matches DOG directly.'], [6, 12, 'overlapping_relation', False, 'Matches CHASE directly.'], [15, 18, 'overlapping_relation', True, 'Matches CAT directly.']]}, {'document_label': 'animals', 'text': 'Dogs and cats.', 'text_to_match': 'The dog chased the cat', 'rank': '3', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 14, 'score': 98.66666666666667, 'word_infos': [[0, 4, 'single', False, 'Matches DOG directly.'], [9, 13, 'single', True, 'Matches CAT directly.']]}])
         topic_match_dictionaries = \
             holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
                 "The dog chased the cat", tied_result_quotient=0.01, use_frequency_factor=False)
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'A dog chased a cat. A cat.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'sentences_character_start_index_in_document': 515, 'sentences_character_end_index_in_document': 541, 'score': 99.34666666666668, 'word_infos': [[2, 5, 'overlapping_relation', False, "Matches DOG directly."], [6, 12, 'overlapping_relation', False, "Matches CHASE directly."], [15, 18, 'overlapping_relation', True, "Matches CAT directly."], [22, 25, 'single', False, "Matches CAT directly."]]}, {'document_label': '', 'text': 'A dog chased a cat.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'score': 99.34666666666668, 'word_infos': [[2, 5, 'overlapping_relation', False, "Matches DOG directly."], [6, 12, 'overlapping_relation', False, "Matches CHASE directly."], [15, 18, 'overlapping_relation', True, "Matches CAT directly."]]}, {'document_label': 'animals', 'text': 'Dogs and cats.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 14, 'score': 9.866666666666667, 'word_infos': [[0, 4, 'single', False, "Matches DOG directly."], [9, 13, 'single', True, "Matches CAT directly."]]}])
+                         [{'document_label': '', 'text': 'A dog chased a cat. A cat.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'sentences_character_start_index_in_document': 515, 'sentences_character_end_index_in_document': 541, 'score': 993.4666666666667, 'word_infos': [[2, 5, 'overlapping_relation', False, "Matches DOG directly."], [6, 12, 'overlapping_relation', False, "Matches CHASE directly."], [15, 18, 'overlapping_relation', True, "Matches CAT directly."], [22, 25, 'single', False, "Matches CAT directly."]]}, {'document_label': '', 'text': 'A dog chased a cat.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'score': 993.4666666666667, 'word_infos': [[2, 5, 'overlapping_relation', False, "Matches DOG directly."], [6, 12, 'overlapping_relation', False, "Matches CHASE directly."], [15, 18, 'overlapping_relation', True, "Matches CAT directly."]]}, {'document_label': 'animals', 'text': 'Dogs and cats.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 14, 'score': 98.66666666666667, 'word_infos': [[0, 4, 'single', False, "Matches DOG directly."], [9, 13, 'single', True, "Matches CAT directly."]]}])
 
     def test_dictionaries_with_multiword_in_relation_not_final(self):
         holmes_manager_coref.remove_all_documents()
@@ -846,7 +847,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
                 "Richard Paul Hudson was coming")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'Richard Paul Hudson came home', 'text_to_match': 'Richard Paul Hudson was coming', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 29, 'score': 40.8, 'word_infos': [[0, 19, 'relation', False, "Matches RICHARD PAUL HUDSON directly."], [20, 24, 'relation', True, "Matches COME directly."]]}])
+                         [{'document_label': '', 'text': 'Richard Paul Hudson came home', 'text_to_match': 'Richard Paul Hudson was coming', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 29, 'score': 408.0, 'word_infos': [[0, 19, 'relation', False, "Matches RICHARD PAUL HUDSON directly."], [20, 24, 'relation', True, "Matches COME directly."]]}])
 
     def test_dictionaries_with_multiword_alone(self):
         holmes_manager_coref.remove_all_documents()
@@ -856,7 +857,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
                 "Richard Paul Hudson")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'Richard Paul Hudson', 'text_to_match': 'Richard Paul Hudson', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'score': 8.92, 'word_infos': [[0, 19, 'single', True, "Matches RICHARD PAUL HUDSON directly."]]}])
+                         [{'document_label': '', 'text': 'Richard Paul Hudson', 'text_to_match': 'Richard Paul Hudson', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'score': 89.2, 'word_infos': [[0, 19, 'single', True, "Matches RICHARD PAUL HUDSON directly."]]}])
 
     def test_dictionaries_with_multiword_alone_and_entity_token_in_text_to_match(self):
         holmes_manager_coref.remove_all_documents()
@@ -866,7 +867,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
                 "ENTITYPERSON")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'Richard Paul Hudson', 'text_to_match': 'ENTITYPERSON', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'score': 5.0, 'word_infos': [[0, 19, 'single', True, "Matches the ENTITYPERSON placeholder."]]}])
+                         [{'document_label': '', 'text': 'Richard Paul Hudson', 'text_to_match': 'ENTITYPERSON', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'score': 50.0, 'word_infos': [[0, 19, 'single', True, "Matches the ENTITYPERSON placeholder."]]}])
 
     def test_dictionaries_with_multiword_as_single_word_and_relation(self):
         holmes_manager_coref_no_embeddings.remove_all_documents()
@@ -877,7 +878,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             holmes_manager_coref_no_embeddings.topic_match_documents_returning_dictionaries_against(
                 "Somebody gives a present to Harry")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'Can somebody give Harry Potter his present', 'text_to_match': 'Somebody gives a present to Harry', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 42, 'score': 92.6351111111111, 'word_infos': [[13, 17, 'overlapping_relation', False, "Matches GIVE directly."], [18, 30, 'overlapping_relation', False, "Is a synonym of HARRY in the ontology."], [35, 42, 'overlapping_relation', True, "Matches PRESENT directly."]]}])
+                         [{'document_label': '', 'text': 'Can somebody give Harry Potter his present', 'text_to_match': 'Somebody gives a present to Harry', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 42, 'score': 926.3511111111111, 'word_infos': [[13, 17, 'overlapping_relation', False, 'Matches GIVE directly.'], [18, 30, 'overlapping_relation', False, 'Is a synonym of HARRY in the ontology.'], [35, 42, 'overlapping_relation', True, 'Matches PRESENT directly.']]}])
 
     def test_result_ordering_by_match_length_different_documents(self):
         holmes_manager_coref.remove_all_documents()
@@ -964,7 +965,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
                 "A big Unhyphenated Single Multiword")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'A big Unhyphenated Single Multiword', 'text_to_match': 'A big Unhyphenated Single Multiword', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 35, 'score': 36.92, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [6, 35, 'relation', True, 'Matches UNHYPHENATED SINGLE MULTIWORD directly.']]}])
+                         [{'document_label': '', 'text': 'A big Unhyphenated Single Multiword', 'text_to_match': 'A big Unhyphenated Single Multiword', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 35, 'score': 369.2, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [6, 35, 'relation', True, 'Matches UNHYPHENATED SINGLE MULTIWORD directly.']]}])
 
     def test_adjective_describing_entity_multiword_with_topic_match_dictionaries(self):
         holmes_manager_coref.remove_all_documents()
@@ -975,7 +976,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
                 "A big Richard Paul Hudson")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'A big Richard Paul Hudson', 'text_to_match': 'A big Richard Paul Hudson', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 25, 'score': 40.84, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [6, 25, 'relation', True, 'Matches RICHARD PAUL HUDSON directly.']]}])
+                         [{'document_label': '', 'text': 'A big Richard Paul Hudson', 'text_to_match': 'A big Richard Paul Hudson', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 25, 'score': 408.4, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [6, 25, 'relation', True, 'Matches RICHARD PAUL HUDSON directly.']]}])
 
     def test_adjective_describing_double_multiword_with_topic_match_dictionaries_1(self):
         holmes_manager_coref.remove_all_documents()
@@ -986,7 +987,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
                 "A big Richard Mimi Momo")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'A big Richard Mimi Momo', 'text_to_match': 'A big Richard Mimi Momo', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 23, 'score': 101.78666666666666, 'word_infos': [[2, 5, 'overlapping_relation', False, 'Matches BIG directly.'], [6, 13, 'overlapping_relation', False, 'Matches RICHARD directly.'], [14, 23, 'overlapping_relation', True, 'Matches MIMI MOMO directly.']]}])
+                         [{'document_label': '', 'text': 'A big Richard Mimi Momo', 'text_to_match': 'A big Richard Mimi Momo', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 23, 'score': 1017.8666666666667, 'word_infos': [[2, 5, 'overlapping_relation', False, 'Matches BIG directly.'], [6, 13, 'overlapping_relation', False, 'Matches RICHARD directly.'], [14, 23, 'overlapping_relation', True, 'Matches MIMI MOMO directly.']]}])
 
     def test_adjective_describing_double_multiword_with_topic_match_dictionaries_2(self):
         holmes_manager_coref.remove_all_documents()
@@ -997,7 +998,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
                 "A big Mimi Momo")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'A big Richard Mimi Momo', 'text_to_match': 'A big Mimi Momo', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 23, 'score': 36.92, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [14, 23, 'relation', True, 'Matches MIMI MOMO directly.']]}])
+                         [{'document_label': '', 'text': 'A big Richard Mimi Momo', 'text_to_match': 'A big Mimi Momo', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 23, 'score': 369.2, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [14, 23, 'relation', True, 'Matches MIMI MOMO directly.']]}])
 
     def test_adjective_describing_double_multiword_with_topic_match_dictionaries_3(self):
         holmes_manager_coref.remove_all_documents()
@@ -1008,4 +1009,57 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
                 "A big Momo")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'A big Richard Mimi Momo', 'text_to_match': 'A big Momo', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 23, 'score': 31.92, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [19, 23, 'relation', True, 'Matches MOMO directly.']]}])
+                         [{'document_label': '', 'text': 'A big Richard Mimi Momo', 'text_to_match': 'A big Momo', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 23, 'score': 319.2, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [19, 23, 'relation', True, 'Matches MOMO directly.']]}])
+
+    def test_different_match_cutoff_score_low(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.remove_all_search_phrases()
+        holmes_manager_coref.parse_and_register_document(
+            "A dog and a dog then and then and then and then and then a dog")
+        topic_match_dictionaries = \
+            holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
+                "A dog")
+        self.assertEqual(len(topic_match_dictionaries), 1)
+
+    def test_different_match_cutoff_score_high(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.remove_all_search_phrases()
+        holmes_manager_coref.parse_and_register_document(
+            "A dog then and then and then and then and then a dog")
+        topic_match_dictionaries = \
+            holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
+                "A dog", different_match_cutoff_score=10000)
+        self.assertEqual(len(topic_match_dictionaries), 2)
+        topic_matches = \
+            holmes_manager_coref.topic_match_documents_against(
+                "A dog", different_match_cutoff_score=10000)
+        self.assertEqual(len(topic_matches), 2)
+
+    def test_different_match_cutoff_score_zero(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.remove_all_search_phrases()
+        holmes_manager_coref.parse_and_register_document(
+            "A dog then and then and then and then and then a dog")
+        topic_match_dictionaries = \
+            holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
+                "A dog", different_match_cutoff_score=0)
+        self.assertEqual(len(topic_match_dictionaries), 1)
+        topic_matches = \
+            holmes_manager_coref.topic_match_documents_against(
+                "A dog", different_match_cutoff_score=0)
+        self.assertEqual(len(topic_matches), 1)
+
+
+    def test_different_match_cutoff_score_control(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.remove_all_search_phrases()
+        holmes_manager_coref.parse_and_register_document(
+            "A dog then and then and then and then and then a dog")
+        topic_match_dictionaries = \
+            holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
+                "A dog")
+        self.assertEqual(len(topic_match_dictionaries), 1)
+        topic_matches = \
+            holmes_manager_coref.topic_match_documents_against(
+                "A dog")
+        self.assertEqual(len(topic_matches), 1)
