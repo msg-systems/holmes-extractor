@@ -1,4 +1,6 @@
 import copy
+import math
+from string import punctuation
 from threading import Lock
 from functools import total_ordering
 from spacy.tokens.token import Token
@@ -213,12 +215,14 @@ class PhraseletInfo:
             for single-word phraselets.
         created_without_matching_tags -- 'True' if created without matching tags.
         reverse_only_parent_lemma -- 'True' if the parent lemma is in the reverse matching list.
+        frequency_factor -- a multiplication factor with which to multiply scores based on the
+            frequency of words in the corpus, or *1.0* if this functionality is not being used.
     """
 
     def __init__(
             self, label, template_label, parent_lemma, parent_derived_lemma, parent_pos,
             child_lemma, child_derived_lemma, child_pos, created_without_matching_tags,
-            reverse_only_parent_lemma):
+            reverse_only_parent_lemma, frequency_factor):
         self.label = label
         self.template_label = template_label
 
@@ -230,6 +234,7 @@ class PhraseletInfo:
         self.child_pos = child_pos
         self.created_without_matching_tags = created_without_matching_tags
         self.reverse_only_parent_lemma = reverse_only_parent_lemma
+        self.frequency_factor = frequency_factor
 
     def __eq__(self, other):
         return isinstance(other, PhraseletInfo) and \
@@ -242,13 +247,15 @@ class PhraseletInfo:
             self.child_derived_lemma == other.child_derived_lemma and \
             self.child_pos == other.child_pos and \
             self.created_without_matching_tags == other.created_without_matching_tags and \
-            self.reverse_only_parent_lemma == other.reverse_only_parent_lemma
+            self.reverse_only_parent_lemma == other.reverse_only_parent_lemma and \
+            str(self.frequency_factor) == str(other.frequency_factor)
 
     def __hash__(self):
         return hash((
             self.label, self.template_label, self.parent_lemma, self.parent_derived_lemma,
             self.parent_pos, self.child_lemma, self.child_derived_lemma,
-            self.child_pos, self.created_without_matching_tags, self.reverse_only_parent_lemma))
+            self.child_pos, self.created_without_matching_tags, self.reverse_only_parent_lemma,
+            str(self.frequency_factor)))
 
 class ThreadsafeContainer:
     """Container for search phrases and documents that are registered and maintained on the
@@ -259,7 +266,27 @@ class ThreadsafeContainer:
         self._search_phrases = []
         # Dict from document labels to IndexedDocument objects
         self._indexed_documents = {}
+
+        self._word_dictionaries_need_rebuilding = False
+        self._words_to_corpus_frequencies = {}
+        self._maximum_corpus_frequency = None
+
         self._lock = Lock()
+
+    def _rebuild_word_dictionaries(self):
+        self._words_to_corpus_frequencies = {}
+        for indexed_document in self._indexed_documents.values():
+            words_to_token_info_dict = indexed_document.words_to_token_info_dict
+            for word, token_info_tuples in words_to_token_info_dict.items():
+                if word in punctuation:
+                    continue
+                indexes = [index for index, _, _ in token_info_tuples]
+                if word in self._words_to_corpus_frequencies:
+                    self._words_to_corpus_frequencies[word] += len(set(indexes))
+                else:
+                    self._words_to_corpus_frequencies[word] = len(set(indexes))
+        self._maximum_corpus_frequency = max(self._words_to_corpus_frequencies.values())
+        self._word_dictionaries_need_rebuilding = False
 
     def remove_all_search_phrases(self):
         with self._lock:
@@ -286,14 +313,17 @@ class ThreadsafeContainer:
             if label in self._indexed_documents.keys():
                 raise DuplicateDocumentError(label)
             self._indexed_documents[label] = indexed_document
+            self._word_dictionaries_need_rebuilding = True
 
     def remove_document(self, label):
         with self._lock:
             self._indexed_documents.pop(label)
+            self._word_dictionaries_need_rebuilding = True
 
     def remove_all_documents(self):
         with self._lock:
             self._indexed_documents = {}
+            self._word_dictionaries_need_rebuilding = True
 
     def document_labels(self):
         """Returns a list of the labels of the currently registered documents."""
@@ -317,6 +347,14 @@ class ThreadsafeContainer:
     def get_search_phrases(self):
         with self._lock:
             return self._search_phrases.copy()
+
+    def get_corpus_frequency_information(self):
+        """ Returns a dictionary from words to corpus frequencies together with the frequency
+            of the most frequent word in the corpus. """
+        with self._lock:
+            if self._word_dictionaries_need_rebuilding:
+                self._rebuild_word_dictionaries()
+            return self._words_to_corpus_frequencies, self._maximum_corpus_frequency
 
 class StructuralMatcher:
     """The class responsible for matching search phrases with documents."""
@@ -511,7 +549,7 @@ class StructuralMatcher:
 
         doc -- the Holmes document
         words_to_token_info_dict -- a dictionary from words to tuples containing:
-            - the token indexes where each word occurs in the document
+            - the token index where the word occurs in the document
             - the word representation
             - a boolean value specifying whether the index is based on derivation
         """
@@ -579,7 +617,7 @@ class StructuralMatcher:
             self, doc, *, phraselet_labels_to_phraselet_infos,
             replace_with_hypernym_ancestors, match_all_words,
             ignore_relation_phraselets, include_reverse_only, stop_lemmas,
-            reverse_only_parent_lemmas):
+            reverse_only_parent_lemmas, words_to_corpus_frequencies, maximum_corpus_frequency):
         """ Creates topic matching phraselets extracted from a matching text.
 
         Properties:
@@ -601,6 +639,11 @@ class StructuralMatcher:
         reverse_only_parent_lemmas -- lemma / part-of-speech combinations that, when present at
             the parent pole of a relation phraselet, should cause that phraselet to be
             reverse-matched.
+        words_to_corpus_frequencies -- a dictionary from words to the number of times each
+            word occurs in the indexed documents, or *None* if corpus frequencies are not
+            being taken into account.
+        maximum_corpus_frequency -- the maximum value within *words_to_corpus_frequencies*,
+            or *None* if corpus frequencies are not being taken into account.
         """
 
         index_to_lemmas_cache = {}
@@ -673,12 +716,40 @@ class StructuralMatcher:
                 phraselet_label, phraselet_template, created_without_matching_tags,
                 is_reverse_only_parent_lemma, parent_lemma, parent_derived_lemma, parent_pos,
                 child_lemma, child_derived_lemma, child_pos):
+
+            def get_frequency_factor_for_pole(parent): # pole is 'True' -> parent, 'False' -> child
+                original_word_set = {parent_lemma, parent_derived_lemma} if parent else \
+                    {child_lemma, child_derived_lemma}
+                word_set_including_any_ontology = original_word_set.copy()
+                if self.ontology is not None:
+                    for word in original_word_set:
+                        for word_matching, _ in \
+                                self.ontology.get_words_matching_and_depths(word):
+                            word_set_including_any_ontology.add(word_matching)
+                frequencies = []
+                for word in word_set_including_any_ontology:
+                    if word in words_to_corpus_frequencies:
+                        frequencies.append(float(words_to_corpus_frequencies[word]))
+                if len(frequencies) == 0:
+                    return 1.0
+                average_frequency = max(0, (sum(frequencies) / float(len(frequencies))) - 1)
+                if average_frequency <= 1:
+                    return 1.0
+                else:
+                    return 1 - (math.log(average_frequency) / math.log(maximum_corpus_frequency))
+
+            if words_to_corpus_frequencies is not None:
+                frequency_factor = get_frequency_factor_for_pole(True)
+                if child_lemma is not None:
+                    frequency_factor *= get_frequency_factor_for_pole(False)
+            else:
+                frequency_factor = 1.0
             if phraselet_label not in phraselet_labels_to_phraselet_infos:
                 phraselet_labels_to_phraselet_infos[phraselet_label] = PhraseletInfo(
                     phraselet_label, phraselet_template.label, parent_lemma,
                     parent_derived_lemma, parent_pos, child_lemma, child_derived_lemma,
                     child_pos, created_without_matching_tags,
-                    is_reverse_only_parent_lemma)
+                    is_reverse_only_parent_lemma, frequency_factor)
             else:
                 existing_phraselet = phraselet_labels_to_phraselet_infos[phraselet_label]
                 if lemma_replacement_indicated(

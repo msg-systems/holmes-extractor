@@ -16,11 +16,13 @@ holmes_manager_coref_no_embeddings = holmes.Manager(model='en_core_web_lg', onto
 
 class EnglishTopicMatchingTest(unittest.TestCase):
 
-    def _check_equals(self, text_to_match, document_text, highest_score, manager):
+    def _check_equals(self, text_to_match, document_text, highest_score, manager,
+        use_frequency_factor=True):
         manager.remove_all_documents()
         manager.parse_and_register_document(document_text)
         topic_matches = manager.topic_match_documents_against(text_to_match, relation_score=20,
-                                                              reverse_only_relation_score=15, single_word_score=10, single_word_any_tag_score=5)
+                                                              reverse_only_relation_score=15, single_word_score=10, single_word_any_tag_score=5,
+                                                              use_frequency_factor=use_frequency_factor)
         self.assertEqual(int(topic_matches[0].score), highest_score)
 
     def test_no_match(self):
@@ -43,6 +45,34 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self._check_equals("A plant grows", "A plant grows",
                            34, holmes_manager_coref)
 
+    def test_direct_matching_frequency_factor_2_word(self):
+        self._check_equals("A plant grows", "A plant grows. A plant",
+                           34, holmes_manager_coref)
+
+    def test_direct_matching_frequency_factor_3_word(self):
+        self._check_equals("A plant grows", "A plant grows. A plant and a plant",
+                           16, holmes_manager_coref)
+
+    def test_direct_matching_frequency_factor_3_word_control(self):
+        self._check_equals("A plant grows", "A plant grows. A plant and a plant",
+                           34, holmes_manager_coref, use_frequency_factor=False)
+
+    def test_direct_matching_frequency_factor_3_word_with_higher_maximum(self):
+        self._check_equals("A plant grows", "A plant grows. A plant and a plant. Word word word word word.",
+                           22, holmes_manager_coref)
+
+    def test_direct_matching_frequency_factor_2_relation(self):
+        self._check_equals("A plant grows", "A plant grows. A plant grows.",
+                           34, holmes_manager_coref)
+
+    def test_direct_matching_frequency_factor_3_relation(self):
+        self._check_equals("A plant grows", "A plant grows. A plant grows. A plant grows.",
+                           8, holmes_manager_coref)
+
+    def test_direct_matching_frequency_factor_3_relation_with_higher_maximum(self):
+        self._check_equals("A plant grows", "A plant grows. A plant grows. A plant grows. Word word word word word.",
+                           14, holmes_manager_coref)
+
     def test_direct_matching_nonsense_word(self):
         self._check_equals("My friend visited gegwghg", "Peter visited gegwghg", 34,
                            holmes_manager_coref)
@@ -59,16 +89,40 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self._check_equals("My friend visited ENTITYGPE", "Peter visited Paris", 34,
                            holmes_manager_coref)
 
+    def test_entity_matching_frequency_factor(self):
+        self._check_equals("My friend visited ENTITYGPE", "Peter visited Paris. London. Berlin.", 15,
+                           holmes_manager_coref)
+
     def test_entitynoun_matching(self):
         self._check_equals("My friend visited ENTITYNOUN", "Peter visited a city", 25,
+                           holmes_manager_coref)
+
+    def test_entitynoun_matching_control(self):
+        self._check_equals("My friend visited ENTITYNOUN", "Peter visited a city. Word. word.", 25,
                            holmes_manager_coref)
 
     def test_ontology_matching_synonym(self):
         self._check_equals("I saw an pussy", "Somebody saw a cat", 31,
                            holmes_manager_coref)
 
+    def test_ontology_matching_synonym_frequency_factor(self):
+        self._check_equals("I saw an pussy", "Somebody saw a cat. A cat. A cat.", 14,
+                           holmes_manager_coref)
+
+    def test_ontology_matching_synonym_frequency_factor_different_ontology_words(self):
+        self._check_equals("I saw an pussy", "Somebody saw a cat. A kitten. A cat.", 31,
+                           holmes_manager_coref)
+
     def test_ontology_matching_hyponym_depth_1(self):
         self._check_equals("I saw an animal", "Somebody saw a cat", 28,
+                           holmes_manager_coref)
+
+    def test_ontology_matching_hyponym_depth_1_frequency_factor(self):
+        self._check_equals("I saw an animal", "Somebody saw a cat. An cat. A cat.", 13,
+                           holmes_manager_coref)
+
+    def test_ontology_matching_hyponym_depth_1_frequency_factor_different_ontology_words(self):
+        self._check_equals("I saw an animal", "Somebody saw a cat. An kitten. A cat.", 28,
                            holmes_manager_coref)
 
     def test_ontology_matching_hyponym_depth_2(self):
@@ -89,6 +143,14 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     def test_ontology_matching_multiword_in_document(self):
         self._check_equals("I saw an animal", "Somebody saw Mimi Momo", 26,
+                           holmes_manager_coref)
+
+    def test_ontology_matching_multiword_in_document_frequency_factor(self):
+        self._check_equals("I saw an animal", "Somebody saw Mimi Momo. Mimi Momo. Mimi Momo.", 12,
+                           holmes_manager_coref)
+
+    def test_ontology_matching_multiword_in_document_frequency_factor_control(self):
+        self._check_equals("I saw an animal", "Somebody saw Mimi Momo. Momo. Momo.", 26,
                            holmes_manager_coref)
 
     def test_ontology_matching_multiword_in_search_text(self):
@@ -113,6 +175,10 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     def test_embedding_matching_root(self):
         self._check_equals("I saw a king", "Somebody saw a queen", 19,
+                           holmes_manager_coref_embedding_on_root)
+
+    def test_embedding_matching_root_frequency_factor_control(self):
+        self._check_equals("I saw a king", "Somebody saw a queen. A queen. A queen. A queen.", 19,
                            holmes_manager_coref_embedding_on_root)
 
     def test_embedding_matching_root_overall_similarity_too_low(self):
@@ -167,6 +233,10 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     def test_reverse_matching_noun_no_coreference(self):
         self._check_equals("A car with an engine", "An automobile with an engine", 51,
+                           holmes_manager_coref)
+
+    def test_reverse_matching_noun_no_coreference_frequency_factor(self):
+        self._check_equals("A car with an engine", "An automobile with an engine. An engine. An engine.", 28,
                            holmes_manager_coref)
 
     def test_reverse_matching_noun_no_coreference_control_no_embeddings(self):
@@ -512,6 +582,11 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                            "inform", 10,
                            holmes_manager_coref)
 
+    def test_derived_form_text_to_match_single_word_frequency_factor(self):
+        self._check_equals("information",
+                           "inform. inform. inform.", 3,
+                           holmes_manager_coref)
+
     def test_derived_form_document_text_single_word(self):
         self._check_equals("inform",
                            "information", 5,
@@ -753,12 +828,12 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                                                          "animals")
         topic_match_dictionaries = \
             holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
-                "The dog chased the cat")
+                "The dog chased the cat", use_frequency_factor=False)
         self.assertEqual(topic_match_dictionaries,
                          [{'document_label': '', 'text': 'A dog chased a cat. A cat.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'sentences_character_start_index_in_document': 515, 'sentences_character_end_index_in_document': 541, 'score': 99.34666666666668, 'word_infos': [[2, 5, 'overlapping_relation', False, "Matches DOG directly."], [6, 12, 'overlapping_relation', False, "Matches CHASE directly."], [15, 18, 'overlapping_relation', True, "Matches CAT directly."], [22, 25, 'single', False, "Matches CAT directly."]]}, {'document_label': '', 'text': 'A dog chased a cat.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'score': 99.34666666666668, 'word_infos': [[2, 5, 'overlapping_relation', False, "Matches DOG directly."], [6, 12, 'overlapping_relation', False, "Matches CHASE directly."], [15, 18, 'overlapping_relation', True, "Matches CAT directly."]]}, {'document_label': 'animals', 'text': 'Dogs and cats.', 'text_to_match': 'The dog chased the cat', 'rank': '3', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 14, 'score': 9.866666666666667, 'word_infos': [[0, 4, 'single', False, "Matches DOG directly."], [9, 13, 'single', True, "Matches CAT directly."]]}])
         topic_match_dictionaries = \
             holmes_manager_coref.topic_match_documents_returning_dictionaries_against(
-                "The dog chased the cat", tied_result_quotient=0.01)
+                "The dog chased the cat", tied_result_quotient=0.01, use_frequency_factor=False)
         self.assertEqual(topic_match_dictionaries,
                          [{'document_label': '', 'text': 'A dog chased a cat. A cat.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'sentences_character_start_index_in_document': 515, 'sentences_character_end_index_in_document': 541, 'score': 99.34666666666668, 'word_infos': [[2, 5, 'overlapping_relation', False, "Matches DOG directly."], [6, 12, 'overlapping_relation', False, "Matches CHASE directly."], [15, 18, 'overlapping_relation', True, "Matches CAT directly."], [22, 25, 'single', False, "Matches CAT directly."]]}, {'document_label': '', 'text': 'A dog chased a cat.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'score': 99.34666666666668, 'word_infos': [[2, 5, 'overlapping_relation', False, "Matches DOG directly."], [6, 12, 'overlapping_relation', False, "Matches CHASE directly."], [15, 18, 'overlapping_relation', True, "Matches CAT directly."]]}, {'document_label': 'animals', 'text': 'Dogs and cats.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 14, 'score': 9.866666666666667, 'word_infos': [[0, 4, 'single', False, "Matches DOG directly."], [9, 13, 'single', True, "Matches CAT directly."]]}])
 

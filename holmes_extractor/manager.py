@@ -1,5 +1,6 @@
 from multiprocessing import Process, Queue, Manager as Multiprocessing_manager, cpu_count
 from threading import Lock
+from string import punctuation
 import traceback
 import sys
 import jsonpickle
@@ -267,7 +268,7 @@ class Manager:
         return self._build_match_dictionaries(matches)
 
     def topic_match_documents_against(
-            self, text_to_match, *, maximum_activation_distance=75,
+            self, text_to_match, *, use_frequency_factor=True, maximum_activation_distance=75,
             relation_score=30, reverse_only_relation_score=20,
             single_word_score=5, single_word_any_tag_score=2,
             overlapping_relation_multiplier=1.5, embedding_penalty=0.6,
@@ -281,6 +282,9 @@ class Manager:
         Properties:
 
         text_to_match -- the text to match against the loaded documents.
+        use_frequency_factor -- *True* if scores should be multiplied by a factor between 0 and 1
+            expressing how rare the words matching each phraselet are in the corpus,
+            otherwise *False*
         maximum_activation_distance -- the number of words it takes for a previous phraselet
             activation to reduce to zero when the library is reading through a document.
         relation_score -- the activation score added when a normal two-word
@@ -317,10 +321,18 @@ class Manager:
         document_label_filter -- optionally, a string with which document labels must start to
             be considered for inclusion in the results.
         """
+        if use_frequency_factor:
+            words_to_corpus_frequencies, maximum_corpus_frequency = \
+                self.threadsafe_container.get_corpus_frequency_information()
+        else:
+            words_to_corpus_frequencies = None
+            maximum_corpus_frequency = None
         topic_matcher = TopicMatcher(
             semantic_analyzer=self.semantic_analyzer,
             structural_matcher=self.structural_matcher,
             indexed_documents=self.threadsafe_container.get_indexed_documents(),
+            words_to_corpus_frequencies=words_to_corpus_frequencies,
+            maximum_corpus_frequency=maximum_corpus_frequency,
             maximum_activation_distance=maximum_activation_distance,
             relation_score=relation_score,
             reverse_only_relation_score=reverse_only_relation_score,
@@ -340,7 +352,7 @@ class Manager:
         return topic_matcher.topic_match_documents_against(text_to_match)
 
     def topic_match_documents_returning_dictionaries_against(
-            self, text_to_match, *,
+            self, text_to_match, *, use_frequency_factor=True,
             maximum_activation_distance=75, relation_score=30, reverse_only_relation_score=20,
             single_word_score=5, single_word_any_tag_score=2, overlapping_relation_multiplier=1.5,
             embedding_penalty=0.6, ontology_penalty=0.9,
@@ -355,6 +367,9 @@ class Manager:
         Properties:
 
         text_to_match -- the text to match against the loaded documents.
+        use_frequency_factor -- *True* if scores should be multiplied by a factor between 0 and 1
+            expressing how rare the words matching each phraselet are in the corpus,
+            otherwise *False*
         maximum_activation_distance -- the number of words it takes for a previous phraselet
             activation to reduce to zero when the library is reading through a document.
         relation_score -- the activation score added when a normal two-word
@@ -393,11 +408,18 @@ class Manager:
         document_label_filter -- optionally, a string with which document labels must start to
             be considered for inclusion in the results.
         """
-
+        if use_frequency_factor:
+            words_to_corpus_frequencies, maximum_corpus_frequency = \
+                self.threadsafe_container.get_corpus_frequency_information()
+        else:
+            words_to_corpus_frequencies = None
+            maximum_corpus_frequency = None
         topic_matcher = TopicMatcher(
             semantic_analyzer=self.semantic_analyzer,
             structural_matcher=self.structural_matcher,
             indexed_documents=self.threadsafe_container.get_indexed_documents(),
+            words_to_corpus_frequencies=words_to_corpus_frequencies,
+            maximum_corpus_frequency=maximum_corpus_frequency,
             maximum_activation_distance=maximum_activation_distance,
             relation_score=relation_score,
             reverse_only_relation_score=reverse_only_relation_score,
@@ -537,6 +559,9 @@ class MultiprocessingManager:
             embedding_based_matching_on_root_words, analyze_derivational_morphology,
             perform_coreference_resolution)
         self._perform_coreference_resolution = perform_coreference_resolution
+        self._word_dictionaries_need_rebuilding = False
+        self._words_to_corpus_frequencies = {}
+        self._maximum_corpus_frequency = None
 
         self._verbose = verbose
         self._document_labels = []
@@ -561,13 +586,6 @@ class MultiprocessingManager:
             this_worker.start()
         self._lock = Lock()
 
-    def _add_document_label(self, label):
-        with self._lock:
-            if label in self._document_labels:
-                raise DuplicateDocumentError(label)
-            else:
-                self._document_labels.append(label)
-
     def _handle_reply(self, worker_label, return_value):
         """ If 'return_value' is an exception, return it, otherwise return 'None'. """
         if isinstance(return_value, Exception):
@@ -576,13 +594,17 @@ class MultiprocessingManager:
             if not isinstance(return_value, list):
                 with self._lock:
                     print(': '.join((worker_label, return_value)))
-            return None
+        return None
 
     def _internal_register_documents(self, dictionary, worker_method):
         reply_queue = self._multiprocessor_manager.Queue()
         for label, value in dictionary.items():
-            self._add_document_label(label)
             with self._lock:
+                if label in self._document_labels:
+                    raise DuplicateDocumentError(label)
+                else:
+                    self._document_labels.append(label)
+                self._word_dictionaries_need_rebuilding = True
                 self._input_queues[
                     self._next_worker_to_use].put((worker_method, (value, label), reply_queue))
                 self._next_worker_to_use += 1
@@ -623,8 +645,9 @@ class MultiprocessingManager:
         return sorted(document_labels)
 
     def topic_match_documents_returning_dictionaries_against(
-            self, text_to_match, *, maximum_activation_distance=75, relation_score=30,
-            reverse_only_relation_score=20, single_word_score=5, single_word_any_tag_score=2,
+            self, text_to_match, *, use_frequency_factor=True,
+            maximum_activation_distance=75, relation_score=30, reverse_only_relation_score=20,
+            single_word_score=5, single_word_any_tag_score=2,
             overlapping_relation_multiplier=1.5, embedding_penalty=0.6, ontology_penalty=0.9,
             maximum_number_of_single_word_matches_for_relation_matching=500,
             maximum_number_of_single_word_matches_for_embedding_matching=100,
@@ -635,6 +658,9 @@ class MultiprocessingManager:
         Properties:
 
         text_to_match -- the text to match against the loaded documents.
+        use_frequency_factor -- *True* if scores should be multiplied by a factor between 0 and 1
+            expressing how rare the words matching each phraselet are in the corpus,
+            otherwise *False*
         maximum_activation_distance -- the number of words it takes for a previous phraselet
             activation to reduce to zero when the library is reading through a document.
         relation_score -- the activation score added when a normal two-word
@@ -681,13 +707,49 @@ class MultiprocessingManager:
                 'relation',
                 str(maximum_number_of_single_word_matches_for_relation_matching))))
         reply_queue = self._multiprocessor_manager.Queue()
+        if use_frequency_factor:
+            with self._lock:
+                if self._word_dictionaries_need_rebuilding:
+                    for counter in range(0, self._number_of_workers):
+                        self._input_queues[counter].put((
+                            self._worker.worker_get_words_to_corpus_frequencies,
+                            (), reply_queue))
+                    worker_frequency_dictionaries = []
+                    recorded_exception = None
+                    for _ in range(0, self._number_of_workers):
+                        worker_label, worker_frequency_dictionary = reply_queue.get()
+                        if not isinstance(worker_frequency_dictionary, Exception):
+                            worker_frequency_dictionaries.append(worker_frequency_dictionary)
+                        elif recorded_exception is None:
+                            recorded_exception = worker_frequency_dictionary
+                    if recorded_exception is not None:
+                        print('ERROR: Exception retrieving frequency dictionary information from '\
+                        ' workers. Please examine the above output'\
+                        ' from the worker processes to identify the problem.')
+                    self._words_to_corpus_frequencies = {}
+                    for worker_frequency_dictionary in worker_frequency_dictionaries:
+                        for word in worker_frequency_dictionary:
+                            if word in self._words_to_corpus_frequencies:
+                                self._words_to_corpus_frequencies[word] += \
+                                    worker_frequency_dictionary[word]
+                            else:
+                                self._words_to_corpus_frequencies[word] = \
+                                    worker_frequency_dictionary[word]
+                    self._maximum_corpus_frequency = max(self._words_to_corpus_frequencies.values())
+                    self._word_dictionaries_need_rebuilding = False
+                words_to_corpus_frequencies = self._words_to_corpus_frequencies
+                maximum_corpus_frequency = self._maximum_corpus_frequency
+        else:
+            words_to_corpus_frequencies = None
+            maximum_corpus_frequency = None
         for counter in range(0, self._number_of_workers):
             self._input_queues[counter].put((
                 self._worker.worker_topic_match_documents_returning_dictionaries_against,
                 (
-                    text_to_match, maximum_activation_distance, relation_score,
-                    reverse_only_relation_score, single_word_score, single_word_any_tag_score,
-                    overlapping_relation_multiplier, embedding_penalty, ontology_penalty,
+                    text_to_match, words_to_corpus_frequencies, maximum_corpus_frequency,
+                    maximum_activation_distance, relation_score, reverse_only_relation_score,
+                    single_word_score, single_word_any_tag_score, overlapping_relation_multiplier,
+                    embedding_penalty, ontology_penalty,
                     maximum_number_of_single_word_matches_for_relation_matching,
                     maximum_number_of_single_word_matches_for_embedding_matching,
                     sideways_match_extent, only_one_result_per_document, number_of_results,
@@ -786,12 +848,27 @@ class Worker:
         indexed_documents[label] = indexed_document
         return ' '.join(('Deserialized and registered document', label))
 
+    def worker_get_words_to_corpus_frequencies(
+            self, semantic_analyzer, structural_matcher, indexed_documents):
+        words_to_corpus_frequencies = {}
+        for indexed_document in indexed_documents.values():
+            words_to_token_info_dict = indexed_document.words_to_token_info_dict
+            for word, token_info_tuples in words_to_token_info_dict.items():
+                if word in punctuation:
+                    continue
+                indexes = [index for index, _, _ in token_info_tuples]
+                if word in words_to_corpus_frequencies:
+                    words_to_corpus_frequencies[word] += len(set(indexes))
+                else:
+                    words_to_corpus_frequencies[word] = len(set(indexes))
+        return words_to_corpus_frequencies
+
     def worker_topic_match_documents_returning_dictionaries_against(
             self, semantic_analyzer, structural_matcher, indexed_documents, text_to_match,
-            maximum_activation_distance, relation_score, reverse_only_relation_score,
-            single_word_score, single_word_any_tag_score, overlapping_relation_multiplier,
-            embedding_penalty, ontology_penalty,
-            maximum_number_of_single_word_matches_for_relation_matching,
+            words_to_corpus_frequencies, maximum_corpus_frequency, maximum_activation_distance,
+            relation_score, reverse_only_relation_score, single_word_score,
+            single_word_any_tag_score, overlapping_relation_multiplier, embedding_penalty,
+            ontology_penalty, maximum_number_of_single_word_matches_for_relation_matching,
             maximum_number_of_single_word_matches_for_embedding_matching,
             sideways_match_extent, only_one_result_per_document, number_of_results,
             document_label_filter, tied_result_quotient):
@@ -801,6 +878,8 @@ class Worker:
             semantic_analyzer=semantic_analyzer,
             structural_matcher=structural_matcher,
             indexed_documents=indexed_documents,
+            words_to_corpus_frequencies=words_to_corpus_frequencies,
+            maximum_corpus_frequency=maximum_corpus_frequency,
             maximum_activation_distance=maximum_activation_distance,
             relation_score=relation_score,
             reverse_only_relation_score=reverse_only_relation_score,

@@ -22,14 +22,17 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                                                                  include_reverse_only=include_reverse_only,
                                                                  stop_lemmas=holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
                                                                  reverse_only_parent_lemmas=holmes_manager.semantic_analyzer.
-                                                                 topic_matching_reverse_only_parent_lemmas)
+                                                                 topic_matching_reverse_only_parent_lemmas,
+                                                                 words_to_corpus_frequencies=None,
+                                                                 maximum_corpus_frequency=None)
         self.assertEqual(
             set(phraselet_labels_to_phraselet_infos.keys()),
             set(phraselet_labels))
         self.assertEqual(len(phraselet_labels_to_phraselet_infos.keys()),
                          len(phraselet_labels))
 
-    def _get_phraselet_dict(self, manager, text_to_match):
+    def _get_phraselet_dict(self, manager, text_to_match, words_to_corpus_frequencies=None,
+        maximum_corpus_frequency=None):
         manager.remove_all_search_phrases()
         doc = manager.semantic_analyzer.parse(text_to_match)
         phraselet_labels_to_phraselet_infos = {}
@@ -41,7 +44,7 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                                                           include_reverse_only=True,
                                                           stop_lemmas=manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
                                                           reverse_only_parent_lemmas=manager.semantic_analyzer.
-                                                          topic_matching_reverse_only_parent_lemmas)
+                                                          topic_matching_reverse_only_parent_lemmas,words_to_corpus_frequencies=words_to_corpus_frequencies,                            maximum_corpus_frequency=maximum_corpus_frequency)
         return phraselet_labels_to_phraselet_infos
 
     def test_verb_nom(self):
@@ -89,7 +92,9 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                                                                  ignore_relation_phraselets=False,
                                                                  stop_lemmas=holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
                                                                  reverse_only_parent_lemmas=holmes_manager.semantic_analyzer.
-                                                                 topic_matching_reverse_only_parent_lemmas)
+                                                                 topic_matching_reverse_only_parent_lemmas,
+                                                                 words_to_corpus_frequencies=None,
+                                                                 maximum_corpus_frequency=None)
         self.assertEqual(set(phraselet_labels_to_phraselet_infos.keys()),
                          set(['verb-nom: gabe-gärtnern', 'verb-acc: gabe-mittagessen',
                               'verb-dat: gabe-frau', 'noun-dependent: frau-nett',
@@ -107,7 +112,10 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                                                                  ignore_relation_phraselets=False,
                                                                  stop_lemmas=holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
                                                                  reverse_only_parent_lemmas=holmes_manager.semantic_analyzer.
-                                                                 topic_matching_reverse_only_parent_lemmas)
+                                                                 topic_matching_reverse_only_parent_lemmas,
+                                                                words_to_corpus_frequencies=None,
+                                                                maximum_corpus_frequency=None)
+
         self.assertEqual(set(phraselet_labels_to_phraselet_infos.keys()),
                          set(['verb-nom: gabe-landschaftsgärtner', 'verb-acc: gabe-mittagessen',
                               'verb-dat: gabe-frau', 'noun-dependent: frau-nett',
@@ -454,3 +462,16 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                                         "Sammelabflug.")
         self.assertEqual(set(dict.keys()), {'word: sammelabflug', 'word: sammel', 'word: abfliegen',
                                             'intcompound: abfliegen-sammel'})
+
+    def test_frequency_factors_with_subwords(self):
+        dict = self._get_phraselet_dict(holmes_manager,
+                                        "Sprachwissenschaft",
+                                        words_to_corpus_frequencies={'sprach': 3,
+                                        'sprachwissenschaft': 5, 'wissenschaft': 1},
+                                        maximum_corpus_frequency=5)
+        sprach_phraselet = dict['word: sprach']
+        self.assertEqual(str(sprach_phraselet.frequency_factor), '0.5693234419266069')
+        wissenschaft_phraselet = dict['word: wissenschaft']
+        self.assertEqual(str(wissenschaft_phraselet.frequency_factor), '1.0')
+        sprachwissenschaft_phraselet = dict['word: sprachwissenschaft']
+        self.assertEqual(str(sprachwissenschaft_phraselet.frequency_factor), '0.1386468838532139')

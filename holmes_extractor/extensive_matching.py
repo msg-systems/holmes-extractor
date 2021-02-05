@@ -67,6 +67,7 @@ class TopicMatcher:
 
     def __init__(
             self, *, semantic_analyzer, structural_matcher, indexed_documents,
+            words_to_corpus_frequencies, maximum_corpus_frequency,
             maximum_activation_distance, relation_score, reverse_only_relation_score,
             single_word_score, single_word_any_tag_score, overlapping_relation_multiplier,
             embedding_penalty, ontology_penalty,
@@ -84,6 +85,8 @@ class TopicMatcher:
         self._semantic_analyzer = semantic_analyzer
         self.structural_matcher = structural_matcher
         self.indexed_documents = indexed_documents
+        self.words_to_corpus_frequencies = words_to_corpus_frequencies
+        self.maximum_corpus_frequency = maximum_corpus_frequency
         self._ontology = structural_matcher.ontology
         self.maximum_activation_distance = maximum_activation_distance
         self.relation_score = relation_score
@@ -102,7 +105,8 @@ class TopicMatcher:
         self.number_of_results = number_of_results
         self.document_label_filter = document_label_filter
         self._words_to_phraselet_word_match_infos = {}
-
+        self._words_to_corpus_frequencies = words_to_corpus_frequencies
+        self._maximum_corpus_frequency = maximum_corpus_frequency
 
     def _get_word_match_from_match(self, match, parent):
         ## child if parent==False
@@ -490,7 +494,9 @@ class TopicMatcher:
             include_reverse_only=True,
             stop_lemmas=self._semantic_analyzer.topic_matching_phraselet_stop_lemmas,
             reverse_only_parent_lemmas=
-            self._semantic_analyzer.topic_matching_reverse_only_parent_lemmas)
+            self._semantic_analyzer.topic_matching_reverse_only_parent_lemmas,
+            words_to_corpus_frequencies=self._words_to_corpus_frequencies,
+            maximum_corpus_frequency=self._maximum_corpus_frequency)
 
         # now add the single word phraselets whose tags did not match.
         self.structural_matcher.add_phraselets_to_dict(
@@ -503,7 +509,9 @@ class TopicMatcher:
                                         # ignore_relation_phraselets == True
             stop_lemmas=self._semantic_analyzer.topic_matching_phraselet_stop_lemmas,
             reverse_only_parent_lemmas=
-            self._semantic_analyzer.topic_matching_reverse_only_parent_lemmas)
+            self._semantic_analyzer.topic_matching_reverse_only_parent_lemmas,
+            words_to_corpus_frequencies=self._words_to_corpus_frequencies,
+            maximum_corpus_frequency=self._maximum_corpus_frequency)
         if len(phraselet_labels_to_phraselet_infos) == 0:
             return []
         phraselet_labels_to_search_phrases = \
@@ -592,6 +600,8 @@ class TopicMatcher:
                 len(child_document_labels_to_indexes_for_embedding_retry_sets) > 0:
             rebuild_document_info_dict(structural_matches, phraselet_labels_to_phraselet_infos)
         structural_matches = list(filter(filter_superfluous_matches, structural_matches))
+        phraselet_labels_to_frequency_factors = {info.label: info.frequency_factor for info
+            in phraselet_labels_to_phraselet_infos.values()}
         position_sorted_structural_matches = sorted(
             structural_matches, key=lambda match:
             (
@@ -601,11 +611,12 @@ class TopicMatcher:
         # Read through the documents measuring the activation based on where
         # in the document structural matches were found
         score_sorted_structural_matches = self.perform_activation_scoring(
-            position_sorted_structural_matches)
+            position_sorted_structural_matches, phraselet_labels_to_frequency_factors)
         return self.get_topic_matches(
             score_sorted_structural_matches, position_sorted_structural_matches)
 
-    def perform_activation_scoring(self, position_sorted_structural_matches):
+    def perform_activation_scoring(self, position_sorted_structural_matches,
+        phraselet_labels_to_frequency_factors):
         """
         Read through the documents measuring the activation based on where
         in the document structural matches were found.
@@ -673,6 +684,11 @@ class TopicMatcher:
                 if len(other_relevant_phraselet_labels) > 0:
                     match.is_overlapping_relation = True
                     this_match_score *= self.overlapping_relation_multiplier
+
+            # multiply the score by the frequency factor, which is 1.0 if frequency factors are
+            # not being used
+            this_match_score *= phraselet_labels_to_frequency_factors[match.search_phrase_label]
+
             overall_similarity_measure = float(match.overall_similarity_measure)
             if overall_similarity_measure < 1.0:
                 this_match_score *= self.embedding_penalty * overall_similarity_measure
@@ -1197,7 +1213,9 @@ class SupervisedTopicTrainingBasis:
             include_reverse_only=False,
             stop_lemmas=self.semantic_analyzer.\
             supervised_document_classification_phraselet_stop_lemmas,
-            reverse_only_parent_lemmas=None)
+            reverse_only_parent_lemmas=None,
+            words_to_corpus_frequencies=None,
+            maximum_corpus_frequency=None)
         self.training_documents_labels_to_classifications_dict[label] = classification
 
     def register_additional_classification_label(self, label):

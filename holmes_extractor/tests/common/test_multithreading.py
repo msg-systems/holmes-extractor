@@ -193,3 +193,9 @@ class MultithreadingTest(unittest.TestCase):
             if this_number_of_matches == NUMBER_OF_THREADS * NUMBER_OF_THREADS:
                 break
             self.assertFalse(counter == 99)
+        dictionary, maximum = manager.threadsafe_container.\
+                    get_corpus_frequency_information()
+        self.assertEqual(dictionary['people'], NUMBER_OF_THREADS)
+        self.assertEqual(dictionary['discuss'], NUMBER_OF_THREADS)
+        self.assertEqual(dictionary['irrelevancy'], NUMBER_OF_THREADS)
+        self.assertEqual(maximum, NUMBER_OF_THREADS)

@@ -34,14 +34,17 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                                                           include_reverse_only=include_reverse_only,
                                                           stop_lemmas=manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
                                                           reverse_only_parent_lemmas=manager.semantic_analyzer.
-                                                          topic_matching_reverse_only_parent_lemmas)
+                                                          topic_matching_reverse_only_parent_lemmas,
+                                                          words_to_corpus_frequencies=None,
+                                                          maximum_corpus_frequency=None)
         self.assertEqual(
             set(phraselet_labels_to_phraselet_infos.keys()),
             set(phraselet_labels))
         self.assertEqual(len(phraselet_labels_to_phraselet_infos.keys()),
                          len(phraselet_labels))
 
-    def _get_phraselet_dict(self, manager, text_to_match):
+    def _get_phraselet_dict(self, manager, text_to_match, words_to_corpus_frequencies=None,
+        maximum_corpus_frequency=None):
         manager.remove_all_search_phrases()
         doc = manager.semantic_analyzer.parse(text_to_match)
         phraselet_labels_to_phraselet_infos = {}
@@ -53,7 +56,9 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                                                           include_reverse_only=True,
                                                           stop_lemmas=manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
                                                           reverse_only_parent_lemmas=manager.semantic_analyzer.
-                                                          topic_matching_reverse_only_parent_lemmas)
+                                                          topic_matching_reverse_only_parent_lemmas,
+                                                          words_to_corpus_frequencies=words_to_corpus_frequencies,
+                                                          maximum_corpus_frequency=maximum_corpus_frequency)
         return phraselet_labels_to_phraselet_infos
 
     def test_verb_subject_no_entry_in_ontology(self):
@@ -266,7 +271,9 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
             stop_lemmas=no_ontology_coref_holmes_manager.
             semantic_analyzer.topic_matching_phraselet_stop_lemmas,
             reverse_only_parent_lemmas=no_ontology_coref_holmes_manager.semantic_analyzer.
-            topic_matching_reverse_only_parent_lemmas)
+            topic_matching_reverse_only_parent_lemmas,
+            words_to_corpus_frequencies=None,
+            maximum_corpus_frequency=None)
         self.assertEqual(set(
             phraselet_labels_to_phraselet_infos.keys()),
             set(['predicate-patient: see-dog', 'predicate-actor: chase-dog',
@@ -429,7 +436,7 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
         self.assertEqual(relation_phraselet.child_lemma, 'behaviour')
         self.assertEqual(relation_phraselet.child_derived_lemma, 'behave')
 
-    def test_reverse_derived_lemmas_in_ontology_one_lemma(self):
+    def test_reverse_derived_lemmas_in_ontology_one_lemma_1(self):
         dict = self._get_phraselet_dict(ontology_holmes_manager,
                                         "He ate moodily")
         self.assertFalse('word: moody' in dict)
@@ -441,7 +448,7 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
         self.assertEqual(relation_phraselet.child_lemma, 'moodily')
         self.assertEqual(relation_phraselet.child_derived_lemma, 'moodiness')
 
-    def test_reverse_derived_lemmas_in_ontology_one_lemma(self):
+    def test_reverse_derived_lemmas_in_ontology_one_lemma_2(self):
         dict = self._get_phraselet_dict(ontology_holmes_manager,
                                         "He offended the cat")
         self.assertFalse('word: offend' in dict)
@@ -462,7 +469,9 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                                                                           include_reverse_only=True,
                                                                           stop_lemmas=ontology_holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
                                                                           reverse_only_parent_lemmas=ontology_holmes_manager.semantic_analyzer.
-                                                                          topic_matching_reverse_only_parent_lemmas)
+                                                                          topic_matching_reverse_only_parent_lemmas,
+                                                                          words_to_corpus_frequencies=None,
+                                                                          maximum_corpus_frequency=None)
         word_phraselet = dict['word: offence']
         self.assertEqual(word_phraselet.parent_lemma, 'offense')
         self.assertEqual(word_phraselet.parent_derived_lemma, 'offence')
@@ -476,7 +485,9 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                                                                           include_reverse_only=True,
                                                                           stop_lemmas=ontology_holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
                                                                           reverse_only_parent_lemmas=ontology_holmes_manager.semantic_analyzer.
-                                                                          topic_matching_reverse_only_parent_lemmas)
+                                                                          topic_matching_reverse_only_parent_lemmas,
+                                                                          words_to_corpus_frequencies=None,
+                                                                          maximum_corpus_frequency=None)
         word_phraselet = dict['word: offence']
         self.assertEqual(word_phraselet.parent_lemma, 'offense')
         self.assertEqual(word_phraselet.parent_derived_lemma, 'offence')
@@ -493,3 +504,78 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
         self.assertEqual(relation_phraselet.child_lemma, 'vaulting horse')
         self.assertEqual(
             relation_phraselet.child_derived_lemma, 'vaulting horse')
+
+    def test_frequency_factors_small(self):
+        dict = self._get_phraselet_dict(ontology_holmes_manager,
+                                        "The dog chased the cat",
+                                        words_to_corpus_frequencies={'dog': 1, 'chasing': 1, 'cat': 2}, maximum_corpus_frequency=5)
+        dog_phraselet = dict['word: dog']
+        self.assertEqual(str(dog_phraselet.frequency_factor), '1.0')
+        cat_phraselet = dict['word: cat']
+        self.assertEqual(str(cat_phraselet.frequency_factor), '1.0')
+        chase_phraselet = dict['word: chasing']
+        self.assertEqual(str(chase_phraselet.frequency_factor), '1.0')
+        chase_dog_phraselet = dict['predicate-actor: chasing-dog']
+        self.assertEqual(str(chase_dog_phraselet.frequency_factor), '1.0')
+        chase_cat_phraselet = dict['predicate-patient: chasing-cat']
+        self.assertEqual(str(chase_cat_phraselet.frequency_factor), '1.0')
+
+    def test_frequency_factors_small_with_small_mcf(self):
+        dict = self._get_phraselet_dict(ontology_holmes_manager,
+                                        "The dog chased the cat",
+                                        words_to_corpus_frequencies={'dog': 1, 'chasing': 1, 'cat': 2}, maximum_corpus_frequency=2)
+        dog_phraselet = dict['word: dog']
+        self.assertEqual(str(dog_phraselet.frequency_factor), '1.0')
+        cat_phraselet = dict['word: cat']
+        self.assertEqual(str(cat_phraselet.frequency_factor), '1.0')
+        chase_phraselet = dict['word: chasing']
+        self.assertEqual(str(chase_phraselet.frequency_factor), '1.0')
+        chase_dog_phraselet = dict['predicate-actor: chasing-dog']
+        self.assertEqual(str(chase_dog_phraselet.frequency_factor), '1.0')
+        chase_cat_phraselet = dict['predicate-patient: chasing-cat']
+        self.assertEqual(str(chase_cat_phraselet.frequency_factor), '1.0')
+
+    def test_frequency_factors_large(self):
+        dict = self._get_phraselet_dict(ontology_holmes_manager,
+                                        "The dog chased the cat",
+                                        words_to_corpus_frequencies={'dog': 3, 'chasing': 4, 'cat': 5}, maximum_corpus_frequency=5)
+        dog_phraselet = dict['word: dog']
+        self.assertEqual(str(dog_phraselet.frequency_factor), '0.5693234419266069')
+        cat_phraselet = dict['word: cat']
+        self.assertEqual(str(cat_phraselet.frequency_factor), '0.1386468838532139')
+        chase_phraselet = dict['word: chasing']
+        self.assertEqual(str(chase_phraselet.frequency_factor), '0.31739380551401464')
+        chase_dog_phraselet = dict['predicate-actor: chasing-dog']
+        self.assertEqual(str(chase_dog_phraselet.frequency_factor), '0.18069973380142287')
+        chase_cat_phraselet = dict['predicate-patient: chasing-cat']
+        self.assertEqual(str(chase_cat_phraselet.frequency_factor), '0.044005662088831145')
+
+    def test_frequency_factors_large_with_ontology_match(self):
+        dict = self._get_phraselet_dict(ontology_holmes_manager,
+                                        "The dog chased the cat",
+                                        words_to_corpus_frequencies={'dog': 2, 'puppy': 4, 'chasing': 4, 'cat': 5}, maximum_corpus_frequency=5)
+        dog_phraselet = dict['word: dog']
+        self.assertEqual(str(dog_phraselet.frequency_factor), '0.5693234419266069')
+        cat_phraselet = dict['word: cat']
+        self.assertEqual(str(cat_phraselet.frequency_factor), '0.1386468838532139')
+        chase_phraselet = dict['word: chasing']
+        self.assertEqual(str(chase_phraselet.frequency_factor), '0.31739380551401464')
+        chase_dog_phraselet = dict['predicate-actor: chasing-dog']
+        self.assertEqual(str(chase_dog_phraselet.frequency_factor), '0.18069973380142287')
+        chase_cat_phraselet = dict['predicate-patient: chasing-cat']
+        self.assertEqual(str(chase_cat_phraselet.frequency_factor), '0.044005662088831145')
+
+    def test_frequency_factors_very_large(self):
+        dict = self._get_phraselet_dict(ontology_holmes_manager,
+                                        "The dog chased the cat",
+                                        words_to_corpus_frequencies={'dog': 97, 'chasing': 98, 'cat': 99}, maximum_corpus_frequency=100)
+        dog_phraselet = dict['word: dog']
+        self.assertEqual(str(dog_phraselet.frequency_factor), '0.008864383480215898')
+        cat_phraselet = dict['word: cat']
+        self.assertEqual(str(cat_phraselet.frequency_factor), '0.0043869621537525605')
+        chase_phraselet = dict['word: chasing']
+        self.assertEqual(str(chase_phraselet.frequency_factor), '0.00661413286687762')
+        chase_dog_phraselet = dict['predicate-actor: chasing-dog']
+        self.assertEqual(str(chase_dog_phraselet.frequency_factor), '5.863021012110299e-05')
+        chase_cat_phraselet = dict['predicate-patient: chasing-cat']
+        self.assertEqual(str(chase_cat_phraselet.frequency_factor), '2.9015950566883042e-05')

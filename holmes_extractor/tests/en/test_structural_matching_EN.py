@@ -869,3 +869,14 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
         self.assertEqual(matches[0].word_matches[2].document_token.i, 5)
         self.assertEqual(matches[0].word_matches[2].first_document_token.i, 3)
         self.assertEqual(matches[0].word_matches[2].last_document_token.i, 5)
+
+    def test_corpus_frequency_information(self):
+        holmes_manager_with_variable_search_phrases.remove_all_documents()
+        holmes_manager_with_variable_search_phrases.parse_and_register_document(
+            "Yesterday Fido chased Richard Paul Hudson in Prague with Fido and Balu.", '1')
+        holmes_manager_with_variable_search_phrases.parse_and_register_document(
+            "Yesterday Balu chased Hudson in Munich.", '2')
+        dictionary, maximum = holmes_manager_with_variable_search_phrases.threadsafe_container.\
+            get_corpus_frequency_information()
+        self.assertEqual(dictionary, {'ENTITYDATE': 2, 'yesterday': 2, 'ENTITYPERSON': 5, 'fido': 2, 'chased': 2, 'chase': 2, 'richard': 1, 'paul': 1, 'hudson': 2, 'in': 2, 'ENTITYGPE': 2, 'prague': 1, 'with': 1, 'ENTITYORG': 1, 'and': 1, 'balu': 2, 'munich': 1})
+        self.assertEqual(maximum, 5)
