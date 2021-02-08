@@ -2119,6 +2119,14 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = analyzer.parse("Erzählung.")
         self.assertEqual(doc[0]._.holmes.derived_lemma, 'erzählen')
 
+    def test_participle_lemma_adja(self):
+        doc = analyzer.parse("Für die studierten Kinder.")
+        self.assertEqual(doc[2]._.holmes.lemma, 'studieren')
+
+    def test_participle_lemma_adjd(self):
+        doc = analyzer.parse("Das Kind war studiert.")
+        self.assertEqual(doc[3]._.holmes.lemma, 'studieren')
+
     def test_non_recorded_subword_alone(self):
         doc = analyzer.parse('Messerlein.')
         self.assertEqual(len(doc[0]._.holmes.subwords), 0)

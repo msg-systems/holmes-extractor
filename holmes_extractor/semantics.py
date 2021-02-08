@@ -2239,12 +2239,20 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
             if token.lemma_.lower() == 'zur':
                 return 'zu'
         # sometimes adjectives retain their inflectional endings
-        if token.tag_ == 'ADJA' and len(token.lemma_.lower()) > 5 and \
-                token.lemma_.lower().endswith('en'):
-            return token.lemma_.lower().rstrip('en')
-        if token.tag_ == 'ADJA' and len(token.lemma_.lower()) > 5 and \
-                token.lemma_.lower().endswith('e'):
-            return token.lemma_.lower().rstrip('e')
+        if token.tag_ in ('ADJA', 'ADJD') and len(token.lemma_) > 5:
+            if token.lemma_.lower().endswith('ten'):
+                working_lemma = token.lemma_.lower()[:-2]
+            elif token.lemma_.lower().endswith('tes'):
+                working_lemma = token.lemma_.lower()[:-2]
+            elif token.lemma_.lower().endswith('ter'):
+                working_lemma = token.lemma_.lower()[:-2]
+            elif token.lemma_.lower().endswith('te'):
+                working_lemma = token.lemma_.lower()[:-1]
+            else:
+                working_lemma = token.lemma_.lower()
+            # see if the adjective is a participle
+            participle_test_doc = self.spacy_parse(' '.join(('Jemand hat', working_lemma)))
+            return participle_test_doc[2].lemma_.lower()
         return token.lemma_.lower()
 
     _ung_ending_blacklist = ('sprung', 'schwung', 'nibelung')
