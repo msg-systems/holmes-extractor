@@ -66,12 +66,16 @@ class SerializationTest(unittest.TestCase):
             'village2')
         self.assertEqual(old_doc[0]._.holmes.string_representation_of_children(),
                          '1:prep; 3:pobjp')
-        self.assertEqual(old_doc[3]._.holmes.parent_dependencies, [
+        self.assertEqual(old_doc[3]._.holmes.string_representation_of_parents(),
+                         '0:pobjp; 1:pobj')
+        self.assertEqual(old_doc[3]._.holmes.coreference_linked_parent_dependencies, [
                          [0, 'pobjp'], [1, 'pobj']])
         self.assertEqual(new_doc[0]._.holmes.string_representation_of_children(),
                          '1:prep; 3:pobjp')
-        self.assertEqual(new_doc[3]._.holmes.parent_dependencies, [
+        self.assertEqual(new_doc[3]._.holmes.coreference_linked_parent_dependencies, [
                          [0, 'pobjp'], [1, 'pobj']])
+        self.assertEqual(new_doc[3]._.holmes.string_representation_of_parents(),
+                         '0:pobjp; 1:pobj')
 
     def test_subwords(self):
         german_holmes_manager.remove_all_documents()

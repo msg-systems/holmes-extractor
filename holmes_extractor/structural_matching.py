@@ -1260,16 +1260,33 @@ class StructuralMatcher:
                         working_document_parent_index.token_index]
                     if not working_document_parent_index.is_subword() or \
                             document_parent_token._.holmes.subwords[
-                                working_document_parent_index.subword_index].is_head:
+                            working_document_parent_index.subword_index].is_head:
                             # is_head: e.g. 'Polizeiinformation über Kriminelle' should match
                             # 'Information über Kriminelle'
-                        for document_dependency in (
-                                document_dependency for document_dependency in
-                                document_parent_token._.holmes.children if
-                                self.semantic_analyzer.dependency_labels_match(
-                                    search_phrase_dependency_label=dependency.label,
-                                    document_dependency_label=document_dependency.label)):
-                            document_child = document_dependency.child_token(document_token.doc)
+
+                        # inverse_polarity_boolean: *True* in the special case where the
+                        # dependency has been matched backwards
+                        document_dependencies_to_inverse_polarity_booleans = {
+                            document_dependency: False for document_dependency in
+                            document_parent_token._.holmes.children if
+                            self.semantic_analyzer.dependency_labels_match(
+                            search_phrase_dependency_label=dependency.label,
+                            document_dependency_label=document_dependency.label,
+                            inverse_polarity=False)}
+                        document_dependencies_to_inverse_polarity_booleans.update({
+                            document_dependency: True for document_dependency in
+                            document_parent_token._.holmes.parents if
+                            self.semantic_analyzer.dependency_labels_match(
+                            search_phrase_dependency_label=dependency.label,
+                            document_dependency_label=document_dependency.label,
+                            inverse_polarity=True)})
+                        for document_dependency, inverse_polarity in \
+                                document_dependencies_to_inverse_polarity_booleans.items():
+                            if not inverse_polarity:
+                                document_child = document_dependency.child_token(document_token.doc)
+                            else:
+                                document_child = \
+                                    document_dependency.parent_token(document_token.doc)
                             if self.perform_coreference_resolution:
                                 # wherever a dependency is found, loop through any tokens linked
                                 # to the child by coreference
@@ -1282,9 +1299,12 @@ class StructuralMatcher:
                                         # otherwise where matching starts with a noun and there is
                                         # a dependency pointing back to the noun, matching will be
                                         # attempted against the pronoun only and will then fail.
-                            else:
+                            elif not inverse_polarity:
                                 working_document_child_indexes = \
                                     [Index(document_dependency.child_index, None)]
+                            else:
+                                working_document_child_indexes = \
+                                    [Index(document_dependency.parent_index, None)]
                             # Where a dependency points to an entire word that has subwords, check
                             # the head subword as well as the entire word
                             for working_document_child_index in \
@@ -1318,8 +1338,8 @@ class StructuralMatcher:
                                         search_phrase_and_document_visited_table=
                                         search_phrase_and_document_visited_table,
                                         is_uncertain=(
-                                            document_dependency.is_uncertain and not
-                                            dependency.is_uncertain),
+                                            (document_dependency.is_uncertain and not
+                                            dependency.is_uncertain) or inverse_polarity),
                                         structurally_matched_document_token=document_child,
                                         compare_embeddings_on_non_root_words=
                                         compare_embeddings_on_non_root_words):
@@ -1333,7 +1353,8 @@ class StructuralMatcher:
                                 self.semantic_analyzer.dependency_labels_match(
                                     search_phrase_dependency_label=dependency.label,
                                     document_dependency_label=
-                                    document_parent_subword.dependency_label):
+                                    document_parent_subword.dependency_label,
+                                    inverse_polarity=False):
                             at_least_one_document_dependency_tried = True
                             if self._match_recursively(
                                     search_phrase=search_phrase,
@@ -1343,6 +1364,34 @@ class StructuralMatcher:
                                     document_token=document_token,
                                     document_subword_index=
                                     document_parent_subword.dependent_index,
+                                    search_phrase_tokens_to_word_matches=
+                                    search_phrase_tokens_to_word_matches,
+                                    search_phrase_and_document_visited_table=
+                                    search_phrase_and_document_visited_table,
+                                    is_uncertain=False,
+                                    structurally_matched_document_token=document_token,
+                                    compare_embeddings_on_non_root_words=
+                                    compare_embeddings_on_non_root_words):
+                                at_least_one_document_dependency_matched = True
+                        # examine relationship to governing subword in the same word
+                        document_child_subword = document_token.doc[
+                            working_document_parent_index.token_index]._.holmes.\
+                            subwords[working_document_parent_index.subword_index]
+                        if document_child_subword.governor_index is not None and \
+                                self.semantic_analyzer.dependency_labels_match(
+                                    search_phrase_dependency_label=dependency.label,
+                                    document_dependency_label=
+                                    document_parent_subword.governing_dependency_label,
+                                    inverse_polarity=True):
+                            at_least_one_document_dependency_tried = True
+                            if self._match_recursively(
+                                    search_phrase=search_phrase,
+                                    search_phrase_token=dependency.child_token(
+                                        search_phrase_token.doc),
+                                    document=document,
+                                    document_token=document_token,
+                                    document_subword_index=
+                                    document_parent_subword.governor_index,
                                     search_phrase_tokens_to_word_matches=
                                     search_phrase_tokens_to_word_matches,
                                     search_phrase_and_document_visited_table=
@@ -1792,6 +1841,8 @@ class StructuralMatcher:
                 for child in children:
                     if parent_token.doc[parent]._.holmes.has_dependency_with_child_index(child):
                         return True
+                    if child_token.doc[child]._.holmes.has_dependency_with_child_index(parent):
+                        return True
             return False
 
         def match_with_subwords_involves_all_containing_document_tokens(word_matches):
@@ -1867,7 +1918,12 @@ class StructuralMatcher:
                                     parent_word_match.document_token,
                                     parent_word_match.document_subword,
                                     child_word_match.document_token,
-                                    child_word_match.document_subword):
+                                    child_word_match.document_subword) and \
+                                not check_document_tokens_are_linked_by_dependency(
+                                    child_word_match.document_token,
+                                    child_word_match.document_subword,
+                                    parent_word_match.document_token,
+                                    parent_word_match.document_subword):
                                 failed = True
                         if failed:
                             break

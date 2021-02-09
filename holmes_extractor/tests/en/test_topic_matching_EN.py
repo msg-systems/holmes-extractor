@@ -304,6 +304,17 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                                                                            maximum_number_of_single_word_matches_for_embedding_matching=0)
         self.assertEqual(int(topic_matches[0].score), 83)
 
+    def test_suppressed_relation_matching_picked_up_during_reverse_matching_with_reverse_dependency(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.parse_and_register_document(
+            "Someone adopts the child. The child is here.")
+        topic_matches = holmes_manager_coref.topic_match_documents_against("An adopted child",
+                                                                           relation_score=20, reverse_only_relation_score=15, single_word_score=10,
+                                                                           single_word_any_tag_score=5,
+                                                                           maximum_number_of_single_word_matches_for_relation_matching=1,
+                                                                           maximum_number_of_single_word_matches_for_embedding_matching=0)
+        self.assertEqual(int(topic_matches[0].score), 34)
+
     def test_relation_matching_suppressed_control_embedding_based_matching_on_root_words(self):
         holmes_manager_coref_embedding_on_root.remove_all_documents()
         holmes_manager_coref_embedding_on_root.parse_and_register_document(
@@ -681,6 +692,21 @@ class EnglishTopicMatchingTest(unittest.TestCase):
     def test_derived_multiword_parent_also_matched_by_ontology_4(self):
         self._check_equals("A big gymnastics equipment",
                            "A big vault horse", 26,
+                           holmes_manager_coref)
+
+    def test_reverse_dependencies_1(self):
+        self._check_equals("An adopted child",
+                           "Someone adopts a child", 34,
+                           holmes_manager_coref)
+
+    def test_reverse_dependencies_2(self):
+        self._check_equals("Someone adopts a child",
+                           "An adopted child", 34,
+                           holmes_manager_coref)
+
+    def test_reverse_dependencies_control(self):
+        self._check_equals("Adopt and child",
+                           "An adopted child", 14,
                            holmes_manager_coref)
 
     def test_coreference_double_match_on_governed(self):

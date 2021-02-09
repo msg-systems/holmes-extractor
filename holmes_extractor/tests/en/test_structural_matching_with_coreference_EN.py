@@ -26,6 +26,8 @@ coref_holmes_manager.register_search_phrase(
     "Somebody writes a book about an animal")
 coref_holmes_manager.register_search_phrase("Hermione breaks")
 coref_holmes_manager.register_search_phrase("Somebody attempts to explain")
+coref_holmes_manager.register_search_phrase("An adopted boy")
+coref_holmes_manager.register_search_phrase("A running boy")
 no_coref_holmes_manager = holmes.Manager(model='en_core_web_lg', ontology=ontology,
                                          perform_coreference_resolution=False)
 no_coref_holmes_manager.register_search_phrase("A dog chases a cat")
@@ -829,7 +831,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         self.assertEqual(len(matches), 1)
         self.assertEqual(matches[0].word_matches[1].type, 'derivation')
 
-    def test_parent_token_indexes(self):
+    def test_coreference_linked_parent_token_indexes(self):
         coref_holmes_manager.remove_all_documents()
         coref_holmes_manager.parse_and_register_document(
             "I saw a house. I saw it in the village.", 'village')
@@ -837,5 +839,35 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
             'village')
         self.assertTrue(
             coref_holmes_manager.semantic_analyzer.is_involved_in_coreference(doc[7]))
-        self.assertEqual(doc[10]._.holmes.parent_dependencies,
+        self.assertEqual(doc[10]._.holmes.coreference_linked_parent_dependencies,
                          [[3, 'pobjp'], [6, 'pobjp'], [7, 'pobjp'], [8, 'pobj']])
+
+    def test_dobj_matches_amod(self):
+        coref_holmes_manager.remove_all_documents()
+        coref_holmes_manager.parse_and_register_document("I saw a boy. Someone had adopted him")
+        matches = coref_holmes_manager.match()
+        self.assertEqual(len(matches), 1)
+        self.assertTrue(matches[0].is_uncertain)
+        self._check_word_match(matches[0], 1, 3, 'boy')
+
+    def test_nsubj_matches_amod(self):
+        coref_holmes_manager.remove_all_documents()
+        coref_holmes_manager.parse_and_register_document("I saw a boy. He was running")
+        matches = coref_holmes_manager.match()
+        self.assertEqual(len(matches), 1)
+
+    def test_dobj_matches_amod_with_conjunction(self):
+        coref_holmes_manager.remove_all_documents()
+        coref_holmes_manager.parse_and_register_document(
+            "I saw a boy and a boy. Someone had adopted them")
+        matches = coref_holmes_manager.match()
+        self.assertEqual(len(matches), 2)
+        self.assertTrue(matches[0].is_uncertain)
+        self.assertTrue(matches[1].is_uncertain)
+
+    def test_nsubj_matches_amod_with_conjunction(self):
+        coref_holmes_manager.remove_all_documents()
+        coref_holmes_manager.parse_and_register_document(
+            "Yesterday I saw a boy and a boy. They were running")
+        matches = coref_holmes_manager.match()
+        self.assertEqual(len(matches), 2)

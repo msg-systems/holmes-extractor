@@ -273,6 +273,14 @@ class GermanTopicMatchingTest(unittest.TestCase):
         self._check_equals("Informierung wird extrahiert",
                            "Informationsextraktion", 25)
 
+    def test_reverse_derivation_1(self):
+        self._check_equals("Urlaubsverkauf",
+                           "ein verkaufter Urlaub", 29)
+
+    def test_reverse_derivation_2(self):
+        self._check_equals("ein verkaufter Urlaub",
+                           "Urlaubsverkauf", 25)
+
     def test_indexes(self):
         holmes_manager.remove_all_documents()
         holmes_manager.parse_and_register_document(

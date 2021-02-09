@@ -46,11 +46,13 @@ holmes_manager.register_search_phrase(
     "Wort-Mit-Bindestrich-Nicht-In-Ontologie")
 holmes_manager.register_search_phrase("Wortohnebindestrichnichtinontologie")
 holmes_manager.register_search_phrase("Information eines Messers")
+holmes_manager.register_search_phrase("Eine verkaufte Reise")
 holmes_manager_with_variable_search_phrases = holmes.Manager(
     model='de_core_news_md')
 holmes_manager_with_embeddings = holmes.Manager(model='de_core_news_md',
                                                 overall_similarity_threshold=0.7, perform_coreference_resolution=False,
-                                                embedding_based_matching_on_root_words=True)
+                                                embedding_based_matching_on_root_words=True,
+                                                use_reverse_dependency_matching=False)
 holmes_manager_with_embeddings.register_search_phrase(
     "Ein Mann sieht einen großen Hund")
 holmes_manager_with_embeddings.register_search_phrase("Der Himmel ist grün")
@@ -1066,10 +1068,26 @@ class GermanStructuralMatchingTest(unittest.TestCase):
                                     "Wortmitbindestrichnichtinontologie")
         self.assertEqual(len(matches), 1)
 
-    def test_hyphenation_10(self):
+    def test_hyphenation_12(self):
         matches = self._get_matches(holmes_manager,
                                     "Wort-Ohne-Bindestrich-Nicht-In-Ontologie")
         self.assertEqual(len(matches), 1)
+
+    def test_reverse_dependency_subword_in_document(self):
+        matches = self._get_matches(holmes_manager,
+                                    "Reiseverkauf")
+        self.assertEqual(len(matches), 1)
+        self.assertTrue(matches[0].is_uncertain)
+
+    def test_reverse_dependency_subword_in_document(self):
+        matches = self._get_matches(holmes_manager,
+                                    "Reise- und Reiseverkauf")
+        self.assertEqual(len(matches), 2)
+
+    def test_reverse_dependency_subword_in_document_use_reverse_dependency_matching_false(self):
+        matches = self._get_matches(holmes_manager_with_embeddings,
+                                    "Reise- und Reiseverkauf")
+        self.assertEqual(len(matches), 0)
 
     def test_matching_across_non_reported_subword(self):
         matches = self._get_matches(holmes_manager,

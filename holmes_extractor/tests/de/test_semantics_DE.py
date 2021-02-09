@@ -2,7 +2,8 @@ import unittest
 from holmes_extractor.semantics import SemanticAnalyzerFactory
 
 analyzer = SemanticAnalyzerFactory().semantic_analyzer(model='de_core_news_md',
-                                                       perform_coreference_resolution=False, debug=False)
+                                                       perform_coreference_resolution=False,
+                                                       use_reverse_dependency_matching=True, debug=False)
 
 
 class GermanSemanticAnalyzerTest(unittest.TestCase):
@@ -737,8 +738,10 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
     def test_parent_token_indexes(self):
         doc = analyzer.parse("Häuser im Dorf.")
-        self.assertEqual(doc[2]._.holmes.parent_dependencies, [
+        self.assertEqual(doc[2]._.holmes.coreference_linked_parent_dependencies, [
                          [0, 'pobjp'], [1, 'nk']])
+        self.assertEqual(doc[2]._.holmes.string_representation_of_parents(),
+                         '0:pobjp; 1:nk')
 
     def test_von_phrase_with_op(self):
         doc = analyzer.parse("Die Verwandlung von einem Mädchen")

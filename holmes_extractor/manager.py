@@ -46,6 +46,9 @@ class Manager:
         words from the same word family. Defaults to *True*.
     perform_coreference_resolution -- *True*, *False*, or *None* if coreference resolution
         should be performed depending on whether the model supports it. Defaults to *None*.
+    use_reverse_dependency_matching -- *True* if appropriate dependencies in documents can be
+        matched to dependencies in search phrases where the two dependencies point in opposite
+        directions. Defaults to *True*.
     debug -- a boolean value specifying whether debug representations should be outputted
         for parsed sentences. Defaults to *False*.
     """
@@ -53,11 +56,12 @@ class Manager:
     def __init__(
             self, model, *, overall_similarity_threshold=1.0,
             embedding_based_matching_on_root_words=False, ontology=None,
-            analyze_derivational_morphology=True, perform_coreference_resolution=None, debug=False):
+            analyze_derivational_morphology=True, perform_coreference_resolution=None,
+            use_reverse_dependency_matching=True, debug=False):
         self.semantic_analyzer = SemanticAnalyzerFactory().semantic_analyzer(
             model=model,
             perform_coreference_resolution=perform_coreference_resolution,
-            debug=debug)
+            use_reverse_dependency_matching=use_reverse_dependency_matching, debug=debug)
         if perform_coreference_resolution is None:
             perform_coreference_resolution = \
                 self.semantic_analyzer.model_supports_coreference_resolution()
@@ -69,6 +73,7 @@ class Manager:
         self.overall_similarity_threshold = overall_similarity_threshold
         self.embedding_based_matching_on_root_words = embedding_based_matching_on_root_words
         self.perform_coreference_resolution = perform_coreference_resolution
+        self.use_reverse_dependency_matching = use_reverse_dependency_matching
         self.structural_matcher = StructuralMatcher(
             self.semantic_analyzer, ontology, overall_similarity_threshold,
             embedding_based_matching_on_root_words,
@@ -542,6 +547,9 @@ class MultiprocessingManager:
         words from the same word family. Defaults to *True*.
     perform_coreference_resolution -- *True*, *False* or *None* if coreference resolution
         should be performed depending on whether the model supports it. Defaults to *None*.
+    use_reverse_dependency_matching -- *True* if appropriate dependencies in documents can be
+        matched to dependencies in search phrases where the two dependencies point in opposite
+        directions. Defaults to *True*.
     debug -- a boolean value specifying whether debug representations should be outputted
         for parsed sentences. Defaults to *False*.
     verbose -- a boolean value specifying whether status messages should be outputted to the
@@ -553,9 +561,11 @@ class MultiprocessingManager:
             self, model, *, overall_similarity_threshold=1.0,
             embedding_based_matching_on_root_words=False, ontology=None,
             analyze_derivational_morphology=True, perform_coreference_resolution=None,
-            debug=False, verbose=True, number_of_workers=None):
+            use_reverse_dependency_matching=True, debug=False, verbose=True,
+            number_of_workers=None):
         self.semantic_analyzer = SemanticAnalyzerFactory().semantic_analyzer(
-            model=model, perform_coreference_resolution=perform_coreference_resolution, debug=debug)
+            model=model, perform_coreference_resolution=perform_coreference_resolution,
+            use_reverse_dependency_matching=use_reverse_dependency_matching, debug=debug)
         if perform_coreference_resolution is None:
             perform_coreference_resolution = \
                 self.semantic_analyzer.model_supports_coreference_resolution()

@@ -38,6 +38,13 @@ class SemanticDependency:
         self.label = label
         self.is_uncertain = is_uncertain
 
+    def parent_token(self, doc):
+        """Convenience method to return the parent token of this dependency.
+
+        doc -- the document containing the token.
+        """
+        return doc[self.parent_index]
+
     def child_token(self, doc):
         """Convenience method to return the child token of this dependency.
 
@@ -120,6 +127,24 @@ class Subword:
             lemma_string = self.lemma
         return '/'.join((self.text, lemma_string))
 
+class MatchImplication:
+    """Entry describing which document dependencies match a given search phrase dependency.
+
+        Parameters:
+
+        search_phrase_dependency -- the search phrase dependency.
+        document_dependencies -- the matching document dependencies.
+        reverse_document_dependencies -- document dependencies that match when the polarity is
+            opposite to the polarity of *search_phrase_dependency*.
+    """
+
+    def __init__(
+            self, *, search_phrase_dependency, document_dependencies,
+                reverse_document_dependencies=[]):
+        self.search_phrase_dependency = search_phrase_dependency
+        self.document_dependencies = document_dependencies
+        self.reverse_document_dependencies = reverse_document_dependencies
+
 class HolmesDictionary:
     """The holder object for token-level semantic information managed by Holmes
 
@@ -137,6 +162,7 @@ class HolmesDictionary:
         self.lemma = lemma
         self._derived_lemma = derived_lemma
         self.children = [] # list of *SemanticDependency* objects where this token is the parent.
+        self.parents = [] # list of *SemanticDependency* objects where this token is the child.
         self.righthand_siblings = [] # list of tokens to the right of this token that stand in a
         # conjunction relationship to this token and that share its semantic parents.
         self.token_or_lefthand_sibling_index = None # the index of this token's lefthand sibling,
@@ -144,9 +170,12 @@ class HolmesDictionary:
         self.is_involved_in_or_conjunction = False
         self.is_negated = None
         self.is_matchable = None
-        self.parent_dependencies = [] # list of [index, label] specifications of dependencies
-        # where this token is the child. Takes any coreference resolution into account. Used in
-        # topic matching.
+        self.coreference_linked_child_dependencies = [] # list of [index, label] specifications of
+        # dependencies where this token is the parent, taking any coreference resolution into
+        # account. Used in topic matching.
+        self.coreference_linked_parent_dependencies = [] # list of [index, label] specifications of
+        # dependencies where this token is the child, taking any coreference resolution into
+        # account. Used in topic matching.
         self.token_and_coreference_chain_indexes = None # where no coreference, only the token
         # index; where coreference, the token index followed by the indexes of coreferring tokens
         self.mentions = []
@@ -227,6 +256,10 @@ class HolmesDictionary:
             self.children, key=lambda dependency: dependency.child_index)
         return '; '.join(str(child) for child in children)
 
+    def string_representation_of_parents(self):
+        parents = sorted(
+            self.parents, key=lambda dependency: dependency.parent_index)
+        return '; '.join(':'.join((str(parent.parent_index), parent.label)) for parent in parents)
 
 class SerializedHolmesDocument:
     """Consists of the spaCy represention returned by *get_bytes()* plus a jsonpickle representation
@@ -298,16 +331,17 @@ class SemanticAnalyzerFactory():
         if additional *SemanticAnalyzer* implementations are added for new languages.
     """
 
-    def semantic_analyzer(self, *, model, perform_coreference_resolution, debug=False):
+    def semantic_analyzer(self, *, model, perform_coreference_resolution,
+        use_reverse_dependency_matching, debug=False):
         language = model[0:2]
         if language == 'en':
             return EnglishSemanticAnalyzer(
                 model=model, perform_coreference_resolution=perform_coreference_resolution,
-                debug=debug)
+                use_reverse_dependency_matching=use_reverse_dependency_matching, debug=debug)
         elif language == 'de':
             return GermanSemanticAnalyzer(
                 model=model, perform_coreference_resolution=perform_coreference_resolution,
-                debug=debug)
+                use_reverse_dependency_matching=use_reverse_dependency_matching, debug=debug)
         else:
             raise ValueError(
                 ' '.join(['No semantic analyzer for model', language]))
@@ -321,13 +355,17 @@ class SemanticAnalyzer(ABC):
         implementation where they can be illustrated with direct examples.
     """
 
-    def __init__(self, *, model, perform_coreference_resolution, debug):
+    def __init__(self, *, model, perform_coreference_resolution,
+        use_reverse_dependency_matching, debug):
         """Args:
 
         model -- the name of the spaCy model
         perform_coreference_resolution -- *True* if neuralcoref should be added to the pipe,
                 *None* if neuralcoref should be added to the pipe if coreference resolution is
                 available for the model
+        use_reverse_dependency_matching -- *True* if appropriate dependencies in documents can be
+            matched to dependencies in search phrases where the two dependencies point in opposite
+            directions. Defaults to *True*.
         debug -- *True* if the object should print a representation of each parsed document
         """
         self.nlp = spacy.load(model)
@@ -337,8 +375,17 @@ class SemanticAnalyzer(ABC):
             neuralcoref.add_to_pipe(self.nlp)
         self.model = model
         self.perform_coreference_resolution = perform_coreference_resolution
+        self.use_reverse_dependency_matching = use_reverse_dependency_matching
         self.debug = debug
         self._derivational_dictionary = self._load_derivational_dictionary()
+        for key, match_implication in self.match_implication_dict.items():
+            assert key == match_implication.search_phrase_dependency
+            assert key not in match_implication.document_dependencies
+            assert len([dep for dep in match_implication.document_dependencies
+                if match_implication.document_dependencies.count(dep) > 1]) == 0
+            assert key not in match_implication.reverse_document_dependencies
+            assert len([dep for dep in match_implication.reverse_document_dependencies
+                if match_implication.reverse_document_dependencies.count(dep) > 1]) == 0
 
     Token.set_extension('holmes', default='')
 
@@ -410,7 +457,7 @@ class SemanticAnalyzer(ABC):
         for token in spacy_doc:
             self._perform_language_specific_tasks(token)
         for token in spacy_doc:
-            self._create_parent_dependencies(token)
+            self._create_convenience_dependencies(token)
         self.debug_structures(spacy_doc)
         return spacy_doc
 
@@ -420,15 +467,25 @@ class SemanticAnalyzer(ABC):
     def model_supports_coreference_resolution(self):
         return self._model_supports_coreference_resolution
 
-    def dependency_labels_match(self, *, search_phrase_dependency_label, document_dependency_label):
+    def dependency_labels_match(self, *, search_phrase_dependency_label, document_dependency_label,
+            inverse_polarity:bool):
         """Determines whether a dependency label in a search phrase matches a dependency label in
             a document being searched.
+            inverse_polarity: *True* if the matching dependencies have to point in opposite
+            directions.
         """
-        if search_phrase_dependency_label == document_dependency_label:
-            return True
-        if search_phrase_dependency_label not in self._matching_dep_dict.keys():
-            return False
-        return document_dependency_label in self._matching_dep_dict[search_phrase_dependency_label]
+        if not inverse_polarity:
+            if search_phrase_dependency_label == document_dependency_label:
+                return True
+            if search_phrase_dependency_label not in self.match_implication_dict.keys():
+                return False
+            return document_dependency_label in \
+                self.match_implication_dict[search_phrase_dependency_label].document_dependencies
+        else:
+            return self.use_reverse_dependency_matching and \
+                search_phrase_dependency_label in self.match_implication_dict.keys() and \
+                document_dependency_label in self.match_implication_dict[
+                search_phrase_dependency_label].reverse_document_dependencies
 
     def _lefthand_sibling_recursively(self, token):
         """If *token* is a righthand sibling, return the index of the token that has a sibling
@@ -632,7 +689,7 @@ class SemanticAnalyzer(ABC):
 
     _or_lemma = NotImplemented
 
-    _matching_dep_dict = NotImplemented
+    match_implication_dict = NotImplemented
 
     _mark_child_dependencies_copied_to_siblings_as_uncertain = NotImplemented
 
@@ -809,7 +866,7 @@ class SemanticAnalyzer(ABC):
             mainly language-dependent whether the preposition phrase is analysed as being
             dependent on the preceding noun or the preceding verb. We add an additional, new
             dependency to whichever of the noun or the verb does not already have one. In English,
-            the new label is defined in *_matching_dep_dict* in such a way that original
+            the new label is defined in *match_implication_dict* in such a way that original
             dependencies in search phrases match new dependencies in documents but not vice versa.
             This restriction is not applied in German because the fact the verb can be placed in
             different positions within the sentence means there is considerable variation around
@@ -910,7 +967,12 @@ class SemanticAnalyzer(ABC):
                 if token.i != to_token.i:
                     token._.holmes.righthand_siblings.append(to_token.i)
 
-    def _create_parent_dependencies(self, token):
+    def _create_convenience_dependencies(self, token):
+        for child_dependency in (
+                child_dependency for child_dependency in token._.holmes.children
+                if child_dependency.child_index >= 0):
+            child_token = child_dependency.child_token(token.doc)
+            child_token._.holmes.parents.append(child_dependency)
         if self.perform_coreference_resolution:
             for linked_parent_index in token._.holmes.token_and_coreference_chain_indexes:
                 linked_parent = token.doc[linked_parent_index]
@@ -921,14 +983,18 @@ class SemanticAnalyzer(ABC):
                     for linked_child_index in \
                             child_token._.holmes.token_and_coreference_chain_indexes:
                         linked_child = token.doc[linked_child_index]
-                        linked_child._.holmes.parent_dependencies.append([
+                        token._.holmes.coreference_linked_child_dependencies.append([
+                            linked_child.i, child_dependency.label])
+                        linked_child._.holmes.coreference_linked_parent_dependencies.append([
                             token.i, child_dependency.label])
         else:
             for child_dependency in (
                     child_dependency for child_dependency in token._.holmes.children
                     if child_dependency.child_index >= 0):
                 child_token = child_dependency.child_token(token.doc)
-                child_token._.holmes.parent_dependencies.append([
+                token._.holmes.coreference_linked_child_dependencies.append([
+                    child_token.i, child_dependency.label])
+                child_token._.holmes.coreference_linked_parent_dependencies.append([
                     token.i, child_dependency.label])
 
 class EnglishSemanticAnalyzer(SemanticAnalyzer):
@@ -992,42 +1058,69 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
     # The word for 'or' in this language
     _or_lemma = 'or'
 
-    # Map from dependency tags as occurring within search phrases to corresponding dependency tags
-    # as occurring within documents being searched. This is the main source of the asymmetry
-    # in matching from search phrases to documents versus from documents to search phrases.
-    _matching_dep_dict = {
-        'nsubj': ['csubj', 'poss', 'pobjb', 'pobjo', 'advmodsubj', 'arg'],
-        'acomp': ['amod', 'advmod', 'npmod', 'advcl'],
-        'amod': ['acomp', 'advmod', 'npmod', 'advcl'],
-        'advmod': ['acomp', 'amod', 'npmod', 'advcl'],
-        'arg': [
-            'nsubj', 'csubj', 'poss', 'pobjb', 'advmodsubj', 'dobj', 'pobjo', 'relant',
-            'nsubjpass', 'csubjpass', 'compound', 'advmodobj', 'dative', 'pobjp'],
-        'compound': [
-            'nmod', 'appos', 'nounmod', 'nsubj', 'csubj', 'poss', 'pobjb',
+    # Maps from dependency tags as occurring within search phrases to corresponding implication
+    # definitions. This is the main source of the asymmetry in matching from search phrases to
+    # documents versus from documents to search phrases.
+    match_implication_dict = {
+        'nsubj': MatchImplication(search_phrase_dependency='nsubj',
+            document_dependencies=['csubj', 'poss', 'pobjb', 'pobjo', 'advmodsubj', 'arg'],
+            reverse_document_dependencies=['acomp', 'amod']),
+        'acomp': MatchImplication(search_phrase_dependency='acomp',
+            document_dependencies=['amod', 'advmod', 'npmod', 'advcl'],
+            reverse_document_dependencies=['nsubj', 'csubj', 'poss', 'pobjb', 'advmodsubj', 'dobj',
+            'pobjo', 'relant', 'nsubjpass', 'csubjpass', 'compound', 'advmodobj', 'dative',
+            'arg']),
+        'amod': MatchImplication(search_phrase_dependency='amod',
+            document_dependencies=['acomp', 'advmod', 'npmod', 'advcl'],
+            reverse_document_dependencies=['nsubj', 'csubj', 'poss', 'pobjb', 'advmodsubj', 'dobj',
+            'pobjo', 'relant', 'nsubjpass', 'csubjpass', 'compound', 'advmodobj', 'dative',
+            'arg']),
+        'advmod': MatchImplication(search_phrase_dependency='advmod',
+            document_dependencies=['acomp', 'amod', 'npmod', 'advcl']),
+        'arg': MatchImplication(search_phrase_dependency='arg',
+            document_dependencies=['nsubj', 'csubj', 'poss', 'pobjb', 'advmodsubj', 'dobj',
+            'pobjo', 'relant', 'nsubjpass', 'csubjpass', 'compound', 'advmodobj', 'dative',
+            'pobjp'],
+            reverse_document_dependencies=['acomp', 'amod']),
+        'compound': MatchImplication(search_phrase_dependency='compound',
+            document_dependencies=['nmod', 'appos', 'nounmod', 'nsubj', 'csubj', 'poss', 'pobjb',
             'advmodsubj', 'dobj', 'pobjo', 'relant', 'pobjp',
             'nsubjpass', 'csubjpass', 'arg', 'advmodobj', 'dative'],
-        'dative': ['pobjt', 'relant', 'nsubjpass'],
-        'pobjt': ['dative', 'relant'],
-        'nsubjpass': [
-            'dobj', 'pobjo', 'poss', 'relant', 'csubjpass',
+            reverse_document_dependencies=['acomp', 'amod']),
+        'dative': MatchImplication(search_phrase_dependency='dative',
+            document_dependencies=['pobjt', 'relant', 'nsubjpass'],
+            reverse_document_dependencies=['acomp', 'amod']),
+        'pobjt': MatchImplication(search_phrase_dependency='pobjt',
+            document_dependencies=['dative', 'relant'],
+            reverse_document_dependencies=['acomp', 'amod']),
+        'nsubjpass': MatchImplication(search_phrase_dependency='nsubjpass',
+            document_dependencies=['dobj', 'pobjo', 'poss', 'relant', 'csubjpass',
             'compound', 'advmodobj', 'arg', 'dative'],
-        'dobj': [
-            'pobjo', 'poss', 'relant', 'nsubjpass', 'csubjpass',
+            reverse_document_dependencies=['acomp', 'amod']),
+        'dobj': MatchImplication(search_phrase_dependency='dobj',
+            document_dependencies=['pobjo', 'poss', 'relant', 'nsubjpass', 'csubjpass',
             'compound', 'advmodobj', 'arg', 'xcomp'],
-        'nmod': ['appos', 'compound', 'nummod'],
-        'poss': [
-            'pobjo', 'nsubj', 'csubj', 'pobjb', 'advmodsubj', 'arg', 'relant',
-            'nsubjpass', 'csubjpass', 'compound', 'advmodobj'],
-        'pobjo': [
-            'poss', 'dobj', 'relant', 'nsubjpass', 'csubjpass',
+            reverse_document_dependencies=['acomp', 'amod']),
+        'nmod': MatchImplication(search_phrase_dependency='nmod',
+            document_dependencies=['appos', 'compound', 'nummod']),
+        'poss': MatchImplication(search_phrase_dependency='poss',
+            document_dependencies=['pobjo', 'nsubj', 'csubj', 'pobjb', 'advmodsubj', 'arg',
+            'relant', 'nsubjpass', 'csubjpass', 'compound', 'advmodobj'],
+            reverse_document_dependencies=['acomp', 'amod']),
+        'pobjo': MatchImplication(search_phrase_dependency='pobjo',
+            document_dependencies=['poss', 'dobj', 'relant', 'nsubjpass', 'csubjpass',
             'compound', 'advmodobj', 'arg', 'xcomp', 'nsubj', 'csubj', 'advmodsubj'],
-        'pobjb': ['nsubj', 'csubj', 'poss', 'advmodsubj', 'arg'],
-        'pobjp': ['compound'],
-        'prep': ['prepposs'],
-        'xcomp': [
-            'pobjo', 'poss', 'relant', 'nsubjpass', 'csubjpass',
-            'compound', 'advmodobj', 'arg', 'dobj']}
+            reverse_document_dependencies=['acomp', 'amod']),
+        'pobjb': MatchImplication(search_phrase_dependency='pobjb',
+            document_dependencies=['nsubj', 'csubj', 'poss', 'advmodsubj', 'arg'],
+            reverse_document_dependencies=['acomp', 'amod']),
+        'pobjp': MatchImplication(search_phrase_dependency='pobjp',
+            document_dependencies=['compound']),
+        'prep': MatchImplication(search_phrase_dependency='prep',
+            document_dependencies=['prepposs']),
+        'xcomp': MatchImplication(search_phrase_dependency='xcomp',
+            document_dependencies=['pobjo', 'poss', 'relant', 'nsubjpass', 'csubjpass',
+            'compound', 'advmodobj', 'arg', 'dobj'])}
 
     # Where dependencies from a parent to a child are copied to the parent's righthand siblings,
     # it can make sense to mark the dependency as uncertain depending on the underlying spaCy
@@ -1366,6 +1459,10 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
             for child in token.children:
                 if child.tag_ == 'RP':
                     return ' '.join([token.lemma_.lower(), child.lemma_.lower()])
+        if token.pos_ == 'ADJ':
+            # see if the adjective is a participle
+            participle_test_doc = self.spacy_parse(' '.join(('Somebody has', token.lemma_.lower())))
+            return participle_test_doc[2].lemma_.lower()
         return token.lemma_.lower()
 
     def normalize_hyphens(self, word):
@@ -1379,7 +1476,8 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
             return word.replace('-', ' ')
 
     def _language_specific_derived_holmes_lemma(self, token, lemma):
-        """Generates and returns a derived lemma where appropriate, otherwise returns *None*."""
+        """Generates and returns a derived lemma where appropriate, otherwise returns *None*.
+        """
         if (token is None or token.pos_ == 'NOUN') and len(lemma) >= 10:
             possible_lemma = None
             if lemma.endswith('isation') or lemma.endswith('ization'):
@@ -1630,19 +1728,37 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
 
     _or_lemma = 'oder'
 
-    _matching_dep_dict = {
-        'sb': ['pobjb', 'ag', 'arg', 'intcompound'],
-        'ag': ['nk', 'pobjo', 'intcompound'],
-        'oa': ['pobjo', 'ag', 'arg', 'intcompound', 'og', 'oc'],
-        'arg': ['sb', 'oa', 'ag', 'intcompound', 'pobjb', 'pobjo'],
-        'mo': ['moposs', 'mnr', 'mnrposs', 'nk', 'oc'],
-        'mnr': ['mnrposs', 'mo', 'moposs', 'nk', 'oc'],
-        'nk': ['ag', 'pobjo', 'intcompound', 'oc', 'mo'],
-        'pobjo': ['ag', 'intcompound'],
-        'pobjp': ['intcompound'],
+    match_implication_dict = {
+        'sb': MatchImplication(search_phrase_dependency='sb',
+            document_dependencies=['pobjb', 'ag', 'arg', 'intcompound'],
+            reverse_document_dependencies=['nk']),
+        'ag': MatchImplication(search_phrase_dependency='ag',
+            document_dependencies=['nk', 'pobjo', 'intcompound'],
+            reverse_document_dependencies=['nk']),
+        'oa': MatchImplication(search_phrase_dependency='oa',
+            document_dependencies=['pobjo', 'ag', 'arg', 'intcompound', 'og', 'oc'],
+            reverse_document_dependencies=['nk']),
+        'arg': MatchImplication(search_phrase_dependency='arg',
+            document_dependencies=['sb', 'oa', 'ag', 'intcompound', 'pobjb', 'pobjo'],
+            reverse_document_dependencies=['nk']),
+        'mo': MatchImplication(search_phrase_dependency='mo',
+            document_dependencies=['moposs', 'mnr', 'mnrposs', 'nk', 'oc']),
+        'mnr': MatchImplication(search_phrase_dependency='mnr',
+            document_dependencies=['mnrposs', 'mo', 'moposs', 'nk', 'oc']),
+        'nk': MatchImplication(search_phrase_dependency='nk',
+            document_dependencies=['ag', 'pobjo', 'intcompound', 'oc', 'mo'],
+            reverse_document_dependencies=['sb', 'ag', 'oa', 'arg', 'pobjo',
+                'intcompound']),
+        'pobjo': MatchImplication(search_phrase_dependency='pobjo',
+            document_dependencies=['ag', 'intcompound'],
+            reverse_document_dependencies=['nk']),
+        'pobjp': MatchImplication(search_phrase_dependency='pobjp',
+            document_dependencies=['intcompound']),
         # intcompound is only used within extensive matching because it is not assigned
         # in the context of registering search phrases.
-        'intcompound': ['sb', 'oa', 'ag', 'og', 'nk', 'mo', 'pobjo', 'pobjp']
+        'intcompound': MatchImplication(search_phrase_dependency='intcompound',
+            document_dependencies=['sb', 'oa', 'ag', 'og', 'nk', 'mo', 'pobjo', 'pobjp'],
+            reverse_document_dependencies=['nk']),
     }
 
     _mark_child_dependencies_copied_to_siblings_as_uncertain = False

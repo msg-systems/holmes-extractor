@@ -52,12 +52,15 @@ nocoref_holmes_manager.register_search_phrase("a big unhyphenated multiword")
 nocoref_holmes_manager.register_search_phrase("a small unhyphenated-multiword")
 nocoref_holmes_manager.register_search_phrase("hyphenated single multiword")
 nocoref_holmes_manager.register_search_phrase("unhyphenated single multiword")
+nocoref_holmes_manager.register_search_phrase("An adopted boy")
+nocoref_holmes_manager.register_search_phrase("Someone adopts a girl")
+nocoref_holmes_manager.register_search_phrase("An running boy")
+nocoref_holmes_manager.register_search_phrase("A girl is running")
 
 holmes_manager_with_variable_search_phrases = holmes.Manager(model='en_core_web_lg',
                                                              ontology=ontology, perform_coreference_resolution=False)
 holmes_manager_with_embeddings = holmes.Manager(model='en_core_web_lg',
-                                                overall_similarity_threshold=0.7, perform_coreference_resolution=False)
-
+                                                overall_similarity_threshold=0.7, perform_coreference_resolution=False, use_reverse_dependency_matching=False)
 
 class EnglishStructuralMatchingTest(unittest.TestCase):
 
@@ -793,6 +796,55 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
                                     "unhyphenated-single-multiword")
         self.assertEqual(len(matches), 1)
         self.assertEqual(matches[0].word_matches[1].type, 'direct')
+
+    def test_dobj_matches_amod(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                                    "Someone adopts a boy")
+        self.assertEqual(len(matches), 1)
+        self.assertTrue(matches[0].is_uncertain)
+
+    def test_amod_matches_dobj(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                                    "An adopted girl")
+        self.assertEqual(len(matches), 1)
+
+    def test_nsubj_matches_amod(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                                    "A boy is running")
+        self.assertEqual(len(matches), 1)
+
+    def test_amod_matches_nsubj(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                                    "A running girl")
+        self.assertEqual(len(matches), 1)
+
+    def test_dobj_matches_amod_with_conjunction(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                                    "Someone adopts a boy and a boy")
+        self.assertEqual(len(matches), 2)
+        self.assertTrue(matches[0].is_uncertain)
+        self.assertTrue(matches[1].is_uncertain)
+
+    def test_amod_matches_dobj_with_conjunction(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                                    "An adopted girl and girl")
+        self.assertEqual(len(matches), 2)
+
+    def test_nsubj_matches_amod_with_conjunction(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                                    "A boy and a boy are running")
+        self.assertEqual(len(matches), 2)
+
+    def test_amod_matches_nsubj_with_conjunction(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                                    "A running girl and girl")
+        self.assertEqual(len(matches), 2)
+
+    def test_amod_matches_nsubj_with_conjunction_use_reverse_dependency_matching_false(self):
+        holmes_manager_with_embeddings.register_search_phrase("A girl is running")
+        matches = self._get_matches(holmes_manager_with_embeddings,
+                                    "A running girl and girl")
+        self.assertEqual(len(matches), 0)
 
     def test_ontology_multiword_information_in_word_match_objects_at_sentence_boundaries(self):
         holmes_manager_with_variable_search_phrases.remove_all_documents()

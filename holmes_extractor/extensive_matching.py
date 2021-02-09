@@ -274,26 +274,49 @@ class TopicMatcher:
                     working_token = doc[working_index.token_index]
                     if not working_index.is_subword() or \
                             working_token._.holmes.subwords[working_index.subword_index].is_head:
-                        for parent_dependency in working_token._.holmes.parent_dependencies:
+                        for parent_dependency in \
+                                working_token._.holmes.coreference_linked_parent_dependencies:
                             if self._semantic_analyzer.dependency_labels_match(
                                     search_phrase_dependency_label=linking_dependency,
-                                    document_dependency_label=parent_dependency[1]):
+                                    document_dependency_label=parent_dependency[1],
+                                    inverse_polarity=False):
                                 self._add_to_dict_set(
                                     set_to_add_to,
                                     corpus_word_position.document_label,
                                     Index(parent_dependency[0], None))
+                        for child_dependency in \
+                                working_token._.holmes.coreference_linked_child_dependencies:
+                            if self._semantic_analyzer.dependency_labels_match(
+                                    search_phrase_dependency_label=linking_dependency,
+                                    document_dependency_label=child_dependency[1],
+                                    inverse_polarity=True):
+                                self._add_to_dict_set(
+                                    set_to_add_to,
+                                    corpus_word_position.document_label,
+                                    Index(child_dependency[0], None))
                     else:
                         working_subword = \
                             working_token._.holmes.subwords[working_index.subword_index]
                         if self._semantic_analyzer.dependency_labels_match(
                                 search_phrase_dependency_label=linking_dependency,
                                 document_dependency_label=
-                                working_subword.governing_dependency_label):
+                                working_subword.governing_dependency_label,
+                                inverse_polarity=False):
                             self._add_to_dict_set(
                                 set_to_add_to,
                                 corpus_word_position.document_label,
                                 Index(working_index.token_index,
                                       working_subword.governor_index))
+                        if self._semantic_analyzer.dependency_labels_match(
+                                search_phrase_dependency_label=linking_dependency,
+                                document_dependency_label=
+                                working_subword.dependency_label,
+                                inverse_polarity=True):
+                            self._add_to_dict_set(
+                                set_to_add_to,
+                                corpus_word_position.document_label,
+                                Index(working_index.token_index,
+                                      working_subword.dependent_index))
 
         def rebuild_document_info_dict(matches, phraselet_labels_to_phraselet_infos):
 

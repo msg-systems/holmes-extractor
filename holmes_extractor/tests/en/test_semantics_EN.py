@@ -2,7 +2,8 @@ import unittest
 from holmes_extractor.semantics import SemanticAnalyzerFactory
 
 analyzer = SemanticAnalyzerFactory().semantic_analyzer(model='en_core_web_lg', debug=False,
-                                                       perform_coreference_resolution=True)
+                                                       perform_coreference_resolution=True,
+                                                       use_reverse_dependency_matching=True)
 
 
 class EnglishSemanticAnalyzerTest(unittest.TestCase):
@@ -449,6 +450,10 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(
             doc[1]._.holmes.string_representation_of_children(), '0:nsubj; 3:dobj')
 
+    def test_participle(self):
+        doc = analyzer.parse("An adopted child")
+        self.assertEqual(doc[1]._.holmes.lemma, 'adopt')
+
     def test_positive_modal_verb(self):
         doc = analyzer.parse("He should do it")
         self.assertEqual(doc[2]._.holmes.string_representation_of_children(),
@@ -854,8 +859,10 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         doc = analyzer.parse("Houses in the village.")
         self.assertEqual(doc[0]._.holmes.string_representation_of_children(),
                          '1:prep; 3:pobjp')
-        self.assertEqual(doc[3]._.holmes.parent_dependencies, [
+        self.assertEqual(doc[3]._.holmes.coreference_linked_parent_dependencies, [
                          [0, 'pobjp'], [1, 'pobj']])
+        self.assertEqual(doc[3]._.holmes.string_representation_of_parents(),
+                         '0:pobjp; 1:pobj')
 
     def test_derived_lemma_from_dictionary(self):
         doc = analyzer.parse("A long imprisonment.")
