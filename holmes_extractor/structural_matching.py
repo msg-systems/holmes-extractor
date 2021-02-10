@@ -169,6 +169,11 @@ class Match:
             return -1
         return self.word_matches[0].document_subword.index
 
+    def get_word_match_with_search_phrase_word_index(self, search_phrase_word_index):
+        word_matches = [word_match for word_match in self.word_matches if
+            word_match.search_phrase_token.i == search_phrase_word_index]
+        return word_matches[0] if len(word_matches) > 0 else None
+
 @total_ordering
 class Index:
     """ The position of a word or subword within a document. """
@@ -1320,11 +1325,12 @@ class StructuralMatcher:
                             # Loop through the dependencies from each token
                             for working_document_child_index in (
                                     working_index for working_index
-                                    in working_document_child_indexes if working_index not in
-                                    search_phrase_and_document_visited_table[dependency.child_index]
-                                    ):
+                                    in working_document_child_indexes):
                                 at_least_one_document_dependency_tried = True
-                                if self._match_recursively(
+                                if working_document_child_index in \
+                                        search_phrase_and_document_visited_table[
+                                        dependency.child_index] or \
+                                        self._match_recursively(
                                         search_phrase=search_phrase,
                                         search_phrase_token=dependency.child_token(
                                             search_phrase_token.doc),

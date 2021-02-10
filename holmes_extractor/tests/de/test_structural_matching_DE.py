@@ -47,6 +47,7 @@ holmes_manager.register_search_phrase(
 holmes_manager.register_search_phrase("Wortohnebindestrichnichtinontologie")
 holmes_manager.register_search_phrase("Information eines Messers")
 holmes_manager.register_search_phrase("Eine verkaufte Reise")
+holmes_manager.register_search_phrase("Jemand wohnt in einem ENTITYLOC")
 holmes_manager_with_variable_search_phrases = holmes.Manager(
     model='de_core_news_md')
 holmes_manager_with_embeddings = holmes.Manager(model='de_core_news_md',
@@ -1112,4 +1113,9 @@ class GermanStructuralMatchingTest(unittest.TestCase):
     def test_no_embedding_search_phrase_word_too_short(self):
         matches = self._get_matches(holmes_manager_with_embeddings,
                                     "Jemand isst von einem Teller")
+        self.assertEqual(len(matches), 1)
+
+    def test_recursion_problem_solved(self):
+        matches = self._get_matches(holmes_manager,
+                                    "Ich wohne seit 2010 in München")
         self.assertEqual(len(matches), 1)

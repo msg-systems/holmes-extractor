@@ -298,3 +298,24 @@ class WordMatchingTest(unittest.TestCase):
         self.assertEqual(text_matches[0]['word_matches'][0]['match_type'], 'ontology')
         self.assertEqual(text_matches[0]['word_matches'][0]['explanation'],
                 "Is an ancestor of SZEŚĆ in the ontology.")
+
+    def test_ontology_matching_depth_minus_5(self):
+        text_matches = second_holmes_manager_coref.match_search_phrases_against(
+                entry='jeden')
+        self.assertEqual(len(text_matches), 1)
+        self.assertEqual(text_matches[0]['word_matches'][0]['match_type'], 'ontology')
+        self.assertEqual(text_matches[0]['word_matches'][0]['explanation'],
+                "Is an ancestor of SZEŚĆ in the ontology.")
+
+    def test_get_word_match_with_search_phrase_word_index(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.parse_and_register_document('The dog chased the cat')
+        matches = holmes_manager_coref.match()
+        self.assertEqual(matches[0].get_word_match_with_search_phrase_word_index(0), None)
+        self.assertEqual(matches[0].get_word_match_with_search_phrase_word_index(3), None)
+        self.assertEqual(matches[0].get_word_match_with_search_phrase_word_index(1),
+            matches[0].word_matches[0])
+        self.assertEqual(matches[0].get_word_match_with_search_phrase_word_index(2),
+            matches[0].word_matches[1])
+        self.assertEqual(matches[0].get_word_match_with_search_phrase_word_index(4),
+            matches[0].word_matches[2])    
