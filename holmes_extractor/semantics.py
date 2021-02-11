@@ -2570,7 +2570,8 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                 dependency.child_token(token.doc).pos_ in ('VERB', 'AUX')):
             target_tokens, target_dependency = find_target_tokens_and_dependency_recursively(
                 dependency.child_token(token.doc))
-            for target_token in target_tokens:
+            for target_token in (target_token for target_token in target_tokens
+                    if target_token.i != token.i):
                 target_token._.holmes.children.append(SemanticDependency(
                     target_token.i, token.i, target_dependency, True))
 
