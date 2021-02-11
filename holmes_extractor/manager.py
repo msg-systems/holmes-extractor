@@ -747,6 +747,7 @@ class MultiprocessingManager:
                         print('ERROR: Exception retrieving frequency dictionary information from '\
                         ' workers. Please examine the above output'\
                         ' from the worker processes to identify the problem.')
+                        print('text_to_match', text_to_match)
                     self._words_to_corpus_frequencies = {}
                     for worker_frequency_dictionary in worker_frequency_dictionaries:
                         for word in worker_frequency_dictionary:
