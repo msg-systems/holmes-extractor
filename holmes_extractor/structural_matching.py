@@ -159,15 +159,21 @@ class Match:
         return match_to_return
 
     def get_subword_index(self):
-        if self.word_matches[0].document_subword is None:
-            return None
-        return self.word_matches[0].document_subword.index
+        for word_match in self.word_matches:
+            if word_match.search_phrase_token.dep_ == 'ROOT':
+                if word_match.document_subword is None:
+                    return None
+                return word_match.document_subword.index
+        raise RuntimeError('No word match with search phrase token with root dependency')
 
     def get_subword_index_for_sorting(self):
         # returns *-1* rather than *None* in the absence of a subword
-        if self.word_matches[0].document_subword is None:
-            return -1
-        return self.word_matches[0].document_subword.index
+        for word_match in self.word_matches:
+            if word_match.search_phrase_token.dep_ == 'ROOT':
+                if word_match.document_subword is None:
+                    return -1
+                return word_match.document_subword.index
+        raise RuntimeError('No word match with search phrase token with root dependency')
 
     def get_word_match_with_search_phrase_word_index(self, search_phrase_word_index):
         word_matches = [word_match for word_match in self.word_matches if

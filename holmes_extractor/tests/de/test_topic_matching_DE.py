@@ -445,3 +445,12 @@ class GermanTopicMatchingTest(unittest.TestCase):
                 "Das Prinz eines Königs")
         self.assertEqual(topic_match_dictionaries,
                          [{'document_label': '', 'text': 'Ein Königsabdanken und -prinz', 'text_to_match': 'Das Prinz eines Königs', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 29, 'score': 150.0, 'word_infos': [[4, 9, 'single', False, 'Matches KÖNIG directly.'], [24, 29, 'single', True, 'Matches PRINZ directly.']]}])
+
+    def test_no_error(self):
+        holmes_manager_with_embeddings.remove_all_documents()
+        holmes_manager_with_embeddings.remove_all_search_phrases()
+        holmes_manager_with_embeddings.parse_and_register_document(
+            "Ein Krankenhaus für demenzkranke Menschen")
+        topic_match_dictionaries = \
+            holmes_manager_with_embeddings.topic_match_documents_returning_dictionaries_against(
+                "Mein Kind ist krank")
