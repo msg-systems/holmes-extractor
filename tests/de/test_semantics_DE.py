@@ -1,10 +1,9 @@
 import unittest
-from holmes_extractor.semantics import SemanticAnalyzerFactory
+import holmes_extractor
 
-analyzer = SemanticAnalyzerFactory().semantic_analyzer(model='de_core_news_md',
-                                                       perform_coreference_resolution=False,
-                                                       use_reverse_dependency_matching=True, debug=False)
-
+manager = holmes_extractor.Manager(model='de_core_news_lg',
+    perform_coreference_resolution=False, use_reverse_dependency_matching=True)
+analyzer = manager.semantic_analyzer
 
 class GermanSemanticAnalyzerTest(unittest.TestCase):
 
@@ -220,9 +219,9 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = analyzer.parse(
             "Der Hund wird die Katze gejagt und gefressen haben")
         self.assertEqual(
-            doc[5]._.holmes.string_representation_of_children(), '1:sb; 4:oa; 6:cd')
+            doc[5]._.holmes.string_representation_of_children(), '1:sb; 4:oa; 6:cd; 8:oc')
         self.assertEqual(
-            doc[7]._.holmes.string_representation_of_children(), '1:sb')
+            doc[7]._.holmes.string_representation_of_children(), '1:sb; 4:oa; 8:oc')
 
     def test_complex_tense_verb_conjunction_passive(self):
         doc = analyzer.parse(
@@ -238,15 +237,15 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[11]._.holmes.string_representation_of_children(),
                          '1:sb; 4:sb; 7:oa; 10:oa; 12:cd')
         self.assertEqual(doc[13]._.holmes.string_representation_of_children(),
-                         '7:oa; 10:oa')
+                         '1:sb; 4:sb; 7:oa; 10:oa')
 
     def test_conjunction_everywhere_passive(self):
         doc = analyzer.parse(
             "Die Katze und die Maus werden durch den Hund und den Löwen gejagt und gefressen werden")
         self.assertEqual(doc[12]._.holmes.string_representation_of_children(),
-                         '1:oa; 4:oa; 8:sb; 11:sb; 13:cd')
+                         '1:oa; 4:oa; 8:sb; 11:sb; 13:cd; 15:oc')
         self.assertEqual(doc[14]._.holmes.string_representation_of_children(),
-                         '1:oa; 4:oa; 8:sb; 11:sb')
+                         '1:oa; 4:oa; 8:sb; 11:sb; 15:oc')
 
     def test_simple_modal_verb_active(self):
         doc = analyzer.parse("Der Hund soll die Katze jagen")
@@ -279,11 +278,6 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
     def test_relative_pronoun_nominative(self):
         doc = analyzer.parse("Der Hund, der die Katze jagte, war müde")
-        self.assertEqual(
-            doc[6]._.holmes.string_representation_of_children(), '1:sb; 5:oa')
-
-    def test_relative_pronoun_welcher(self):
-        doc = analyzer.parse("Der Hund, welcher die Katze jagte, war müde")
         self.assertEqual(
             doc[6]._.holmes.string_representation_of_children(), '1:sb; 5:oa')
 
@@ -337,7 +331,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
     def test_apprart(self):
         doc = analyzer.parse("Er geht zur Party")
         self.assertEqual(
-            doc[1]._.holmes.string_representation_of_children(), '0:sb; 2:mo; 3:pobjp')
+            doc[1]._.holmes.string_representation_of_children(), '0:sb; 2:op; 3:pobjp')
         self.assertEqual(doc[2].lemma_, 'zur')
         self.assertEqual(doc[2]._.holmes.lemma, 'zu')
 
@@ -390,7 +384,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
     def test_adjective_complement_with_conjunction_active(self):
         doc = analyzer.parse(
-            "Der Hund war darüber besorgt, eine Katze und eine Maus zu jagen")
+            "Der Hund war darüber froh, eine Katze und eine Maus zu jagen")
         self.assertEqual(doc[12]._.holmes.string_representation_of_children(),
                          '1:sb(U); 7:oa; 10:oa; 11:pm')
 
@@ -588,7 +582,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[1].lemma_, 'interessante')
         self.assertEqual(doc[1]._.holmes.lemma, 'interessant')
         self.assertEqual(
-            doc[2]._.holmes.string_representation_of_children(), '1:nk; 3:mnr; 5:pobjp')
+            doc[2]._.holmes.string_representation_of_children(), '1:nk; 3:op; 5:pobjp')
         self.assertEqual(doc[4].lemma_, 'gesunden')
         self.assertEqual(doc[4]._.holmes.lemma, 'gesund')
 
@@ -606,9 +600,9 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = analyzer.parse(
             "Richard und Thomas waren froh und erleichtert zu verstehen und zu begreifen.")
         self.assertEqual(doc[8]._.holmes.string_representation_of_children(),
-                         '0:arg(U); 2:arg(U); 4:mo; 6:mo; 7:pm; 9:cd')
+                         '0:arg(U); 2:arg(U); 4:pd; 6:pd; 7:pm; 9:cd')
         self.assertEqual(doc[11]._.holmes.string_representation_of_children(),
-                         '0:arg(U); 2:arg(U); 4:mo; 6:mo; 10:pm')
+                         '0:arg(U); 2:arg(U); 4:pd; 6:pd; 10:pm')
 
     def test_adjective_verb_clause_with_zu_objective_zu_separate_simple(self):
         doc = analyzer.parse("Richard war schwer zu erreichen.")
@@ -626,15 +620,15 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
     def test_adjective_verb_clause_with_zu_subjective_zu_integrated_simple(self):
         doc = analyzer.parse("Richard war froh hineinzugehen.")
         self.assertEqual(doc[3]._.holmes.string_representation_of_children(),
-                         '0:sb; 2:mo')
+                         '0:arg(U); 2:mo')
 
     def test_adjective_verb_clause_with_zu_subjective_zu_integrated_compound(self):
         doc = analyzer.parse(
             "Richard und Thomas waren froh hineinzugehen und hinzugehen.")
         self.assertEqual(doc[5]._.holmes.string_representation_of_children(),
-                         '0:sb; 2:sb; 4:mo; 6:cd')
+                         '0:arg(U); 2:arg(U); 4:mo; 6:cd')
         self.assertEqual(doc[7]._.holmes.string_representation_of_children(),
-                         '0:sb; 2:sb; 4:mo')
+                         '0:arg(U); 2:arg(U); 4:mo')
 
     def test_adjective_verb_clause_with_zu_objective_zu_integrated_simple(self):
         doc = analyzer.parse("Richard war leicht einzubinden.")
@@ -666,7 +660,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[5]._.holmes.string_representation_of_children(),
                          '1:sb; 4:sb; 6:cd')
         self.assertEqual(doc[7]._.holmes.string_representation_of_children(),
-                         '1:sb; 4:sb; 9:oa; 12:oa')
+                         '9:sb; 12:sb')
 
     def test_ungrammatical_two_accusatives(self):
         doc = analyzer.parse("Den Hund jagt den Hund")
@@ -715,7 +709,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[7]._.holmes.string_representation_of_children(),
                          '-5:None')
         self.assertEqual(doc[11]._.holmes.string_representation_of_children(),
-                         '1:pobjp(U); 4:pobjp; 6:mo; 8:sb; 10:sb; 12:cd')
+                         '1:pobjp(U); 4:pobjp; 6:mo; 8:sb; 9:cd; 10:sb; 12:cd')
         self.assertEqual(doc[13]._.holmes.string_representation_of_children(),
                          '1:pobjp(U); 4:pobjp; 6:mo; 8:sb; 10:sb')
 
@@ -743,10 +737,10 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[2]._.holmes.string_representation_of_parents(),
                          '0:pobjp; 1:nk')
 
-    def test_von_phrase_with_op(self):
+    def test_von_phrase(self):
         doc = analyzer.parse("Die Verwandlung von einem Mädchen")
         self.assertEqual(doc[1]._.holmes.string_representation_of_children(),
-                         '2:op; 4:pobjo')
+                         '2:pg; 4:pobjo')
 
     def test_subwords_without_fugen_s(self):
         doc = analyzer.parse("Telefaxnummer.")
@@ -769,7 +763,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(len(doc[0]._.holmes.subwords), 2)
 
         self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Widerruf')
-        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'widerrufen')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'widerruf')
         self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
@@ -808,7 +802,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(len(doc[0]._.holmes.subwords), 2)
 
         self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Widerruf')
-        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'widerrufen')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'widerruf')
         self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
@@ -822,7 +816,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(len(doc[3]._.holmes.subwords), 2)
 
         self.assertEqual(doc[3]._.holmes.subwords[0].text, 'widerruf')
-        self.assertEqual(doc[3]._.holmes.subwords[0].lemma, 'widerrufen')
+        self.assertEqual(doc[3]._.holmes.subwords[0].lemma, 'widerruf')
         self.assertEqual(doc[3]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[3]._.holmes.subwords[0].containing_token_index, 3)
         self.assertEqual(doc[3]._.holmes.subwords[0].char_start_index, 0)
@@ -901,7 +895,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Verbraucher')
         self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'verbraucher')
         self.assertEqual(doc[0]._.holmes.subwords[1].text, 'streit')
-        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'streiten')
+        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'streit')
         self.assertEqual(doc[0]._.holmes.subwords[2].text, 'beilegung')
         self.assertEqual(doc[0]._.holmes.subwords[2].lemma, 'beilegung')
         self.assertEqual(doc[0]._.holmes.subwords[3].text, 'gesetzes')
@@ -948,11 +942,11 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(len(doc[0]._.holmes.subwords), 5)
 
         self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Widerruf')
-        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'widerrufen')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'widerruf')
         self.assertEqual(doc[0]._.holmes.subwords[1].text, 'belehrung')
         self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'belehrung')
         self.assertEqual(doc[0]._.holmes.subwords[2].text, 'Widerruf')
-        self.assertEqual(doc[0]._.holmes.subwords[2].lemma, 'widerrufen')
+        self.assertEqual(doc[0]._.holmes.subwords[2].lemma, 'widerruf')
         self.assertEqual(doc[0]._.holmes.subwords[3].text, 'recht')
         self.assertEqual(doc[0]._.holmes.subwords[3].lemma, 'recht')
         self.assertEqual(doc[0]._.holmes.subwords[4].text, 'Sie')
@@ -1205,7 +1199,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
         doc = analyzer.parse("Verkehrslenkung und -überwachung")
         self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Verkehr')
-        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'verkehren')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'verkehr')
         self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
@@ -1217,7 +1211,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 8)
 
         self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Verkehr')
-        self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'verkehren')
+        self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'verkehr')
         self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 0)
         self.assertEqual(doc[2]._.holmes.subwords[0].char_start_index, 0)
@@ -1232,7 +1226,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
         doc = analyzer.parse("Verkehrslenkung, -überwachung und -betrachtung")
         self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Verkehr')
-        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'verkehren')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'verkehr')
         self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
@@ -1244,7 +1238,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 8)
 
         self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Verkehr')
-        self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'verkehren')
+        self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'verkehr')
         self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 0)
         self.assertEqual(doc[2]._.holmes.subwords[0].char_start_index, 0)
@@ -1256,7 +1250,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[2]._.holmes.subwords[1].char_start_index, 1)
 
         self.assertEqual(doc[4]._.holmes.subwords[0].text, 'Verkehr')
-        self.assertEqual(doc[4]._.holmes.subwords[0].lemma, 'verkehren')
+        self.assertEqual(doc[4]._.holmes.subwords[0].lemma, 'verkehr')
         self.assertEqual(doc[4]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[4]._.holmes.subwords[0].containing_token_index, 0)
         self.assertEqual(doc[4]._.holmes.subwords[0].char_start_index, 0)
@@ -1272,7 +1266,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = analyzer.parse(
             "Verkehrskontrolllenkung und -überwachungsprinzipien")
         self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Verkehr')
-        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'verkehren')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'verkehr')
         self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
@@ -1290,7 +1284,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[0]._.holmes.subwords[2].char_start_index, 16)
 
         self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Verkehr')
-        self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'verkehren')
+        self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'verkehr')
         self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 0)
         self.assertEqual(doc[2]._.holmes.subwords[0].char_start_index, 0)
@@ -1318,7 +1312,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = analyzer.parse(
             "Verkehrskontrolllenkung, -überwachungsprinzipien und -betrachtung")
         self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Verkehr')
-        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'verkehren')
+        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'verkehr')
         self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
@@ -1336,7 +1330,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[0]._.holmes.subwords[2].char_start_index, 16)
 
         self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Verkehr')
-        self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'verkehren')
+        self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'verkehr')
         self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 0)
         self.assertEqual(doc[2]._.holmes.subwords[0].char_start_index, 0)
@@ -1360,7 +1354,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[2]._.holmes.subwords[3].char_start_index, 13)
 
         self.assertEqual(doc[4]._.holmes.subwords[0].text, 'Verkehr')
-        self.assertEqual(doc[4]._.holmes.subwords[0].lemma, 'verkehren')
+        self.assertEqual(doc[4]._.holmes.subwords[0].lemma, 'verkehr')
         self.assertEqual(doc[4]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[4]._.holmes.subwords[0].containing_token_index, 0)
         self.assertEqual(doc[4]._.holmes.subwords[0].char_start_index, 0)
@@ -1393,7 +1387,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 6)
 
         self.assertEqual(doc[0]._.holmes.subwords[2].text, 'handel')
-        self.assertEqual(doc[0]._.holmes.subwords[2].lemma, 'handeln')
+        self.assertEqual(doc[0]._.holmes.subwords[2].lemma, 'handel')
         self.assertEqual(doc[0]._.holmes.subwords[2].index, 2)
         self.assertEqual(doc[0]._.holmes.subwords[2].containing_token_index, 2)
         self.assertEqual(doc[0]._.holmes.subwords[2].char_start_index, 7)
@@ -1411,7 +1405,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[2]._.holmes.subwords[1].char_start_index, 1)
 
         self.assertEqual(doc[2]._.holmes.subwords[2].text, 'handel')
-        self.assertEqual(doc[2]._.holmes.subwords[2].lemma, 'handeln')
+        self.assertEqual(doc[2]._.holmes.subwords[2].lemma, 'handel')
         self.assertEqual(doc[2]._.holmes.subwords[2].index, 2)
         self.assertEqual(doc[2]._.holmes.subwords[2].containing_token_index, 2)
         self.assertEqual(doc[2]._.holmes.subwords[2].char_start_index, 7)
@@ -1444,7 +1438,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[0]._.holmes.subwords[3].char_start_index, 7)
 
         self.assertEqual(doc[0]._.holmes.subwords[4].text, 'handel')
-        self.assertEqual(doc[0]._.holmes.subwords[4].lemma, 'handeln')
+        self.assertEqual(doc[0]._.holmes.subwords[4].lemma, 'handel')
         self.assertEqual(doc[0]._.holmes.subwords[4].index, 4)
         self.assertEqual(doc[0]._.holmes.subwords[4].containing_token_index, 2)
         self.assertEqual(doc[0]._.holmes.subwords[4].char_start_index, 13)
@@ -1474,7 +1468,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[2]._.holmes.subwords[3].char_start_index, 7)
 
         self.assertEqual(doc[2]._.holmes.subwords[4].text, 'handel')
-        self.assertEqual(doc[2]._.holmes.subwords[4].lemma, 'handeln')
+        self.assertEqual(doc[2]._.holmes.subwords[4].lemma, 'handel')
         self.assertEqual(doc[2]._.holmes.subwords[4].index, 4)
         self.assertEqual(doc[2]._.holmes.subwords[4].containing_token_index, 2)
         self.assertEqual(doc[2]._.holmes.subwords[4].char_start_index, 13)
@@ -1495,7 +1489,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 6)
 
         self.assertEqual(doc[0]._.holmes.subwords[2].text, 'handel')
-        self.assertEqual(doc[0]._.holmes.subwords[2].lemma, 'handeln')
+        self.assertEqual(doc[0]._.holmes.subwords[2].lemma, 'handel')
         self.assertEqual(doc[0]._.holmes.subwords[2].index, 2)
         self.assertEqual(doc[0]._.holmes.subwords[2].containing_token_index, 4)
         self.assertEqual(doc[0]._.holmes.subwords[2].char_start_index, 7)
@@ -1513,7 +1507,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[2]._.holmes.subwords[1].char_start_index, 1)
 
         self.assertEqual(doc[2]._.holmes.subwords[2].text, 'handel')
-        self.assertEqual(doc[2]._.holmes.subwords[2].lemma, 'handeln')
+        self.assertEqual(doc[2]._.holmes.subwords[2].lemma, 'handel')
         self.assertEqual(doc[2]._.holmes.subwords[2].index, 2)
         self.assertEqual(doc[2]._.holmes.subwords[2].containing_token_index, 4)
         self.assertEqual(doc[2]._.holmes.subwords[2].char_start_index, 7)
@@ -1531,7 +1525,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[4]._.holmes.subwords[1].char_start_index, 1)
 
         self.assertEqual(doc[4]._.holmes.subwords[2].text, 'handel')
-        self.assertEqual(doc[4]._.holmes.subwords[2].lemma, 'handeln')
+        self.assertEqual(doc[4]._.holmes.subwords[2].lemma, 'handel')
         self.assertEqual(doc[4]._.holmes.subwords[2].index, 2)
         self.assertEqual(doc[4]._.holmes.subwords[2].containing_token_index, 4)
         self.assertEqual(doc[4]._.holmes.subwords[2].char_start_index, 7)
@@ -1592,7 +1586,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
             doc[0]._.holmes.subwords[3].governing_dependency_label, 'intcompound')
 
         self.assertEqual(doc[0]._.holmes.subwords[4].text, 'handel')
-        self.assertEqual(doc[0]._.holmes.subwords[4].lemma, 'handeln')
+        self.assertEqual(doc[0]._.holmes.subwords[4].lemma, 'handel')
         self.assertEqual(doc[0]._.holmes.subwords[4].index, 4)
         self.assertEqual(doc[0]._.holmes.subwords[4].containing_token_index, 6)
         self.assertEqual(doc[0]._.holmes.subwords[4].char_start_index, 13)
@@ -1656,7 +1650,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
             doc[2]._.holmes.subwords[3].governing_dependency_label, 'intcompound')
 
         self.assertEqual(doc[2]._.holmes.subwords[4].text, 'handel')
-        self.assertEqual(doc[2]._.holmes.subwords[4].lemma, 'handeln')
+        self.assertEqual(doc[2]._.holmes.subwords[4].lemma, 'handel')
         self.assertEqual(doc[2]._.holmes.subwords[4].index, 4)
         self.assertEqual(doc[2]._.holmes.subwords[4].containing_token_index, 6)
         self.assertEqual(doc[2]._.holmes.subwords[4].char_start_index, 13)
@@ -1694,7 +1688,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
             doc[4]._.holmes.subwords[1].governing_dependency_label, 'intcompound')
 
         self.assertEqual(doc[4]._.holmes.subwords[2].text, 'mittel')
-        self.assertEqual(doc[4]._.holmes.subwords[2].lemma, 'mitteln')
+        self.assertEqual(doc[4]._.holmes.subwords[2].lemma, 'mittel')
         self.assertEqual(doc[4]._.holmes.subwords[2].index, 2)
         self.assertEqual(doc[4]._.holmes.subwords[2].containing_token_index, 4)
         self.assertEqual(doc[4]._.holmes.subwords[2].char_start_index, 1)
@@ -1720,7 +1714,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
             doc[4]._.holmes.subwords[3].governing_dependency_label, 'intcompound')
 
         self.assertEqual(doc[4]._.holmes.subwords[4].text, 'handel')
-        self.assertEqual(doc[4]._.holmes.subwords[4].lemma, 'handeln')
+        self.assertEqual(doc[4]._.holmes.subwords[4].lemma, 'handel')
         self.assertEqual(doc[4]._.holmes.subwords[4].index, 4)
         self.assertEqual(doc[4]._.holmes.subwords[4].containing_token_index, 6)
         self.assertEqual(doc[4]._.holmes.subwords[4].char_start_index, 13)
@@ -1784,7 +1778,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
             doc[6]._.holmes.subwords[3].governing_dependency_label, 'intcompound')
 
         self.assertEqual(doc[6]._.holmes.subwords[4].text, 'handel')
-        self.assertEqual(doc[6]._.holmes.subwords[4].lemma, 'handeln')
+        self.assertEqual(doc[6]._.holmes.subwords[4].lemma, 'handel')
         self.assertEqual(doc[6]._.holmes.subwords[4].index, 4)
         self.assertEqual(doc[6]._.holmes.subwords[4].containing_token_index, 6)
         self.assertEqual(doc[6]._.holmes.subwords[4].char_start_index, 13)

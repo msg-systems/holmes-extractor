@@ -5,8 +5,7 @@ setup(
     package_data={
         "holmes_extractor": ["data/*"]
     },
-    # versions of spaCy > 2.1.0 do not currently work with neuralcoref
     install_requires=[
-        'spacy==2.1.0', 'neuralcoref==4.0.0', 'numpy', 'scipy', 'sklearn', 'bs4',
-        'rdflib', 'jsonpickle', 'msgpack-numpy', 'falcon']
+        'spacy~=3.0.5', 'coreferee~=1.0.2', 'numpy', 'scipy', 'sklearn', 'bs4',
+        'rdflib', 'jsonpickle', 'msgpack-numpy', 'falcon', 'torch>=1.8.1']
 )

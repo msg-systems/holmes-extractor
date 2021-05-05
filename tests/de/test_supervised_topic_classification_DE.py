@@ -2,7 +2,7 @@ import unittest
 import holmes_extractor as holmes
 from holmes_extractor.extensive_matching import SupervisedTopicClassifier
 
-holmes_manager = holmes.Manager('de_core_news_md')
+holmes_manager = holmes.Manager('de_core_news_lg')
 
 
 class GermanSupervisedTopicClassificationTest(unittest.TestCase):

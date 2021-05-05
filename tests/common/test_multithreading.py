@@ -11,7 +11,7 @@ script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join(
     (script_directory, 'test_ontology.owl')))
 manager = holmes.Manager(
-    'en_core_web_lg', ontology=ontology, overall_similarity_threshold=0.90)
+    'en_core_web_trf', ontology=ontology, overall_similarity_threshold=0.90)
 manager.parse_and_register_document(
     "The hungry lion chased the angry gnu.", 'lion')
 manager.parse_and_register_document(

@@ -5,7 +5,7 @@ import os
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join(
     (script_directory, 'test_ontology.owl')))
-holmes_manager = holmes.Manager(model='de_core_news_md', ontology=ontology)
+holmes_manager = holmes.Manager(model='de_core_news_lg', ontology=ontology)
 holmes_manager.register_search_phrase("Ein Hund jagt eine Katze")
 holmes_manager.register_search_phrase("Ein Hund jagt einen Bären")
 holmes_manager.register_search_phrase("Ein Hund frisst einen Knochen")
@@ -49,8 +49,8 @@ holmes_manager.register_search_phrase("Information eines Messers")
 holmes_manager.register_search_phrase("Eine verkaufte Reise")
 holmes_manager.register_search_phrase("Jemand wohnt in einem ENTITYLOC")
 holmes_manager_with_variable_search_phrases = holmes.Manager(
-    model='de_core_news_md')
-holmes_manager_with_embeddings = holmes.Manager(model='de_core_news_md',
+    model='de_core_news_lg')
+holmes_manager_with_embeddings = holmes.Manager(model='de_core_news_lg',
                                                 overall_similarity_threshold=0.7, perform_coreference_resolution=False,
                                                 embedding_based_matching_on_root_words=True,
                                                 use_reverse_dependency_matching=False)

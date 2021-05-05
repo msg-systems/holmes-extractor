@@ -4,11 +4,23 @@ from string import punctuation
 import traceback
 import sys
 import jsonpickle
+import spacy
+from spacy import Language
 from .errors import *
 from .structural_matching import StructuralMatcher, ThreadsafeContainer
 from .semantics import SemanticAnalyzerFactory
 from .extensive_matching import *
 from .consoles import HolmesConsoles
+
+model_names_to_nlps = {}
+model_retrieval_lock = Lock()
+
+def get_nlp(model:str) -> Language:
+    with model_retrieval_lock:
+        if model not in model_names_to_nlps:
+            model_names_to_nlps[model] = spacy.load(model)
+            model_names_to_nlps[model].add_pipe('coreferee')
+        return model_names_to_nlps[model]
 
 def validate_options(
         semantic_analyzer, overall_similarity_threshold,
@@ -58,8 +70,12 @@ class Manager:
             embedding_based_matching_on_root_words=False, ontology=None,
             analyze_derivational_morphology=True, perform_coreference_resolution=None,
             use_reverse_dependency_matching=True, debug=False):
-        self.semantic_analyzer = SemanticAnalyzerFactory().semantic_analyzer(
-            model=model,
+        nlp = get_nlp(model)
+        #TODO proper handling
+        vectors_nlp = get_nlp('en_core_web_lg') if model == 'en_core_web_trf' else nlp
+
+        self.semantic_analyzer = SemanticAnalyzerFactory().semantic_analyzer(nlp=nlp,
+            vectors_nlp=vectors_nlp,
             perform_coreference_resolution=perform_coreference_resolution,
             use_reverse_dependency_matching=use_reverse_dependency_matching, debug=debug)
         if perform_coreference_resolution is None:
@@ -563,8 +579,11 @@ class MultiprocessingManager:
             analyze_derivational_morphology=True, perform_coreference_resolution=None,
             use_reverse_dependency_matching=True, debug=False, verbose=True,
             number_of_workers=None):
-        self.semantic_analyzer = SemanticAnalyzerFactory().semantic_analyzer(
-            model=model, perform_coreference_resolution=perform_coreference_resolution,
+        nlp = get_nlp(model)
+        #TODO proper handling
+        vectors_nlp = get_nlp('en_core_web_lg') if model == 'en_core_web_trf' else nlp
+        self.semantic_analyzer = SemanticAnalyzerFactory().semantic_analyzer(nlp=nlp,
+            vectors_nlp=vectors_nlp, perform_coreference_resolution=perform_coreference_resolution,
             use_reverse_dependency_matching=use_reverse_dependency_matching, debug=debug)
         if perform_coreference_resolution is None:
             perform_coreference_resolution = \
@@ -839,7 +858,6 @@ class Worker:
                 'analysis:'))
 
     def listen(self, semantic_analyzer, structural_matcher, input_queue, worker_label):
-        semantic_analyzer.reload_model() # necessary to avoid neuralcoref MemoryError on Linux
         indexed_documents = {}
         while True:
             method, args, reply_queue = input_queue.get()

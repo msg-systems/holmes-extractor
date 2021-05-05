@@ -6,11 +6,11 @@ import os
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join(
     (script_directory, 'test_ontology.owl')))
-holmes_manager = holmes.Manager('en_core_web_lg',
+holmes_manager = holmes.Manager('en_core_web_trf',
                                 perform_coreference_resolution=True, ontology=ontology)
-no_ontology_holmes_manager = holmes.Manager('en_core_web_lg',
+no_ontology_holmes_manager = holmes.Manager('en_core_web_trf',
                                             perform_coreference_resolution=True)
-no_coref_holmes_manager = holmes.Manager('en_core_web_lg',
+no_coref_holmes_manager = holmes.Manager('en_core_web_trf',
                                          perform_coreference_resolution=False, ontology=ontology)
 
 

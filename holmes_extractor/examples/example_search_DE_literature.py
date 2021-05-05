@@ -14,7 +14,7 @@ if __name__ in ('__main__', 'example_search_DE_literature'):
     print('Initializing Holmes...')
     # Start the Holmes manager with the German model
     holmes_manager = holmes.MultiprocessingManager(
-        model='de_core_news_md', overall_similarity_threshold=0.85, number_of_workers=4)
+        model='de_core_news_lg', overall_similarity_threshold=0.85, number_of_workers=4)
         # set number_of_workers to prevent memory exhaustion / swapping; it should never be more
         # than the number of cores on the machine
 
@@ -75,7 +75,7 @@ if __name__ in ('__main__', 'example_search_DE_literature'):
     if os.path.isfile(flag_filename):
         load_documents_from_working_directory()
     else:
-        normal_holmes_manager = holmes.Manager(model='de_core_news_md')
+        normal_holmes_manager = holmes.Manager(model='de_core_news_lg')
         process_documents_from_front_page(
             normal_holmes_manager, "https://maerchen.com/grimm/", 'Gebrüder Grimm')
         process_documents_from_front_page(

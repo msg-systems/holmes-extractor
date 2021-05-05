@@ -5,10 +5,10 @@ import holmes_extractor as holmes
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join(
     (script_directory, 'test_ontology.owl')))
-nocoref_holmes_manager = holmes.Manager('en_core_web_lg',
+nocoref_holmes_manager = holmes.Manager('en_core_web_trf',
                                         perform_coreference_resolution=False)
 nocoref_holmes_manager.register_search_phrase("A dog chases a cat")
-german_holmes_manager = holmes.Manager('de_core_news_md')
+german_holmes_manager = holmes.Manager('de_core_news_lg')
 
 
 class SerializationTest(unittest.TestCase):
@@ -89,12 +89,16 @@ class SerializationTest(unittest.TestCase):
             'bo2')
         self.assertEqual(old_doc[0]._.holmes.subwords[0].text, 'Bundes')
         self.assertEqual(old_doc[0]._.holmes.subwords[0].lemma, 'bund')
-        self.assertEqual(old_doc[0]._.holmes.subwords[1].text, 'oberbehörde')
-        self.assertEqual(old_doc[0]._.holmes.subwords[1].lemma, 'oberbehörde')
+        self.assertEqual(old_doc[0]._.holmes.subwords[1].text, 'ober')
+        self.assertEqual(old_doc[0]._.holmes.subwords[1].lemma, 'ober')
+        self.assertEqual(old_doc[0]._.holmes.subwords[2].text, 'behörde')
+        self.assertEqual(old_doc[0]._.holmes.subwords[2].lemma, 'behörde')
         self.assertEqual(new_doc[0]._.holmes.subwords[0].text, 'Bundes')
         self.assertEqual(new_doc[0]._.holmes.subwords[0].lemma, 'bund')
-        self.assertEqual(new_doc[0]._.holmes.subwords[1].text, 'oberbehörde')
-        self.assertEqual(new_doc[0]._.holmes.subwords[1].lemma, 'oberbehörde')
+        self.assertEqual(new_doc[0]._.holmes.subwords[1].text, 'ober')
+        self.assertEqual(new_doc[0]._.holmes.subwords[1].lemma, 'ober')
+        self.assertEqual(new_doc[0]._.holmes.subwords[2].text, 'behörde')
+        self.assertEqual(new_doc[0]._.holmes.subwords[2].lemma, 'behörde')
 
     def test_derived_lemma(self):
         nocoref_holmes_manager.remove_all_documents()

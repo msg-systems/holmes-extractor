@@ -5,8 +5,8 @@ import os
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join(
     (script_directory, 'test_ontology.owl')))
-holmes_manager = holmes.Manager('de_core_news_md', ontology=ontology)
-holmes_manager_with_embeddings = holmes.Manager('de_core_news_md',
+holmes_manager = holmes.Manager('de_core_news_lg', ontology=ontology)
+holmes_manager_with_embeddings = holmes.Manager('de_core_news_lg',
                                                 overall_similarity_threshold=0.65)
 
 

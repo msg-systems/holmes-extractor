@@ -3,11 +3,11 @@ import holmes_extractor as holmes
 from holmes_extractor.errors import *
 import jsonpickle
 
-nocoref_holmes_manager = holmes.Manager('en_core_web_lg', analyze_derivational_morphology=False,
+nocoref_holmes_manager = holmes.Manager('en_core_web_trf', analyze_derivational_morphology=False,
                                         perform_coreference_resolution=False)
 coref_holmes_manager = holmes.Manager(
-    'en_core_web_lg', perform_coreference_resolution=True)
-german_holmes_manager = holmes.Manager('de_core_news_md')
+    'en_core_web_trf', perform_coreference_resolution=True)
+german_holmes_manager = holmes.Manager('de_core_news_lg')
 
 
 class ErrorsTest(unittest.TestCase):
@@ -29,16 +29,16 @@ class ErrorsTest(unittest.TestCase):
 
     def test_language_not_supported(self):
         with self.assertRaises(ValueError) as context:
-            holmes.Manager(model='fr_core_news_sm')
+            holmes.Manager(model='pl_core_news_sm')
 
     def test_coreference_resolution_not_supported_error(self):
         with self.assertRaises(ValueError) as context:
-            holmes.Manager(model='de_core_news_md',
+            holmes.Manager(model='de_core_news_lg',
                            perform_coreference_resolution=True)
 
     def test_coreference_resolution_not_supported_multiprocessing_manager_error(self):
         with self.assertRaises(ValueError) as context:
-            holmes.MultiprocessingManager(model='de_core_news_md',
+            holmes.MultiprocessingManager(model='de_core_news_lg',
                                           perform_coreference_resolution=True)
 
     def test_search_phrase_contains_conjunction(self):
@@ -82,7 +82,7 @@ class ErrorsTest(unittest.TestCase):
     def test_search_phrase_contains_only_grammatical_word(self):
         with self.assertRaises(SearchPhraseWithoutMatchableWordsError) as context:
             nocoref_holmes_manager.remove_all_search_phrases()
-            nocoref_holmes_manager.register_search_phrase("A")
+            nocoref_holmes_manager.register_search_phrase("the")
 
     def test_search_phrase_contains_two_normal_clauses(self):
         with self.assertRaises(SearchPhraseContainsMultipleClausesError) as context:

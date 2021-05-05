@@ -4,8 +4,8 @@ import os
 
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join(
-    (script_directory, 'test_ontology.owl')))
-nocoref_holmes_manager = holmes.Manager(model='en_core_web_lg', ontology=ontology,
+    (script_directory, 'test_ontology.owl')), symmetric_matching=True)
+nocoref_holmes_manager = holmes.Manager(model='en_core_web_trf', ontology=ontology,
                                         perform_coreference_resolution=False)
 nocoref_holmes_manager.register_search_phrase("A dog chases a cat")
 nocoref_holmes_manager.register_search_phrase("The man was poor")
@@ -41,11 +41,11 @@ nocoref_holmes_manager.register_search_phrase("music")
 nocoref_holmes_manager.register_search_phrase("neatness")
 nocoref_holmes_manager.register_search_phrase("modest")
 nocoref_holmes_manager.register_search_phrase("monthly")
-nocoref_holmes_manager.register_search_phrase("Somebody uses a vaulting horse")
-nocoref_holmes_manager.register_search_phrase("A big vaulting horse")
-nocoref_holmes_manager.register_search_phrase("Somebody sees a vault horse")
-nocoref_holmes_manager.register_search_phrase("A small vault horse")
-nocoref_holmes_manager.register_search_phrase("a vaulting horse")
+nocoref_holmes_manager.register_search_phrase("Somebody uses a wastage horse")
+nocoref_holmes_manager.register_search_phrase("A big wastage horse")
+nocoref_holmes_manager.register_search_phrase("Somebody sees a waste horse")
+nocoref_holmes_manager.register_search_phrase("A small waste horse")
+nocoref_holmes_manager.register_search_phrase("a wastage horse")
 nocoref_holmes_manager.register_search_phrase("a big hyphenated multiword")
 nocoref_holmes_manager.register_search_phrase("a small hyphenated-multiword")
 nocoref_holmes_manager.register_search_phrase("a big unhyphenated multiword")
@@ -57,9 +57,9 @@ nocoref_holmes_manager.register_search_phrase("Someone adopts a girl")
 nocoref_holmes_manager.register_search_phrase("An running boy")
 nocoref_holmes_manager.register_search_phrase("A girl is running")
 
-holmes_manager_with_variable_search_phrases = holmes.Manager(model='en_core_web_lg',
+holmes_manager_with_variable_search_phrases = holmes.Manager(model='en_core_web_trf',
                                                              ontology=ontology, perform_coreference_resolution=False)
-holmes_manager_with_embeddings = holmes.Manager(model='en_core_web_lg',
+holmes_manager_with_embeddings = holmes.Manager(model='en_core_web_trf',
                                                 overall_similarity_threshold=0.7, perform_coreference_resolution=False, use_reverse_dependency_matching=False)
 
 class EnglishStructuralMatchingTest(unittest.TestCase):
@@ -147,10 +147,10 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
     def test_threeway_conjunction_with_or(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "The dog, the dog or the dog chased a cat and another cat")
-        self.assertFalse(matches[0].is_uncertain)
+        self.assertTrue(matches[0].is_uncertain)
         self.assertTrue(matches[1].is_uncertain)
         self.assertTrue(matches[2].is_uncertain)
-        self.assertFalse(matches[3].is_uncertain)
+        self.assertTrue(matches[3].is_uncertain)
         self.assertTrue(matches[4].is_uncertain)
         self.assertTrue(matches[5].is_uncertain)
 
@@ -501,10 +501,7 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
                                     "An employee needs insurance for the next five years")
         self.assertEqual(len(matches), 2)
         for match in matches:
-            if len(match.word_matches) == 7:
-                self.assertFalse(match.is_uncertain)
-            else:
-                self.assertTrue(match.is_uncertain)
+            self.assertFalse(match.is_uncertain)
 
     def test_dative_prepositional_phrase_in_document_dative_noun_phrase_in_search_phrase_1(self):
         matches = self._get_matches(nocoref_holmes_manager,
@@ -551,16 +548,6 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
                                     "We discussed an entity and a second ENTITY.")
         self.assertEqual(len(matches), 2)
 
-    def test_entity_matching_with_underscore_in_entity_label(self):
-        holmes_manager_with_variable_search_phrases.remove_all_search_phrases()
-        holmes_manager_with_variable_search_phrases.register_search_phrase(
-            "ENTITYWORK_OF_ART")
-        holmes_manager_with_variable_search_phrases.register_search_phrase(
-            "Somebody buys an ENTITYWORK_OF_ART")
-        matches = self._get_matches(holmes_manager_with_variable_search_phrases,
-                                    "I bought a Picasso")
-        self.assertEqual(len(matches), 2)
-
     def test_adjective_verb_phrase_as_search_phrase_matches_simple(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "The holiday was very hard to book")
@@ -575,7 +562,7 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
     def test_adjective_verb_phrase_as_search_phrase_matches_compound(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "The holiday and the holiday were very hard and hard to book and to book")
-        self.assertEqual(len(matches), 4)
+        self.assertEqual(len(matches), 8)
         for match in matches:
             self.assertFalse(match.is_uncertain)
 
@@ -588,7 +575,7 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
     def test_objective_adjective_verb_phrase_matches_normal_search_phrase_compound(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "The insurance and the insurance were very hard and hard to find and to find")
-        self.assertEqual(len(matches), 2)
+        self.assertEqual(len(matches), 4)
         for match in matches:
             self.assertTrue(match.is_uncertain)
 
@@ -703,38 +690,39 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
 
     def test_derivation_in_document_with_multiword_root_word(self):
         matches = self._get_matches(nocoref_holmes_manager,
-                                    "A big vault horse")
+                                    "A big waste horse")
         self.assertEqual(len(matches), 2)
         self.assertEqual(matches[0].word_matches[1].type, 'derivation')
 
     def test_derivation_in_document_with_multiword_non_root_word(self):
         matches = self._get_matches(nocoref_holmes_manager,
-                                    "A vault horse was used")
+                                    "A waste horse was used")
         self.assertEqual(len(matches), 2)
         self.assertEqual(matches[0].word_matches[1].type, 'derivation')
 
     def test_derivation_in_document_with_multiword_single_word(self):
         matches = self._get_matches(nocoref_holmes_manager,
-                                    "a vault horse")
+                                    "a waste horse")
         self.assertEqual(len(matches), 1)
         self.assertEqual(matches[0].word_matches[0].type, 'derivation')
 
     def test_derivation_in_document_with_multiword_single_word_control(self):
         matches = self._get_matches(nocoref_holmes_manager,
-                                    "a vaulting horse")
+                                    "a wastage horse")
         self.assertEqual(len(matches), 1)
         self.assertEqual(matches[0].word_matches[0].type, 'direct')
 
     def test_derivation_in_search_phrase_with_multiword_root_word(self):
         matches = self._get_matches(nocoref_holmes_manager,
-                                    "A small vaulting horse")
+                                    "A small wastage horse")
         self.assertEqual(len(matches), 2)
         self.assertEqual(matches[0].word_matches[1].type, 'direct')
 
     def test_derivation_in_search_phrase_with_multiword_non_root_word(self):
         matches = self._get_matches(nocoref_holmes_manager,
-                                    "A vaulting horse was seen")
+                                    "A wastage horse was seen")
         self.assertEqual(len(matches), 2)
+        print(matches)
         self.assertEqual(matches[0].word_matches[1].type, 'direct')
 
     def test_hyphenation_1(self):
@@ -795,7 +783,7 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "unhyphenated-single-multiword")
         self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].word_matches[1].type, 'direct')
+        self.assertEqual(matches[0].word_matches[0].type, 'direct')
 
     def test_dobj_matches_amod(self):
         matches = self._get_matches(nocoref_holmes_manager,
@@ -930,5 +918,5 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
             "Yesterday Balu chased Hudson in Munich.", '2')
         dictionary, maximum = holmes_manager_with_variable_search_phrases.threadsafe_container.\
             get_corpus_frequency_information()
-        self.assertEqual(dictionary, {'ENTITYDATE': 2, 'yesterday': 2, 'ENTITYPERSON': 5, 'fido': 2, 'chased': 2, 'chase': 2, 'richard': 1, 'paul': 1, 'hudson': 2, 'in': 2, 'ENTITYGPE': 2, 'prague': 1, 'with': 1, 'ENTITYORG': 1, 'and': 1, 'balu': 2, 'munich': 1})
-        self.assertEqual(maximum, 5)
+        self.assertEqual(dictionary, {'ENTITYDATE': 2, 'yesterday': 2, 'ENTITYPERSON': 6, 'fido': 2, 'chased': 2, 'chase': 2, 'richard': 1, 'paul': 1, 'hudson': 2, 'richard paul hudson': 1, 'in': 2, 'ENTITYGPE': 2, 'prague': 1, 'with': 1, 'and': 1, 'balu': 2, 'munich': 1})
+        self.assertEqual(maximum, 6)

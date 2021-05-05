@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
-import spacy
-import neuralcoref
+import coreferee
 import jsonpickle
 import pkg_resources
 from spacy.tokens import Token, Doc
@@ -179,9 +178,6 @@ class HolmesDictionary:
         self.token_and_coreference_chain_indexes = None # where no coreference, only the token
         # index; where coreference, the token index followed by the indexes of coreferring tokens
         self.mentions = []
-        self.mention_root_index = None  # the lefthandmost token within of the mention that contains
-                                        # this token within the first cluster to which this token
-                                        # belongs, which will most often be this token itself
         self.subwords = []
 
     @property
@@ -273,7 +269,7 @@ class SerializedHolmesDocument:
         self._version = SERIALIZED_DOCUMENT_VERSION
 
     def holmes_document(self, semantic_analyzer):
-        doc = Doc(semantic_analyzer.nlp.vocab).from_bytes(
+        doc = Doc(semantic_analyzer.vectors_nlp.vocab).from_bytes(
             self._serialized_spacy_document)
         for token in doc:
             token._.holmes = self._dictionaries[token.i]
@@ -331,16 +327,18 @@ class SemanticAnalyzerFactory():
         if additional *SemanticAnalyzer* implementations are added for new languages.
     """
 
-    def semantic_analyzer(self, *, model, perform_coreference_resolution,
+    def semantic_analyzer(self, *, nlp, vectors_nlp, perform_coreference_resolution,
         use_reverse_dependency_matching, debug=False):
-        language = model[0:2]
+        language = nlp.meta['lang']
         if language == 'en':
             return EnglishSemanticAnalyzer(
-                model=model, perform_coreference_resolution=perform_coreference_resolution,
+                nlp=nlp, vectors_nlp=vectors_nlp,
+                perform_coreference_resolution=perform_coreference_resolution,
                 use_reverse_dependency_matching=use_reverse_dependency_matching, debug=debug)
         elif language == 'de':
             return GermanSemanticAnalyzer(
-                model=model, perform_coreference_resolution=perform_coreference_resolution,
+                nlp=nlp, vectors_nlp=vectors_nlp,
+                perform_coreference_resolution=perform_coreference_resolution,
                 use_reverse_dependency_matching=use_reverse_dependency_matching, debug=debug)
         else:
             raise ValueError(
@@ -355,25 +353,25 @@ class SemanticAnalyzer(ABC):
         implementation where they can be illustrated with direct examples.
     """
 
-    def __init__(self, *, model, perform_coreference_resolution,
+    def __init__(self, *, nlp, vectors_nlp, perform_coreference_resolution,
         use_reverse_dependency_matching, debug):
         """Args:
 
-        model -- the name of the spaCy model
-        perform_coreference_resolution -- *True* if neuralcoref should be added to the pipe,
-                *None* if neuralcoref should be added to the pipe if coreference resolution is
+        nlp -- the spaCy model
+        vectors_nlp -- the spaCy model to use for vocabularies and vectors
+        perform_coreference_resolution -- *True* if coreferee should be added to the pipe,
+                *None* if coreferee should be added to the pipe if coreference resolution is
                 available for the model
         use_reverse_dependency_matching -- *True* if appropriate dependencies in documents can be
             matched to dependencies in search phrases where the two dependencies point in opposite
             directions. Defaults to *True*.
         debug -- *True* if the object should print a representation of each parsed document
         """
-        self.nlp = spacy.load(model)
         if perform_coreference_resolution is None and self.model_supports_coreference_resolution():
             perform_coreference_resolution = True
-        if perform_coreference_resolution:
-            neuralcoref.add_to_pipe(self.nlp)
-        self.model = model
+        self.nlp = nlp
+        self.vectors_nlp = vectors_nlp
+        self.model = '_'.join((self.nlp.meta['lang'], self.nlp.meta['name']))
         self.perform_coreference_resolution = perform_coreference_resolution
         self.use_reverse_dependency_matching = use_reverse_dependency_matching
         self.debug = debug
@@ -390,7 +388,7 @@ class SemanticAnalyzer(ABC):
     Token.set_extension('holmes', default='')
 
     def _load_derivational_dictionary(self):
-        in_package_filename = ''.join(('data/derivation_', self.model[0:2], '.csv'))
+        in_package_filename = ''.join(('data/derivation_', self.nlp.meta['lang'], '.csv'))
         absolute_filename = pkg_resources.resource_filename(__name__, in_package_filename)
         dictionary = {}
         with open(absolute_filename, "r", encoding="utf-8") as file:
@@ -399,9 +397,6 @@ class SemanticAnalyzer(ABC):
                 for index in range(len(words)):
                     dictionary[words[index]] = words[0]
         return dictionary
-
-    def reload_model(self):
-        spacy.load(self.model)
 
     def parse(self, text):
         """Performs a full spaCy and Holmes parse on a string.
@@ -462,7 +457,7 @@ class SemanticAnalyzer(ABC):
         return spacy_doc
 
     def model_supports_embeddings(self):
-        return self.nlp.meta['vectors']['vectors'] > 0
+        return self.vectors_nlp.meta['vectors']['vectors'] > 0
 
     def model_supports_coreference_resolution(self):
         return self._model_supports_coreference_resolution
@@ -566,48 +561,31 @@ class SemanticAnalyzer(ABC):
 
     def _set_coreference_information(self, token):
         token._.holmes.token_and_coreference_chain_indexes = [token.i]
-        if not self.perform_coreference_resolution or not token.doc._.has_coref or not \
-                token._.in_coref:
+        if not self.perform_coreference_resolution:
             return
-        for cluster in token._.coref_clusters:
-            counter = 0
+        for chain in token._.coref_chains:
             this_token_mention_index = -1
-            for span in cluster:
-                for candidate in span.root._.holmes.loop_token_and_righthand_siblings(
-                        token.doc):
-                    if candidate.i == token.i and candidate.i >= span.start and candidate.i < \
-                            span.end:
-                        this_token_mention_index = counter
-                        if token._.holmes.mention_root_index is None:
-                            token._.holmes.mention_root_index = span.root.i
-                        break
-                if this_token_mention_index > -1:
+            for mention_index, mention in enumerate(chain):
+                if token.i in mention.token_indexes:
+                    this_token_mention_index = mention_index
                     break
-                counter += 1
-            counter = 0
             if this_token_mention_index > -1:
-                for span in cluster:
-                    if abs(counter - this_token_mention_index) <= \
-                            self._maximum_mentions_in_coreference_chain and \
-                            abs(span.root.i - token.i) < \
+                for mention_index, mention in enumerate(chain):
+                    if this_token_mention_index - mention_index > \
+                            self._maximum_mentions_in_coreference_chain or \
+                            abs (mention.root_index - token.i) > \
                             self._maximum_word_distance_in_coreference_chain:
-                        siblings_of_span_root = [span.root.i]
-                        siblings_of_span_root.extend(span.root._.holmes.righthand_siblings)
-                        indexes_within_mention = []
-                        for candidate in siblings_of_span_root:
-                            if span.start <= candidate < span.end and not \
-                                    (candidate != token.i and token.i in siblings_of_span_root):
-                                indexes_within_mention.append(candidate)
-                        token._.holmes.mentions.append(Mention(span.root.i, indexes_within_mention))
-                    counter += 1
+                        continue
+                    if mention_index - this_token_mention_index > \
+                            self._maximum_mentions_in_coreference_chain:
+                        break
+                    token._.holmes.mentions.append(Mention(mention.root_index,
+                            [token.i] if token.i in mention.token_indexes
+                            else mention.token_indexes))
         working_set = set()
-        for mention in token._.holmes.mentions:
+        for mention in (m for m in token._.holmes.mentions if token.i not in m.indexes):
             working_set.update(mention.indexes)
-        if len(working_set) > 1:
-            working_set.remove(token.i)
-            token._.holmes.token_and_coreference_chain_indexes.extend(sorted(working_set))
-            # this token must always be the first in the list to ensure it is recorded as the
-            # structurally matched token during structural matching
+        token._.holmes.token_and_coreference_chain_indexes.extend(sorted(working_set))
 
     def belongs_to_entity_defined_multiword(self, token):
         return token.pos_ in self._entity_defined_multiword_pos and token.ent_type_ in \
@@ -669,6 +647,8 @@ class SemanticAnalyzer(ABC):
 
     _adjectival_predicate_predicate_dep = NotImplemented
 
+    _adjectival_predicate_predicate_pos = NotImplemented
+
     _modifier_dep = NotImplemented
 
     _spacy_noun_to_preposition_dep = NotImplemented
@@ -710,6 +690,8 @@ class SemanticAnalyzer(ABC):
     supervised_document_classification_phraselet_stop_lemmas = NotImplemented
 
     topic_matching_reverse_only_parent_lemmas = NotImplemented
+
+    topic_matching_phraselet_stop_tags = NotImplemented
 
     preferred_phraselet_pos = NotImplemented
 
@@ -822,7 +804,9 @@ class SemanticAnalyzer(ABC):
                 righthand_sibling_token = token.doc[righthand_sibling]
                 if len([sibling_dependency for sibling_dependency in
                         righthand_sibling_token._.holmes.children if
-                        sibling_dependency.label == dependency.label]) == 0 and \
+                        sibling_dependency.label == dependency.label and not
+                        token._.holmes.has_dependency_with_child_index(
+                        sibling_dependency.child_index)]) == 0 and \
                         dependency.label not in self._conjunction_deps and not \
                         righthand_sibling_token._.holmes.has_dependency_with_child_index(
                             dependency.child_index) \
@@ -836,13 +820,14 @@ class SemanticAnalyzer(ABC):
         """Change phrases like *the town is old* and *the man is poor* so their
             semantic structure is equivalent to *the old town* and *the poor man*.
         """
-        if token.pos_ == self._adjectival_predicate_head_pos:
+        if token.pos_ in self._adjectival_predicate_head_pos:
             altered = False
             for predicative_adjective_index in (
                     dependency.child_index for dependency in \
                     token._.holmes.children if dependency.label ==
                     self._adjectival_predicate_predicate_dep and
-                    token.doc[dependency.child_index].pos_ == 'ADJ' and
+                    token.doc[dependency.child_index].pos_ ==
+                    self._adjectival_predicate_predicate_pos and
                     dependency.child_index >= 0):
                 for subject_index in (
                         dependency.child_index for dependency in
@@ -942,13 +927,12 @@ class SemanticAnalyzer(ABC):
             if dependency.child_index == to_token.i]
         if len(linking_dependencies) == 0:
             return  # should only happen if there is a problem with the spaCy structure
-        linking_dependency_label = linking_dependencies[0].label
         # only loop dependencies whose label or index are not already present at the destination
         for dependency in (
                 dependency for dependency in from_token._.holmes.children
-                if dependency.label != linking_dependency_label and not
-                to_token._.holmes.has_dependency_with_child_index(dependency.child_index) and
-                to_token.i != dependency.child_index):
+                if not to_token._.holmes.has_dependency_with_child_index(dependency.child_index)
+                and to_token.i != dependency.child_index and
+                to_token.i not in to_token.doc[dependency.child_index]._.holmes.righthand_siblings and dependency.child_index not in to_token._.holmes.righthand_siblings):
             to_token._.holmes.children.append(SemanticDependency(
                 to_token.i, dependency.child_index, dependency.label, dependency.is_uncertain))
         from_token._.holmes.children = [SemanticDependency(from_token.i, 0 - (to_token.i + 1))]
@@ -1010,7 +994,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
 
     # The part of speech tags that can refer to the head of an adjectival predicate phrase
     # ("is" in "The dog is tired")
-    _adjectival_predicate_head_pos = 'VERB'
+    _adjectival_predicate_head_pos = ('VERB', 'AUX')
 
     # The part of speech tags that can refer to the subject of a adjectival predicate
     # ("dog" in "The dog is tired")
@@ -1027,6 +1011,9 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
 
     # Dependency label that marks the predicate of an adjectival predicate
     _adjectival_predicate_predicate_dep = 'acomp'
+
+    # Part of speech that marks the predicate of an adjectival predicate
+    _adjectival_predicate_predicate_pos = 'ADJ'
 
     # Dependency label that marks a modifying adjective
     _modifier_dep = 'amod'
@@ -1070,8 +1057,11 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
             reverse_document_dependencies=['nsubj', 'csubj', 'poss', 'pobjb', 'advmodsubj', 'dobj',
             'pobjo', 'relant', 'nsubjpass', 'csubjpass', 'compound', 'advmodobj', 'dative',
             'arg']),
+        'advcl': MatchImplication(search_phrase_dependency='advcl',
+            document_dependencies=['pobjo', 'poss', 'relant', 'nsubjpass', 'csubjpass',
+            'compound', 'advmodobj', 'arg', 'dobj', 'xcomp']),
         'amod': MatchImplication(search_phrase_dependency='amod',
-            document_dependencies=['acomp', 'advmod', 'npmod', 'advcl'],
+            document_dependencies=['acomp', 'advmod', 'npmod', 'advcl', 'compound'],
             reverse_document_dependencies=['nsubj', 'csubj', 'poss', 'pobjb', 'advmodsubj', 'dobj',
             'pobjo', 'relant', 'nsubjpass', 'csubjpass', 'compound', 'advmodobj', 'dative',
             'arg']),
@@ -1085,7 +1075,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
         'compound': MatchImplication(search_phrase_dependency='compound',
             document_dependencies=['nmod', 'appos', 'nounmod', 'nsubj', 'csubj', 'poss', 'pobjb',
             'advmodsubj', 'dobj', 'pobjo', 'relant', 'pobjp',
-            'nsubjpass', 'csubjpass', 'arg', 'advmodobj', 'dative'],
+            'nsubjpass', 'csubjpass', 'arg', 'advmodobj', 'dative', 'amod'],
             reverse_document_dependencies=['acomp', 'amod']),
         'dative': MatchImplication(search_phrase_dependency='dative',
             document_dependencies=['pobjt', 'relant', 'nsubjpass'],
@@ -1099,7 +1089,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
             reverse_document_dependencies=['acomp', 'amod']),
         'dobj': MatchImplication(search_phrase_dependency='dobj',
             document_dependencies=['pobjo', 'poss', 'relant', 'nsubjpass', 'csubjpass',
-            'compound', 'advmodobj', 'arg', 'xcomp'],
+            'compound', 'advmodobj', 'arg', 'xcomp', 'advcl'],
             reverse_document_dependencies=['acomp', 'amod']),
         'nmod': MatchImplication(search_phrase_dependency='nmod',
             document_dependencies=['appos', 'compound', 'nummod']),
@@ -1120,7 +1110,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
             document_dependencies=['prepposs']),
         'xcomp': MatchImplication(search_phrase_dependency='xcomp',
             document_dependencies=['pobjo', 'poss', 'relant', 'nsubjpass', 'csubjpass',
-            'compound', 'advmodobj', 'arg', 'dobj'])}
+            'compound', 'advmodobj', 'arg', 'dobj', 'advcl'])}
 
     # Where dependencies from a parent to a child are copied to the parent's righthand siblings,
     # it can make sense to mark the dependency as uncertain depending on the underlying spaCy
@@ -1185,7 +1175,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
             ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=False),
         PhraseletTemplate(
             "governor-adjective", "A described thing", 2, 1,
-            ['acomp', 'amod', 'advmod', 'npmod', 'advcl'],
+            ['acomp', 'amod', 'advmod', 'npmod', 'advcl', 'dobj'],
             ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
             ['JJ', 'JJR', 'JJS', 'VBN', 'RB', 'RBR', 'RBS'], reverse_only=False),
         PhraseletTemplate(
@@ -1216,7 +1206,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
 
     # Lemmas that should be suppressed within relation phraselets or as words of
     # single-word phraselets during topic matching.
-    topic_matching_phraselet_stop_lemmas = ('then', 'therefore', 'so', '-pron-')
+    topic_matching_phraselet_stop_lemmas = ('then', 'therefore', 'so')
 
     # Lemmas that should be suppressed within relation phraselets or as words of
     # single-word phraselets during supervised document classification.
@@ -1227,6 +1217,9 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
     topic_matching_reverse_only_parent_lemmas = (
         ('be', 'VERB'), ('have', 'VERB'), ('do', 'VERB'),
         ('say', 'VERB'), ('go', 'VERB'), ('get', 'VERB'), ('make', 'VERB'))
+
+    # Tags of tokens that should be ignored during topic matching (normally pronouns).
+    topic_matching_phraselet_stop_tags = ('PRP', 'PRP$')
 
     # Parts of speech that are preferred as lemmas within phraselets
     preferred_phraselet_pos = ('NOUN', 'PROPN')
@@ -1252,7 +1245,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
             return
         for child in token.children:
             if child._.holmes.lemma in (
-                    'nobody', 'nothing', 'nowhere', 'noone', 'neither', 'nor', 'no') \
+                    'nobody', 'nothing', 'nowhere', 'noone', 'neither', 'nor', 'no', 'not') \
                     or child.dep_ == 'neg':
                 token._.holmes.is_negated = True
                 return
@@ -1490,11 +1483,12 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
             elif lemma.endswith('ication'):
                 possible_lemma = ''.join((lemma[:-7], 'y')) # implication -> imply
                 lemma_to_test_in_vocab = possible_lemma
-            if (possible_lemma is None or self.nlp.vocab[lemma_to_test_in_vocab].is_oov) and \
-                    lemma.endswith('ation'):
+            if (possible_lemma is None or self.vectors_nlp.vocab[lemma_to_test_in_vocab].is_oov) \
+                    and lemma.endswith('ation'):
                 possible_lemma = ''.join((lemma[:-3], 'e')) # manipulation -> manipulate
                 lemma_to_test_in_vocab = possible_lemma
-            if possible_lemma is not None and not self.nlp.vocab[lemma_to_test_in_vocab].is_oov:
+            if possible_lemma is not None and not \
+                    self.vectors_nlp.vocab[lemma_to_test_in_vocab].is_oov:
                 return possible_lemma
         # deadjectival nouns in -ness
         if (token is None or token.pos_ == 'NOUN') and len(lemma) >= 7 and lemma.endswith('ness'):
@@ -1502,7 +1496,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
             # 'bawdiness'
             if working_possible_lemma[-1] == 'i':
                 working_possible_lemma = ''.join((working_possible_lemma[:-1], 'y'))
-            if not self.nlp.vocab[working_possible_lemma].is_oov:
+            if not self.vectors_nlp.vocab[working_possible_lemma].is_oov:
                 return working_possible_lemma
             else:
                 return None
@@ -1530,9 +1524,10 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
     def _perform_language_specific_tasks(self, token):
 
         # Because phrasal verbs are conflated into a single lemma, remove the dependency
-        # from the verb to the preposition
+        # from the verb to the preposition and mark the preposition is unmatchable
         if token.tag_ == 'RP':
             token.head._.holmes.remove_dependency_with_child_index(token.i)
+            token._.holmes.is_matchable = False
 
         # mark modal verb dependencies as uncertain
         if token.pos_ == 'VERB':
@@ -1540,7 +1535,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                     dependency for dependency in token._.holmes.children
                     if dependency.label == 'aux'):
                 child = dependency.child_token(token.doc)
-                if child.pos_ == 'VERB' and child._.holmes.lemma not in \
+                if child.pos_ in ('VERB', 'AUX') and child._.holmes.lemma not in \
                         ('be', 'have', 'do', 'go', 'use', 'will', 'shall'):
                     for other_dependency in (
                             other_dependency for other_dependency in
@@ -1679,7 +1674,8 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
         if token.tag_.startswith('NN') or self.is_involved_in_coreference(token):
             for adjective_dep in (
                     dep for dep in token._.holmes.children if
-                    dep.label == self._modifier_dep and dep.child_token(token.doc).pos_ == 'ADJ'):
+                    dep.label == self._modifier_dep and dep.child_token(token.doc).pos_ ==
+                    self._adjectival_predicate_predicate_pos):
                 adj_token = adjective_dep.child_token(token.doc)
                 for verb_dep in (
                         dep for dep in adj_token._.holmes.children if
@@ -1696,7 +1692,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
 
     _matchable_pos = ('ADJ', 'ADP', 'ADV', 'NOUN', 'NUM', 'PROPN', 'VERB', 'AUX')
 
-    _adjectival_predicate_head_pos = 'AUX'
+    _adjectival_predicate_head_pos = ('AUX')
 
     _adjectival_predicate_subject_pos = ('NOUN', 'PROPN', 'PRON')
 
@@ -1707,6 +1703,8 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
     _adjectival_predicate_subject_dep = 'sb'
 
     _adjectival_predicate_predicate_dep = 'pd'
+
+    _adjectival_predicate_predicate_pos = 'ADV'
 
     _modifier_dep = 'nk'
 
@@ -1855,6 +1853,8 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
         ('sein', 'AUX'), ('werden', 'AUX'), ('haben', 'AUX'), ('sagen', 'VERB'),
         ('machen', 'VERB'), ('tun', 'VERB'))
 
+    topic_matching_phraselet_stop_tags = ('PPER', 'PDS', 'PRF')
+
     preferred_phraselet_pos = ('NOUN', 'PROPN')
 
     _permissible_embedding_pos = ('NOUN', 'PROPN', 'ADJ', 'ADV')
@@ -1867,7 +1867,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
     # Part-of-speech tags examined for subwords
     # Verbs are not examined because the separable parts that would typically be found as
     # subwords are too short to be found.
-    _tag_for_subword_search = ('NE', 'NNE', 'NN', 'TRUNC', 'ADJA', 'ADJD')
+    _tag_for_subword_search = ('NE', 'NNE', 'NN', 'TRUNC', 'ADJA', 'ADJD', 'XY')
 
     # Absolute minimum length of a subword.
     _minimum_subword_length = 3
@@ -1897,11 +1897,15 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
     _fugen_s_ending_blacklist = (
         'a', 'ä', 'e', 'i', 'o', 'ö', 'u', 'ü', 'nt', 'sch', 's', 'ß', 'st', 'tz', 'z')
 
+    # Whitelisted subwords
+    _subword_whitelist = (
+        'haltig')
+
     # Blacklisted subwords
     _subword_blacklist = (
         'igkeit', 'igkeiten', 'digkeit', 'digkeiten', 'schaft', 'schaften',
         'keit', 'keiten', 'lichkeit', 'lichkeiten', 'tigten', 'tigung', 'tigungen', 'barkeit',
-        'barkeiten', 'heit', 'heiten', 'ung', 'ungen', 'aften', 'erung', 'erungen', 'mungen')
+        'barkeiten', 'heit', 'heiten', 'ung', 'ungen', 'aften', 'erung', 'erungen', 'mungen', 'tig')
 
     # Bigraphs of two consonants that can occur at the start of a subword.
     _subword_start_consonant_bigraph_whitelist = (
@@ -1932,6 +1936,15 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
     # not recorded.
     _maximum_acceptable_subword_score = 8
 
+    def _is_oov(self, word):
+        working_word = word.lower()
+        if not self.vectors_nlp.vocab[working_word].is_oov:
+            return False
+        if len(word) == 1:
+            return True
+        working_word = ''.join((working_word[0].upper(), working_word[1:]))
+        return self.vectors_nlp.vocab[working_word].is_oov
+
     def _add_subwords(self, token, subword_cache):
 
         class PossibleSubword:
@@ -1956,7 +1969,8 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
             # is necessary because of the large number of nonsensical short vocabulary entries.
             for end_index in range(initial_index + length, len(lemma) + 1):
                 possible_word = lemma[initial_index: end_index]
-                if not self.nlp.vocab[possible_word].is_oov and len(possible_word) >= 2 and \
+                if (not self._is_oov(possible_word) or possible_word in self._subword_whitelist) \
+                        and len(possible_word) >= 2 and \
                         (
                             possible_word[0] in self._vowels or possible_word[1] in self._vowels
                             or
@@ -1977,9 +1991,9 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                 # subwords shorter than _minimum_long_subword_length: penalty of 2
                 if len(subword.text) < self._minimum_long_subword_length:
                     number += 2 * (self._minimum_long_subword_length - len(subword.text))
-                # subwords longer than 12: penalty of 1
+                # subwords longer than 12: penalty of 2
                 elif len(subword.text) > self._maximum_realistic_subword_length:
-                    number += len(subword.text) - self._maximum_realistic_subword_length
+                    number += 2 * (len(subword.text) - self._maximum_realistic_subword_length)
                 # fugen-s after a whitelist ending
                 if subword.fugen_s_status == 2:
                     number -= self._fugen_s_after_whitelisted_ending_bonus
@@ -2257,7 +2271,9 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                                 new_dependency.is_uncertain = True
                         # passive construction
                         if (token._.holmes.lemma == 'werden' and child.tag_ not in (
-                                'VVINF', 'VAINF', 'VAFIN', 'VAINF')):
+                                'VVINF', 'VAINF', 'VAFIN', 'VAINF')) and len(
+                                    [c for c in token.children if
+                                    c.dep_ == 'oc' and c.lemma_ == 'haben']) == 0:
                             for child_or_sib in \
                                     child._.holmes.loop_token_and_righthand_siblings(token.doc):
                                 #mark syntactic subject as semantic object
@@ -2390,13 +2406,13 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
         if (token is None or token.pos_ == 'VERB') and len(lemma) > 9 and \
                 lemma.endswith('ieren'):
             working_lemma = ''.join((lemma[:-5], 'ation'))
-            if not self.nlp.vocab[working_lemma].is_oov:
+            if not self._is_oov(working_lemma):
                 return working_lemma
         # nouns with 'ierung' -> 'ation'
         if (token is None or token.pos_ == 'NOUN') and len(lemma) > 10 and \
                 lemma.endswith('ierung'):
             working_lemma = ''.join((lemma[:-6], 'ation'))
-            if not self.nlp.vocab[working_lemma].is_oov:
+            if not self._is_oov(working_lemma):
                 return working_lemma
         # nominalization with 'ung'
         if (token is None or token.tag_ == 'NN') and lemma.endswith('ung'):
@@ -2421,18 +2437,18 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
             # replace umlauts in the last 8 characters of the derived lemma
             working_lemma = working_lemma.replace('ä', 'a').replace('ö', 'o').replace('ü', 'u')
             working_lemma = ''.join((lemma[:-12], working_lemma))
-            if not self.nlp.vocab[working_lemma].is_oov:
+            if not self._is_oov(working_lemma):
                 return working_lemma
             if lemma[-4] == 'l': # 'lein' where original word ends in 'l'
                 second_working_lemma = ''.join((working_lemma, 'l'))
-                if not self.nlp.vocab[working_lemma].is_oov:
+                if not self._is_oov(working_lemma):
                     return second_working_lemma
             second_working_lemma = lemma[:-4] # 'Löffelchen'
-            if not self.nlp.vocab[second_working_lemma].is_oov:
+            if not self._is_oov(second_working_lemma):
                 return second_working_lemma
             if lemma[-4] == 'l': # 'Schlüsselein'
                 second_working_lemma = ''.join((second_working_lemma, 'l'))
-                if not self.nlp.vocab[second_working_lemma].is_oov:
+                if not self._is_oov(second_working_lemma):
                     return second_working_lemma
             return working_lemma
         if (token is None or token.tag_ == 'NN') and lemma.endswith('e') and len(lemma) > 1 and \
@@ -2597,7 +2613,8 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
         for dependency in (
                 dependency for dependency in token._.holmes.children
                 if dependency.label == 'nk' and token.pos_ in ('NOUN', 'PROPN')
-                and token.dep_ == 'sb' and dependency.child_token(token.doc).pos_ == 'ADJ'):
+                and token.dep_ == 'sb' and dependency.child_token(token.doc).pos_ ==
+                self._adjectival_predicate_predicate_pos):
             child_token = dependency.child_token(token.doc)
             for child_dependency in (
                     child_dependency for child_dependency in
@@ -2619,7 +2636,8 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
         dependencies = [
             dependency for dependency in token._.holmes.children
             if token.pos_ == 'VERB' and dependency.label == 'sb' and not
-            dependency.is_uncertain]
+            dependency.is_uncertain and (dependency.child_token(token.doc).i == 0 or
+            token.doc[dependency.child_token(token.doc).i-1].dep_ not in self._conjunction_deps)]
         if len(dependencies) > 0 and len([
                 object_dependency for object_dependency
                 in dependencies if object_dependency.label == 'oa' and not
@@ -2637,7 +2655,8 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
         dependencies = [
             dependency for dependency in token._.holmes.children
             if token.pos_ == 'VERB' and dependency.label == 'oa' and not
-            dependency.is_uncertain]
+            dependency.is_uncertain and (dependency.child_token(token.doc).i == 0 or
+            token.doc[dependency.child_token(token.doc).i-1].dep_ not in self._conjunction_deps)]
         if len(dependencies) > 0 and len([
                 object_dependency for object_dependency
                 in dependencies if object_dependency.label == 'sb' and not

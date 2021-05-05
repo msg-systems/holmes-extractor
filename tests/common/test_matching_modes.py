@@ -2,7 +2,7 @@ import unittest
 import holmes_extractor as holmes
 
 holmes_manager = holmes.Manager(
-    'en_core_web_lg', perform_coreference_resolution=False)
+    'en_core_web_trf', perform_coreference_resolution=False)
 
 
 class MatchingModesTest(unittest.TestCase):

@@ -5,16 +5,16 @@ import os
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join(
     (script_directory, 'test_ontology.owl')))
-ontology_holmes_manager = holmes.Manager(model='en_core_web_lg',
+ontology_holmes_manager = holmes.Manager(model='en_core_web_trf',
                                          perform_coreference_resolution=False, ontology=ontology)
-ontology_holmes_manager_adm_false = holmes.Manager(model='en_core_web_lg',
+ontology_holmes_manager_adm_false = holmes.Manager(model='en_core_web_trf',
                                                    perform_coreference_resolution=False, ontology=ontology,
                                                    analyze_derivational_morphology=False)
 symmetric_ontology = holmes.Ontology(os.sep.join((script_directory, 'test_ontology.owl')),
                                      symmetric_matching=True)
-symmetric_ontology_nocoref_holmes_manager = holmes.Manager(model='en_core_web_lg',
+symmetric_ontology_nocoref_holmes_manager = holmes.Manager(model='en_core_web_trf',
                                                            ontology=symmetric_ontology, perform_coreference_resolution=False)
-no_ontology_coref_holmes_manager = holmes.Manager(model='en_core_web_lg',
+no_ontology_coref_holmes_manager = holmes.Manager(model='en_core_web_trf',
                                                   perform_coreference_resolution=True)
 
 
@@ -33,6 +33,7 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                                                           ignore_relation_phraselets=False,
                                                           include_reverse_only=include_reverse_only,
                                                           stop_lemmas=manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
+                                                          stop_tags=manager.semantic_analyzer.topic_matching_phraselet_stop_tags,
                                                           reverse_only_parent_lemmas=manager.semantic_analyzer.
                                                           topic_matching_reverse_only_parent_lemmas,
                                                           words_to_corpus_frequencies=None,
@@ -55,6 +56,7 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                                                           ignore_relation_phraselets=False,
                                                           include_reverse_only=True,
                                                           stop_lemmas=manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
+                                                          stop_tags=manager.semantic_analyzer.topic_matching_phraselet_stop_tags,
                                                           reverse_only_parent_lemmas=manager.semantic_analyzer.
                                                           topic_matching_reverse_only_parent_lemmas,
                                                           words_to_corpus_frequencies=words_to_corpus_frequencies,
@@ -270,6 +272,8 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
             ignore_relation_phraselets=False,
             stop_lemmas=no_ontology_coref_holmes_manager.
             semantic_analyzer.topic_matching_phraselet_stop_lemmas,
+            stop_tags=no_ontology_coref_holmes_manager.
+            semantic_analyzer.topic_matching_phraselet_stop_tags,
             reverse_only_parent_lemmas=no_ontology_coref_holmes_manager.semantic_analyzer.
             topic_matching_reverse_only_parent_lemmas,
             words_to_corpus_frequencies=None,
@@ -468,6 +472,7 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                                                                           ignore_relation_phraselets=False,
                                                                           include_reverse_only=True,
                                                                           stop_lemmas=ontology_holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
+                                                                          stop_tags=ontology_holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_tags,
                                                                           reverse_only_parent_lemmas=ontology_holmes_manager.semantic_analyzer.
                                                                           topic_matching_reverse_only_parent_lemmas,
                                                                           words_to_corpus_frequencies=None,
@@ -484,6 +489,7 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                                                                           ignore_relation_phraselets=False,
                                                                           include_reverse_only=True,
                                                                           stop_lemmas=ontology_holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
+                                                                          stop_tags=ontology_holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_tags,
                                                                           reverse_only_parent_lemmas=ontology_holmes_manager.semantic_analyzer.
                                                                           topic_matching_reverse_only_parent_lemmas,
                                                                           words_to_corpus_frequencies=None,
@@ -494,16 +500,16 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
 
     def test_reverse_derived_lemmas_in_ontology_multiword(self):
         dict = self._get_phraselet_dict(ontology_holmes_manager,
-                                        "He used a vault horse")
-        self.assertFalse('word: vault horse' in dict)
-        self.assertFalse('predicate-patient: use-vault horse' in dict)
-        word_phraselet = dict['word: vaulting horse']
-        self.assertEqual(word_phraselet.parent_lemma, 'vaulting horse')
-        self.assertEqual(word_phraselet.parent_derived_lemma, 'vaulting horse')
-        relation_phraselet = dict['predicate-patient: use-vaulting horse']
-        self.assertEqual(relation_phraselet.child_lemma, 'vaulting horse')
+                                        "He used a waste horse")
+        self.assertFalse('word: waste horse' in dict)
+        self.assertFalse('predicate-patient: use-waste horse' in dict)
+        word_phraselet = dict['word: wastage horse']
+        self.assertEqual(word_phraselet.parent_lemma, 'wastage horse')
+        self.assertEqual(word_phraselet.parent_derived_lemma, 'wastage horse')
+        relation_phraselet = dict['predicate-patient: use-wastage horse']
+        self.assertEqual(relation_phraselet.child_lemma, 'wastage horse')
         self.assertEqual(
-            relation_phraselet.child_derived_lemma, 'vaulting horse')
+            relation_phraselet.child_derived_lemma, 'wastage horse')
 
     def test_frequency_factors_small(self):
         dict = self._get_phraselet_dict(ontology_holmes_manager,

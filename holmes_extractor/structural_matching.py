@@ -529,7 +529,8 @@ class StructuralMatcher:
             root_word_to_match_info_dict = {}
 
             add_word_information(self.root_token._.holmes.lemma, 'direct', 0)
-            if not self.topic_match_phraselet:
+            if not self.topic_match_phraselet and self.root_token.lemma == \
+                    self.root_token._.holmes.lemma:
                 add_word_information(self.root_token.text.lower(), 'direct', 0)
                 hyphen_normalized_text = \
                     structural_matcher.semantic_analyzer.normalize_hyphens(self.root_token.text)
@@ -545,7 +546,8 @@ class StructuralMatcher:
                 if structural_matcher.analyze_derivational_morphology and \
                         self.root_token._.holmes.derived_lemma is not None:
                     add_word_information_from_ontology(self.root_token._.holmes.derived_lemma)
-                if not self.topic_match_phraselet:
+                if not self.topic_match_phraselet and self.root_token.lemma == \
+                        self.root_token._.holmes.lemma:
                     add_word_information_from_ontology(self.root_token.text.lower())
                     if self.root_token.text != hyphen_normalized_text:
                         add_word_information_from_ontology(hyphen_normalized_text.lower())
@@ -594,15 +596,15 @@ class StructuralMatcher:
             return
         pointer = token.left_edge.i
         while pointer <= token.right_edge.i:
-            if token.doc[pointer].pos_ in self.semantic_analyzer.noun_pos \
-                    and token.doc[pointer].dep_ in self.semantic_analyzer.noun_kernel_dep:
-                working_text = ''
-                working_lemma = ''
-                working_derived_lemma = ''
-                working_tokens = []
-                inner_pointer = pointer
-                while inner_pointer <= token.right_edge.i and \
-                        token.doc[inner_pointer].pos_ in self.semantic_analyzer.noun_pos:
+            working_text = ''
+            working_lemma = ''
+            working_derived_lemma = ''
+            working_tokens = []
+            inner_pointer = pointer
+            while inner_pointer <= token.right_edge.i and \
+                    (token.doc[inner_pointer]._.holmes.is_matchable or
+                    token.doc[inner_pointer].text == '-'):
+                if token.doc[inner_pointer].text != '-':
                     working_text = ' '.join((working_text, token.doc[inner_pointer].text))
                     working_lemma = ' '.join((
                         working_lemma, token.doc[inner_pointer]._.holmes.lemma))
@@ -617,17 +619,17 @@ class StructuralMatcher:
                     working_derived_lemma = ' '.join((
                         working_derived_lemma, this_token_derived_lemma))
                     working_tokens.append(token.doc[inner_pointer])
-                    inner_pointer += 1
-                if pointer + 1 < inner_pointer and token in working_tokens:
-                    yield self._MultiwordSpan(
-                        working_text.strip(), working_lemma.strip(), working_derived_lemma.strip(),
-                        working_tokens)
+                inner_pointer += 1
+            if pointer + 1 < inner_pointer and token in working_tokens:
+                yield self._MultiwordSpan(
+                    working_text.strip(), working_lemma.strip(), working_derived_lemma.strip(),
+                    working_tokens)
             pointer += 1
 
     def add_phraselets_to_dict(
             self, doc, *, phraselet_labels_to_phraselet_infos,
             replace_with_hypernym_ancestors, match_all_words,
-            ignore_relation_phraselets, include_reverse_only, stop_lemmas,
+            ignore_relation_phraselets, include_reverse_only, stop_lemmas, stop_tags,
             reverse_only_parent_lemmas, words_to_corpus_frequencies, maximum_corpus_frequency):
         """ Creates topic matching phraselets extracted from a matching text.
 
@@ -647,6 +649,7 @@ class StructuralMatcher:
             Reverse matching is used in topic matching but not in supervised document
             classification.
         stop_lemmas -- lemmas that should prevent all types of phraselet production.
+        stop_tags -- tags that should prevent all types of phraselet production.
         reverse_only_parent_lemmas -- lemma / part-of-speech combinations that, when present at
             the parent pole of a relation phraselet, should cause that phraselet to be
             reverse-matched.
@@ -782,7 +785,8 @@ class StructuralMatcher:
                     phraselet_template.single_word() and (
                         token._.holmes.is_matchable or subword_index is not None)):
                         # see note below for explanation
-                if not checking_tags or token.tag_ in phraselet_template.parent_tags:
+                if (not checking_tags or token.tag_ in phraselet_template.parent_tags) and \
+                        token.tag_ not in stop_tags:
                     phraselet_doc = self.semantic_analyzer.parse(
                         phraselet_template.template_sentence)
                     if token.i in token_indexes_to_multiword_lemmas and not match_all_words:
@@ -1129,10 +1133,10 @@ class StructuralMatcher:
                         self._is_entity_search_phrase_token(token, phraselet_template is not None):
                     if phraselet_template is None and len(token._.holmes.lemma.split()) > 1:
                         matchable_non_entity_tokens_to_lexemes[token.i] = \
-                            self.semantic_analyzer.nlp.vocab[token.lemma_]
+                            self.semantic_analyzer.vectors_nlp.vocab[token.lemma_]
                     else:
                         matchable_non_entity_tokens_to_lexemes[token.i] = \
-                            self.semantic_analyzer.nlp.vocab[token._.holmes.lemma]
+                            self.semantic_analyzer.vectors_nlp.vocab[token._.holmes.lemma]
             if token.dep_ == 'ROOT': # syntactic root
                 root_tokens.append(replace_grammatical_root_token_recursively(token))
         if len(tokens_to_match) == 0:
@@ -1629,7 +1633,7 @@ class StructuralMatcher:
                 else:
                     document_lemma = document_token._.holmes.lemma
 
-            document_lexeme = self.semantic_analyzer.nlp.vocab[document_lemma]
+            document_lexeme = self.semantic_analyzer.vectors_nlp.vocab[document_lemma]
             if search_phrase_lexeme.vector_norm > 0 and document_lexeme.vector_norm > 0:
                 similarity_measure = search_phrase_lexeme.similarity(document_lexeme)
                 if similarity_measure > search_phrase.single_token_similarity_threshold:
@@ -1710,30 +1714,29 @@ class StructuralMatcher:
         """Investigate possible matches when recursion is complete."""
 
         def mention_root_or_token_index(token):
-            mri = token._.holmes.mention_root_index
-            if mri is not None:
-                return mri
-            else:
+            if len(token._.coref_chains) == 0:
                 return token.i
+            for mention in (m for m in token._.coref_chains[0].mentions if token.i in
+                    m.token_indexes):
+                return mention.root_index
 
         def filter_word_matches_based_on_coreference_resolution(word_matches):
             """ When coreference resolution is active, additional matches are sometimes
-                returned that are filtered out again using this method. The use of
-                mention_root_index means that only the first cluster is taken into account.
+                returned that are filtered out again using this method.
             """
-            dict = {}
+            structural_indexes_to_word_matches = {}
             # Find the structurally matching document tokens for this list of word matches
             for word_match in word_matches:
                 structural_index = \
                     mention_root_or_token_index(word_match.structurally_matched_document_token)
-                if structural_index in dict.keys():
-                    dict[structural_index].append(word_match)
+                if structural_index in structural_indexes_to_word_matches.keys():
+                    structural_indexes_to_word_matches[structural_index].append(word_match)
                 else:
-                    dict[structural_index] = [word_match]
+                    structural_indexes_to_word_matches[structural_index] = [word_match]
             new_word_matches = []
-            for structural_index in dict:
+            for structural_index in structural_indexes_to_word_matches:
                 # For each structural token, find the best matching coreference mention
-                relevant_word_matches = dict[structural_index]
+                relevant_word_matches = structural_indexes_to_word_matches[structural_index]
                 structurally_matched_document_token = \
                     relevant_word_matches[0].document_token.doc[structural_index]
                 already_added_document_token_indexes = set()
@@ -2238,7 +2241,8 @@ class StructuralMatcher:
                                     document_lemma = example_document_token.lemma_
                                 else:
                                     document_lemma = example_document_token._.holmes.lemma
-                            document_lexeme = self.semantic_analyzer.nlp.vocab[document_lemma]
+                            document_lexeme = self.semantic_analyzer.vectors_nlp.vocab[
+                                document_lemma]
                             if search_phrase_lexeme.vector_norm > 0 and \
                                     document_lexeme.vector_norm > 0:
                                 similarity_measure = search_phrase_lexeme.similarity(

@@ -6,11 +6,11 @@ import os
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join((script_directory, 'test_ontology.owl')),
                            symmetric_matching=True)
-holmes_manager_coref = holmes.Manager(model='en_core_web_lg', ontology=ontology,
+holmes_manager_coref = holmes.Manager(model='en_core_web_trf', ontology=ontology,
                                       overall_similarity_threshold=0.65, perform_coreference_resolution=True)
-holmes_manager_coref_embedding_on_root = holmes.Manager(model='en_core_web_lg', ontology=ontology,
+holmes_manager_coref_embedding_on_root = holmes.Manager(model='en_core_web_trf', ontology=ontology,
                                                         overall_similarity_threshold=0.65, embedding_based_matching_on_root_words=True)
-holmes_manager_coref_no_embeddings = holmes.Manager(model='en_core_web_lg', ontology=ontology,
+holmes_manager_coref_no_embeddings = holmes.Manager(model='en_core_web_trf', ontology=ontology,
                                                     overall_similarity_threshold=1, perform_coreference_resolution=True)
 
 

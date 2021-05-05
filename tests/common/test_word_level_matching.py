@@ -4,7 +4,7 @@ import os
 
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join((script_directory,'test_ontology.owl')))
-holmes_manager_coref = holmes.Manager(model='en_core_web_lg', overall_similarity_threshold=0.85,
+holmes_manager_coref = holmes.Manager(model='en_core_web_trf', overall_similarity_threshold=0.82,
         embedding_based_matching_on_root_words=True, ontology=ontology,
         perform_coreference_resolution=False)
 holmes_manager_coref.register_search_phrase('A dog chases a cat')
@@ -12,7 +12,7 @@ holmes_manager_coref.register_search_phrase('An ENTITYPERSON chases a horse')
 holmes_manager_coref.register_search_phrase('A king wakes up')
 holmes_manager_coref.register_search_phrase('A cat creature jumps')
 holmes_manager_coref.register_search_phrase('cat creature')
-holmes_manager_coref.register_search_phrase('An industrious king loved by all')
+holmes_manager_coref.register_search_phrase('An industrious king loved by all.')
 holmes_manager_coref.register_search_phrase('A narcissistic king')
 holmes_manager_coref.register_search_phrase('A splendid king')
 holmes_manager_coref.register_search_phrase('A kind king')
@@ -21,7 +21,7 @@ holmes_manager_coref.register_search_phrase("Somebody believes strongly")
 holmes_manager_coref.register_search_phrase("A strong attraction")
 symmetric_ontology = holmes.Ontology(os.sep.join((script_directory,'test_ontology.owl')),
         symmetric_matching=True)
-second_holmes_manager_coref = holmes.Manager(model='en_core_web_lg', overall_similarity_threshold=0.85,
+second_holmes_manager_coref = holmes.Manager(model='en_core_web_trf', overall_similarity_threshold=0.82,
         embedding_based_matching_on_root_words=False, ontology=symmetric_ontology,
         perform_coreference_resolution=False)
 second_holmes_manager_coref.register_search_phrase('A narcissistic king')
@@ -115,14 +115,14 @@ class WordMatchingTest(unittest.TestCase):
 
     def test_search_phrase_with_entity_root_single_word(self):
         text_matches = holmes_manager_coref.match_search_phrases_against(entry=
-                'Peter went to Mallorca')
+                'Mallorca is a large municipality.')
         self.assertEqual(len(text_matches), 1)
         self.assertEqual(text_matches[0]['word_matches'][0]['match_type'], 'entity')
         self.assertEqual(text_matches[0]['word_matches'][0]['document_word'], 'Mallorca')
 
     def test_search_phrase_with_entity_root_multiword(self):
         text_matches = holmes_manager_coref.match_search_phrases_against(entry=
-                'Peter went to New York')
+                'New York is a large municipality.')
         self.assertEqual(len(text_matches), 1)
         self.assertEqual(text_matches[0]['word_matches'][0]['match_type'], 'entity')
         self.assertEqual(text_matches[0]['word_matches'][0]['document_word'], 'New York')
@@ -318,4 +318,4 @@ class WordMatchingTest(unittest.TestCase):
         self.assertEqual(matches[0].get_word_match_with_search_phrase_word_index(2),
             matches[0].word_matches[1])
         self.assertEqual(matches[0].get_word_match_with_search_phrase_word_index(4),
-            matches[0].word_matches[2])    
+            matches[0].word_matches[2])

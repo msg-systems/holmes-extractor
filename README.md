@@ -236,7 +236,7 @@ respectively:
 *Linux:*
 ```
 python3 -m spacy download en_core_web_lg
-python3 -m spacy download de_core_news_md
+python3 -m spacy download de_core_news_lg
 ```
 
 and if you plan to run the [regression tests](#development-and-testing-guidelines):
@@ -249,7 +249,7 @@ python3 -m spacy download en_core_web_sm
 *Windows:*
 ```
 python -m spacy download en_core_web_lg
-python -m spacy download de_core_news_md
+python -m spacy download de_core_news_lg
 ```
 
 and if you plan to run the [regression tests](#development-and-testing-guidelines):
@@ -258,7 +258,7 @@ and if you plan to run the [regression tests](#development-and-testing-guideline
 python -m spacy download en_core_web_sm
 ```
 
-`en_core_web_sm` is one of the smaller models that are also available. Users of Holmes are nonetheless urged to stick to the `en_core_web_lg` and `de_core_news_md` models as they have consistently been found to yield the best results.
+`en_core_web_sm` is one of the smaller models that are also available. Users of Holmes are nonetheless urged to stick to the `en_core_web_lg` and `de_core_news_lg` models as they have consistently been found to yield the best results.
 
 <a id="comments-about-deploying-holmes-in-an-enterprise-environment"></a>
 ##### 1.2.4 Comments about deploying Holmes in an enterprise environment
@@ -335,7 +335,7 @@ holmes_manager.start_chatbot_mode_console()
 
 ```
 import holmes_extractor as holmes
-holmes_manager = holmes.Manager(model='de_core_news_md')
+holmes_manager = holmes.Manager(model='de_core_news_lg')
 holmes_manager.register_search_phrase('Ein großer Hund jagt eine Katze')
 holmes_manager.start_chatbot_mode_console()
 ```

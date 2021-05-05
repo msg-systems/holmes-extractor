@@ -516,6 +516,7 @@ class TopicMatcher:
             match_all_words=False,
             ignore_relation_phraselets=False,
             include_reverse_only=True,
+            stop_tags=self._semantic_analyzer.topic_matching_phraselet_stop_tags,
             stop_lemmas=self._semantic_analyzer.topic_matching_phraselet_stop_lemmas,
             reverse_only_parent_lemmas=
             self._semantic_analyzer.topic_matching_reverse_only_parent_lemmas,
@@ -532,6 +533,7 @@ class TopicMatcher:
             include_reverse_only=False, # value is irrelevant with
                                         # ignore_relation_phraselets == True
             stop_lemmas=self._semantic_analyzer.topic_matching_phraselet_stop_lemmas,
+            stop_tags=self._semantic_analyzer.topic_matching_phraselet_stop_tags,
             reverse_only_parent_lemmas=
             self._semantic_analyzer.topic_matching_reverse_only_parent_lemmas,
             words_to_corpus_frequencies=self._words_to_corpus_frequencies,
@@ -1237,6 +1239,7 @@ class SupervisedTopicTrainingBasis:
             include_reverse_only=False,
             stop_lemmas=self.semantic_analyzer.\
             supervised_document_classification_phraselet_stop_lemmas,
+            stop_tags=self.semantic_analyzer.topic_matching_phraselet_stop_tags,
             reverse_only_parent_lemmas=None,
             words_to_corpus_frequencies=None,
             maximum_corpus_frequency=None)
