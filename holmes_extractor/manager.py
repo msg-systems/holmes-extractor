@@ -18,7 +18,11 @@ model_retrieval_lock = Lock()
 def get_nlp(model:str) -> Language:
     with model_retrieval_lock:
         if model not in model_names_to_nlps:
-            model_names_to_nlps[model] = spacy.load(model)
+            if model == 'en_core_web_trf':
+                model_names_to_nlps[model] = spacy.load(model,
+                    config={'components.transformer.model.tokenizer_config.use_fast': False})
+            else:
+                model_names_to_nlps[model] = spacy.load(model)
             model_names_to_nlps[model].add_pipe('coreferee')
         return model_names_to_nlps[model]
 

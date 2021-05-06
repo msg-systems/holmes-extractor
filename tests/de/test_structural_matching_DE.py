@@ -455,12 +455,6 @@ class GermanStructuralMatchingTest(unittest.TestCase):
         matches = self._get_matches(holmes_manager,
                                     "Der Mitarbeiter braucht eine Versicherung für die nächsten fünf Jahre")
         self.assertEqual(len(matches), 3)
-        for match in matches:
-            if len(match.word_matches) == 5:
-                self.assertFalse(match.is_uncertain)
-            else:
-                self.assertTrue(match.is_uncertain)
-                self.assertEqual(len(match.word_matches), 4)
 
     def test_involves_coreference_false(self):
         holmes_manager.remove_all_documents()

@@ -16,11 +16,11 @@ class GermanSupervisedTopicClassificationTest(unittest.TestCase):
         sttb.prepare()
         freq = sttb.labels_to_classification_frequencies
         self.assertEqual(freq['verb-nom: jagd-löw'], {'Tiere': 1})
-        self.assertEqual(freq['verb-acc: jagd-tigern'], {'Tiere': 1})
+        self.assertEqual(freq['verb-acc: jagd-tiger'], {'Tiere': 1})
         self.assertEqual(
-            freq['verb-acc: jagd-tigern/verb-nom: jagd-löw'], {'Tiere': 1})
+            freq['verb-acc: jagd-tiger/verb-nom: jagd-löw'], {'Tiere': 1})
         self.assertEqual(freq['word: löw'], {'Tiere': 1})
-        self.assertEqual(freq['word: tigern'], {'Tiere': 1})
+        self.assertEqual(freq['word: tiger'], {'Tiere': 1})
 
     def test_linked_matching_common_dependent(self):
         sttb = holmes_manager.get_supervised_topic_training_basis(
@@ -33,13 +33,13 @@ class GermanSupervisedTopicClassificationTest(unittest.TestCase):
         # for some reason spaCy does not resolve 'isst' and 'frisst' to the infinitive forms
         self.assertEqual(freq['verb-nom: isst-löw'], {'Tiere': 1})
         self.assertEqual(freq['verb-nom: frisst-löw'], {'Tiere': 1})
-        self.assertEqual(freq['verb-acc: frisst-tigern'], {'Tiere': 1})
-        self.assertEqual(freq['verb-acc: frisst-tigern/verb-nom: frisst-löw'],
+        self.assertEqual(freq['verb-acc: frisst-tiger'], {'Tiere': 1})
+        self.assertEqual(freq['verb-acc: frisst-tiger/verb-nom: frisst-löw'],
                          {'Tiere': 1})
         self.assertEqual(freq['verb-nom: frisst-löw/verb-nom: isst-löw'],
                          {'Tiere': 1})
         self.assertEqual(freq['word: löw'], {'Tiere': 1})
-        self.assertEqual(freq['word: tigern'], {'Tiere': 1})
+        self.assertEqual(freq['word: tiger'], {'Tiere': 1})
 
     def test_linked_matching_common_dependent_control(self):
         sttb = holmes_manager.get_supervised_topic_training_basis(
@@ -107,17 +107,17 @@ class GermanSupervisedTopicClassificationTest(unittest.TestCase):
         sttb.prepare()
         freq = sttb.labels_to_classification_frequencies
         self.assertEqual(freq['verb-nom: jagd-löw'], {'Tiere': 1})
-        self.assertEqual(freq['verb-acc: jagd-tigern'], {'Tiere': 1})
+        self.assertEqual(freq['verb-acc: jagd-tiger'], {'Tiere': 1})
         self.assertEqual(
-            freq['verb-acc: jagd-tigern/verb-nom: jagd-löw'], {'Tiere': 1})
-        self.assertEqual(freq['word: informationslöw'], {'Tiere': 1})
+            freq['verb-acc: jagd-tiger/verb-nom: jagd-löw'], {'Tiere': 1})
+        self.assertEqual(freq['word: informationslöwe'], {'Tiere': 1})
         self.assertEqual(freq['word: informationstiger'], {'Tiere': 1})
         self.assertEqual(freq['intcompound: löw-information'], {'Tiere': 1})
-        self.assertEqual(freq['intcompound: tigern-information'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: tiger-information'], {'Tiere': 1})
         self.assertEqual(
             freq['intcompound: löw-information/verb-nom: jagd-löw'], {'Tiere': 1})
         self.assertEqual(
-            freq['intcompound: tigern-information/verb-acc: jagd-tigern'], {'Tiere': 1})
+            freq['intcompound: tiger-information/verb-acc: jagd-tiger'], {'Tiere': 1})
 
     def test_get_labels_to_classification_frequencies_direct_matching_with_subwords_and_conjunction_of_verb(self):
         sttb = holmes_manager.get_supervised_topic_training_basis(
@@ -129,19 +129,19 @@ class GermanSupervisedTopicClassificationTest(unittest.TestCase):
         freq = sttb.labels_to_classification_frequencies
         self.assertEqual(freq['verb-nom: jagd-löw'], {'Tiere': 1})
         self.assertEqual(freq['verb-nom: tragen-löw'], {'Tiere': 1})
-        self.assertEqual(freq['verb-acc: tragen-tigern'], {'Tiere': 1})
+        self.assertEqual(freq['verb-acc: tragen-tiger'], {'Tiere': 1})
         self.assertEqual(
-            freq['verb-acc: tragen-tigern/verb-nom: tragen-löw'], {'Tiere': 1})
+            freq['verb-acc: tragen-tiger/verb-nom: tragen-löw'], {'Tiere': 1})
         self.assertEqual(freq['word: informationslöw'], {'Tiere': 1})
         self.assertEqual(freq['word: informationstiger'], {'Tiere': 1})
         self.assertEqual(freq['intcompound: löw-information'], {'Tiere': 1})
-        self.assertEqual(freq['intcompound: tigern-information'], {'Tiere': 1})
+        self.assertEqual(freq['intcompound: tiger-information'], {'Tiere': 1})
         self.assertEqual(
             freq['intcompound: löw-information/verb-nom: jagd-löw'], {'Tiere': 1})
         self.assertEqual(
             freq['intcompound: löw-information/verb-nom: tragen-löw'], {'Tiere': 1})
         self.assertEqual(
-            freq['intcompound: tigern-information/verb-acc: tragen-tigern'], {'Tiere': 1})
+            freq['intcompound: tiger-information/verb-acc: tragen-tiger'], {'Tiere': 1})
 
     def test_get_labels_to_classification_frequencies_with_front_subword_conjunction(self):
         sttb = holmes_manager.get_supervised_topic_training_basis(
@@ -157,7 +157,7 @@ class GermanSupervisedTopicClassificationTest(unittest.TestCase):
         self.assertEqual(freq['intcompound: löw-maßnahm'], {'Tiere': 1})
         self.assertEqual(freq['intcompound: löw-raket'], {'Tiere': 1})
         self.assertEqual(freq['verb-nom: fressen-löw'], {'Tiere': 1})
-        self.assertEqual(freq['word: raketenlöw'], {'Tiere': 1})
+        self.assertEqual(freq['word: raketenlöwe'], {'Tiere': 1})
         self.assertEqual(
             freq['intcompound: extraktion-information/intcompound: maßnahm-extraktion'], {'Tiere': 1})
         self.assertEqual(

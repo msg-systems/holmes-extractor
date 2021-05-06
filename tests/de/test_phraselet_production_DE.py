@@ -21,6 +21,7 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                                                                  ignore_relation_phraselets=False,
                                                                  include_reverse_only=include_reverse_only,
                                                                  stop_lemmas=holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
+                                                                 stop_tags=holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_tags,
                                                                  reverse_only_parent_lemmas=holmes_manager.semantic_analyzer.
                                                                  topic_matching_reverse_only_parent_lemmas,
                                                                  words_to_corpus_frequencies=None,
@@ -43,42 +44,43 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                                                           ignore_relation_phraselets=False,
                                                           include_reverse_only=True,
                                                           stop_lemmas=manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
+                                                          stop_tags=manager.semantic_analyzer.topic_matching_phraselet_stop_tags,
                                                           reverse_only_parent_lemmas=manager.semantic_analyzer.
                                                           topic_matching_reverse_only_parent_lemmas,words_to_corpus_frequencies=words_to_corpus_frequencies,                            maximum_corpus_frequency=maximum_corpus_frequency)
         return phraselet_labels_to_phraselet_infos
 
     def test_verb_nom(self):
         self._check_equals("Eine Pflanze wächst", [
-                           'verb-nom: wachsen-pflanzen', 'word: pflanzen'])
+                           'verb-nom: wachsen-pflanz', 'word: pflanz'])
 
     def test_separable_verb_nom(self):
         self._check_equals("Eine Pflanze wächst auf",
-                           ['verb-nom: aufwachsen-pflanzen', 'word: pflanzen'])
+                           ['verb-nom: aufwachsen-pflanz', 'word: pflanz'])
 
     def test_verb_acc(self):
-        self._check_equals("Eine Pflanze wird gepflanzt", ['verb-acc: pflanzen-pflanzen',
-                                                           'word: pflanzen'])
+        self._check_equals("Eine Pflanze wird gepflanzt", ['verb-acc: pflanzen-pflanz',
+                                                           'word: pflanz'])
 
     def test_verb_dat(self):
-        self._check_equals("Jemand gibt einer Pflanze etwas", ['verb-dat: gabe-pflanzen',
-                                                               'word: pflanzen'])
+        self._check_equals("Jemand gibt einer Pflanze etwas", ['verb-dat: gabe-pflanz',
+                                                               'word: pflanz'])
 
     def test_noun_dependent_adjective(self):
-        self._check_equals("Eine gesunde Pflanze", ['noun-dependent: pflanzen-gesund',
-                                                    'word: pflanzen'])
+        self._check_equals("Eine gesunde Pflanze", ['noun-dependent: pflanz-gesund',
+                                                    'word: pflanz'])
 
     def test_noun_dependent_noun(self):
-        self._check_equals("Die Pflanze eines Gärtners", ['verb-acc: pflanzen-gärtner',
-                                                          'word: gärtner', 'word: pflanzen'])
+        self._check_equals("Die Pflanze eines Gärtners", ['verb-acc: pflanz-gärtner',
+                                                          'word: gärtner', 'word: pflanz'])
 
     def test_verb_adverb(self):
         self._check_equals("lange schauen", ['verb-adverb: schau-lang'])
 
     def test_combination(self):
         self._check_equals("Der Gärtner gibt der netten Frau ihr Mittagessen",
-                           ['verb-nom: gabe-gärtnern', 'verb-acc: gabe-mittagessen',
+                           ['verb-nom: gabe-gärtner', 'verb-acc: gabe-mittagessen',
                             'verb-dat: gabe-frau', 'noun-dependent: frau-nett',
-                            'word: gärtnern', 'word: frau', 'word: mittagessen'])
+                            'word: gärtner', 'word: frau', 'word: mittagessen'])
 
     def test_phraselet_labels(self):
         doc = holmes_manager.semantic_analyzer.parse(
@@ -91,14 +93,15 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                                                                  include_reverse_only=True,
                                                                  ignore_relation_phraselets=False,
                                                                  stop_lemmas=holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
+                                                                 stop_tags=holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_tags,
                                                                  reverse_only_parent_lemmas=holmes_manager.semantic_analyzer.
                                                                  topic_matching_reverse_only_parent_lemmas,
                                                                  words_to_corpus_frequencies=None,
                                                                  maximum_corpus_frequency=None)
         self.assertEqual(set(phraselet_labels_to_phraselet_infos.keys()),
-                         set(['verb-nom: gabe-gärtnern', 'verb-acc: gabe-mittagessen',
+                         set(['verb-nom: gabe-gärtner', 'verb-acc: gabe-mittagessen',
                               'verb-dat: gabe-frau', 'noun-dependent: frau-nett',
-                              'word: gärtnern', 'word: frau', 'word: mittagessen']))
+                              'word: gärtner', 'word: frau', 'word: mittagessen']))
 
     def test_phraselet_labels_with_intcompound(self):
         doc = holmes_manager.semantic_analyzer.parse(
@@ -111,6 +114,7 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                                                                  include_reverse_only=True,
                                                                  ignore_relation_phraselets=False,
                                                                  stop_lemmas=holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
+                                                                 stop_tags=holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_tags,
                                                                  reverse_only_parent_lemmas=holmes_manager.semantic_analyzer.
                                                                  topic_matching_reverse_only_parent_lemmas,
                                                                 words_to_corpus_frequencies=None,
@@ -120,12 +124,12 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                          set(['verb-nom: gabe-landschaftsgärtner', 'verb-acc: gabe-mittagessen',
                               'verb-dat: gabe-frau', 'noun-dependent: frau-nett',
                               'word: landschaftsgärtner', 'word: frau', 'word: mittagessen',
-                              'intcompound: gärtnern-landschaft', 'verb-nom: gabe-gärtnern']))
+                              'intcompound: gärtner-landschaft', 'verb-nom: gabe-gärtner']))
         intcompound_phraselet_info = phraselet_labels_to_phraselet_infos[
-            'intcompound: gärtnern-landschaft']
-        self.assertEqual(intcompound_phraselet_info.parent_lemma, 'gärtnern')
+            'intcompound: gärtner-landschaft']
+        self.assertEqual(intcompound_phraselet_info.parent_lemma, 'gärtner')
         self.assertEqual(
-            intcompound_phraselet_info.parent_derived_lemma, 'gärtnern')
+            intcompound_phraselet_info.parent_derived_lemma, 'gärtner')
         self.assertEqual(intcompound_phraselet_info.child_lemma, 'landschaft')
         self.assertEqual(
             intcompound_phraselet_info.child_derived_lemma, 'landschaft')
@@ -135,7 +139,7 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                            ['verb-adverb: haben-immer'], include_reverse_only=True)
 
     def test_reverse_only_parent_lemma_auxiliary(self):
-        self._check_equals("Immer hat er es gehabt",
+        self._check_equals("Er hat es immer gehabt",
                            ['verb-adverb: haben-immer'], include_reverse_only=True)
 
     def test_reverse_only_parent_lemma_modal(self):
@@ -156,12 +160,12 @@ class GermanPhraseletProductionTest(unittest.TestCase):
 
     def test_phraselet_stop_words_governed(self):
         self._check_equals("Dann tat er es zu Hause",
-                           ['word: hausen', 'prepgovernor-noun: tat-hausen',
-                            'prep-noun: zu-hausen'], include_reverse_only=True)
+                           ['word: haus', 'prepgovernor-noun: tat-haus',
+                            'prep-noun: zu-haus'], include_reverse_only=True)
 
     def test_phraselet_stop_words_governed_suppressed(self):
         self._check_equals("Dann tat er es zu Hause",
-                           ['word: hausen'], include_reverse_only=False)
+                           ['word: haus'], include_reverse_only=False)
 
     def test_only_verb(self):
         self._check_equals("springen", ['word: sprung'])
@@ -171,8 +175,8 @@ class GermanPhraseletProductionTest(unittest.TestCase):
 
     def test_match_all_words(self):
         self._check_equals("Der Gärtner gibt der netten Frau ihr Mittagessen",
-                           ['word: gärtnern', 'word: frau', 'word: mittagessen',
-                            'word: gabe', 'word: nett',  'verb-nom: gabe-gärtnern',
+                           ['word: gärtner', 'word: frau', 'word: mittagessen',
+                            'word: gabe', 'word: nett',  'verb-nom: gabe-gärtner',
                             'verb-dat: gabe-frau', 'verb-acc: gabe-mittagessen',
                             'noun-dependent: frau-nett'], True)
 
@@ -264,14 +268,14 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                            match_all_words=True)
 
     def test_subwords_with_conjunction_match_all_words(self):
-        self._check_equals("Der König der Informationsinteressen-, -beschaffungs- und -problemmaßnahmen der Wettersituation",
+        self._check_equals("Der König von den Informationsinteressen-, -beschaffungs- und -problemmaßnahmen der Wettersituation",
                            ['word: wettersituation',
                             'intcompound: beschaffen-information',
                             'word: könig',
                             'verb-acc: könig-maßnahm',
                             'intcompound: problem-information',
                             'verb-acc: maßnahm-wettersituation',
-                            'intcompound: situation-wettern',
+                            'intcompound: situation-wetter',
                             'verb-acc: maßnahm-situation',
                             'intcompound: maßnahm-problem',
                             'intcompound: maßnahm-beschaffen',
@@ -281,21 +285,21 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                             'word: information',
                             'word: interesse',
                             'word: beschaffen',
-                            'word: wettern',
+                            'word: wetter',
                             'word: situation',
                             'word: maßnahm'
                             ],
                            match_all_words=True)
 
     def test_subwords_with_conjunction_not_match_all_words(self):
-        self._check_equals("Der König der Informationsinteressen-, -beschaffungs- und -problemmaßnahmen der Wettersituation",
+        self._check_equals("Der König von den Informationsinteressen-, -beschaffungs- und -problemmaßnahmen der Wettersituation",
                            ['word: wettersituation',
                             'intcompound: beschaffen-information',
                             'word: könig',
                             'verb-acc: könig-maßnahm',
                             'intcompound: problem-information',
                             'verb-acc: maßnahm-wettersituation',
-                            'intcompound: situation-wettern',
+                            'intcompound: situation-wetter',
                             'verb-acc: maßnahm-situation',
                             'intcompound: maßnahm-problem',
                             'intcompound: maßnahm-beschaffen',
@@ -310,7 +314,7 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                             'word: könig',
                             'verb-acc: könig-maßnahm',
                             'verb-acc: maßnahm-wettersituation',
-                            'intcompound: situation-wettern',
+                            'intcompound: situation-wetter',
                             'verb-acc: maßnahm-situation',
                             'intcompound: maßnahm-beschaffen',
                             'word: beschaffungsmaßnahmen',
@@ -327,7 +331,7 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                             'word: könig',
                             'verb-acc: könig-maßnahm',
                             'verb-acc: maßnahm-wettersituation',
-                            'intcompound: situation-wettern',
+                            'intcompound: situation-wetter',
                             'verb-acc: maßnahm-situation',
                             'intcompound: maßnahm-beschaffen',
                             'word: beschaffungsmaßnahmen',
@@ -337,7 +341,7 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                             'verb-acc: könig-beschaffungsmaßnahmen',
                             'word: information',
                             'word: beschaffen',
-                            'word: wettern',
+                            'word: wetter',
                             'word: situation',
                             'word: maßnahm'
                             ],

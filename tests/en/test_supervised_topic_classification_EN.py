@@ -52,7 +52,7 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
         sttb = holmes_manager.get_supervised_topic_training_basis(
             oneshot=False)
         sttb.parse_and_register_training_document(
-            "A gymnast jumps over a vaulting horse", 'gym')
+            "A gymnast jumps over a wastage horse", 'gym')
         sttb.parse_and_register_training_document("fast", 'dummy')
         sttb.prepare()
         freq = sttb.labels_to_classification_frequencies
@@ -200,7 +200,7 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
         sttb.parse_and_register_training_document(
             "A gymnast jumps over a horse", 'gym')
         sttb.parse_and_register_training_document(
-            "A gymnast jumps over a vaulting horse", 'gym')
+            "A gymnast jumps over a wastage horse", 'gym')
         sttb.prepare()
         freq = sttb.labels_to_classification_frequencies
         self.assertEqual(

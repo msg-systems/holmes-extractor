@@ -8,6 +8,7 @@ from .errors import WrongModelDeserializationError, WrongVersionDeserializationE
 
 SERIALIZED_DOCUMENT_VERSION = 3
 
+
 class SemanticDependency:
     """A labelled semantic dependency between two tokens."""
 
@@ -661,7 +662,7 @@ class SemanticAnalyzer(ABC):
 
     _conjunction_deps = NotImplemented
 
-    _interrogative_pronoun_tags = NotImplemented
+    _matchable_blacklist_tags = NotImplemented
 
     _semantic_dependency_excluded_tags = NotImplemented
 
@@ -867,9 +868,8 @@ class SemanticAnalyzer(ABC):
         # token is a preposition ...
         if token.pos_ == 'ADP':
             # directly preceded by a noun
-            if token.i > 0 and token.doc[token.i-1].sent == token.sent and (
-                    token.doc[token.i-1].pos_ in ('NOUN', 'PROPN') or
-                    self.is_involved_in_coreference(token.doc[token.i-1])):
+            if token.i > 0 and token.doc[token.i-1].sent == token.sent and \
+                    token.doc[token.i-1].pos_ in ('NOUN', 'PROPN', 'PRON'):
                 preceding_noun = token.doc[token.i-1]
                 # and the noun is governed by at least one verb
                 governing_verbs = [
@@ -910,7 +910,7 @@ class SemanticAnalyzer(ABC):
         """
         token._.holmes.is_matchable = (
             token.pos_ in self._matchable_pos or self.is_involved_in_coreference(token)) \
-            and token.tag_ not in self._interrogative_pronoun_tags and \
+            and token.tag_ not in self._matchable_blacklist_tags and \
             token._.holmes.lemma not in self._generic_pronoun_lemmas
 
     def _move_information_between_tokens(self, from_token, to_token):
@@ -987,7 +987,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
 
     # The part of speech tags that require a match in the search sentence when they occur within a
     # search_phrase
-    _matchable_pos = ('ADJ', 'ADP', 'ADV', 'NOUN', 'NUM', 'PROPN', 'VERB')
+    _matchable_pos = ('ADJ', 'ADP', 'ADV', 'NOUN', 'NUM', 'PROPN', 'VERB', 'AUX')
 
     # The part of speech tags that can refer to nouns
     noun_pos = ('NOUN', 'PROPN')
@@ -1034,7 +1034,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
     _conjunction_deps = ('conj', 'appos', 'cc')
 
     # Syntactic tags that can mark interrogative pronouns
-    _interrogative_pronoun_tags = ('WDT', 'WP', 'WRB')
+    _matchable_blacklist_tags = ('WDT', 'WP', 'WRB')
 
     # Syntactic tags that exclude a token from being the child token within a semantic dependency
     _semantic_dependency_excluded_tags = ('DT')
@@ -1128,7 +1128,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
     # Presently depends purely on the language
     _model_supports_coreference_resolution = True
 
-    # The part-of-speech labels permitted for elements of an entity-defined multiword.
+    # The part-o'f-speech labels permitted for elements of an entity-defined multiword.
     _entity_defined_multiword_pos = ('NOUN', 'PROPN')
 
     # The entity labels permitted for elements of an entity-defined multiword.
@@ -1215,7 +1215,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
     # Parent lemma / part-of-speech combinations that should lead to phraselets being
     # reverse-matched only during topic matching.
     topic_matching_reverse_only_parent_lemmas = (
-        ('be', 'VERB'), ('have', 'VERB'), ('do', 'VERB'),
+        ('be', 'VERB'), ('be', 'AUX'), ('have', 'VERB'), ('have', 'AUX'), ('do', 'VERB'),
         ('say', 'VERB'), ('go', 'VERB'), ('get', 'VERB'), ('make', 'VERB'))
 
     # Tags of tokens that should be ignored during topic matching (normally pronouns).
@@ -1718,7 +1718,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
 
     _conjunction_deps = ('cj', 'cd', 'punct', 'app')
 
-    _interrogative_pronoun_tags = ('PWAT', 'PWAV', 'PWS')
+    _matchable_blacklist_tags = ('PWAT', 'PWAV', 'PWS', 'PTKVZ')
 
     _semantic_dependency_excluded_tags = ('ART')
 
@@ -2594,7 +2594,8 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
         # 'er dachte darüber nach, es zu tun' and similar structures
         for dependency in (
                 dependency for dependency in token._.holmes.children
-                if dependency.label == 'op' and dependency.child_token(token.doc).tag_ == 'PROAV'):
+                if dependency.label == 'op' and
+                dependency.child_token(token.doc).tag_ == 'PROAV'):
             child_token = dependency.child_token(token.doc)
             for child_dependency in (
                     child_dependency for child_dependency in
@@ -2616,12 +2617,19 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                 and token.dep_ == 'sb' and dependency.child_token(token.doc).pos_ ==
                 self._adjectival_predicate_predicate_pos):
             child_token = dependency.child_token(token.doc)
-            for child_dependency in (
-                    child_dependency for child_dependency in
-                    child_token._.holmes.children if child_dependency.label in ('oc', 're') and
-                    child_dependency.child_token(token.doc).pos_ in ('VERB', 'AUX')):
+            relevant_dependencies = [child_dependency for child_dependency in
+                child_token._.holmes.children if child_dependency.label in ('oc', 're') and
+                child_dependency.child_token(token.doc).pos_ in ('VERB', 'AUX')]
+            for grandchild_token in (gd.child_token(token.doc) for gd in
+                    child_token._.holmes.children if gd.label == 'mo' and
+                    gd.child_token(token.doc).tag_ == 'PROAV'):
+                relevant_dependencies.extend([grandchild_dependency for grandchild_dependency in
+                    grandchild_token._.holmes.children if
+                    grandchild_dependency.label in ('oc', 're') and
+                    grandchild_dependency.child_token(token.doc).pos_ in ('VERB', 'AUX')])
+            for relevant_dependency in relevant_dependencies:
                 target_tokens, target_dependency = find_target_tokens_and_dependency_recursively(
-                    child_dependency.child_token(token.doc))
+                    relevant_dependency.child_token(token.doc))
                 for target_token in (
                         target_token for target_token in target_tokens
                         if target_token.i != dependency.parent_index):

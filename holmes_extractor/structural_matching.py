@@ -529,8 +529,8 @@ class StructuralMatcher:
             root_word_to_match_info_dict = {}
 
             add_word_information(self.root_token._.holmes.lemma, 'direct', 0)
-            if not self.topic_match_phraselet and self.root_token.lemma == \
-                    self.root_token._.holmes.lemma:
+            if not self.topic_match_phraselet and self.root_token.lemma_.lower() == \
+                    self.root_token._.holmes.lemma.lower():
                 add_word_information(self.root_token.text.lower(), 'direct', 0)
                 hyphen_normalized_text = \
                     structural_matcher.semantic_analyzer.normalize_hyphens(self.root_token.text)

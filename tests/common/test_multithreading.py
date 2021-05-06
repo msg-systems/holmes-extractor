@@ -51,7 +51,7 @@ class MultithreadingTest(unittest.TestCase):
                        args=(first_argument, queue))
             t.start()
         for i in range(NUMBER_OF_THREADS):
-            output = queue.get(True, 5)
+            output = queue.get(True, 10)
             self.assertEqual(output, expected_output)
 
     def _match_against_documents_within_thread(self, search_phrase, queue):
@@ -136,7 +136,7 @@ class MultithreadingTest(unittest.TestCase):
             t = Thread(target=topic_match_within_thread)
             t.start()
         for i in range(NUMBER_OF_THREADS):
-            output = queue.get(True, 60)
+            output = queue.get(True, 180)
             self.assertEqual(output, ['panther', 'The hungry panther chased the angry gnu.',
                                       'foal', 'A foal'])
 
@@ -152,7 +152,7 @@ class MultithreadingTest(unittest.TestCase):
             t.start()
 
         last_number_of_matches = 0
-        for counter in range(100):
+        for counter in range(500):
             matches = [match for match in manager.match() if
                        match.search_phrase_label == "People discuss irrelevancies"]
             for match in matches:
@@ -192,7 +192,7 @@ class MultithreadingTest(unittest.TestCase):
             last_number_of_matches = this_number_of_matches
             if this_number_of_matches == NUMBER_OF_THREADS * NUMBER_OF_THREADS:
                 break
-            self.assertFalse(counter == 99)
+            self.assertFalse(counter == 499)
         dictionary, maximum = manager.threadsafe_container.\
                     get_corpus_frequency_information()
         self.assertEqual(dictionary['people'], NUMBER_OF_THREADS)

@@ -696,11 +696,6 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[8]._.holmes.string_representation_of_children(),
                          '9:prepposs(U); 13:pobjp(U)')
 
-    def test_single_preposition_dependency_not_added_to_non_coreferring_pronoun(self):
-        doc = analyzer.parse("The employee needs it for the next five years")
-        self.assertEqual(doc[3]._.holmes.string_representation_of_children(),
-                         '')
-
     def test_dependencies_not_added_to_sibling_to_the_right(self):
         doc = analyzer.parse("He saw them and laughed")
         self.assertEqual(doc[4]._.holmes.string_representation_of_children(),

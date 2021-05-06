@@ -28,7 +28,7 @@ class GermanTopicMatchingTest(unittest.TestCase):
         self._check_equals("Ein Gegwghg wächst", "Ein Gegwghg wächst", 34)
 
     def test_entity_matching(self):
-        self._check_equals("Ein ENTITYPER singt", "Peter singt", 34)
+        self._check_equals("Ein ENTITYPER singt", "Richard singt", 34)
 
     def test_entitynoun_matching(self):
         self._check_equals("Ein ENTITYNOUN singt", "Ein Vogel singt", 25)

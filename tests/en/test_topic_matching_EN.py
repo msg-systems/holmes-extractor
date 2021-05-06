@@ -87,7 +87,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                            holmes_manager_coref)
 
     def test_entity_matching(self):
-        self._check_equals("My friend visited ENTITYGPE", "Peter visited Paris", 34,
+        self._check_equals("My friend visited ENTITYGPE", "Peter visited London", 34,
                            holmes_manager_coref)
 
     def test_entity_matching_frequency_factor(self):
@@ -452,17 +452,17 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     def test_reverse_matching_noun_coreference_on_governed(self):
         self._check_equals(
-            "An engine with a car", "I saw an automobile. There was an engine with it", 25,
+            "An engine with a car", "I saw an automobile. I saw the engine with it", 25,
             holmes_manager_coref)
 
     def test_reverse_matching_noun_coreference_on_governed_control_no_embeddings(self):
         self._check_equals(
-            "An engine with a car", "I saw an automobile. There was an engine with it", 14,
+            "An engine with a car", "I saw an automobile. I saw the engine with it", 14,
             holmes_manager_coref_no_embeddings)
 
     def test_reverse_matching_noun_coreference_on_governed_control_same_word(self):
         self._check_equals(
-            "An engine with a car", "I saw a car. There was an engine with it", 76,
+            "An engine with a car", "I saw a car. I saw the engine with it", 76,
             holmes_manager_coref_no_embeddings)
 
     def test_reverse_matching_verb_with_coreference_and_conjunction(self):
@@ -655,43 +655,43 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                            holmes_manager_coref)
 
     def test_derived_multiword_child_also_matched_by_ontology_1(self):
-        self._check_equals("He used a vault horse",
-                           "He used a vaulting horse", 34,
+        self._check_equals("He used a waste horse",
+                           "He used a wastage horse", 34,
                            holmes_manager_coref)
 
     def test_derived_multiword_child_also_matched_by_ontology_2(self):
-        self._check_equals("He used a vaulting horse",
-                           "He used a vault horse", 32,
+        self._check_equals("He used a wastage horse",
+                           "He used a waste horse", 32,
                            holmes_manager_coref)
 
     def test_derived_multiword_child_also_matched_by_ontology_3(self):
-        self._check_equals("He used a vault horse",
+        self._check_equals("He used a waste horse",
                            "He used gymnastics equipment", 26,
                            holmes_manager_coref)
 
     def test_derived_multiword_child_also_matched_by_ontology_4(self):
         self._check_equals("He used gymnastics equipment",
-                           "He used a vault horse", 26,
+                           "He used a waste horse", 26,
                            holmes_manager_coref)
 
     def test_derived_multiword_parent_also_matched_by_ontology_1(self):
-        self._check_equals("A big vault horse",
-                           "A big vaulting horse", 34,
+        self._check_equals("A big waste horse",
+                           "A big wastage horse", 34,
                            holmes_manager_coref)
 
     def test_derived_multiword_parent_also_matched_by_ontology_2(self):
-        self._check_equals("A big vaulting horse",
-                           "A big vault horse", 32,
+        self._check_equals("A big wastage horse",
+                           "A big waste horse", 32,
                            holmes_manager_coref)
 
     def test_derived_multiword_parent_also_matched_by_ontology_3(self):
-        self._check_equals("A big vault horse",
+        self._check_equals("A big waste horse",
                            "A big gymnastics equipment", 26,
                            holmes_manager_coref)
 
     def test_derived_multiword_parent_also_matched_by_ontology_4(self):
         self._check_equals("A big gymnastics equipment",
-                           "A big vault horse", 26,
+                           "A big waste horse", 26,
                            holmes_manager_coref)
 
     def test_reverse_dependencies_1(self):
@@ -705,7 +705,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                            holmes_manager_coref)
 
     def test_reverse_dependencies_control(self):
-        self._check_equals("Adopt and child",
+        self._check_equals("Adopted and child",
                            "An adopted child", 14,
                            holmes_manager_coref)
 
