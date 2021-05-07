@@ -104,7 +104,7 @@ class GermanTopicMatchingTest(unittest.TestCase):
                            holmes_manager_with_embeddings)
 
     def test_reverse_matching_noun(self):
-        self._check_equals("Ein König mit einem Land", "Ein Präsident mit einem Land", 49,
+        self._check_equals("Ein König mit einem Land", "Ein Präsident mit einem Land", 48,
                            holmes_manager_with_embeddings)
 
     def test_reverse_matching_noun_control_no_embeddings(self):
@@ -245,7 +245,7 @@ class GermanTopicMatchingTest(unittest.TestCase):
 
     def test_embedding_matching_with_subwords(self):
         self._check_equals("Eine Königsabdanken",
-                           "Der Prinz dankte ab", 14,
+                           "Der Prinz dankte ab", 15,
                            holmes_manager_with_embeddings)
 
     def test_embedding_matching_with_subwords_control(self):
@@ -254,11 +254,11 @@ class GermanTopicMatchingTest(unittest.TestCase):
                            holmes_manager)
 
     def test_entity_matching_with_single_word_subword_match(self):
-        self._check_equals("Ein ENTITYLOC singt",
+        self._check_equals("Ein ENTITYPER singt",
                            "Informationsextraktion hat sich durchgesetzt", 10)
 
     def test_entity_matching_with_relation_subword_match(self):
-        self._check_equals("Ein ENTITYLOC setzt sich durch",
+        self._check_equals("Ein ENTITYPER setzt sich durch",
                            "Informationsextraktion hat sich durchgesetzt", 34)
 
     def test_entitynoun_matching_with_relation_subword_match(self):
@@ -342,7 +342,7 @@ class GermanTopicMatchingTest(unittest.TestCase):
             relation_score=20, reverse_only_relation_score=15, single_word_score=10,
             single_word_any_tag_score=5, different_match_cutoff_score=10,
             maximum_number_of_single_word_matches_for_embedding_matching=1)
-        self.assertEqual(int(topic_matches[0].score), 14)
+        self.assertEqual(int(topic_matches[0].score), 15)
 
     def test_reverse_matching_suppressed_with_embedding_reverse_matching_child(self):
         holmes_manager_with_embeddings.remove_all_documents()

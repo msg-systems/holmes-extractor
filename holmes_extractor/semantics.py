@@ -1718,7 +1718,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
 
     _conjunction_deps = ('cj', 'cd', 'punct', 'app')
 
-    _matchable_blacklist_tags = ('PWAT', 'PWAV', 'PWS', 'PTKVZ')
+    _matchable_blacklist_tags = ('PWAT', 'PWAV', 'PWS')
 
     _semantic_dependency_excluded_tags = ('ART')
 
@@ -1944,6 +1944,10 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
             return True
         working_word = ''.join((working_word[0].upper(), working_word[1:]))
         return self.vectors_nlp.vocab[working_word].is_oov
+
+    def _is_separable_prefix(self, token:Token):
+        return token.dep_ == 'svp' or (token.dep_ == 'mo' and token.pos_ == 'ADP' and
+            len(list(token.children)) == 0)
 
     def _add_subwords(self, token, subword_cache):
 
@@ -2242,8 +2246,8 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                 processed_auxiliary_indexes.append(token.i)
                 if (token.pos_ == 'AUX' or token.tag_.startswith('VM')) and len([
                         dependency for dependency in token._.holmes.children if
-                        dependency.child_index >= 0 and
-                        token.doc[dependency.child_index].tag_ == 'PTKVZ']) == 0: # 'vorhaben'
+                        dependency.child_index >= 0 and self._is_separable_prefix(
+                            token.doc[dependency.child_index])]) == 0: # 'vorhaben'
                     for dependency in (
                             dependency for dependency in token._.holmes.children
                             if token.doc[dependency.child_index].pos_ in ('VERB', 'AUX') and
@@ -2354,7 +2358,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
         """
         if token.pos_ in ('VERB', 'AUX') and token.tag_ not in ('VAINF', 'VMINF', 'VVINF', 'VVIZU'):
             for child in token.children:
-                if child.tag_ == 'PTKVZ':
+                if self._is_separable_prefix(child):
                     child_lemma = child.lemma_.lower()
                     if child_lemma == 'einen':
                         child_lemma = 'ein'
@@ -2461,9 +2465,10 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
 
         # Because separable verbs are conflated into a single lemma, remove the dependency
         # from the verb to the preposition
-        if token.tag_ == 'PTKVZ' and token.head.pos_ in ('VERB', 'AUX') and \
+        if self._is_separable_prefix(token) and token.head.pos_ in ('VERB', 'AUX') and \
                 token.head.tag_ not in ('VAINF', 'VMINF', 'VVINF', 'VVIZU'):
             token.head._.holmes.remove_dependency_with_child_index(token.i)
+            token._.holmes.is_matchable = False
 
         for dependency in (
                 dependency for dependency in token._.holmes.children
