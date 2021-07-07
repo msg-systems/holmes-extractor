@@ -263,7 +263,7 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
         stc2 = no_ontology_holmes_manager.deserialize_supervised_topic_classifier(
             serialized_supervised_topic_classifier_model, verbose=True)
         self.assertEqual(['prepgovernor-noun: animal-lead', 'word: animal', 'word: computer',
-                          'word: lead', 'word: robot'], list(stc2._model.sorted_label_dict.keys()))
+                          'word: lead', 'word: robot'], list(stc2.model.sorted_label_dict.keys()))
         self.assertEqual(stc2.parse_and_classify(
             "You are a robot."), ['computers'])
         self.assertEqual(stc2.parse_and_classify("You are a cat."), ['animal'])
@@ -323,7 +323,7 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
             serialized_supervised_topic_classifier_model)
         self.assertEqual(['prepgovernor-noun: animal-lead', 'word: animal', 'word: computer',
                           'word: lead', 'word: on', 'word: robot'],
-                         list(stc2._model.sorted_label_dict.keys()))
+                         list(stc2.model.sorted_label_dict.keys()))
         self.assertEqual(stc2.parse_and_classify(
             "You are a robot."), ['computers'])
         self.assertEqual(stc2.parse_and_classify("You are a cat."), ['animal'])

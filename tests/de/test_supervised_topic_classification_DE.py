@@ -321,7 +321,7 @@ class GermanSupervisedTopicClassificationTest(unittest.TestCase):
         serialized_supervised_topic_classifier_model = stc.serialize_model()
         stc2 = holmes_manager.deserialize_supervised_topic_classifier(
             serialized_supervised_topic_classifier_model)
-        self.assertEqual(list(stc2._model.sorted_label_dict.keys()),
+        self.assertEqual(list(stc2.model.sorted_label_dict.keys()),
                          ['intcompound: hund-plüsch', 'intcompound: hund-plüsch/verb-nom: jagd-hund',
                           'verb-acc: benutzen-maus',
                           'verb-acc: benutzen-maus/verb-nom: benutzen-programmierer', 'verb-acc: jagd-hund',

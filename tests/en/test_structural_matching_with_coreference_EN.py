@@ -822,8 +822,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
             "I saw a house. I saw it in the village.", 'village')
         doc = coref_holmes_manager.threadsafe_container.get_document(
             'village')
-        self.assertTrue(
-            coref_holmes_manager.semantic_analyzer.is_involved_in_coreference(doc[7]))
+        self.assertTrue(doc[7]._.holmes.is_involved_in_coreference)
         self.assertEqual(doc[10]._.holmes.coreference_linked_parent_dependencies,
                          [[3, 'pobjp'], [6, 'pobjp'], [7, 'pobjp'], [8, 'pobj']])
 

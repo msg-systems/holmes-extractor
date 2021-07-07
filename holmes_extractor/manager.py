@@ -1,57 +1,57 @@
+import pkg_resources
 from multiprocessing import Process, Queue, Manager as Multiprocessing_manager, cpu_count
 from threading import Lock
 from string import punctuation
 import traceback
 import sys
+import os
 import jsonpickle
 import spacy
 from spacy import Language
+from spacy.tokens import Doc, Token
+from thinc.api import Config
 from .errors import *
-from .structural_matching import StructuralMatcher, ThreadsafeContainer
-from .semantics import SemanticAnalyzerFactory
+from .structural_matching import StructuralMatcher, ThreadsafeContainer, LinguisticObjectFactory
+from .semantics import SemanticAnalyzerFactory, SemanticAnalyzer, SemanticMatchingHelperFactory,\
+    SemanticMatchingHelper
 from .extensive_matching import *
 from .consoles import HolmesConsoles
 
+absolute_config_filename = pkg_resources.resource_filename(__name__, 'config.cfg')
+config = Config().from_disk(absolute_config_filename)
+vector_nlps_config_dict = config['vector_nlps']
 model_names_to_nlps = {}
-model_retrieval_lock = Lock()
+model_names_to_semantic_analyzers = {}
+lock = Lock()
+pipeline_components_lock = Lock()
 
-def get_nlp(model:str) -> Language:
-    with model_retrieval_lock:
-        if model not in model_names_to_nlps:
-            if model == 'en_core_web_trf':
-                model_names_to_nlps[model] = spacy.load(model,
+def get_nlp(model_name:str) -> Language:
+    with lock:
+        if model_name not in model_names_to_nlps:
+            if model_name.endswith('_trf'):
+                model_names_to_nlps[model_name] = spacy.load(model_name,
                     config={'components.transformer.model.tokenizer_config.use_fast': False})
             else:
-                model_names_to_nlps[model] = spacy.load(model)
-            model_names_to_nlps[model].add_pipe('coreferee')
-        return model_names_to_nlps[model]
+                model_names_to_nlps[model_name] = spacy.load(model_name)
+        return model_names_to_nlps[model_name]
 
-def validate_options(
-        semantic_analyzer, overall_similarity_threshold,
-        embedding_based_matching_on_root_words, perform_coreference_resolution):
-    if overall_similarity_threshold < 0.0 or overall_similarity_threshold > 1.0:
-        raise ValueError(
-            'overall_similarity_threshold must be between 0 and 1')
-    if overall_similarity_threshold != 1.0 and not semantic_analyzer.model_supports_embeddings():
-        raise ValueError(
-            'Model has no embeddings: overall_similarity_threshold must be 1.')
-    if overall_similarity_threshold == 1.0 and embedding_based_matching_on_root_words:
-        raise ValueError(
-            'overall_similarity_threshold is 1; embedding_based_matching_on_root_words must be '\
-            'False')
-    if perform_coreference_resolution and not \
-            semantic_analyzer.model_supports_coreference_resolution():
-        raise ValueError(
-            'Model does not support coreference resolution: perform_coreference_resolution may '\
-            'not be True')
-
+def get_semantic_analyzer(nlp:Language) -> SemanticAnalyzer:
+    global model_names_to_semantic_analyzers
+    model_name = '_'.join((nlp.meta['lang'], nlp.meta['name']))
+    vectors_nlp = get_nlp(vector_nlps_config_dict[model_name]) \
+        if model_name in vector_nlps_config_dict else nlp
+    with lock:
+        if model_name not in model_names_to_semantic_analyzers:
+            model_names_to_semantic_analyzers[model_name] = \
+                SemanticAnalyzerFactory().semantic_analyzer(nlp=nlp, vectors_nlp=vectors_nlp)
+        return model_names_to_semantic_analyzers[model_name]
 
 class Manager:
     """The facade class for the Holmes library.
 
     Parameters:
 
-    model -- the name of the spaCy model, e.g. *en_core_web_lg*
+    model -- the name of the spaCy model, e.g. *en_core_web_trf*
     overall_similarity_threshold -- the overall similarity threshold for embedding-based
         matching. Defaults to *1.0*, which deactivates embedding-based matching.
     embedding_based_matching_on_root_words -- determines whether or not embedding-based
@@ -61,7 +61,7 @@ class Manager:
     analyze_derivational_morphology -- *True* if matching should be attempted between different
         words from the same word family. Defaults to *True*.
     perform_coreference_resolution -- *True*, *False*, or *None* if coreference resolution
-        should be performed depending on whether the model supports it. Defaults to *None*.
+        should be taken into account when matching. Defaults to *True*.
     use_reverse_dependency_matching -- *True* if appropriate dependencies in documents can be
         matched to dependencies in search phrases where the two dependencies point in opposite
         directions. Defaults to *True*.
@@ -72,33 +72,53 @@ class Manager:
     def __init__(
             self, model, *, overall_similarity_threshold=1.0,
             embedding_based_matching_on_root_words=False, ontology=None,
-            analyze_derivational_morphology=True, perform_coreference_resolution=None,
+            analyze_derivational_morphology=True, perform_coreference_resolution=True,
             use_reverse_dependency_matching=True, debug=False):
-        nlp = get_nlp(model)
-        #TODO proper handling
-        vectors_nlp = get_nlp('en_core_web_lg') if model == 'en_core_web_trf' else nlp
-
-        self.semantic_analyzer = SemanticAnalyzerFactory().semantic_analyzer(nlp=nlp,
-            vectors_nlp=vectors_nlp,
-            perform_coreference_resolution=perform_coreference_resolution,
-            use_reverse_dependency_matching=use_reverse_dependency_matching, debug=debug)
-        if perform_coreference_resolution is None:
-            perform_coreference_resolution = \
-                self.semantic_analyzer.model_supports_coreference_resolution()
-        validate_options(
-            self.semantic_analyzer, overall_similarity_threshold,
-            embedding_based_matching_on_root_words, perform_coreference_resolution)
+        self.nlp = get_nlp(model)
+        with pipeline_components_lock:
+            if not self.nlp.has_pipe('coreferee'):
+                self.nlp.add_pipe('coreferee')
+            if not self.nlp.has_pipe('holmes'):
+                self.nlp.add_pipe('holmes')
+        self.semantic_analyzer = get_semantic_analyzer(self.nlp)
+        if overall_similarity_threshold < 0.0 or overall_similarity_threshold > 1.0:
+            raise ValueError(
+                'overall_similarity_threshold must be between 0 and 1')
+        if overall_similarity_threshold != 1.0 and not \
+                self.semantic_analyzer.model_supports_embeddings():
+            raise ValueError(
+                'Model has no embeddings: overall_similarity_threshold must be 1.')
+        if overall_similarity_threshold == 1.0 and embedding_based_matching_on_root_words:
+            raise ValueError(
+                'overall_similarity_threshold is 1; embedding_based_matching_on_root_words must '\
+                'be False')
         self.ontology = ontology
+        self.analyze_derivational_morphology = analyze_derivational_morphology
+        self.semantic_matching_helper = SemanticMatchingHelperFactory().semantic_matching_helper(
+            language=self.nlp.meta['lang'], ontology=ontology,
+            analyze_derivational_morphology=analyze_derivational_morphology)
         self.debug = debug
         self.overall_similarity_threshold = overall_similarity_threshold
         self.embedding_based_matching_on_root_words = embedding_based_matching_on_root_words
         self.perform_coreference_resolution = perform_coreference_resolution
         self.use_reverse_dependency_matching = use_reverse_dependency_matching
+        self.linguistic_object_factory = LinguisticObjectFactory(
+            self.semantic_analyzer, self.semantic_matching_helper, ontology,
+            overall_similarity_threshold, embedding_based_matching_on_root_words,
+            analyze_derivational_morphology, perform_coreference_resolution,
+            use_reverse_dependency_matching)
+        self.semantic_matching_helper.ontology_reverse_derivational_dict = \
+            self.linguistic_object_factory.get_ontology_reverse_derivational_dict()
         self.structural_matcher = StructuralMatcher(
-            self.semantic_analyzer, ontology, overall_similarity_threshold,
+            self.semantic_matching_helper, ontology, overall_similarity_threshold,
             embedding_based_matching_on_root_words,
-            analyze_derivational_morphology, perform_coreference_resolution)
+            analyze_derivational_morphology, perform_coreference_resolution,
+            use_reverse_dependency_matching)
         self.threadsafe_container = ThreadsafeContainer()
+        HolmesBroker.set_extensions()
+        for phraselet_template in self.semantic_matching_helper.phraselet_templates:
+            phraselet_template.template_doc = self.semantic_analyzer.parse(
+                phraselet_template.template_sentence)
 
     def parse_and_register_document(self, document_text, label=''):
         """Parameters:
@@ -108,7 +128,7 @@ class Manager:
             which is intended for use cases involving single documents (typically user entries).
         """
 
-        doc = self.semantic_analyzer.parse(document_text)
+        doc = self.nlp(document_text)
         self.register_parsed_document(doc, label)
 
     def register_parsed_document(self, doc, label=''):
@@ -118,7 +138,7 @@ class Manager:
         label -- a label for the document which must be unique. Defaults to the empty string,
             which is intended for use cases involving single documents (typically user entries).
         """
-        indexed_document = self.structural_matcher.index_document(doc)
+        indexed_document = self.linguistic_object_factory.index_document(doc)
         self.threadsafe_container.register_document(indexed_document, label)
 
     def deserialize_and_register_document(self, document, label=''):
@@ -128,11 +148,10 @@ class Manager:
         label -- a label for the document which must be unique. Defaults to the empty string,
             which is intended for use cases involving single documents (typically user entries).
         """
-        if self.perform_coreference_resolution:
-            raise SerializationNotSupportedError(self.semantic_analyzer.model)
         doc = self.semantic_analyzer.from_serialized_string(document)
-        self.semantic_analyzer.debug_structures(doc) # only has effect when debug=True
-        indexed_document = self.structural_matcher.index_document(doc)
+        if self.debug:
+            self.semantic_analyzer.debug_structures(doc)
+        indexed_document = self.linguistic_object_factory.index_document(doc)
         self.threadsafe_container.register_document(indexed_document, label)
 
     def remove_document(self, label):
@@ -159,8 +178,6 @@ class Manager:
         label -- the label of the document to be serialized.
         """
 
-        if self.perform_coreference_resolution:
-            raise SerializationNotSupportedError(self.semantic_analyzer.model)
         doc = self.threadsafe_container.get_document(label)
         if doc is not None:
             return self.semantic_analyzer.to_serialized_string(doc)
@@ -176,8 +193,8 @@ class Manager:
         """
         if label is None:
             label = search_phrase_text
-        search_phrase_doc = self.semantic_analyzer.parse(search_phrase_text)
-        search_phrase = self.structural_matcher.create_search_phrase(
+        search_phrase_doc = self.nlp(search_phrase_text)
+        search_phrase = self.linguistic_object_factory.create_search_phrase(
             search_phrase_text, search_phrase_doc, label, None, False)
         self.threadsafe_container.register_search_phrase(search_phrase)
 
@@ -260,8 +277,8 @@ class Manager:
             supplied to the method and returns dictionaries describing any matches.
         """
         search_phrases = self.threadsafe_container.get_search_phrases()
-        doc = self.semantic_analyzer.parse(entry)
-        indexed_documents = {'':self.structural_matcher.index_document(doc)}
+        doc = self.nlp(entry)
+        indexed_documents = {'':self.linguistic_object_factory.index_document(doc)}
         matches = self.structural_matcher.match(
             indexed_documents=indexed_documents,
             search_phrases=search_phrases,
@@ -278,8 +295,8 @@ class Manager:
             supplied to the method and returns dictionaries describing any matches.
         """
         indexed_documents = self.threadsafe_container.get_indexed_documents()
-        search_phrase_doc = self.semantic_analyzer.parse(search_phrase_text)
-        search_phrases = [self.structural_matcher.create_search_phrase(
+        search_phrase_doc = self.nlp(search_phrase_text)
+        search_phrases = [self.linguistic_object_factory.create_search_phrase(
             search_phrase_text, search_phrase_doc, search_phrase_text, None, False)]
         matches = self.structural_matcher.match(
             indexed_documents=indexed_documents,
@@ -356,7 +373,8 @@ class Manager:
             words_to_corpus_frequencies = None
             maximum_corpus_frequency = None
         topic_matcher = TopicMatcher(
-            semantic_analyzer=self.semantic_analyzer,
+            semantic_matching_helper=self.semantic_matching_helper,
+            linguistic_object_factory=self.linguistic_object_factory,
             structural_matcher=self.structural_matcher,
             indexed_documents=self.threadsafe_container.get_indexed_documents(),
             words_to_corpus_frequencies=words_to_corpus_frequencies,
@@ -378,7 +396,8 @@ class Manager:
             only_one_result_per_document=only_one_result_per_document,
             number_of_results=number_of_results,
             document_label_filter=document_label_filter)
-        return topic_matcher.topic_match_documents_against(text_to_match)
+        return topic_matcher.topic_match_documents_against(text_to_match,
+            self.semantic_analyzer.parse(text_to_match))
 
     def topic_match_documents_returning_dictionaries_against(
             self, text_to_match, *, use_frequency_factor=True,
@@ -447,7 +466,8 @@ class Manager:
             words_to_corpus_frequencies = None
             maximum_corpus_frequency = None
         topic_matcher = TopicMatcher(
-            semantic_analyzer=self.semantic_analyzer,
+            semantic_matching_helper=self.semantic_matching_helper,
+            linguistic_object_factory=self.linguistic_object_factory,
             structural_matcher=self.structural_matcher,
             indexed_documents=self.threadsafe_container.get_indexed_documents(),
             words_to_corpus_frequencies=words_to_corpus_frequencies,
@@ -470,7 +490,8 @@ class Manager:
             number_of_results=number_of_results,
             document_label_filter=document_label_filter)
         return topic_matcher.topic_match_documents_returning_dictionaries_against(
-            text_to_match, tied_result_quotient=tied_result_quotient)
+            text_to_match, self.semantic_analyzer.parse(text_to_match),
+            tied_result_quotient=tied_result_quotient)
 
     def get_supervised_topic_training_basis(
             self, *, classification_ontology=None,
@@ -490,6 +511,7 @@ class Manager:
             verbose -- if 'True', information about training progress is outputted to the console.
         """
         return SupervisedTopicTrainingBasis(
+            linguistic_object_factory=self.linguistic_object_factory,
             structural_matcher=self.structural_matcher,
             classification_ontology=classification_ontology,
             overlap_memory_size=overlap_memory_size, oneshot=oneshot,
@@ -506,7 +528,8 @@ class Manager:
         """
         model = jsonpickle.decode(serialized_model)
         return SupervisedTopicClassifier(
-            self.semantic_analyzer, self.structural_matcher, model, verbose)
+            self.semantic_analyzer, self.linguistic_object_factory, self.structural_matcher,
+            model, verbose)
 
     def start_chatbot_mode_console(self):
         """Starts a chatbot mode console enabling the matching of pre-registered search phrases
@@ -594,7 +617,7 @@ class MultiprocessingManager:
                 self.semantic_analyzer.model_supports_coreference_resolution()
         validate_options(
             self.semantic_analyzer, overall_similarity_threshold,
-            embedding_based_matching_on_root_words, perform_coreference_resolution)
+            embedding_based_matching_on_root_words)
         self.structural_matcher = StructuralMatcher(
             self.semantic_analyzer, ontology, overall_similarity_threshold,
             embedding_based_matching_on_root_words, analyze_derivational_morphology,
@@ -880,7 +903,7 @@ class Worker:
 
     def worker_parse_and_register_document(
             self, semantic_analyzer, structural_matcher, indexed_documents, document_text, label):
-        doc = semantic_analyzer.parse(document_text)
+        doc = self.nlp(document_text)
         indexed_document = structural_matcher.index_document(doc)
         indexed_documents[label] = indexed_document
         return ' '.join(('Parsed and registered document', label))
@@ -946,3 +969,44 @@ class Worker:
             topic_matcher.topic_match_documents_returning_dictionaries_against(
                 text_to_match, tied_result_quotient=tied_result_quotient)
         return topic_match_dicts
+
+
+@Language.factory("holmes")
+class HolmesBroker:
+    def __init__(self, nlp:Language, name:str):
+        self.nlp = nlp
+        self.pid = os.getpid()
+        self.semantic_analyzer = get_semantic_analyzer(nlp)
+
+    def __call__(self, doc:Doc) -> Doc:
+        if os.getpid() != self.pid:
+            raise MultiprocessingParsingNotSupportedError(
+                'Unfortunately at present parsing cannot be shared between forked processes.')
+        try:
+            self.semantic_analyzer.holmes_parse(doc)
+        except:
+            print('Unexpected error annotating document, skipping ....')
+            exception_info_parts = sys.exc_info()
+            print(exception_info_parts[0])
+            print(exception_info_parts[1])
+            traceback.print_tb(exception_info_parts[2])
+        return doc
+
+    def __getstate__(self):
+        return self.nlp.meta
+
+    def __setstate__(self, meta):
+        nlp_name = '_'.join((meta['lang'], meta['name']))
+        self.nlp = spacy.load(nlp_name)
+        self.semantic_analyzer = get_semantic_analyzer(self.nlp)
+        self.pid = os.getpid()
+        HolmesBroker.set_extensions()
+
+    @staticmethod
+    def set_extensions():
+        if not Doc.has_extension('coref_chains'):
+            Doc.set_extension('coref_chains', default=None)
+        if not Token.has_extension('coref_chains'):
+            Token.set_extension('coref_chains', default=None)
+        if not Token.has_extension('holmes'):
+            Token.set_extension('holmes', default=None)

@@ -722,7 +722,6 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "A wastage horse was seen")
         self.assertEqual(len(matches), 2)
-        print(matches)
         self.assertEqual(matches[0].word_matches[1].type, 'direct')
 
     def test_hyphenation_1(self):

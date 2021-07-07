@@ -6,8 +6,7 @@ from spacy.tokens import Token, Doc
 from .errors import WrongModelDeserializationError, WrongVersionDeserializationError, \
         DocumentTooBigError
 
-SERIALIZED_DOCUMENT_VERSION = 3
-
+SERIALIZED_DOCUMENT_VERSION = 4
 
 class SemanticDependency:
     """A labelled semantic dependency between two tokens."""
@@ -86,6 +85,7 @@ class Subword:
         lemma -- the model-normalized representation of the subword string.
         derived_lemma -- where relevant, another lemma with which *lemma* is derivationally related
         and which can also be useful for matching in some usecases; otherwise *None*
+        vector -- the vector representation of *lemma*, or *None* if there is none available.
         char_start_index -- the character index of the subword within the containing word.
         dependent_index -- the index of a subword that is dependent on this subword, or *None*
             if there is no such subword.
@@ -97,13 +97,15 @@ class Subword:
             governor, or *None* if it has no governor.
     """
     def __init__(
-            self, containing_token_index, index, text, lemma, derived_lemma, char_start_index,
-            dependent_index, dependency_label, governor_index, governing_dependency_label):
+            self, containing_token_index, index, text, lemma, derived_lemma, vector,
+            char_start_index, dependent_index, dependency_label, governor_index,
+            governing_dependency_label):
         self.containing_token_index = containing_token_index
         self.index = index
         self.text = text
         self.lemma = lemma
         self.derived_lemma = derived_lemma
+        self.vector = vector
         self.char_start_index = char_start_index
         self.dependent_index = dependent_index
         self.dependency_label = dependency_label
@@ -155,12 +157,16 @@ class HolmesDictionary:
     derived_lemma -- the value returned from *._.holmes.derived_lemma for the token; where relevant,
         another lemma with which *lemma* is derivationally related and which can also be useful for
         matching in some usecases; otherwise *None*.
+    vector -- the vector representation of *lemma*, unless *lemma* is a multiword, in which case
+        the vector representation of *token.lemma_* is used instead. *None* where there is no
+        vector for the lexeme.
     """
 
-    def __init__(self, index, lemma, derived_lemma):
+    def __init__(self, index, lemma, derived_lemma, vector):
         self.index = index
         self.lemma = lemma
         self._derived_lemma = derived_lemma
+        self.vector = vector
         self.children = [] # list of *SemanticDependency* objects where this token is the parent.
         self.parents = [] # list of *SemanticDependency* objects where this token is the child.
         self.righthand_siblings = [] # list of tokens to the right of this token that stand in a
@@ -258,6 +264,9 @@ class HolmesDictionary:
             self.parents, key=lambda dependency: dependency.parent_index)
         return '; '.join(':'.join((str(parent.parent_index), parent.label)) for parent in parents)
 
+    def is_involved_in_coreference(self):
+        return len(self.mentions) > 0
+
 class SerializedHolmesDocument:
     """Consists of the spaCy represention returned by *get_bytes()* plus a jsonpickle representation
         of each token's *SemanticDictionary*.
@@ -285,9 +294,10 @@ class PhraseletTemplate:
         derived from this template.
     template_sentence -- a sentence with the target grammatical structure for phraselets derived
         from this template.
-    parent_index -- the index within 'template_sentence' of the parent participant in the dependency
+    template_doc -- a spacy Doc representing *template_sentence* (set by the *Manager* object)
+    parent_index -- the index within *template_sentence* of the parent participant in the dependency
         (for relation phraselets) or of the word (for single-word phraselets).
-    child_index -- the index within 'template_sentence' of the child participant in the dependency
+    child_index -- the index within *template_sentence* of the child participant in the dependency
         (for relation phraselets) or 'None' for single-word phraselets.
     dependency_labels -- the labels of dependencies that match the template
         (for relation phraselets) or 'None' for single-word phraselets.
@@ -324,23 +334,16 @@ class PhraseletTemplate:
         return self.child_index is None
 
 class SemanticAnalyzerFactory():
-    """Returns the correct *SemanticAnalyzer* for the model language. This class must be added to
-        if additional *SemanticAnalyzer* implementations are added for new languages.
+    """Returns the correct *SemanticAnalyzer* for the model language.
+        This class must be added to if additional implementations are added for new languages.
     """
 
-    def semantic_analyzer(self, *, nlp, vectors_nlp, perform_coreference_resolution,
-        use_reverse_dependency_matching, debug=False):
+    def semantic_analyzer(self, *, nlp, vectors_nlp):
         language = nlp.meta['lang']
         if language == 'en':
-            return EnglishSemanticAnalyzer(
-                nlp=nlp, vectors_nlp=vectors_nlp,
-                perform_coreference_resolution=perform_coreference_resolution,
-                use_reverse_dependency_matching=use_reverse_dependency_matching, debug=debug)
+            return EnglishSemanticAnalyzer(nlp=nlp, vectors_nlp=vectors_nlp)
         elif language == 'de':
-            return GermanSemanticAnalyzer(
-                nlp=nlp, vectors_nlp=vectors_nlp,
-                perform_coreference_resolution=perform_coreference_resolution,
-                use_reverse_dependency_matching=use_reverse_dependency_matching, debug=debug)
+            return GermanSemanticAnalyzer(nlp=nlp, vectors_nlp=vectors_nlp)
         else:
             raise ValueError(
                 ' '.join(['No semantic analyzer for model', language]))
@@ -354,39 +357,16 @@ class SemanticAnalyzer(ABC):
         implementation where they can be illustrated with direct examples.
     """
 
-    def __init__(self, *, nlp, vectors_nlp, perform_coreference_resolution,
-        use_reverse_dependency_matching, debug):
+    def __init__(self, *, nlp, vectors_nlp):
         """Args:
 
         nlp -- the spaCy model
         vectors_nlp -- the spaCy model to use for vocabularies and vectors
-        perform_coreference_resolution -- *True* if coreferee should be added to the pipe,
-                *None* if coreferee should be added to the pipe if coreference resolution is
-                available for the model
-        use_reverse_dependency_matching -- *True* if appropriate dependencies in documents can be
-            matched to dependencies in search phrases where the two dependencies point in opposite
-            directions. Defaults to *True*.
-        debug -- *True* if the object should print a representation of each parsed document
         """
-        if perform_coreference_resolution is None and self.model_supports_coreference_resolution():
-            perform_coreference_resolution = True
         self.nlp = nlp
         self.vectors_nlp = vectors_nlp
         self.model = '_'.join((self.nlp.meta['lang'], self.nlp.meta['name']))
-        self.perform_coreference_resolution = perform_coreference_resolution
-        self.use_reverse_dependency_matching = use_reverse_dependency_matching
-        self.debug = debug
         self._derivational_dictionary = self._load_derivational_dictionary()
-        for key, match_implication in self.match_implication_dict.items():
-            assert key == match_implication.search_phrase_dependency
-            assert key not in match_implication.document_dependencies
-            assert len([dep for dep in match_implication.document_dependencies
-                if match_implication.document_dependencies.count(dep) > 1]) == 0
-            assert key not in match_implication.reverse_document_dependencies
-            assert len([dep for dep in match_implication.reverse_document_dependencies
-                if match_implication.reverse_document_dependencies.count(dep) > 1]) == 0
-
-    Token.set_extension('holmes', default='')
 
     def _load_derivational_dictionary(self):
         in_package_filename = ''.join(('data/derivation_', self.nlp.meta['lang'], '.csv'))
@@ -399,13 +379,6 @@ class SemanticAnalyzer(ABC):
                     dictionary[words[index]] = words[0]
         return dictionary
 
-    def parse(self, text):
-        """Performs a full spaCy and Holmes parse on a string.
-        """
-        spacy_doc = self.spacy_parse(text)
-        holmes_doc = self.holmes_parse(spacy_doc)
-        return holmes_doc
-
     _maximum_document_size = 1000000
 
     def spacy_parse(self, text):
@@ -414,7 +387,16 @@ class SemanticAnalyzer(ABC):
         if len(text) > self._maximum_document_size:
             raise DocumentTooBigError(' '.join((
                 'size:', str(len(text)), 'max:', str(self._maximum_document_size))))
+        return self.nlp(text, disable=['coreferee', 'holmes'])
+
+    def parse(self, text):
         return self.nlp(text)
+
+    def get_vector(self, lemma):
+        """ Returns a vector representation of *lemma*, or *None* if none is available.
+        """
+        lexeme = self.vectors_nlp.vocab[lemma]
+        return lexeme.vector if lexeme.has_vector and lexeme.vector_norm > 0 else None
 
     def holmes_parse(self, spacy_doc):
         """Adds the Holmes-specific information to each token within a spaCy document.
@@ -422,7 +404,9 @@ class SemanticAnalyzer(ABC):
         for token in spacy_doc:
             lemma = self._holmes_lemma(token)
             derived_lemma = self.derived_holmes_lemma(token, lemma)
-            token._.set('holmes', HolmesDictionary(token.i, lemma, derived_lemma))
+            lexeme = self.vectors_nlp.vocab[token.lemma_ if len(lemma.split()) > 1 else lemma]
+            vector = lexeme.vector if lexeme.has_vector and lexeme.vector_norm > 0 else None
+            token._.set('holmes', HolmesDictionary(token.i, lemma, derived_lemma, vector))
         for token in spacy_doc:
             self._set_negation(token)
         for token in spacy_doc:
@@ -454,34 +438,10 @@ class SemanticAnalyzer(ABC):
             self._perform_language_specific_tasks(token)
         for token in spacy_doc:
             self._create_convenience_dependencies(token)
-        self.debug_structures(spacy_doc)
         return spacy_doc
 
     def model_supports_embeddings(self):
         return self.vectors_nlp.meta['vectors']['vectors'] > 0
-
-    def model_supports_coreference_resolution(self):
-        return self._model_supports_coreference_resolution
-
-    def dependency_labels_match(self, *, search_phrase_dependency_label, document_dependency_label,
-            inverse_polarity:bool):
-        """Determines whether a dependency label in a search phrase matches a dependency label in
-            a document being searched.
-            inverse_polarity: *True* if the matching dependencies have to point in opposite
-            directions.
-        """
-        if not inverse_polarity:
-            if search_phrase_dependency_label == document_dependency_label:
-                return True
-            if search_phrase_dependency_label not in self.match_implication_dict.keys():
-                return False
-            return document_dependency_label in \
-                self.match_implication_dict[search_phrase_dependency_label].document_dependencies
-        else:
-            return self.use_reverse_dependency_matching and \
-                search_phrase_dependency_label in self.match_implication_dict.keys() and \
-                document_dependency_label in self.match_implication_dict[
-                search_phrase_dependency_label].reverse_document_dependencies
 
     def _lefthand_sibling_recursively(self, token):
         """If *token* is a righthand sibling, return the index of the token that has a sibling
@@ -493,29 +453,28 @@ class SemanticAnalyzer(ABC):
             return self._lefthand_sibling_recursively(token.head)
 
     def debug_structures(self, doc):
-        if self.debug:
-            for token in doc:
-                if token._.holmes.derived_lemma is not None:
-                    lemma_string = ''.join((
-                        token._.holmes.lemma, '(', token._.holmes.derived_lemma, ')'))
-                else:
-                    lemma_string = token._.holmes.lemma
-                subwords_strings = ';'.join(str(subword) for subword in token._.holmes.subwords)
-                subwords_strings = ''.join(('[', subwords_strings, ']'))
-                negation_string = 'negative' if token._.holmes.is_negated else 'positive'
-                uncertainty_string = 'uncertain' if token._.holmes.is_uncertain else 'certain'
-                matchability_string = 'matchable' if token._.holmes.is_matchable else 'unmatchable'
-                if self.is_involved_in_coreference(token):
-                    coreference_string = '; '.join(
-                        str(mention) for mention in token._.holmes.mentions)
-                else:
-                    coreference_string = ''
-                print(
-                    token.i, token.text, lemma_string, subwords_strings, token.pos_, token.tag_,
-                    token.dep_, token.ent_type_, token.head.i,
-                    token._.holmes.string_representation_of_children(),
-                    token._.holmes.righthand_siblings, negation_string,
-                    uncertainty_string, matchability_string, coreference_string)
+        for token in doc:
+            if token._.holmes.derived_lemma is not None:
+                lemma_string = ''.join((
+                    token._.holmes.lemma, '(', token._.holmes.derived_lemma, ')'))
+            else:
+                lemma_string = token._.holmes.lemma
+            subwords_strings = ';'.join(str(subword) for subword in token._.holmes.subwords)
+            subwords_strings = ''.join(('[', subwords_strings, ']'))
+            negation_string = 'negative' if token._.holmes.is_negated else 'positive'
+            uncertainty_string = 'uncertain' if token._.holmes.is_uncertain else 'certain'
+            matchability_string = 'matchable' if token._.holmes.is_matchable else 'unmatchable'
+            if token._.holmes.is_involved_in_coreference():
+                coreference_string = '; '.join(
+                    str(mention) for mention in token._.holmes.mentions)
+            else:
+                coreference_string = ''
+            print(
+                token.i, token.text, lemma_string, subwords_strings, token.pos_, token.tag_,
+                token.dep_, token.ent_type_, token.head.i,
+                token._.holmes.string_representation_of_children(),
+                token._.holmes.righthand_siblings, negation_string,
+                uncertainty_string, matchability_string, coreference_string)
 
     def to_serialized_string(self, spacy_doc):
         dictionaries = []
@@ -547,8 +506,8 @@ class SemanticAnalyzer(ABC):
         pointer = token.left_edge.i - 1
         while True:
             pointer += 1
-            if token.doc[pointer].pos_ not in self.noun_pos and token.doc[pointer].dep_ not in \
-                    self.noun_kernel_dep and pointer > token.i:
+            if token.doc[pointer].pos_ not in self.noun_pos and \
+                    token.doc[pointer].dep_ not in self.noun_kernel_dep and pointer > token.i:
                 return return_string.strip()
             if return_string == '':
                 return_string = token.doc[pointer].text
@@ -557,13 +516,8 @@ class SemanticAnalyzer(ABC):
             if token.right_edge.i <= pointer:
                 return return_string
 
-    def is_involved_in_coreference(self, token):
-        return len(token._.holmes.mentions) > 0
-
     def _set_coreference_information(self, token):
         token._.holmes.token_and_coreference_chain_indexes = [token.i]
-        if not self.perform_coreference_resolution:
-            return
         for chain in token._.coref_chains:
             this_token_mention_index = -1
             for mention_index, mention in enumerate(chain):
@@ -619,18 +573,9 @@ class SemanticAnalyzer(ABC):
         else:
             return None, None
 
-    def embedding_matching_permitted(self, obj):
-        if isinstance(obj, Token):
-            if len(obj._.holmes.lemma.split()) > 1:
-                working_lemma = obj.lemma_
-            else:
-                working_lemma = obj._.holmes.lemma
-            return obj.pos_ in self._permissible_embedding_pos and \
-                len(working_lemma) >= self._minimum_embedding_match_word_length
-        elif isinstance(obj, Subword):
-            return len(obj.lemma) >= self._minimum_embedding_match_word_length
-
     language_name = NotImplemented
+
+    default_vectors_model_name = NotImplemented
 
     noun_pos = NotImplemented
 
@@ -670,8 +615,6 @@ class SemanticAnalyzer(ABC):
 
     _or_lemma = NotImplemented
 
-    match_implication_dict = NotImplemented
-
     _mark_child_dependencies_copied_to_siblings_as_uncertain = NotImplemented
 
     _maximum_mentions_in_coreference_chain = NotImplemented
@@ -684,21 +627,7 @@ class SemanticAnalyzer(ABC):
 
     _entity_defined_multiword_entity_types = NotImplemented
 
-    phraselet_templates = NotImplemented
-
-    topic_matching_phraselet_stop_lemmas = NotImplemented
-
-    supervised_document_classification_phraselet_stop_lemmas = NotImplemented
-
-    topic_matching_reverse_only_parent_lemmas = NotImplemented
-
-    topic_matching_phraselet_stop_tags = NotImplemented
-
     preferred_phraselet_pos = NotImplemented
-
-    _permissible_embedding_pos = NotImplemented
-
-    _minimum_embedding_match_word_length = NotImplemented
 
     @abstractmethod
     def _add_subwords(self, token, subword_cache):
@@ -733,10 +662,6 @@ class SemanticAnalyzer(ABC):
                 return derived_lemma
         else:
             return self._language_specific_derived_holmes_lemma(token, lemma)
-
-    @abstractmethod
-    def normalize_hyphens(self, word):
-        pass
 
     @abstractmethod
     def _language_specific_derived_holmes_lemma(self, token, lemma):
@@ -836,9 +761,9 @@ class SemanticAnalyzer(ABC):
                         self._adjectival_predicate_subject_dep and (
                             dependency.child_token(token.doc).pos_ in
                             self._adjectival_predicate_subject_pos or
-                            self.is_involved_in_coreference(dependency.child_token(token.doc))) and
-                        dependency.child_index >= 0 and \
-                        dependency.child_index != predicative_adjective_index):
+                            dependency.child_token(token.doc)._.holmes.is_involved_in_coreference()
+                        and dependency.child_index >= 0
+                        and dependency.child_index != predicative_adjective_index)):
                     token.doc[subject_index]._.holmes.children.append(
                         SemanticDependency(
                             subject_index, predicative_adjective_index, self._modifier_dep))
@@ -909,7 +834,7 @@ class SemanticAnalyzer(ABC):
         in a document being matched.
         """
         token._.holmes.is_matchable = (
-            token.pos_ in self._matchable_pos or self.is_involved_in_coreference(token)) \
+            token.pos_ in self._matchable_pos or token._.holmes.is_involved_in_coreference()) \
             and token.tag_ not in self._matchable_blacklist_tags and \
             token._.holmes.lemma not in self._generic_pronoun_lemmas
 
@@ -957,40 +882,33 @@ class SemanticAnalyzer(ABC):
                 if child_dependency.child_index >= 0):
             child_token = child_dependency.child_token(token.doc)
             child_token._.holmes.parents.append(child_dependency)
-        if self.perform_coreference_resolution:
-            for linked_parent_index in token._.holmes.token_and_coreference_chain_indexes:
-                linked_parent = token.doc[linked_parent_index]
-                for child_dependency in (
-                        child_dependency for child_dependency in linked_parent._.holmes.children
-                        if child_dependency.child_index >= 0):
-                    child_token = child_dependency.child_token(token.doc)
-                    for linked_child_index in \
-                            child_token._.holmes.token_and_coreference_chain_indexes:
-                        linked_child = token.doc[linked_child_index]
-                        token._.holmes.coreference_linked_child_dependencies.append([
-                            linked_child.i, child_dependency.label])
-                        linked_child._.holmes.coreference_linked_parent_dependencies.append([
-                            token.i, child_dependency.label])
-        else:
+        for linked_parent_index in token._.holmes.token_and_coreference_chain_indexes:
+            linked_parent = token.doc[linked_parent_index]
             for child_dependency in (
-                    child_dependency for child_dependency in token._.holmes.children
+                    child_dependency for child_dependency in linked_parent._.holmes.children
                     if child_dependency.child_index >= 0):
                 child_token = child_dependency.child_token(token.doc)
-                token._.holmes.coreference_linked_child_dependencies.append([
-                    child_token.i, child_dependency.label])
-                child_token._.holmes.coreference_linked_parent_dependencies.append([
-                    token.i, child_dependency.label])
+                for linked_child_index in \
+                        child_token._.holmes.token_and_coreference_chain_indexes:
+                    linked_child = token.doc[linked_child_index]
+                    token._.holmes.coreference_linked_child_dependencies.append([
+                        linked_child.i, child_dependency.label])
+                    linked_child._.holmes.coreference_linked_parent_dependencies.append([
+                        token.i, child_dependency.label])
 
 class EnglishSemanticAnalyzer(SemanticAnalyzer):
 
     language_name = 'English'
 
-    # The part of speech tags that require a match in the search sentence when they occur within a
-    # search_phrase
-    _matchable_pos = ('ADJ', 'ADP', 'ADV', 'NOUN', 'NUM', 'PROPN', 'VERB', 'AUX')
+    #
+    default_vectors_model_name = 'en_core_web_lg'
 
     # The part of speech tags that can refer to nouns
     noun_pos = ('NOUN', 'PROPN')
+
+    # The part of speech tags that require a match in the search sentence when they occur within a
+    # search_phrase
+    _matchable_pos = ('ADJ', 'ADP', 'ADV', 'NOUN', 'NUM', 'PROPN', 'VERB', 'AUX')
 
     # The part of speech tags that can refer to the head of an adjectival predicate phrase
     # ("is" in "The dog is tired")
@@ -1045,73 +963,6 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
     # The word for 'or' in this language
     _or_lemma = 'or'
 
-    # Maps from dependency tags as occurring within search phrases to corresponding implication
-    # definitions. This is the main source of the asymmetry in matching from search phrases to
-    # documents versus from documents to search phrases.
-    match_implication_dict = {
-        'nsubj': MatchImplication(search_phrase_dependency='nsubj',
-            document_dependencies=['csubj', 'poss', 'pobjb', 'pobjo', 'advmodsubj', 'arg'],
-            reverse_document_dependencies=['acomp', 'amod']),
-        'acomp': MatchImplication(search_phrase_dependency='acomp',
-            document_dependencies=['amod', 'advmod', 'npmod', 'advcl'],
-            reverse_document_dependencies=['nsubj', 'csubj', 'poss', 'pobjb', 'advmodsubj', 'dobj',
-            'pobjo', 'relant', 'nsubjpass', 'csubjpass', 'compound', 'advmodobj', 'dative',
-            'arg']),
-        'advcl': MatchImplication(search_phrase_dependency='advcl',
-            document_dependencies=['pobjo', 'poss', 'relant', 'nsubjpass', 'csubjpass',
-            'compound', 'advmodobj', 'arg', 'dobj', 'xcomp']),
-        'amod': MatchImplication(search_phrase_dependency='amod',
-            document_dependencies=['acomp', 'advmod', 'npmod', 'advcl', 'compound'],
-            reverse_document_dependencies=['nsubj', 'csubj', 'poss', 'pobjb', 'advmodsubj', 'dobj',
-            'pobjo', 'relant', 'nsubjpass', 'csubjpass', 'compound', 'advmodobj', 'dative',
-            'arg']),
-        'advmod': MatchImplication(search_phrase_dependency='advmod',
-            document_dependencies=['acomp', 'amod', 'npmod', 'advcl']),
-        'arg': MatchImplication(search_phrase_dependency='arg',
-            document_dependencies=['nsubj', 'csubj', 'poss', 'pobjb', 'advmodsubj', 'dobj',
-            'pobjo', 'relant', 'nsubjpass', 'csubjpass', 'compound', 'advmodobj', 'dative',
-            'pobjp'],
-            reverse_document_dependencies=['acomp', 'amod']),
-        'compound': MatchImplication(search_phrase_dependency='compound',
-            document_dependencies=['nmod', 'appos', 'nounmod', 'nsubj', 'csubj', 'poss', 'pobjb',
-            'advmodsubj', 'dobj', 'pobjo', 'relant', 'pobjp',
-            'nsubjpass', 'csubjpass', 'arg', 'advmodobj', 'dative', 'amod'],
-            reverse_document_dependencies=['acomp', 'amod']),
-        'dative': MatchImplication(search_phrase_dependency='dative',
-            document_dependencies=['pobjt', 'relant', 'nsubjpass'],
-            reverse_document_dependencies=['acomp', 'amod']),
-        'pobjt': MatchImplication(search_phrase_dependency='pobjt',
-            document_dependencies=['dative', 'relant'],
-            reverse_document_dependencies=['acomp', 'amod']),
-        'nsubjpass': MatchImplication(search_phrase_dependency='nsubjpass',
-            document_dependencies=['dobj', 'pobjo', 'poss', 'relant', 'csubjpass',
-            'compound', 'advmodobj', 'arg', 'dative'],
-            reverse_document_dependencies=['acomp', 'amod']),
-        'dobj': MatchImplication(search_phrase_dependency='dobj',
-            document_dependencies=['pobjo', 'poss', 'relant', 'nsubjpass', 'csubjpass',
-            'compound', 'advmodobj', 'arg', 'xcomp', 'advcl'],
-            reverse_document_dependencies=['acomp', 'amod']),
-        'nmod': MatchImplication(search_phrase_dependency='nmod',
-            document_dependencies=['appos', 'compound', 'nummod']),
-        'poss': MatchImplication(search_phrase_dependency='poss',
-            document_dependencies=['pobjo', 'nsubj', 'csubj', 'pobjb', 'advmodsubj', 'arg',
-            'relant', 'nsubjpass', 'csubjpass', 'compound', 'advmodobj'],
-            reverse_document_dependencies=['acomp', 'amod']),
-        'pobjo': MatchImplication(search_phrase_dependency='pobjo',
-            document_dependencies=['poss', 'dobj', 'relant', 'nsubjpass', 'csubjpass',
-            'compound', 'advmodobj', 'arg', 'xcomp', 'nsubj', 'csubj', 'advmodsubj'],
-            reverse_document_dependencies=['acomp', 'amod']),
-        'pobjb': MatchImplication(search_phrase_dependency='pobjb',
-            document_dependencies=['nsubj', 'csubj', 'poss', 'advmodsubj', 'arg'],
-            reverse_document_dependencies=['acomp', 'amod']),
-        'pobjp': MatchImplication(search_phrase_dependency='pobjp',
-            document_dependencies=['compound']),
-        'prep': MatchImplication(search_phrase_dependency='prep',
-            document_dependencies=['prepposs']),
-        'xcomp': MatchImplication(search_phrase_dependency='xcomp',
-            document_dependencies=['pobjo', 'poss', 'relant', 'nsubjpass', 'csubjpass',
-            'compound', 'advmodobj', 'arg', 'dobj', 'advcl'])}
-
     # Where dependencies from a parent to a child are copied to the parent's righthand siblings,
     # it can make sense to mark the dependency as uncertain depending on the underlying spaCy
     # representations for the individual language
@@ -1134,102 +985,8 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
     # The entity labels permitted for elements of an entity-defined multiword.
     _entity_defined_multiword_entity_types = ('PERSON', 'ORG', 'GPE', 'WORK_OF_ART')
 
-    # The templates used to generate topic matching phraselets.
-    phraselet_templates = [
-        PhraseletTemplate(
-            "predicate-actor", "A thing does", 2, 1,
-            ['nsubj', 'csubj', 'pobjb', 'advmodsubj'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=False),
-        PhraseletTemplate(
-            "predicate-patient", "Somebody does a thing", 1, 3,
-            ['dobj', 'relant', 'advmodobj', 'xcomp'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-            reverse_only=False),
-        PhraseletTemplate(
-            "word-ofword", "A thing of a thing", 1, 4,
-            ['pobjo', 'poss'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-            reverse_only=False),
-        PhraseletTemplate(
-            "predicate-toughmovedargument", "A thing is easy to do", 5, 1,
-            ['arg'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=False),
-        PhraseletTemplate(
-            "predicate-passivesubject", "A thing is done", 3, 1,
-            ['nsubjpass', 'csubjpass'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=False),
-        PhraseletTemplate(
-            "be-attribute", "Something is a thing", 1, 3,
-            ['attr'],
-            ['VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=True),
-        PhraseletTemplate(
-            "predicate-recipient", "Somebody gives a thing something", 1, 3,
-            ['dative', 'pobjt'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=False),
-        PhraseletTemplate(
-            "governor-adjective", "A described thing", 2, 1,
-            ['acomp', 'amod', 'advmod', 'npmod', 'advcl', 'dobj'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-            ['JJ', 'JJR', 'JJS', 'VBN', 'RB', 'RBR', 'RBS'], reverse_only=False),
-        PhraseletTemplate(
-            "noun-noun", "A thing thing", 2, 1,
-            ['nmod', 'appos', 'compound', 'nounmod'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=False),
-        PhraseletTemplate(
-            "number-noun", "Seven things", 1, 0,
-            ['nummod'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'],
-            ['CD'], reverse_only=False),
-        PhraseletTemplate(
-            "prepgovernor-noun", "A thing in a thing", 1, 4,
-            ['pobjp'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=False),
-        PhraseletTemplate(
-            "prep-noun", "in a thing", 0, 2,
-            ['pobj'],
-            ['IN'], ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=True),
-        PhraseletTemplate(
-            "word", "thing", 0, None,
-            None,
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'],
-            None, reverse_only=False)
-        ]
-
-    # Lemmas that should be suppressed within relation phraselets or as words of
-    # single-word phraselets during topic matching.
-    topic_matching_phraselet_stop_lemmas = ('then', 'therefore', 'so')
-
-    # Lemmas that should be suppressed within relation phraselets or as words of
-    # single-word phraselets during supervised document classification.
-    supervised_document_classification_phraselet_stop_lemmas = ('be', 'have')
-
-    # Parent lemma / part-of-speech combinations that should lead to phraselets being
-    # reverse-matched only during topic matching.
-    topic_matching_reverse_only_parent_lemmas = (
-        ('be', 'VERB'), ('be', 'AUX'), ('have', 'VERB'), ('have', 'AUX'), ('do', 'VERB'),
-        ('say', 'VERB'), ('go', 'VERB'), ('get', 'VERB'), ('make', 'VERB'))
-
-    # Tags of tokens that should be ignored during topic matching (normally pronouns).
-    topic_matching_phraselet_stop_tags = ('PRP', 'PRP$')
-
     # Parts of speech that are preferred as lemmas within phraselets
     preferred_phraselet_pos = ('NOUN', 'PROPN')
-
-    # Parts of speech for which embedding matching is attempted
-    _permissible_embedding_pos = ('NOUN', 'PROPN', 'ADJ', 'ADV')
-
-    # Minimum length of a word taking part in an embedding-based match.
-    # Necessary because of the proliferation of short nonsense strings in the vocabularies.
-    _minimum_embedding_match_word_length = 3
 
     def _add_subwords(self, token, subword_cache):
         """ Analyses the internal structure of the word to find atomic semantic elements. Is
@@ -1458,16 +1215,6 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
             return participle_test_doc[2].lemma_.lower()
         return token.lemma_.lower()
 
-    def normalize_hyphens(self, word):
-        """ Normalizes hyphens for ontology matching. Depending on the language,
-            this may involve replacing them with spaces (English) or deleting them entirely
-            (German).
-        """
-        if word.strip().startswith('-') or word.endswith('-'):
-            return word
-        else:
-            return word.replace('-', ' ')
-
     def _language_specific_derived_holmes_lemma(self, token, lemma):
         """Generates and returns a derived lemma where appropriate, otherwise returns *None*.
         """
@@ -1653,7 +1400,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
                 working_token = token.doc[counter]
                 while True:
                     if working_token.tag_.startswith('NN') or \
-                            self.is_involved_in_coreference(working_token):
+                            working_token._.holmes.is_involved_in_coreference():
                         for source_token in \
                                 working_token._.holmes.loop_token_and_righthand_siblings(token.doc):
                             for target_token in \
@@ -1671,7 +1418,7 @@ class EnglishSemanticAnalyzer(SemanticAnalyzer):
         # handle phrases like 'he is easy to find', 'he is ready to go'
         # There is no way of knowing from the syntax whether the noun is a semantic
         # subject or object of the verb, so the new dependency label 'arg' is added.
-        if token.tag_.startswith('NN') or self.is_involved_in_coreference(token):
+        if token.tag_.startswith('NN') or token._.holmes.is_involved_in_coreference():
             for adjective_dep in (
                     dep for dep in token._.holmes.children if
                     dep.label == self._modifier_dep and dep.child_token(token.doc).pos_ ==
@@ -1726,39 +1473,6 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
 
     _or_lemma = 'oder'
 
-    match_implication_dict = {
-        'sb': MatchImplication(search_phrase_dependency='sb',
-            document_dependencies=['pobjb', 'ag', 'arg', 'intcompound'],
-            reverse_document_dependencies=['nk']),
-        'ag': MatchImplication(search_phrase_dependency='ag',
-            document_dependencies=['nk', 'pobjo', 'intcompound'],
-            reverse_document_dependencies=['nk']),
-        'oa': MatchImplication(search_phrase_dependency='oa',
-            document_dependencies=['pobjo', 'ag', 'arg', 'intcompound', 'og', 'oc'],
-            reverse_document_dependencies=['nk']),
-        'arg': MatchImplication(search_phrase_dependency='arg',
-            document_dependencies=['sb', 'oa', 'ag', 'intcompound', 'pobjb', 'pobjo'],
-            reverse_document_dependencies=['nk']),
-        'mo': MatchImplication(search_phrase_dependency='mo',
-            document_dependencies=['moposs', 'mnr', 'mnrposs', 'nk', 'oc']),
-        'mnr': MatchImplication(search_phrase_dependency='mnr',
-            document_dependencies=['mnrposs', 'mo', 'moposs', 'nk', 'oc']),
-        'nk': MatchImplication(search_phrase_dependency='nk',
-            document_dependencies=['ag', 'pobjo', 'intcompound', 'oc', 'mo'],
-            reverse_document_dependencies=['sb', 'ag', 'oa', 'arg', 'pobjo',
-                'intcompound']),
-        'pobjo': MatchImplication(search_phrase_dependency='pobjo',
-            document_dependencies=['ag', 'intcompound'],
-            reverse_document_dependencies=['nk']),
-        'pobjp': MatchImplication(search_phrase_dependency='pobjp',
-            document_dependencies=['intcompound']),
-        # intcompound is only used within extensive matching because it is not assigned
-        # in the context of registering search phrases.
-        'intcompound': MatchImplication(search_phrase_dependency='intcompound',
-            document_dependencies=['sb', 'oa', 'ag', 'og', 'nk', 'mo', 'pobjo', 'pobjp'],
-            reverse_document_dependencies=['nk']),
-    }
-
     _mark_child_dependencies_copied_to_siblings_as_uncertain = False
 
     # Never used at the time of writing
@@ -1773,93 +1487,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
 
     _entity_defined_multiword_entity_types = ('PER', 'LOC')
 
-    phraselet_templates = [
-        PhraseletTemplate(
-            "verb-nom", "Eine Sache tut", 2, 1,
-            ['sb', 'pobjb'],
-            [
-                'VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
-                'VAFIN', 'VAIMP', 'VAINF', 'VAPP', 'FM', 'NE', 'NNE', 'NN'],
-            ['FM', 'NE', 'NNE', 'NN'], reverse_only=False),
-        PhraseletTemplate(
-            "verb-acc", "Jemand tut eine Sache", 1, 3,
-            ['oa', 'pobjo', 'ag', 'og', 'oc'],
-            [
-                'VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
-                'VAFIN', 'VAIMP', 'VAINF', 'VAPP', 'FM', 'NE', 'NNE', 'NN'],
-            ['FM', 'NE', 'NNE', 'NN'], reverse_only=False),
-        PhraseletTemplate(
-            "verb-dat", "Jemand gibt einer Sache etwas", 1, 3,
-            ['da'],
-            [
-                'VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
-                'VAFIN', 'VAIMP', 'VAINF', 'VAPP'],
-            ['FM', 'NE', 'NNE', 'NN'], reverse_only=False),
-        PhraseletTemplate(
-            "verb-pd", "Jemand ist eine Sache", 1, 3,
-            ['pd'],
-            [
-                'VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
-                'VAFIN', 'VAIMP', 'VAINF', 'VAPP'],
-            ['FM', 'NE', 'NNE', 'NN'], reverse_only=True),
-        PhraseletTemplate(
-            "noun-dependent", "Eine beschriebene Sache", 2, 1,
-            ['nk'],
-            ['FM', 'NE', 'NNE', 'NN'],
-            ['FM', 'NE', 'NNE', 'NN', 'ADJA', 'ADJD', 'ADV', 'CARD'], reverse_only=False),
-        PhraseletTemplate(
-            "verb-adverb", "schnell machen", 1, 0,
-            ['mo', 'moposs', 'oc'],
-            [
-                'VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
-                'VAFIN', 'VAIMP', 'VAINF', 'VAPP'],
-            ['ADJA', 'ADJD', 'ADV'], reverse_only=False),
-        PhraseletTemplate(
-            "prepgovernor-noun", "Eine Sache in einer Sache", 1, 4,
-            ['pobjp'],
-            [
-                'VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
-                'VAFIN', 'VAIMP', 'VAINF', 'VAPP', 'FM', 'NE', 'NNE', 'NN'],
-            ['FM', 'NE', 'NNE', 'NN'], reverse_only=False),
-        PhraseletTemplate(
-            "prep-noun", "in einer Sache", 0, 2,
-            ['nk'],
-            ['APPO', 'APPR', 'APPRART', 'APZR'],
-            ['FM', 'NE', 'NNE', 'NN'], reverse_only=True),
-        PhraseletTemplate(
-            "verb-toughmovedargument", "Eine Sache ist schwer zu tun", 5, 1,
-            ['arg'],
-            [
-                'VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
-                'VAFIN', 'VAIMP', 'VAINF', 'VAPP'],
-            ['FM', 'NE', 'NNE', 'NN'], reverse_only=False),
-        PhraseletTemplate(
-            "intcompound", "Eine Sache in einer Sache", 1, 4,
-            ['intcompound'],
-            ['NE', 'NNE', 'NN', 'TRUNC', 'ADJA', 'ADJD', 'TRUNC'],
-            ['NE', 'NNE', 'NN', 'TRUNC', 'ADJA', 'ADJD', 'TRUNC'], reverse_only=False,
-            assigned_dependency_label='intcompound'),
-        PhraseletTemplate(
-            "word", "Sache", 0, None,
-            None,
-            ['FM', 'NE', 'NNE', 'NN'],
-            None, reverse_only=False)]
-
-    topic_matching_phraselet_stop_lemmas = ('dann', 'danach', 'so', 'ich')
-
-    supervised_document_classification_phraselet_stop_lemmas = ('sein', 'haben')
-
-    topic_matching_reverse_only_parent_lemmas = (
-        ('sein', 'AUX'), ('werden', 'AUX'), ('haben', 'AUX'), ('sagen', 'VERB'),
-        ('machen', 'VERB'), ('tun', 'VERB'))
-
-    topic_matching_phraselet_stop_tags = ('PPER', 'PDS', 'PRF')
-
     preferred_phraselet_pos = ('NOUN', 'PROPN')
-
-    _permissible_embedding_pos = ('NOUN', 'PROPN', 'ADJ', 'ADV')
-
-    _minimum_embedding_match_word_length = 4
 
     # Only words at least this long are examined for possible subwords
     _minimum_length_for_subword_search = 10
@@ -2097,9 +1725,10 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
             for cached_subword in cached_subwords:
                 token._.holmes.subwords.append(Subword(
                     token.i, cached_subword.index, cached_subword.text, cached_subword.lemma,
-                    cached_subword.derived_lemma, cached_subword.char_start_index,
-                    cached_subword.dependent_index, cached_subword.dependency_label,
-                    cached_subword.governor_index, cached_subword.governing_dependency_label))
+                    cached_subword.derived_lemma, self.get_vector(cached_subword.lemma),
+                    cached_subword.char_start_index, cached_subword.dependent_index,
+                    cached_subword.dependency_label, cached_subword.governor_index,
+                    cached_subword.governing_dependency_label))
         else:
             working_subwords = []
             possible_subwords = scan_recursively_for_subwords(token._.holmes.lemma)
@@ -2143,6 +1772,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                                 derived_lemma = self.derived_holmes_lemma(None, lemma)
                                 working_subwords.append(Subword(
                                     first_sibling.i, index, text, lemma, derived_lemma,
+                                    self.get_vector(lemma),
                                     first_sibling_possible_subword.char_start_index,
                                     None, None, None, None))
                                 index += 1
@@ -2157,7 +1787,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                     lemma = lemmatization_doc[counter*2].lemma_.lower()
                     derived_lemma = self.derived_holmes_lemma(None, lemma)
                     working_subwords.append(Subword(
-                        token.i, index, text, lemma, derived_lemma,
+                        token.i, index, text, lemma, derived_lemma, self.get_vector(lemma),
                         possible_subword.char_start_index, None, None, None, None))
                     index += 1
                 if token._.holmes.lemma[-1] == '-':
@@ -2188,6 +1818,7 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                                     derived_lemma = self.derived_holmes_lemma(None, lemma)
                                     working_subwords.append(Subword(
                                         last_sibling.i, index, text, lemma, derived_lemma,
+                                        self.get_vector(lemma),
                                         last_sibling_possible_subword.char_start_index,
                                         None, None, None, None))
                                     index += 1
@@ -2210,7 +1841,8 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                         token._.holmes.subwords.append(Subword(
                             working_subword.containing_token_index,
                             working_subword.index, working_subword.text, working_subword.lemma,
-                            working_subword.derived_lemma, working_subword.char_start_index,
+                            working_subword.derived_lemma, self.get_vector(working_subword.lemma),
+                            working_subword.char_start_index,
                             dependent_index, dependency_label, governor_index,
                             governing_dependency_label))
                 if token._.holmes.lemma.isalpha(): # caching only where no hyphenation
@@ -2392,16 +2024,6 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
         return token.lemma_.lower()
 
     _ung_ending_blacklist = ('sprung', 'schwung', 'nibelung')
-
-    def normalize_hyphens(self, word):
-        """ Normalizes hyphens in a multiword for ontology matching. Depending on the language,
-            this may involve replacing them with spaces (English) or deleting them entirely
-            (German).
-        """
-        if word.strip().startswith('-') or word.endswith('-'):
-            return word
-        else:
-            return word.replace('-', '')
 
     def _language_specific_derived_holmes_lemma(self, token, lemma):
         """ token is None where *lemma* belongs to a subword """
@@ -2682,3 +2304,526 @@ class GermanSemanticAnalyzer(SemanticAnalyzer):
                         dependency for dependency in dependencies if
                         dependency.child_index in real_subject_indexes):
                     dependency.label = 'sb'
+
+class MultiwordSpan:
+
+    def __init__(self, text, lemma, derived_lemma, tokens):
+        """Args:
+
+        text -- the raw text representation of the multiword span
+        lemma - the lemma representation of the multiword span
+        derived_lemma - the lemma representation with individual words that have derived
+            lemmas replaced by those derived lemmas
+        tokens -- a list of tokens that make up the multiword span
+        """
+        self.text = text
+        self.lemma = lemma
+        self.derived_lemma = derived_lemma
+        self.tokens = tokens
+
+class SemanticMatchingHelperFactory():
+    """Returns the correct *SemanticMatchingHelperFactory* for the language in use.
+        This class must be added to if additional implementations are added for new languages.
+    """
+
+    def semantic_matching_helper(self, *, language, ontology, analyze_derivational_morphology):
+        if language == 'en':
+            return EnglishSemanticMatchingHelper(ontology, analyze_derivational_morphology)
+        elif language == 'de':
+            return GermanSemanticMatchingHelper(ontology, analyze_derivational_morphology)
+        else:
+            raise ValueError(
+                ' '.join(['No semantic matching helper for model', language]))
+
+class SemanticMatchingHelper(ABC):
+    """Abstract *SemanticMatchingHelper* parent class containing language-specific properties and
+        methods that are required for matching and can be successfully and efficiently serialized.
+        Functionality is placed here that is common to all current implementations. It follows that
+        some functionality will probably have to be moved out to specific implementations whenever
+        an implementation for a new language is added.
+
+        For explanations of the abstract variables and methods, see the
+        *EnglishSemanticMatchingHelper* implementation where they can be illustrated with direct
+        examples.
+    """
+
+    noun_pos = NotImplemented
+
+    permissible_embedding_pos = NotImplemented
+
+    minimum_embedding_match_word_length = NotImplemented
+
+    topic_matching_phraselet_stop_lemmas = NotImplemented
+
+    topic_matching_reverse_only_parent_lemmas = NotImplemented
+
+    topic_matching_phraselet_stop_tags = NotImplemented
+
+    supervised_document_classification_phraselet_stop_lemmas = NotImplemented
+
+    match_implication_dict = NotImplemented
+
+    phraselet_templates = NotImplemented
+
+    def __init__(self, ontology, analyze_derivational_morphology):
+        self.ontology = ontology
+        self.analyze_derivational_morphology = analyze_derivational_morphology
+        for key, match_implication in self.match_implication_dict.items():
+            assert key == match_implication.search_phrase_dependency
+            assert key not in match_implication.document_dependencies
+            assert len([dep for dep in match_implication.document_dependencies
+                if match_implication.document_dependencies.count(dep) > 1]) == 0
+            assert key not in match_implication.reverse_document_dependencies
+            assert len([dep for dep in match_implication.reverse_document_dependencies
+                if match_implication.reverse_document_dependencies.count(dep) > 1]) == 0
+
+    @abstractmethod
+    def normalize_hyphens(self, word):
+        pass
+
+    def dependency_labels_match(self, *, search_phrase_dependency_label, document_dependency_label,
+            inverse_polarity:bool):
+        """Determines whether a dependency label in a search phrase matches a dependency label in
+            a document being searched.
+            inverse_polarity: *True* if the matching dependencies have to point in opposite
+            directions.
+        """
+        if not inverse_polarity:
+            if search_phrase_dependency_label == document_dependency_label:
+                return True
+            if search_phrase_dependency_label not in self.match_implication_dict.keys():
+                return False
+            return document_dependency_label in \
+                self.match_implication_dict[search_phrase_dependency_label].document_dependencies
+        else:
+            return search_phrase_dependency_label in self.match_implication_dict.keys() and \
+                document_dependency_label in self.match_implication_dict[
+                search_phrase_dependency_label].reverse_document_dependencies
+
+    def multiword_spans_with_head_token(self, token):
+        """Generator over *MultiwordSpan* objects with *token* at their head. Dependent phrases
+            are only returned for nouns because e.g. for verbs the whole sentence would be returned.
+        """
+
+        if not token.pos_ in self.noun_pos:
+            return
+        pointer = token.left_edge.i
+        while pointer <= token.right_edge.i:
+            working_text = ''
+            working_lemma = ''
+            working_derived_lemma = ''
+            working_tokens = []
+            inner_pointer = pointer
+            while inner_pointer <= token.right_edge.i and \
+                    (token.doc[inner_pointer]._.holmes.is_matchable or
+                    token.doc[inner_pointer].text == '-'):
+                if token.doc[inner_pointer].text != '-':
+                    working_text = ' '.join((working_text, token.doc[inner_pointer].text))
+                    working_lemma = ' '.join((
+                        working_lemma, token.doc[inner_pointer]._.holmes.lemma))
+                    if self.analyze_derivational_morphology and \
+                            token.doc[inner_pointer]._.holmes.derived_lemma is not None:
+                        this_token_derived_lemma = token.doc[inner_pointer]._.holmes.derived_lemma
+                    else:
+                        # if derivational morphology analysis is switched off, the derived lemma
+                        # will be identical to the lemma and will not be yielded by
+                        # _loop_textual_representations().
+                        this_token_derived_lemma = token.doc[inner_pointer]._.holmes.lemma
+                    working_derived_lemma = ' '.join((
+                        working_derived_lemma, this_token_derived_lemma))
+                    working_tokens.append(token.doc[inner_pointer])
+                inner_pointer += 1
+            if pointer + 1 < inner_pointer and token in working_tokens:
+                yield MultiwordSpan(
+                    working_text.strip(), working_lemma.strip(), working_derived_lemma.strip(),
+                    working_tokens)
+            pointer += 1
+
+    def reverse_derived_lemmas_in_ontology(self, obj):
+        """ Returns all ontology entries that point to the derived lemma of a token or token-like
+            object.
+        """
+        if isinstance(obj, Token):
+            derived_lemma = obj._.holmes.lemma_or_derived_lemma()
+        elif isinstance(obj, Subword):
+            derived_lemma = obj.lemma_or_derived_lemma()
+        elif isinstance(obj, MultiwordSpan):
+            derived_lemma = obj.derived_lemma
+        else:
+            raise RuntimeError(': '.join(('Unsupported type', str(type(obj)))))
+        derived_lemma = self.normalize_hyphens(derived_lemma)
+        if derived_lemma in self.ontology_reverse_derivational_dict:
+            return self.ontology_reverse_derivational_dict[derived_lemma]
+        else:
+            return []
+
+    def is_entity_search_phrase_token(
+            self, search_phrase_token, examine_lemma_rather_than_text):
+        if examine_lemma_rather_than_text:
+            word_to_check = search_phrase_token._.holmes.lemma
+        else:
+            word_to_check = search_phrase_token.text
+        return word_to_check[:6] == 'ENTITY' and len(word_to_check) > 6
+
+    def is_entitynoun_search_phrase_token(
+            self, search_phrase_token, examine_lemma_rather_than_text):
+        if examine_lemma_rather_than_text:
+            word_to_check = search_phrase_token._.holmes.lemma
+        else:
+            word_to_check = search_phrase_token.text
+        return word_to_check == 'ENTITYNOUN'
+
+    def entity_search_phrase_token_matches(
+            self, search_phrase_token, topic_match_phraselet, document_token):
+        if topic_match_phraselet:
+            word_to_check = search_phrase_token._.holmes.lemma
+        else:
+            word_to_check = search_phrase_token.text
+        return (
+            document_token.ent_type_ == word_to_check[6:] and
+            len(document_token._.holmes.lemma.strip()) > 0) or (
+                word_to_check == 'ENTITYNOUN' and
+                document_token.pos_ in self.noun_pos)
+                # len(document_token._.holmes.lemma.strip()) > 0: in German spaCy sometimes
+                # classifies whitespace as entities.
+
+    def loop_textual_representations(self, object):
+        if isinstance(object, Token):
+            yield object.text, 'direct'
+            hyphen_normalized_text = self.normalize_hyphens(object.text)
+            if hyphen_normalized_text != object.text:
+                yield hyphen_normalized_text, 'direct'
+            if object._.holmes.lemma != object.text:
+                yield object._.holmes.lemma, 'direct'
+            if self.analyze_derivational_morphology and object._.holmes.derived_lemma is not None:
+                yield object._.holmes.derived_lemma, 'derivation'
+        elif isinstance(object, Subword):
+            yield object.text, 'direct'
+            hyphen_normalized_text = self.normalize_hyphens(object.text)
+            if hyphen_normalized_text != object.text:
+                yield hyphen_normalized_text, 'direct'
+            if object.text != object.lemma:
+                yield object.lemma, 'direct'
+            if self.analyze_derivational_morphology and object.derived_lemma is not None:
+                yield object.derived_lemma, 'derivation'
+        elif isinstance(object, MultiwordSpan):
+            yield object.text, 'direct'
+            hyphen_normalized_text = self.normalize_hyphens(object.text)
+            if hyphen_normalized_text != object.text:
+                yield hyphen_normalized_text, 'direct'
+            if object.text != object.lemma:
+                yield object.lemma, 'direct'
+            if object.lemma != object.derived_lemma:
+                yield object.derived_lemma, 'derivation'
+        else:
+            raise RuntimeError(': '.join(('Unsupported type', str(type(object)))))
+
+class EnglishSemanticMatchingHelper(SemanticMatchingHelper):
+
+    # The part of speech tags that can refer to nouns
+    noun_pos = ('NOUN', 'PROPN')
+
+    # Parts of speech for which embedding matching is attempted
+    permissible_embedding_pos = ('NOUN', 'PROPN', 'ADJ', 'ADV')
+
+    # Minimum length of a word taking part in an embedding-based match.
+    # Necessary because of the proliferation of short nonsense strings in the vocabularies.
+    minimum_embedding_match_word_length = 3
+
+    # Lemmas that should be suppressed within relation phraselets or as words of
+    # single-word phraselets during topic matching.
+    topic_matching_phraselet_stop_lemmas = ('then', 'therefore', 'so')
+
+    # Parent lemma / part-of-speech combinations that should lead to phraselets being
+    # reverse-matched only during topic matching.
+    topic_matching_reverse_only_parent_lemmas = (
+        ('be', 'VERB'), ('be', 'AUX'), ('have', 'VERB'), ('have', 'AUX'), ('do', 'VERB'),
+        ('say', 'VERB'), ('go', 'VERB'), ('get', 'VERB'), ('make', 'VERB'))
+
+    # Tags of tokens that should be ignored during topic matching (normally pronouns).
+    topic_matching_phraselet_stop_tags = ('PRP', 'PRP$')
+
+    # Lemmas that should be suppressed within relation phraselets or as words of
+    # single-word phraselets during supervised document classification.
+    supervised_document_classification_phraselet_stop_lemmas = ('be', 'have')
+
+    # Maps from dependency tags as occurring within search phrases to corresponding implication
+    # definitions. This is the main source of the asymmetry in matching from search phrases to
+    # documents versus from documents to search phrases.
+    match_implication_dict = {
+        'nsubj': MatchImplication(search_phrase_dependency='nsubj',
+            document_dependencies=['csubj', 'poss', 'pobjb', 'pobjo', 'advmodsubj', 'arg'],
+            reverse_document_dependencies=['acomp', 'amod']),
+        'acomp': MatchImplication(search_phrase_dependency='acomp',
+            document_dependencies=['amod', 'advmod', 'npmod', 'advcl'],
+            reverse_document_dependencies=['nsubj', 'csubj', 'poss', 'pobjb', 'advmodsubj', 'dobj',
+            'pobjo', 'relant', 'nsubjpass', 'csubjpass', 'compound', 'advmodobj', 'dative',
+            'arg']),
+        'advcl': MatchImplication(search_phrase_dependency='advcl',
+            document_dependencies=['pobjo', 'poss', 'relant', 'nsubjpass', 'csubjpass',
+            'compound', 'advmodobj', 'arg', 'dobj', 'xcomp']),
+        'amod': MatchImplication(search_phrase_dependency='amod',
+            document_dependencies=['acomp', 'advmod', 'npmod', 'advcl', 'compound'],
+            reverse_document_dependencies=['nsubj', 'csubj', 'poss', 'pobjb', 'advmodsubj', 'dobj',
+            'pobjo', 'relant', 'nsubjpass', 'csubjpass', 'compound', 'advmodobj', 'dative',
+            'arg']),
+        'advmod': MatchImplication(search_phrase_dependency='advmod',
+            document_dependencies=['acomp', 'amod', 'npmod', 'advcl']),
+        'arg': MatchImplication(search_phrase_dependency='arg',
+            document_dependencies=['nsubj', 'csubj', 'poss', 'pobjb', 'advmodsubj', 'dobj',
+            'pobjo', 'relant', 'nsubjpass', 'csubjpass', 'compound', 'advmodobj', 'dative',
+            'pobjp'],
+            reverse_document_dependencies=['acomp', 'amod']),
+        'compound': MatchImplication(search_phrase_dependency='compound',
+            document_dependencies=['nmod', 'appos', 'nounmod', 'nsubj', 'csubj', 'poss', 'pobjb',
+            'advmodsubj', 'dobj', 'pobjo', 'relant', 'pobjp',
+            'nsubjpass', 'csubjpass', 'arg', 'advmodobj', 'dative', 'amod'],
+            reverse_document_dependencies=['acomp', 'amod']),
+        'dative': MatchImplication(search_phrase_dependency='dative',
+            document_dependencies=['pobjt', 'relant', 'nsubjpass'],
+            reverse_document_dependencies=['acomp', 'amod']),
+        'pobjt': MatchImplication(search_phrase_dependency='pobjt',
+            document_dependencies=['dative', 'relant'],
+            reverse_document_dependencies=['acomp', 'amod']),
+        'nsubjpass': MatchImplication(search_phrase_dependency='nsubjpass',
+            document_dependencies=['dobj', 'pobjo', 'poss', 'relant', 'csubjpass',
+            'compound', 'advmodobj', 'arg', 'dative'],
+            reverse_document_dependencies=['acomp', 'amod']),
+        'dobj': MatchImplication(search_phrase_dependency='dobj',
+            document_dependencies=['pobjo', 'poss', 'relant', 'nsubjpass', 'csubjpass',
+            'compound', 'advmodobj', 'arg', 'xcomp', 'advcl'],
+            reverse_document_dependencies=['acomp', 'amod']),
+        'nmod': MatchImplication(search_phrase_dependency='nmod',
+            document_dependencies=['appos', 'compound', 'nummod']),
+        'poss': MatchImplication(search_phrase_dependency='poss',
+            document_dependencies=['pobjo', 'nsubj', 'csubj', 'pobjb', 'advmodsubj', 'arg',
+            'relant', 'nsubjpass', 'csubjpass', 'compound', 'advmodobj'],
+            reverse_document_dependencies=['acomp', 'amod']),
+        'pobjo': MatchImplication(search_phrase_dependency='pobjo',
+            document_dependencies=['poss', 'dobj', 'relant', 'nsubjpass', 'csubjpass',
+            'compound', 'advmodobj', 'arg', 'xcomp', 'nsubj', 'csubj', 'advmodsubj'],
+            reverse_document_dependencies=['acomp', 'amod']),
+        'pobjb': MatchImplication(search_phrase_dependency='pobjb',
+            document_dependencies=['nsubj', 'csubj', 'poss', 'advmodsubj', 'arg'],
+            reverse_document_dependencies=['acomp', 'amod']),
+        'pobjp': MatchImplication(search_phrase_dependency='pobjp',
+            document_dependencies=['compound']),
+        'prep': MatchImplication(search_phrase_dependency='prep',
+            document_dependencies=['prepposs']),
+        'xcomp': MatchImplication(search_phrase_dependency='xcomp',
+            document_dependencies=['pobjo', 'poss', 'relant', 'nsubjpass', 'csubjpass',
+            'compound', 'advmodobj', 'arg', 'dobj', 'advcl'])}
+
+    # The templates used to generate topic matching phraselets.
+    phraselet_templates = [
+        PhraseletTemplate(
+            "predicate-actor", "A thing does", 2, 1,
+            ['nsubj', 'csubj', 'pobjb', 'advmodsubj'],
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=False),
+        PhraseletTemplate(
+            "predicate-patient", "Somebody does a thing", 1, 3,
+            ['dobj', 'relant', 'advmodobj', 'xcomp'],
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
+            reverse_only=False),
+        PhraseletTemplate(
+            "word-ofword", "A thing of a thing", 1, 4,
+            ['pobjo', 'poss'],
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
+            reverse_only=False),
+        PhraseletTemplate(
+            "predicate-toughmovedargument", "A thing is easy to do", 5, 1,
+            ['arg'],
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=False),
+        PhraseletTemplate(
+            "predicate-passivesubject", "A thing is done", 3, 1,
+            ['nsubjpass', 'csubjpass'],
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=False),
+        PhraseletTemplate(
+            "be-attribute", "Something is a thing", 1, 3,
+            ['attr'],
+            ['VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=True),
+        PhraseletTemplate(
+            "predicate-recipient", "Somebody gives a thing something", 1, 3,
+            ['dative', 'pobjt'],
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=False),
+        PhraseletTemplate(
+            "governor-adjective", "A described thing", 2, 1,
+            ['acomp', 'amod', 'advmod', 'npmod', 'advcl', 'dobj'],
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
+            ['JJ', 'JJR', 'JJS', 'VBN', 'RB', 'RBR', 'RBS'], reverse_only=False),
+        PhraseletTemplate(
+            "noun-noun", "A thing thing", 2, 1,
+            ['nmod', 'appos', 'compound', 'nounmod'],
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'],
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=False),
+        PhraseletTemplate(
+            "number-noun", "Seven things", 1, 0,
+            ['nummod'],
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'],
+            ['CD'], reverse_only=False),
+        PhraseletTemplate(
+            "prepgovernor-noun", "A thing in a thing", 1, 4,
+            ['pobjp'],
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=False),
+        PhraseletTemplate(
+            "prep-noun", "in a thing", 0, 2,
+            ['pobj'],
+            ['IN'],
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=True),
+        PhraseletTemplate(
+            "word", "thing", 0, None,
+            None,
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'],
+            None, reverse_only=False)
+        ]
+
+    def normalize_hyphens(self, word):
+        """ Normalizes hyphens for ontology matching. Depending on the language,
+            this may involve replacing them with spaces (English) or deleting them entirely
+            (German).
+        """
+        if word.strip().startswith('-') or word.endswith('-'):
+            return word
+        else:
+            return word.replace('-', ' ')
+
+class GermanSemanticMatchingHelper(SemanticMatchingHelper):
+
+    noun_pos = ('NOUN', 'PROPN', 'ADJ')
+
+    permissible_embedding_pos = ('NOUN', 'PROPN', 'ADJ', 'ADV')
+
+    minimum_embedding_match_word_length = 4
+
+    topic_matching_phraselet_stop_lemmas = ('dann', 'danach', 'so', 'ich', 'mein')
+
+    topic_matching_reverse_only_parent_lemmas = (
+        ('sein', 'AUX'), ('werden', 'AUX'), ('haben', 'AUX'), ('sagen', 'VERB'),
+        ('machen', 'VERB'), ('tun', 'VERB'))
+
+    topic_matching_phraselet_stop_tags = ('PPER', 'PDS', 'PRF')
+
+    supervised_document_classification_phraselet_stop_lemmas = ('sein', 'haben')
+
+    match_implication_dict = {
+        'sb': MatchImplication(search_phrase_dependency='sb',
+            document_dependencies=['pobjb', 'ag', 'arg', 'intcompound'],
+            reverse_document_dependencies=['nk']),
+        'ag': MatchImplication(search_phrase_dependency='ag',
+            document_dependencies=['nk', 'pobjo', 'intcompound'],
+            reverse_document_dependencies=['nk']),
+        'oa': MatchImplication(search_phrase_dependency='oa',
+            document_dependencies=['pobjo', 'ag', 'arg', 'intcompound', 'og', 'oc'],
+            reverse_document_dependencies=['nk']),
+        'arg': MatchImplication(search_phrase_dependency='arg',
+            document_dependencies=['sb', 'oa', 'ag', 'intcompound', 'pobjb', 'pobjo'],
+            reverse_document_dependencies=['nk']),
+        'mo': MatchImplication(search_phrase_dependency='mo',
+            document_dependencies=['moposs', 'mnr', 'mnrposs', 'nk', 'oc']),
+        'mnr': MatchImplication(search_phrase_dependency='mnr',
+            document_dependencies=['mnrposs', 'mo', 'moposs', 'nk', 'oc']),
+        'nk': MatchImplication(search_phrase_dependency='nk',
+            document_dependencies=['ag', 'pobjo', 'intcompound', 'oc', 'mo'],
+            reverse_document_dependencies=['sb', 'ag', 'oa', 'arg', 'pobjo',
+                'intcompound']),
+        'pobjo': MatchImplication(search_phrase_dependency='pobjo',
+            document_dependencies=['ag', 'intcompound'],
+            reverse_document_dependencies=['nk']),
+        'pobjp': MatchImplication(search_phrase_dependency='pobjp',
+            document_dependencies=['intcompound']),
+        # intcompound is only used within extensive matching because it is not assigned
+        # in the context of registering search phrases.
+        'intcompound': MatchImplication(search_phrase_dependency='intcompound',
+            document_dependencies=['sb', 'oa', 'ag', 'og', 'nk', 'mo', 'pobjo', 'pobjp'],
+            reverse_document_dependencies=['nk']),
+    }
+
+    phraselet_templates = [
+        PhraseletTemplate(
+            "verb-nom", "Eine Sache tut", 2, 1,
+            ['sb', 'pobjb'],
+            [
+                'VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
+                'VAFIN', 'VAIMP', 'VAINF', 'VAPP', 'FM', 'NE', 'NNE', 'NN'],
+            ['FM', 'NE', 'NNE', 'NN'], reverse_only=False),
+        PhraseletTemplate(
+            "verb-acc", "Jemand tut eine Sache", 1, 3,
+            ['oa', 'pobjo', 'ag', 'og', 'oc'],
+            [
+                'VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
+                'VAFIN', 'VAIMP', 'VAINF', 'VAPP', 'FM', 'NE', 'NNE', 'NN'],
+            ['FM', 'NE', 'NNE', 'NN'], reverse_only=False),
+        PhraseletTemplate(
+            "verb-dat", "Jemand gibt einer Sache etwas", 1, 3,
+            ['da'],
+            [
+                'VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
+                'VAFIN', 'VAIMP', 'VAINF', 'VAPP'],
+            ['FM', 'NE', 'NNE', 'NN'], reverse_only=False),
+        PhraseletTemplate(
+            "verb-pd", "Jemand ist eine Sache", 1, 3,
+            ['pd'],
+            [
+                'VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
+                'VAFIN', 'VAIMP', 'VAINF', 'VAPP'],
+            ['FM', 'NE', 'NNE', 'NN'], reverse_only=True),
+        PhraseletTemplate(
+            "noun-dependent", "Eine beschriebene Sache", 2, 1,
+            ['nk'],
+            ['FM', 'NE', 'NNE', 'NN'],
+            ['FM', 'NE', 'NNE', 'NN', 'ADJA', 'ADJD', 'ADV', 'CARD'], reverse_only=False),
+        PhraseletTemplate(
+            "verb-adverb", "schnell machen", 1, 0,
+            ['mo', 'moposs', 'oc'],
+            [
+                'VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
+                'VAFIN', 'VAIMP', 'VAINF', 'VAPP'],
+            ['ADJA', 'ADJD', 'ADV'], reverse_only=False),
+        PhraseletTemplate(
+            "prepgovernor-noun", "Eine Sache in einer Sache", 1, 4,
+            ['pobjp'],
+            [
+                'VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
+                'VAFIN', 'VAIMP', 'VAINF', 'VAPP', 'FM', 'NE', 'NNE', 'NN'],
+            ['FM', 'NE', 'NNE', 'NN'], reverse_only=False),
+        PhraseletTemplate(
+            "prep-noun", "in einer Sache", 0, 2,
+            ['nk'],
+            ['APPO', 'APPR', 'APPRART', 'APZR'],
+            ['FM', 'NE', 'NNE', 'NN'], reverse_only=True),
+        PhraseletTemplate(
+            "verb-toughmovedargument", "Eine Sache ist schwer zu tun", 5, 1,
+            ['arg'],
+            [
+                'VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
+                'VAFIN', 'VAIMP', 'VAINF', 'VAPP'],
+            ['FM', 'NE', 'NNE', 'NN'], reverse_only=False),
+        PhraseletTemplate(
+            "intcompound", "Eine Sache in einer Sache", 1, 4,
+            ['intcompound'],
+            ['NE', 'NNE', 'NN', 'TRUNC', 'ADJA', 'ADJD', 'TRUNC'],
+            ['NE', 'NNE', 'NN', 'TRUNC', 'ADJA', 'ADJD', 'TRUNC'], reverse_only=False,
+            assigned_dependency_label='intcompound'),
+        PhraseletTemplate(
+            "word", "Sache", 0, None,
+            None,
+            ['FM', 'NE', 'NNE', 'NN'],
+            None, reverse_only=False)]
+
+    def normalize_hyphens(self, word):
+        """ Normalizes hyphens in a multiword for ontology matching. Depending on the language,
+            this may involve replacing them with spaces (English) or deleting them entirely
+            (German).
+        """
+        if word.strip().startswith('-') or word.endswith('-'):
+            return word
+        else:
+            return word.replace('-', '')

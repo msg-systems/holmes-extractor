@@ -26,15 +26,15 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
         manager.remove_all_search_phrases()
         doc = manager.semantic_analyzer.parse(text_to_match)
         phraselet_labels_to_phraselet_infos = {}
-        manager.structural_matcher.add_phraselets_to_dict(doc,
+        manager.linguistic_object_factory.add_phraselets_to_dict(doc,
                                                           phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
                                                           replace_with_hypernym_ancestors=replace_with_hypernym_ancestors,
                                                           match_all_words=match_all_words,
                                                           ignore_relation_phraselets=False,
                                                           include_reverse_only=include_reverse_only,
-                                                          stop_lemmas=manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
-                                                          stop_tags=manager.semantic_analyzer.topic_matching_phraselet_stop_tags,
-                                                          reverse_only_parent_lemmas=manager.semantic_analyzer.
+                                                          stop_lemmas=manager.semantic_matching_helper.topic_matching_phraselet_stop_lemmas,
+                                                          stop_tags=manager.semantic_matching_helper.topic_matching_phraselet_stop_tags,
+                                                          reverse_only_parent_lemmas=manager.semantic_matching_helper.
                                                           topic_matching_reverse_only_parent_lemmas,
                                                           words_to_corpus_frequencies=None,
                                                           maximum_corpus_frequency=None)
@@ -49,15 +49,15 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
         manager.remove_all_search_phrases()
         doc = manager.semantic_analyzer.parse(text_to_match)
         phraselet_labels_to_phraselet_infos = {}
-        manager.structural_matcher.add_phraselets_to_dict(doc,
+        manager.linguistic_object_factory.add_phraselets_to_dict(doc,
                                                           phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
                                                           replace_with_hypernym_ancestors=False,
                                                           match_all_words=True,
                                                           ignore_relation_phraselets=False,
                                                           include_reverse_only=True,
-                                                          stop_lemmas=manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
-                                                          stop_tags=manager.semantic_analyzer.topic_matching_phraselet_stop_tags,
-                                                          reverse_only_parent_lemmas=manager.semantic_analyzer.
+                                                          stop_lemmas=manager.semantic_matching_helper.topic_matching_phraselet_stop_lemmas,
+                                                          stop_tags=manager.semantic_matching_helper.topic_matching_phraselet_stop_tags,
+                                                          reverse_only_parent_lemmas=manager.semantic_matching_helper.
                                                           topic_matching_reverse_only_parent_lemmas,
                                                           words_to_corpus_frequencies=words_to_corpus_frequencies,
                                                           maximum_corpus_frequency=maximum_corpus_frequency)
@@ -263,7 +263,7 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
         doc = no_ontology_coref_holmes_manager.semantic_analyzer.parse(
             "I saw a dog. He was chasing a cat and a cat")
         phraselet_labels_to_phraselet_infos = {}
-        no_ontology_coref_holmes_manager.structural_matcher.add_phraselets_to_dict(
+        no_ontology_coref_holmes_manager.linguistic_object_factory.add_phraselets_to_dict(
             doc,
             phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
             replace_with_hypernym_ancestors=False,
@@ -271,10 +271,10 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
             include_reverse_only=False,
             ignore_relation_phraselets=False,
             stop_lemmas=no_ontology_coref_holmes_manager.
-            semantic_analyzer.topic_matching_phraselet_stop_lemmas,
+            semantic_matching_helper.topic_matching_phraselet_stop_lemmas,
             stop_tags=no_ontology_coref_holmes_manager.
-            semantic_analyzer.topic_matching_phraselet_stop_tags,
-            reverse_only_parent_lemmas=no_ontology_coref_holmes_manager.semantic_analyzer.
+            semantic_matching_helper.topic_matching_phraselet_stop_tags,
+            reverse_only_parent_lemmas=no_ontology_coref_holmes_manager.semantic_matching_helper.
             topic_matching_reverse_only_parent_lemmas,
             words_to_corpus_frequencies=None,
             maximum_corpus_frequency=None)
@@ -465,15 +465,15 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
         self.assertEqual(relation_phraselet.parent_derived_lemma, 'offence')
         doc = ontology_holmes_manager.semantic_analyzer.parse(
             'He took offense')
-        ontology_holmes_manager.structural_matcher.add_phraselets_to_dict(doc,
+        ontology_holmes_manager.linguistic_object_factory.add_phraselets_to_dict(doc,
                                                                           phraselet_labels_to_phraselet_infos=dict,
                                                                           replace_with_hypernym_ancestors=False,
                                                                           match_all_words=True,
                                                                           ignore_relation_phraselets=False,
                                                                           include_reverse_only=True,
-                                                                          stop_lemmas=ontology_holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
-                                                                          stop_tags=ontology_holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_tags,
-                                                                          reverse_only_parent_lemmas=ontology_holmes_manager.semantic_analyzer.
+                                                                          stop_lemmas=ontology_holmes_manager.semantic_matching_helper.topic_matching_phraselet_stop_lemmas,
+                                                                          stop_tags=ontology_holmes_manager.semantic_matching_helper.topic_matching_phraselet_stop_tags,
+                                                                          reverse_only_parent_lemmas=ontology_holmes_manager.semantic_matching_helper.
                                                                           topic_matching_reverse_only_parent_lemmas,
                                                                           words_to_corpus_frequencies=None,
                                                                           maximum_corpus_frequency=None)
@@ -482,15 +482,15 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
         self.assertEqual(word_phraselet.parent_derived_lemma, 'offence')
         doc = ontology_holmes_manager.semantic_analyzer.parse(
             'He took offence')
-        ontology_holmes_manager.structural_matcher.add_phraselets_to_dict(doc,
+        ontology_holmes_manager.linguistic_object_factory.add_phraselets_to_dict(doc,
                                                                           phraselet_labels_to_phraselet_infos=dict,
                                                                           replace_with_hypernym_ancestors=False,
                                                                           match_all_words=True,
                                                                           ignore_relation_phraselets=False,
                                                                           include_reverse_only=True,
-                                                                          stop_lemmas=ontology_holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
-                                                                          stop_tags=ontology_holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_tags,
-                                                                          reverse_only_parent_lemmas=ontology_holmes_manager.semantic_analyzer.
+                                                                          stop_lemmas=ontology_holmes_manager.semantic_matching_helper.topic_matching_phraselet_stop_lemmas,
+                                                                          stop_tags=ontology_holmes_manager.semantic_matching_helper.topic_matching_phraselet_stop_tags,
+                                                                          reverse_only_parent_lemmas=ontology_holmes_manager.semantic_matching_helper.
                                                                           topic_matching_reverse_only_parent_lemmas,
                                                                           words_to_corpus_frequencies=None,
                                                                           maximum_corpus_frequency=None)

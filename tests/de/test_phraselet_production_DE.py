@@ -14,15 +14,15 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                       include_reverse_only=False, replace_with_hypernym_ancestors=False):
         doc = holmes_manager.semantic_analyzer.parse(text_to_match)
         phraselet_labels_to_phraselet_infos = {}
-        holmes_manager.structural_matcher.add_phraselets_to_dict(doc,
+        holmes_manager.linguistic_object_factory.add_phraselets_to_dict(doc,
                                                                  phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
                                                                  replace_with_hypernym_ancestors=replace_with_hypernym_ancestors,
                                                                  match_all_words=match_all_words,
                                                                  ignore_relation_phraselets=False,
                                                                  include_reverse_only=include_reverse_only,
-                                                                 stop_lemmas=holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
-                                                                 stop_tags=holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_tags,
-                                                                 reverse_only_parent_lemmas=holmes_manager.semantic_analyzer.
+                                                                 stop_lemmas=holmes_manager.semantic_matching_helper.topic_matching_phraselet_stop_lemmas,
+                                                                 stop_tags=holmes_manager.semantic_matching_helper.topic_matching_phraselet_stop_tags,
+                                                                 reverse_only_parent_lemmas=holmes_manager.semantic_matching_helper.
                                                                  topic_matching_reverse_only_parent_lemmas,
                                                                  words_to_corpus_frequencies=None,
                                                                  maximum_corpus_frequency=None)
@@ -37,15 +37,15 @@ class GermanPhraseletProductionTest(unittest.TestCase):
         manager.remove_all_search_phrases()
         doc = manager.semantic_analyzer.parse(text_to_match)
         phraselet_labels_to_phraselet_infos = {}
-        manager.structural_matcher.add_phraselets_to_dict(doc,
+        manager.linguistic_object_factory.add_phraselets_to_dict(doc,
                                                           phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
                                                           replace_with_hypernym_ancestors=False,
                                                           match_all_words=True,
                                                           ignore_relation_phraselets=False,
                                                           include_reverse_only=True,
-                                                          stop_lemmas=manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
-                                                          stop_tags=manager.semantic_analyzer.topic_matching_phraselet_stop_tags,
-                                                          reverse_only_parent_lemmas=manager.semantic_analyzer.
+                                                          stop_lemmas=manager.semantic_matching_helper.topic_matching_phraselet_stop_lemmas,
+                                                          stop_tags=manager.semantic_matching_helper.topic_matching_phraselet_stop_tags,
+                                                          reverse_only_parent_lemmas=manager.semantic_matching_helper.
                                                           topic_matching_reverse_only_parent_lemmas,words_to_corpus_frequencies=words_to_corpus_frequencies,                            maximum_corpus_frequency=maximum_corpus_frequency)
         return phraselet_labels_to_phraselet_infos
 
@@ -80,42 +80,44 @@ class GermanPhraseletProductionTest(unittest.TestCase):
         self._check_equals("Der Gärtner gibt der netten Frau ihr Mittagessen",
                            ['verb-nom: gabe-gärtner', 'verb-acc: gabe-mittagessen',
                             'verb-dat: gabe-frau', 'noun-dependent: frau-nett',
-                            'word: gärtner', 'word: frau', 'word: mittagessen'])
+                            'noun-dependent: mittagessen-frau', 'word: gärtner', 'word: frau',
+                            'word: mittagessen'])
 
     def test_phraselet_labels(self):
         doc = holmes_manager.semantic_analyzer.parse(
             "Der Gärtner gibt der netten Frau ihr Mittagessen")
         phraselet_labels_to_phraselet_infos = {}
-        holmes_manager.structural_matcher.add_phraselets_to_dict(doc,
+        holmes_manager.linguistic_object_factory.add_phraselets_to_dict(doc,
                                                                  phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
                                                                  replace_with_hypernym_ancestors=False,
                                                                  match_all_words=False,
                                                                  include_reverse_only=True,
                                                                  ignore_relation_phraselets=False,
-                                                                 stop_lemmas=holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
-                                                                 stop_tags=holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_tags,
-                                                                 reverse_only_parent_lemmas=holmes_manager.semantic_analyzer.
+                                                                 stop_lemmas=holmes_manager.semantic_matching_helper.topic_matching_phraselet_stop_lemmas,
+                                                                 stop_tags=holmes_manager.semantic_matching_helper.topic_matching_phraselet_stop_tags,
+                                                                 reverse_only_parent_lemmas=holmes_manager.semantic_matching_helper.
                                                                  topic_matching_reverse_only_parent_lemmas,
                                                                  words_to_corpus_frequencies=None,
                                                                  maximum_corpus_frequency=None)
         self.assertEqual(set(phraselet_labels_to_phraselet_infos.keys()),
                          set(['verb-nom: gabe-gärtner', 'verb-acc: gabe-mittagessen',
                               'verb-dat: gabe-frau', 'noun-dependent: frau-nett',
-                              'word: gärtner', 'word: frau', 'word: mittagessen']))
+                              'noun-dependent: mittagessen-frau', 'word: gärtner', 'word: frau',
+                              'word: mittagessen']))
 
     def test_phraselet_labels_with_intcompound(self):
         doc = holmes_manager.semantic_analyzer.parse(
             "Der Landschaftsgärtner gibt der netten Frau ihr Mittagessen")
         phraselet_labels_to_phraselet_infos = {}
-        holmes_manager.structural_matcher.add_phraselets_to_dict(doc,
+        holmes_manager.linguistic_object_factory.add_phraselets_to_dict(doc,
                                                                  phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
                                                                  replace_with_hypernym_ancestors=False,
                                                                  match_all_words=False,
                                                                  include_reverse_only=True,
                                                                  ignore_relation_phraselets=False,
-                                                                 stop_lemmas=holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_lemmas,
-                                                                 stop_tags=holmes_manager.semantic_analyzer.topic_matching_phraselet_stop_tags,
-                                                                 reverse_only_parent_lemmas=holmes_manager.semantic_analyzer.
+                                                                 stop_lemmas=holmes_manager.semantic_matching_helper.topic_matching_phraselet_stop_lemmas,
+                                                                 stop_tags=holmes_manager.semantic_matching_helper.topic_matching_phraselet_stop_tags,
+                                                                 reverse_only_parent_lemmas=holmes_manager.semantic_matching_helper.
                                                                  topic_matching_reverse_only_parent_lemmas,
                                                                 words_to_corpus_frequencies=None,
                                                                 maximum_corpus_frequency=None)
@@ -123,7 +125,8 @@ class GermanPhraseletProductionTest(unittest.TestCase):
         self.assertEqual(set(phraselet_labels_to_phraselet_infos.keys()),
                          set(['verb-nom: gabe-landschaftsgärtner', 'verb-acc: gabe-mittagessen',
                               'verb-dat: gabe-frau', 'noun-dependent: frau-nett',
-                              'word: landschaftsgärtner', 'word: frau', 'word: mittagessen',
+                              'noun-dependent: mittagessen-frau', 'word: landschaftsgärtner',
+                              'word: frau', 'word: mittagessen',
                               'intcompound: gärtner-landschaft', 'verb-nom: gabe-gärtner']))
         intcompound_phraselet_info = phraselet_labels_to_phraselet_infos[
             'intcompound: gärtner-landschaft']
@@ -178,7 +181,7 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                            ['word: gärtner', 'word: frau', 'word: mittagessen',
                             'word: gabe', 'word: nett',  'verb-nom: gabe-gärtner',
                             'verb-dat: gabe-frau', 'verb-acc: gabe-mittagessen',
-                            'noun-dependent: frau-nett'], True)
+                            'noun-dependent: frau-nett', 'noun-dependent: mittagessen-frau'], True)
 
     def test_moposs(self):
         self._check_equals("Er braucht eine Versicherung für fünf Jahre",
