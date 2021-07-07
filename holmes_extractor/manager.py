@@ -11,10 +11,12 @@ from spacy import Language
 from spacy.tokens import Doc, Token
 from thinc.api import Config
 from .errors import *
-from .structural_matching import StructuralMatcher, ThreadsafeContainer, LinguisticObjectFactory
-from .semantics import SemanticAnalyzerFactory, SemanticAnalyzer, SemanticMatchingHelperFactory,\
-    SemanticMatchingHelper
-from .extensive_matching import *
+from .matching import StructuralMatcher, ThreadsafeContainer
+from .parsing import SemanticAnalyzerFactory, SemanticAnalyzer, SemanticMatchingHelperFactory,\
+    SemanticMatchingHelper, LinguisticObjectFactory
+from .classification import SupervisedTopicTrainingBasis, SupervisedTopicTrainingUtils,\
+    SupervisedTopicClassifier, SupervisedTopicClassifierModel
+from .topic_matching import TopicMatcher, TopicMatchDictionaryOrderer
 from .consoles import HolmesConsoles
 
 absolute_config_filename = pkg_resources.resource_filename(__name__, 'config.cfg')
@@ -309,6 +311,85 @@ class Manager:
             document_labels_to_indexes_for_embedding_reverse_matching_sets=None)
         return self._build_match_dictionaries(matches)
 
+    def internal_topic_match(
+        self, text_to_match, *, indexed_documents, use_frequency_factor=True,
+        maximum_activation_distance=75, relation_score=300, reverse_only_relation_score=200,
+        single_word_score=50, single_word_any_tag_score=20, different_match_cutoff_score=15,
+        overlapping_relation_multiplier=1.5, embedding_penalty=0.6,
+        ontology_penalty=0.9,
+        maximum_number_of_single_word_matches_for_relation_matching=500,
+        maximum_number_of_single_word_matches_for_embedding_matching=100,
+        sideways_match_extent=100, only_one_result_per_document=False, number_of_results=10,
+        document_label_filter=None):
+            if use_frequency_factor:
+                words_to_corpus_frequencies, maximum_corpus_frequency = \
+                    self.threadsafe_container.get_corpus_frequency_information()
+            else:
+                words_to_corpus_frequencies = None
+                maximum_corpus_frequency = None
+            topic_matcher = TopicMatcher(
+                semantic_matching_helper=self.semantic_matching_helper,
+                structural_matcher=self.structural_matcher,
+                indexed_documents=indexed_documents,
+                embedding_based_matching_on_root_words=self.embedding_based_matching_on_root_words,
+                maximum_activation_distance=maximum_activation_distance,
+                relation_score=relation_score,
+                reverse_only_relation_score=reverse_only_relation_score,
+                single_word_score=single_word_score,
+                single_word_any_tag_score=single_word_any_tag_score,
+                different_match_cutoff_score=different_match_cutoff_score,
+                overlapping_relation_multiplier=overlapping_relation_multiplier,
+                embedding_penalty=embedding_penalty,
+                ontology_penalty=ontology_penalty,
+                maximum_number_of_single_word_matches_for_relation_matching=
+                maximum_number_of_single_word_matches_for_relation_matching,
+                maximum_number_of_single_word_matches_for_embedding_matching=
+                maximum_number_of_single_word_matches_for_embedding_matching,
+                sideways_match_extent=sideways_match_extent,
+                only_one_result_per_document=only_one_result_per_document,
+                number_of_results=number_of_results,
+                document_label_filter=document_label_filter)
+            text_to_match_doc = self.semantic_analyzer.parse(text_to_match)
+            phraselet_labels_to_phraselet_infos = {}
+            self.linguistic_object_factory.add_phraselets_to_dict(
+                text_to_match_doc,
+                phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
+                replace_with_hypernym_ancestors=False,
+                match_all_words=False,
+                ignore_relation_phraselets=False,
+                include_reverse_only=True,
+                stop_tags=self.semantic_matching_helper.topic_matching_phraselet_stop_tags,
+                stop_lemmas=self.semantic_matching_helper.topic_matching_phraselet_stop_lemmas,
+                reverse_only_parent_lemmas=
+                self.semantic_matching_helper.topic_matching_reverse_only_parent_lemmas,
+                words_to_corpus_frequencies=words_to_corpus_frequencies,
+                maximum_corpus_frequency=maximum_corpus_frequency)
+
+            # now add the single word phraselets whose tags did not match.
+            self.linguistic_object_factory.add_phraselets_to_dict(
+                text_to_match_doc,
+                phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
+                replace_with_hypernym_ancestors=False,
+                match_all_words=True,
+                ignore_relation_phraselets=True,
+                include_reverse_only=False, # value is irrelevant with
+                                            # ignore_relation_phraselets == True
+                stop_lemmas=self.semantic_matching_helper.topic_matching_phraselet_stop_lemmas,
+                stop_tags=self.semantic_matching_helper.topic_matching_phraselet_stop_tags,
+                reverse_only_parent_lemmas=
+                self.semantic_matching_helper.topic_matching_reverse_only_parent_lemmas,
+                words_to_corpus_frequencies=words_to_corpus_frequencies,
+                maximum_corpus_frequency=maximum_corpus_frequency)
+            if len(phraselet_labels_to_phraselet_infos) == 0:
+                return []
+            phraselet_labels_to_search_phrases = \
+                self.linguistic_object_factory.create_search_phrases_from_phraselet_infos(
+                    phraselet_labels_to_phraselet_infos.values())
+
+            return topic_matcher.topic_match_documents_against(
+                phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
+                phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases)
+
     def topic_match_documents_against(
             self, text_to_match, *, use_frequency_factor=True, maximum_activation_distance=75,
             relation_score=300, reverse_only_relation_score=200,
@@ -366,19 +447,9 @@ class Manager:
         document_label_filter -- optionally, a string with which document labels must start to
             be considered for inclusion in the results.
         """
-        if use_frequency_factor:
-            words_to_corpus_frequencies, maximum_corpus_frequency = \
-                self.threadsafe_container.get_corpus_frequency_information()
-        else:
-            words_to_corpus_frequencies = None
-            maximum_corpus_frequency = None
-        topic_matcher = TopicMatcher(
-            semantic_matching_helper=self.semantic_matching_helper,
-            linguistic_object_factory=self.linguistic_object_factory,
-            structural_matcher=self.structural_matcher,
+        return self.internal_topic_match(text_to_match,
             indexed_documents=self.threadsafe_container.get_indexed_documents(),
-            words_to_corpus_frequencies=words_to_corpus_frequencies,
-            maximum_corpus_frequency=maximum_corpus_frequency,
+            use_frequency_factor=use_frequency_factor,
             maximum_activation_distance=maximum_activation_distance,
             relation_score=relation_score,
             reverse_only_relation_score=reverse_only_relation_score,
@@ -396,8 +467,6 @@ class Manager:
             only_one_result_per_document=only_one_result_per_document,
             number_of_results=number_of_results,
             document_label_filter=document_label_filter)
-        return topic_matcher.topic_match_documents_against(text_to_match,
-            self.semantic_analyzer.parse(text_to_match))
 
     def topic_match_documents_returning_dictionaries_against(
             self, text_to_match, *, use_frequency_factor=True,
@@ -459,19 +528,10 @@ class Manager:
         document_label_filter -- optionally, a string with which document labels must start to
             be considered for inclusion in the results.
         """
-        if use_frequency_factor:
-            words_to_corpus_frequencies, maximum_corpus_frequency = \
-                self.threadsafe_container.get_corpus_frequency_information()
-        else:
-            words_to_corpus_frequencies = None
-            maximum_corpus_frequency = None
-        topic_matcher = TopicMatcher(
-            semantic_matching_helper=self.semantic_matching_helper,
-            linguistic_object_factory=self.linguistic_object_factory,
-            structural_matcher=self.structural_matcher,
-            indexed_documents=self.threadsafe_container.get_indexed_documents(),
-            words_to_corpus_frequencies=words_to_corpus_frequencies,
-            maximum_corpus_frequency=maximum_corpus_frequency,
+        indexed_documents = self.threadsafe_container.get_indexed_documents()
+        topic_matches = self.internal_topic_match(text_to_match,
+            indexed_documents=indexed_documents,
+            use_frequency_factor=use_frequency_factor,
             maximum_activation_distance=maximum_activation_distance,
             relation_score=relation_score,
             reverse_only_relation_score=reverse_only_relation_score,
@@ -489,9 +549,153 @@ class Manager:
             only_one_result_per_document=only_one_result_per_document,
             number_of_results=number_of_results,
             document_label_filter=document_label_filter)
-        return topic_matcher.topic_match_documents_returning_dictionaries_against(
-            text_to_match, self.semantic_analyzer.parse(text_to_match),
+        return self.get_topic_match_dictionaries(
+            topic_matches=topic_matches,
+            indexed_documents=indexed_documents,
+            text_to_match=text_to_match,
+            number_of_results=number_of_results,
             tied_result_quotient=tied_result_quotient)
+
+    def get_topic_match_dictionaries(
+            self, *, topic_matches, indexed_documents, text_to_match,
+                number_of_results, tied_result_quotient):
+        """Returns a list of dictionaries representing the results of a topic match between an
+            entered text and the loaded documents. Callers of this method do not have to manage any
+            further dependencies on spaCy or Holmes.
+
+        Properties:
+
+        topic_matches -- a list of *TopicMatch* objects.
+        tied_result_quotient -- the quotient between a result and following results above which
+            the results are interpreted as tied
+        """
+
+        class WordInfo:
+
+            def __init__(self, relative_start_index, relative_end_index, typ, explanation):
+                self.relative_start_index = relative_start_index
+                self.relative_end_index = relative_end_index
+                self.type = typ
+                self.explanation = explanation
+                self.is_highest_activation = False
+
+            def __eq__(self, other):
+                return isinstance(other, WordInfo) and \
+                    self.relative_start_index == other.relative_start_index and \
+                    self.relative_end_index == other.relative_end_index
+
+            def __hash__(self):
+                return hash((self.relative_start_index, self.relative_end_index))
+
+        def get_containing_word_info_key(word_infos_to_word_infos, this_word_info):
+            for other_word_info in word_infos_to_word_infos:
+                if this_word_info.relative_start_index > other_word_info.relative_start_index and \
+                        this_word_info.relative_end_index <= other_word_info.relative_end_index:
+                    return other_word_info
+                if this_word_info.relative_start_index >= other_word_info.relative_start_index and\
+                        this_word_info.relative_end_index < other_word_info.relative_end_index:
+                    return other_word_info
+            return None
+
+        topic_match_dicts = []
+        for topic_match_counter, topic_match in enumerate(topic_matches):
+            doc = indexed_documents[topic_match.document_label].doc
+            sentences_character_start_index_in_document = doc[topic_match.sentences_start_index].idx
+            sentences_character_end_index_in_document = doc[topic_match.sentences_end_index].idx + \
+                len(doc[topic_match.sentences_end_index].text)
+            word_infos_to_word_infos = {}
+            for match in topic_match.structural_matches:
+                for word_match in match.word_matches:
+                    if word_match.document_subword is not None:
+                        subword = word_match.document_subword
+                        relative_start_index = doc[subword.containing_token_index].idx + \
+                            subword.char_start_index - \
+                            sentences_character_start_index_in_document
+                        relative_end_index = relative_start_index + len(subword.text)
+                    else:
+                        relative_start_index = word_match.first_document_token.idx - \
+                            sentences_character_start_index_in_document
+                        relative_end_index = word_match.last_document_token.idx + \
+                            len(word_match.last_document_token.text) - \
+                            sentences_character_start_index_in_document
+                    if match.is_overlapping_relation:
+                        word_info = WordInfo(
+                            relative_start_index, relative_end_index, 'overlapping_relation',
+                            word_match.explain())
+                    elif match.from_single_word_phraselet or \
+                            match.word_matches[0].document_token.i == \
+                            match.word_matches[1].document_token.i: # two subwords within word:
+                        word_info = WordInfo(
+                            relative_start_index, relative_end_index, 'single',
+                            word_match.explain())
+                    else:
+                        word_info = WordInfo(
+                            relative_start_index, relative_end_index, 'relation',
+                            word_match.explain())
+                    if word_info in word_infos_to_word_infos:
+                        existing_word_info = word_infos_to_word_infos[word_info]
+                        if not existing_word_info.type == 'overlapping_relation':
+                            if match.is_overlapping_relation:
+                                existing_word_info.type = 'overlapping_relation'
+                            elif not match.from_single_word_phraselet and not \
+                                    match.word_matches[0].document_token.i == \
+                                    match.word_matches[1].document_token.i:
+                                    # two subwords within word::
+                                existing_word_info.type = 'relation'
+                    else:
+                        word_infos_to_word_infos[word_info] = word_info
+            for word_info in list(word_infos_to_word_infos.keys()):
+                if get_containing_word_info_key(word_infos_to_word_infos, word_info) is not None:
+                    del word_infos_to_word_infos[word_info]
+            if topic_match.subword_index is not None:
+                subword = doc[topic_match.index_within_document]._.holmes.subwords\
+                    [topic_match.subword_index]
+                highest_activation_relative_start_index = \
+                    doc[subword.containing_token_index].idx + \
+                    subword.char_start_index - \
+                    sentences_character_start_index_in_document
+                highest_activation_relative_end_index = \
+                    highest_activation_relative_start_index + len(subword.text)
+            else:
+                highest_activation_relative_start_index = \
+                    doc[topic_match.index_within_document].idx - \
+                    sentences_character_start_index_in_document
+                highest_activation_relative_end_index = doc[topic_match.index_within_document].idx \
+                    + len(doc[topic_match.index_within_document].text) - \
+                    sentences_character_start_index_in_document
+            highest_activation_word_info = WordInfo(
+                highest_activation_relative_start_index, highest_activation_relative_end_index,
+                'temp', 'temp')
+            containing_word_info = get_containing_word_info_key(
+                word_infos_to_word_infos, highest_activation_word_info)
+            if containing_word_info is not None:
+                highest_activation_word_info = containing_word_info
+            word_infos_to_word_infos[highest_activation_word_info].is_highest_activation = True
+            word_infos = sorted(
+                word_infos_to_word_infos.values(), key=lambda word_info: (
+                    word_info.relative_start_index, word_info.relative_end_index))
+            topic_match_dict = {
+                'document_label': topic_match.document_label,
+                'text': topic_match.text,
+                'text_to_match': text_to_match,
+                'rank': str(topic_match_counter + 1),   # ties are corrected by
+                                                        # TopicMatchDictionaryOrderer
+                'sentences_character_start_index_in_document':
+                sentences_character_start_index_in_document,
+                'sentences_character_end_index_in_document':
+                sentences_character_end_index_in_document,
+                'score': topic_match.score,
+                'word_infos': [
+                    [
+                        word_info.relative_start_index, word_info.relative_end_index,
+                        word_info.type, word_info.is_highest_activation, word_info.explanation]
+                    for word_info in word_infos]
+                    # The word infos are labelled by array index alone to prevent the JSON from
+                    # becoming too bloated
+            }
+            topic_match_dicts.append(topic_match_dict)
+        return TopicMatchDictionaryOrderer().order(
+            topic_match_dicts, number_of_results, tied_result_quotient)
 
     def get_supervised_topic_training_basis(
             self, *, classification_ontology=None,
@@ -698,8 +902,6 @@ class MultiprocessingManager:
         serialized_document_dictionary -- a dictionary from unique document labels to
         documents serialized using the *Manager.serialize_document()* method.
         """
-        if self._perform_coreference_resolution:
-            raise SerializationNotSupportedError(self.semantic_analyzer.model)
         self._internal_register_documents(
             serialized_document_dictionary, self._worker.worker_deserialize_and_register_document)
 

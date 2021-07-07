@@ -1,6 +1,6 @@
 import unittest
 import holmes_extractor as holmes
-from holmes_extractor.extensive_matching import SupervisedTopicClassifier
+from holmes_extractor.classification import SupervisedTopicClassifier
 import os
 
 script_directory = os.path.dirname(os.path.realpath(__file__))

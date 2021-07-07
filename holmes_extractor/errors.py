@@ -30,9 +30,6 @@ class NoSearchPhraseError(HolmesError):
 class NoSearchedDocumentError(HolmesError):
     pass
 
-class SerializationNotSupportedError(HolmesError):
-    pass
-
 class WrongModelDeserializationError(HolmesError):
     pass
 

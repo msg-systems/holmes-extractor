@@ -31,16 +31,6 @@ class ErrorsTest(unittest.TestCase):
         with self.assertRaises(ValueError) as context:
             holmes.Manager(model='pl_core_news_sm')
 
-    def test_coreference_resolution_not_supported_error(self):
-        with self.assertRaises(ValueError) as context:
-            holmes.Manager(model='de_core_news_lg',
-                           perform_coreference_resolution=True)
-
-    def test_coreference_resolution_not_supported_multiprocessing_manager_error(self):
-        with self.assertRaises(ValueError) as context:
-            holmes.MultiprocessingManager(model='de_core_news_lg',
-                                          perform_coreference_resolution=True)
-
     def test_search_phrase_contains_conjunction(self):
         with self.assertRaises(SearchPhraseContainsConjunctionError) as context:
             nocoref_holmes_manager.remove_all_search_phrases()
@@ -142,33 +132,6 @@ class ErrorsTest(unittest.TestCase):
                                               perform_coreference_resolution=False, number_of_workers=2)
             m.deserialize_and_register_documents({'A': deserialized_doc})
             m.deserialize_and_register_documents({'A': deserialized_doc})
-
-    def test_serialization_not_supported_on_serialization(self):
-        with self.assertRaises(SerializationNotSupportedError) as context:
-            coref_holmes_manager.remove_all_documents()
-            coref_holmes_manager.parse_and_register_document("A", '')
-            deserialized_doc = coref_holmes_manager.serialize_document('')
-
-    def test_serialization_not_supported_on_serialization_multiprocessing(self):
-        with self.assertRaises(SerializationNotSupportedError) as context:
-            m_normal = holmes.Manager(
-                'en_core_web_sm', perform_coreference_resolution=False)
-            m_normal.remove_all_documents()
-            m_normal.parse_and_register_document("A", '')
-            deserialized_doc = m_normal.serialize_document('')
-            m = holmes.MultiprocessingManager(
-                'en_core_web_sm', number_of_workers=2)
-            m.deserialize_and_register_documents({'A': deserialized_doc})
-
-    def test_serialization_not_supported_on_deserialization(self):
-        with self.assertRaises(SerializationNotSupportedError) as context:
-            nocoref_holmes_manager.remove_all_documents()
-            coref_holmes_manager.remove_all_documents()
-            coref_holmes_manager.deserialize_and_register_document("A", '')
-            nocoref_holmes_manager.parse_and_register_document("A", '')
-            deserialized_doc = nocoref_holmes_manager.serialize_document('')
-            nocoref_holmes_manager.deserialize_and_register_document(
-                deserialized_doc, '')
 
     def test_no_search_phrase_error(self):
         with self.assertRaises(NoSearchPhraseError) as context:

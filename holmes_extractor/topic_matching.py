@@ -1,10 +1,7 @@
 import uuid
 import statistics
 import jsonpickle
-from scipy.sparse import dok_matrix
-from sklearn.neural_network import MLPClassifier
-from .structural_matching import Index
-from .semantics import SemanticMatchingHelperFactory
+from .parsing import SemanticMatchingHelperFactory, Index
 from .errors import WrongModelDeserializationError, FewerThanTwoClassificationsError, \
         DuplicateDocumentError, NoPhraseletsAfterFilteringError, \
         EmbeddingThresholdGreaterThanRelationThresholdError, \
@@ -67,12 +64,11 @@ class TopicMatcher:
     """A topic matcher object. See manager.py for details of the properties."""
 
     def __init__(
-            self, *, semantic_matching_helper, linguistic_object_factory, structural_matcher,
-            indexed_documents, words_to_corpus_frequencies, maximum_corpus_frequency,
-            maximum_activation_distance, relation_score, reverse_only_relation_score,
-            single_word_score, single_word_any_tag_score, different_match_cutoff_score,
-            overlapping_relation_multiplier, embedding_penalty, ontology_penalty,
-            maximum_number_of_single_word_matches_for_relation_matching,
+            self, *, semantic_matching_helper, structural_matcher, indexed_documents,
+            embedding_based_matching_on_root_words, maximum_activation_distance, relation_score,
+            reverse_only_relation_score, single_word_score, single_word_any_tag_score,
+            different_match_cutoff_score, overlapping_relation_multiplier, embedding_penalty,
+            ontology_penalty, maximum_number_of_single_word_matches_for_relation_matching,
             maximum_number_of_single_word_matches_for_embedding_matching,
             sideways_match_extent, only_one_result_per_document, number_of_results,
             document_label_filter):
@@ -84,11 +80,9 @@ class TopicMatcher:
                 'relation',
                 str(maximum_number_of_single_word_matches_for_relation_matching))))
         self.semantic_matching_helper = semantic_matching_helper
-        self.linguistic_object_factory = linguistic_object_factory
         self.structural_matcher = structural_matcher
         self.indexed_documents = indexed_documents
-        self.words_to_corpus_frequencies = words_to_corpus_frequencies
-        self.maximum_corpus_frequency = maximum_corpus_frequency
+        self.embedding_based_matching_on_root_words = embedding_based_matching_on_root_words
         self._ontology = structural_matcher.ontology
         self.maximum_activation_distance = maximum_activation_distance
         self.relation_score = relation_score
@@ -108,8 +102,6 @@ class TopicMatcher:
         self.number_of_results = number_of_results
         self.document_label_filter = document_label_filter
         self._words_to_phraselet_word_match_infos = {}
-        self._words_to_corpus_frequencies = words_to_corpus_frequencies
-        self._maximum_corpus_frequency = maximum_corpus_frequency
 
     def _get_word_match_from_match(self, match, parent):
         ## child if parent==False
@@ -131,13 +123,418 @@ class TopicMatcher:
             dictionary[key] = set()
         dictionary[key].add(value)
 
-    def topic_match_documents_against(self, text_to_match, doc):
+    def add_phraselets_to_dict(
+            self, doc, *, phraselet_labels_to_phraselet_infos,
+            replace_with_hypernym_ancestors, match_all_words,
+            ignore_relation_phraselets, include_reverse_only, stop_lemmas, stop_tags,
+            reverse_only_parent_lemmas, words_to_corpus_frequencies, maximum_corpus_frequency):
+        """ Creates topic matching phraselets extracted from a matching text.
+
+        Properties:
+
+        doc -- the Holmes-parsed document
+        phraselet_labels_to_phraselet_infos -- a dictionary from labels to phraselet info objects
+            that are used to generate phraselet search phrases.
+        replace_with_hypernym_ancestors -- if 'True', all words present in the ontology
+            are replaced with their most general (highest) ancestors.
+        match_all_words -- if 'True', word phraselets are generated for all matchable words
+            rather than just for words whose tags match the phraselet template; multiwords
+            are not taken into account when processing single-word phraselets; and single-word
+            phraselets are generated for subwords.
+        ignore_relation_phraselets -- if 'True', only single-word phraselets are processed.
+        include_reverse_only -- whether to generate phraselets that are only reverse-matched.
+            Reverse matching is used in topic matching but not in supervised document
+            classification.
+        stop_lemmas -- lemmas that should prevent all types of phraselet production.
+        stop_tags -- tags that should prevent all types of phraselet production.
+        reverse_only_parent_lemmas -- lemma / part-of-speech combinations that, when present at
+            the parent pole of a relation phraselet, should cause that phraselet to be
+            reverse-matched.
+        words_to_corpus_frequencies -- a dictionary from words to the number of times each
+            word occurs in the indexed documents, or *None* if corpus frequencies are not
+            being taken into account.
+        maximum_corpus_frequency -- the maximum value within *words_to_corpus_frequencies*,
+            or *None* if corpus frequencies are not being taken into account.
+        """
+
+        index_to_lemmas_cache = {}
+        def get_lemmas_from_index(index):
+            """ Returns the lemma and the derived lemma. Phraselets form a special case where
+                the derived lemma is set even if it is identical to the lemma. This is necessary
+                because the lemma may be set to a different value during the lifecycle of the
+                object. The property getter in the SemanticDictionary class ensures that
+                derived_lemma is None is always returned where the two strings are identical.
+            """
+            if index in index_to_lemmas_cache:
+                return index_to_lemmas_cache[index]
+            token = doc[index.token_index]
+            if self.semantic_matching_helper.is_entity_search_phrase_token(token, False):
+                # False in order to get text rather than lemma
+                index_to_lemmas_cache[index] = token.text, token.text
+                return token.text, token.text
+                # keep the text, because the lemma will be lowercase
+            if index.is_subword():
+                lemma = token._.holmes.subwords[index.subword_index].lemma
+                if self.analyze_derivational_morphology:
+                    derived_lemma = token._.holmes.subwords[index.subword_index].\
+                        lemma_or_derived_lemma()
+                else:
+                    derived_lemma = lemma
+                if self.ontology is not None and self.analyze_derivational_morphology:
+                    for reverse_derived_word in self.semantic_matching_helper.\
+                            reverse_derived_lemmas_in_ontology(
+                            token._.holmes.subwords[index.subword_index]):
+                        derived_lemma = reverse_derived_word.lower()
+                        break
+            else:
+                lemma = token._.holmes.lemma
+                if self.analyze_derivational_morphology:
+                    derived_lemma = token._.holmes.lemma_or_derived_lemma()
+                else:
+                    derived_lemma = lemma
+                if self.ontology is not None and not self.ontology.contains(lemma):
+                    if self.ontology.contains(token.text.lower()):
+                        lemma = derived_lemma = token.text.lower()
+                    # ontology contains text but not lemma, so return text
+                if self.ontology is not None and self.analyze_derivational_morphology:
+                    for reverse_derived_word in self.semantic_matching_helper.\
+                            reverse_derived_lemmas_in_ontology(token):
+                        derived_lemma = reverse_derived_word.lower()
+                        break
+                        # ontology contains a word pointing to the same derived lemma,
+                        # so return that. Note that if there are several such words the same
+                        # one will always be returned.
+            index_to_lemmas_cache[index] = lemma, derived_lemma
+            return lemma, derived_lemma
+
+        def replace_lemmas_with_most_general_ancestor(lemma, derived_lemma):
+            new_derived_lemma = self.ontology.get_most_general_hypernym_ancestor(
+                derived_lemma).lower()
+            if derived_lemma != new_derived_lemma:
+                lemma = derived_lemma = new_derived_lemma
+            return lemma, derived_lemma
+
+        def lemma_replacement_indicated(existing_lemma, existing_pos, new_lemma, new_pos):
+            if existing_lemma is None:
+                return False
+            if not existing_pos in self.semantic_matching_helper.preferred_phraselet_pos and \
+                    new_pos in self.semantic_matching_helper.preferred_phraselet_pos:
+                return True
+            if existing_pos in self.semantic_matching_helper.preferred_phraselet_pos and \
+                     new_pos not in self.semantic_matching_helper.preferred_phraselet_pos:
+                return False
+            return len(new_lemma) < len(existing_lemma)
+
+        def add_new_phraselet_info(
+                phraselet_label, phraselet_template, created_without_matching_tags,
+                is_reverse_only_parent_lemma, parent_lemma, parent_derived_lemma, parent_pos,
+                child_lemma, child_derived_lemma, child_pos):
+
+            def get_frequency_factor_for_pole(parent): # pole is 'True' -> parent, 'False' -> child
+                original_word_set = {parent_lemma, parent_derived_lemma} if parent else \
+                    {child_lemma, child_derived_lemma}
+                word_set_including_any_ontology = original_word_set.copy()
+                if self.ontology is not None:
+                    for word in original_word_set:
+                        for word_matching, _ in \
+                                self.ontology.get_words_matching_and_depths(word):
+                            word_set_including_any_ontology.add(word_matching)
+                frequencies = []
+                for word in word_set_including_any_ontology:
+                    if word in words_to_corpus_frequencies:
+                        frequencies.append(float(words_to_corpus_frequencies[word]))
+                if len(frequencies) == 0:
+                    return 1.0
+                average_frequency = max(0, (sum(frequencies) / float(len(frequencies))) - 1)
+                if average_frequency <= 1:
+                    return 1.0
+                else:
+                    return 1 - (math.log(average_frequency) / math.log(maximum_corpus_frequency))
+
+            if words_to_corpus_frequencies is not None:
+                frequency_factor = get_frequency_factor_for_pole(True)
+                if child_lemma is not None:
+                    frequency_factor *= get_frequency_factor_for_pole(False)
+            else:
+                frequency_factor = 1.0
+            if phraselet_label not in phraselet_labels_to_phraselet_infos:
+                phraselet_labels_to_phraselet_infos[phraselet_label] = PhraseletInfo(
+                    phraselet_label, phraselet_template.label, parent_lemma,
+                    parent_derived_lemma, parent_pos, child_lemma, child_derived_lemma,
+                    child_pos, created_without_matching_tags,
+                    is_reverse_only_parent_lemma, frequency_factor)
+            else:
+                existing_phraselet = phraselet_labels_to_phraselet_infos[phraselet_label]
+                if lemma_replacement_indicated(
+                        existing_phraselet.parent_lemma, existing_phraselet.parent_pos,
+                        parent_lemma, parent_pos):
+                    existing_phraselet.parent_lemma = parent_lemma
+                    existing_phraselet.parent_pos = parent_pos
+                if lemma_replacement_indicated(
+                        existing_phraselet.child_lemma, existing_phraselet.child_pos, child_lemma,
+                        child_pos):
+                    existing_phraselet.child_lemma = child_lemma
+                    existing_phraselet.child_pos = child_pos
+
+        def process_single_word_phraselet_templates(
+                token, subword_index, checking_tags, token_indexes_to_multiword_lemmas):
+            for phraselet_template in (
+                    phraselet_template for phraselet_template in
+                    self.semantic_matching_helper.phraselet_templates if
+                    phraselet_template.single_word() and (
+                        token._.holmes.is_matchable or subword_index is not None)):
+                        # see note below for explanation
+                if (not checking_tags or token.tag_ in phraselet_template.parent_tags) and \
+                        token.tag_ not in stop_tags:
+                    phraselet_doc = phraselet_template.template_doc.copy()
+                    if token.i in token_indexes_to_multiword_lemmas and not match_all_words:
+                        lemma = derived_lemma = token_indexes_to_multiword_lemmas[token.i]
+                    else:
+                        lemma, derived_lemma = get_lemmas_from_index(Index(token.i, subword_index))
+                    if self.ontology is not None and replace_with_hypernym_ancestors:
+                        lemma, derived_lemma = replace_lemmas_with_most_general_ancestor(
+                            lemma, derived_lemma)
+                    phraselet_doc[phraselet_template.parent_index]._.holmes.lemma = lemma
+                    phraselet_doc[phraselet_template.parent_index]._.holmes.derived_lemma = \
+                        derived_lemma
+                    phraselet_label = ''.join((phraselet_template.label, ': ', derived_lemma))
+                    if derived_lemma not in stop_lemmas and derived_lemma != 'ENTITYNOUN':
+                        # ENTITYNOUN has to be excluded as single word although it is still
+                        # permitted as the child of a relation phraselet template
+                        add_new_phraselet_info(
+                            phraselet_label, phraselet_template, not checking_tags,
+                            None, lemma, derived_lemma, token.pos_, None, None, None)
+
+        def add_head_subwords_to_token_list_and_remove_words_with_subword_conjunction(index_list):
+            # for each token in the list, find out whether it has subwords and if so add the
+            # head subword to the list
+            for index in index_list.copy():
+                token = doc[index.token_index]
+                for subword in (
+                        subword for subword in token._.holmes.subwords if
+                        subword.is_head and subword.containing_token_index == token.i):
+                    index_list.append(Index(token.i, subword.index))
+            # if one or more subwords do not belong to this token, it is a hyphenated word
+            # within conjunction and the whole word should not be used to build relation phraselets.
+                if len([
+                        subword for subword in token._.holmes.subwords if
+                        subword.containing_token_index != token.i]) > 0:
+                    index_list.remove(index)
+
+        self._redefine_multiwords_on_head_tokens(doc)
+        token_indexes_to_multiword_lemmas = {}
+        token_indexes_within_multiwords_to_ignore = []
+        for token in (token for token in doc if len(token._.holmes.lemma.split()) == 1):
+            entity_defined_multiword, indexes = \
+                self.semantic_matching_helper.get_entity_defined_multiword(token)
+            if entity_defined_multiword is not None:
+                for index in indexes:
+                    if index == token.i:
+                        token_indexes_to_multiword_lemmas[token.i] = entity_defined_multiword
+                    else:
+                        token_indexes_within_multiwords_to_ignore.append(index)
+        for token in doc:
+            if token.i in token_indexes_within_multiwords_to_ignore:
+                if match_all_words:
+                    process_single_word_phraselet_templates(
+                        token, None, False, token_indexes_to_multiword_lemmas)
+                continue
+            if len([
+                    subword for subword in token._.holmes.subwords if
+                    subword.containing_token_index != token.i]) == 0:
+                # whole single words involved in subword conjunction should not be included as
+                # these are partial words including hyphens.
+                process_single_word_phraselet_templates(
+                    token, None, not match_all_words, token_indexes_to_multiword_lemmas)
+            if match_all_words:
+                for subword in (
+                        subword for subword in token._.holmes.subwords if
+                        token.i == subword.containing_token_index):
+                    process_single_word_phraselet_templates(
+                        token, subword.index, False, token_indexes_to_multiword_lemmas)
+            if ignore_relation_phraselets:
+                continue
+            if self.perform_coreference_resolution:
+                parents = [
+                    Index(token_index, None) for token_index in
+                    token._.holmes.token_and_coreference_chain_indexes]
+            else:
+                parents = [Index(token.i, None)]
+            add_head_subwords_to_token_list_and_remove_words_with_subword_conjunction(parents)
+            for parent in parents:
+                for dependency in (
+                        dependency for dependency in doc[parent.token_index]._.holmes.children
+                        if dependency.child_index not in token_indexes_within_multiwords_to_ignore):
+                    if self.perform_coreference_resolution:
+                        children = [
+                            Index(token_index, None) for token_index in
+                            dependency.child_token(doc)._.holmes.
+                            token_and_coreference_chain_indexes]
+                    else:
+                        children = [Index(dependency.child_token(doc).i, None)]
+                    add_head_subwords_to_token_list_and_remove_words_with_subword_conjunction(
+                        children)
+                    for child in children:
+                        for phraselet_template in (
+                                phraselet_template for phraselet_template in
+                                self.semantic_matching_helper.phraselet_templates if not
+                                phraselet_template.single_word() and (
+                                    not phraselet_template.reverse_only or include_reverse_only)):
+                            if dependency.label in \
+                                    phraselet_template.dependency_labels and \
+                                    doc[parent.token_index].tag_ in phraselet_template.parent_tags\
+                                    and doc[child.token_index].tag_ in \
+                                    phraselet_template.child_tags and \
+                                    doc[parent.token_index]._.holmes.is_matchable and \
+                                    doc[child.token_index]._.holmes.is_matchable:
+                                phraselet_doc = self.semantic_analyzer.parse(
+                                    phraselet_template.template_sentence)
+                                if parent.token_index in token_indexes_to_multiword_lemmas:
+                                    parent_lemma = parent_derived_lemma = \
+                                        token_indexes_to_multiword_lemmas[parent.token_index]
+                                else:
+                                    parent_lemma, parent_derived_lemma = \
+                                        get_lemmas_from_index(parent)
+                                if self.ontology is not None and replace_with_hypernym_ancestors:
+                                    parent_lemma, parent_derived_lemma = \
+                                        replace_lemmas_with_most_general_ancestor(
+                                            parent_lemma, parent_derived_lemma)
+                                if child.token_index in token_indexes_to_multiword_lemmas:
+                                    child_lemma = child_derived_lemma = \
+                                        token_indexes_to_multiword_lemmas[child.token_index]
+                                else:
+                                    child_lemma, child_derived_lemma = get_lemmas_from_index(child)
+                                if self.ontology is not None and replace_with_hypernym_ancestors:
+                                    child_lemma, child_derived_lemma = \
+                                        replace_lemmas_with_most_general_ancestor(
+                                            child_lemma, child_derived_lemma)
+                                phraselet_doc[phraselet_template.parent_index]._.holmes.lemma = \
+                                    parent_lemma
+                                phraselet_doc[phraselet_template.parent_index]._.holmes.\
+                                    derived_lemma = parent_derived_lemma
+                                phraselet_doc[phraselet_template.child_index]._.holmes.lemma = \
+                                    child_lemma
+                                phraselet_doc[phraselet_template.child_index]._.holmes.\
+                                    derived_lemma = child_derived_lemma
+                                phraselet_label = ''.join((
+                                    phraselet_template.label, ': ', parent_derived_lemma,
+                                    '-', child_derived_lemma))
+                                is_reverse_only_parent_lemma = False
+                                if reverse_only_parent_lemmas is not None:
+                                    for entry in reverse_only_parent_lemmas:
+                                        if entry[0] == doc[parent.token_index]._.holmes.lemma \
+                                                and entry[1] == doc[parent.token_index].pos_:
+                                            is_reverse_only_parent_lemma = True
+                                if parent_lemma not in stop_lemmas and child_lemma not in \
+                                        stop_lemmas and not (
+                                            is_reverse_only_parent_lemma
+                                            and not include_reverse_only):
+                                    add_new_phraselet_info(
+                                        phraselet_label, phraselet_template, match_all_words,
+                                        is_reverse_only_parent_lemma,
+                                        parent_lemma, parent_derived_lemma,
+                                        doc[parent.token_index].pos_,
+                                        child_lemma, child_derived_lemma,
+                                        doc[child.token_index].pos_)
+
+            # We do not check for matchability in order to catch pos_='X', tag_='TRUNC'. This
+            # is not a problem as only a limited range of parts of speech receive subwords in
+            # the first place.
+            for subword in (
+                    subword for subword in token._.holmes.subwords if
+                    subword.dependent_index is not None):
+                parent_subword_index = subword.index
+                child_subword_index = subword.dependent_index
+                if token._.holmes.subwords[parent_subword_index].containing_token_index != \
+                        token.i and \
+                        token._.holmes.subwords[child_subword_index].containing_token_index != \
+                        token.i:
+                    continue
+                for phraselet_template in (
+                        phraselet_template for phraselet_template in
+                        self.semantic_matching_helper.phraselet_templates if not
+                        phraselet_template.single_word() and (
+                            not phraselet_template.reverse_only or include_reverse_only)
+                        and subword.dependency_label in phraselet_template.dependency_labels and
+                        token.tag_ in phraselet_template.parent_tags):
+                    phraselet_doc = self.semantic_analyzer.parse(
+                        phraselet_template.template_sentence)
+                    parent_lemma, parent_derived_lemma = get_lemmas_from_index(Index(
+                        token.i, parent_subword_index))
+                    if self.ontology is not None and replace_with_hypernym_ancestors:
+                        parent_lemma, parent_derived_lemma = \
+                            replace_lemmas_with_most_general_ancestor(
+                                parent_lemma, parent_derived_lemma)
+                    child_lemma, child_derived_lemma = get_lemmas_from_index(Index(
+                        token.i, child_subword_index))
+                    if self.ontology is not None and replace_with_hypernym_ancestors:
+                        child_lemma, child_derived_lemma = \
+                                replace_lemmas_with_most_general_ancestor(
+                                    child_lemma, child_derived_lemma)
+                    phraselet_doc[phraselet_template.parent_index]._.holmes.lemma = \
+                        parent_lemma
+                    phraselet_doc[phraselet_template.parent_index]._.holmes.derived_lemma = \
+                        parent_derived_lemma
+                    phraselet_doc[phraselet_template.child_index]._.holmes.lemma = \
+                        child_lemma
+                    phraselet_doc[phraselet_template.child_index]._.holmes.derived_lemma = \
+                        child_derived_lemma
+                    phraselet_label = ''.join((
+                        phraselet_template.label, ': ', parent_derived_lemma, '-',
+                        child_derived_lemma))
+                    add_new_phraselet_info(
+                        phraselet_label, phraselet_template, match_all_words,
+                        False, parent_lemma, parent_derived_lemma, token.pos_, child_lemma,
+                        child_derived_lemma, token.pos_)
+        if len(phraselet_labels_to_phraselet_infos) == 0 and not match_all_words:
+            for token in doc:
+                process_single_word_phraselet_templates(
+                    token, None, False, token_indexes_to_multiword_lemmas)
+
+    def create_search_phrases_from_phraselet_infos(self, phraselet_infos):
+        """ Creates search phrases from phraselet info objects, returning a dictionary from
+            phraselet labels to the created search phrases.
+        """
+
+        def create_phraselet_label(phraselet_info):
+            if phraselet_info.child_lemma is not None:
+                return ''.join((
+                    phraselet_info.template_label, ': ', phraselet_info.parent_derived_lemma, '-',
+                    phraselet_info.child_derived_lemma))
+            else:
+                return ''.join((
+                    phraselet_info.template_label, ': ', phraselet_info.parent_derived_lemma))
+
+        def create_search_phrase_from_phraselet(phraselet_info):
+            for phraselet_template in self.semantic_matching_helper.phraselet_templates:
+                if phraselet_info.template_label == phraselet_template.label:
+                    phraselet_doc = phraselet_info.template_doc
+                    phraselet_doc[phraselet_template.parent_index]._.holmes.lemma = \
+                        phraselet_info.parent_lemma
+                    phraselet_doc[phraselet_template.parent_index]._.holmes.derived_lemma = \
+                        phraselet_info.parent_derived_lemma
+                    if phraselet_info.child_lemma is not None:
+                        phraselet_doc[phraselet_template.child_index]._.holmes.lemma = \
+                            phraselet_info.child_lemma
+                        phraselet_doc[phraselet_template.child_index]._.holmes.derived_lemma = \
+                            phraselet_info.child_derived_lemma
+                    return self.create_search_phrase(
+                        'topic match phraselet', phraselet_doc,
+                        create_phraselet_label(phraselet_info), phraselet_template,
+                        phraselet_info.created_without_matching_tags,
+                        phraselet_info.reverse_only_parent_lemma)
+            raise RuntimeError(' '.join((
+                'Phraselet template', phraselet_info.template_label, 'not found.')))
+
+        return {
+            create_phraselet_label(phraselet_info) :
+            create_search_phrase_from_phraselet(phraselet_info) for phraselet_info in
+            phraselet_infos}
+
+    def topic_match_documents_against(self, *,
+            phraselet_labels_to_phraselet_infos, phraselet_labels_to_search_phrases):
         """ Performs a topic match against the loaded documents.
 
-        Property:
-
-        text_to_match -- the text to match against the documents.
-        doc -- the document generated from *text_to_match*.
         """
 
         class CorpusWordPosition:
@@ -512,41 +909,6 @@ class TopicMatcher:
                             matches_to_return.append(this_match)
             return matches_to_return
 
-        phraselet_labels_to_phraselet_infos = {}
-        self.linguistic_object_factory.add_phraselets_to_dict(
-            doc,
-            phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
-            replace_with_hypernym_ancestors=False,
-            match_all_words=False,
-            ignore_relation_phraselets=False,
-            include_reverse_only=True,
-            stop_tags=self.semantic_matching_helper.topic_matching_phraselet_stop_tags,
-            stop_lemmas=self.semantic_matching_helper.topic_matching_phraselet_stop_lemmas,
-            reverse_only_parent_lemmas=
-            self.semantic_matching_helper.topic_matching_reverse_only_parent_lemmas,
-            words_to_corpus_frequencies=self._words_to_corpus_frequencies,
-            maximum_corpus_frequency=self._maximum_corpus_frequency)
-
-        # now add the single word phraselets whose tags did not match.
-        self.linguistic_object_factory.add_phraselets_to_dict(
-            doc,
-            phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
-            replace_with_hypernym_ancestors=False,
-            match_all_words=True,
-            ignore_relation_phraselets=True,
-            include_reverse_only=False, # value is irrelevant with
-                                        # ignore_relation_phraselets == True
-            stop_lemmas=self.semantic_matching_helper.topic_matching_phraselet_stop_lemmas,
-            stop_tags=self.semantic_matching_helper.topic_matching_phraselet_stop_tags,
-            reverse_only_parent_lemmas=
-            self.semantic_matching_helper.topic_matching_reverse_only_parent_lemmas,
-            words_to_corpus_frequencies=self._words_to_corpus_frequencies,
-            maximum_corpus_frequency=self._maximum_corpus_frequency)
-        if len(phraselet_labels_to_phraselet_infos) == 0:
-            return []
-        phraselet_labels_to_search_phrases = \
-            self.linguistic_object_factory.create_search_phrases_from_phraselet_infos(
-                phraselet_labels_to_phraselet_infos.values())
         # First get single-word matches
         structural_matches = self.structural_matcher.match(
             indexed_documents=self.indexed_documents,
@@ -558,7 +920,7 @@ class TopicMatcher:
             document_labels_to_indexes_for_reverse_matching_sets=None,
             document_labels_to_indexes_for_embedding_reverse_matching_sets=None,
             document_label_filter=self.document_label_filter)
-        if not self.linguistic_object_factory.embedding_based_matching_on_root_words:
+        if not self.embedding_based_matching_on_root_words:
             rebuild_document_info_dict(structural_matches, phraselet_labels_to_phraselet_infos)
             for phraselet in (
                     phraselet_labels_to_search_phrases[phraselet_info.label] for
@@ -855,147 +1217,6 @@ class TopicMatcher:
             topic_matches, key=lambda topic_match: (
                 0-topic_match.score, topic_match.start_index - topic_match.end_index))
 
-    def topic_match_documents_returning_dictionaries_against(
-            self, text_to_match, doc, tied_result_quotient):
-        """Returns a list of dictionaries representing the results of a topic match between an
-            entered text and the loaded documents. Callers of this method do not have to manage any
-            further dependencies on spaCy or Holmes.
-
-        Properties:
-
-        text_to_match -- the text to match against the loaded documents.
-        tied_result_quotient -- the quotient between a result and following results above which
-            the results are interpreted as tied
-        """
-
-        class WordInfo:
-
-            def __init__(self, relative_start_index, relative_end_index, typ, explanation):
-                self.relative_start_index = relative_start_index
-                self.relative_end_index = relative_end_index
-                self.type = typ
-                self.explanation = explanation
-                self.is_highest_activation = False
-
-            def __eq__(self, other):
-                return isinstance(other, WordInfo) and \
-                    self.relative_start_index == other.relative_start_index and \
-                    self.relative_end_index == other.relative_end_index
-
-            def __hash__(self):
-                return hash((self.relative_start_index, self.relative_end_index))
-
-        def get_containing_word_info_key(word_infos_to_word_infos, this_word_info):
-            for other_word_info in word_infos_to_word_infos:
-                if this_word_info.relative_start_index > other_word_info.relative_start_index and \
-                        this_word_info.relative_end_index <= other_word_info.relative_end_index:
-                    return other_word_info
-                if this_word_info.relative_start_index >= other_word_info.relative_start_index and\
-                        this_word_info.relative_end_index < other_word_info.relative_end_index:
-                    return other_word_info
-            return None
-
-        topic_matches = self.topic_match_documents_against(text_to_match, doc)
-        topic_match_dicts = []
-        for topic_match_counter, topic_match in enumerate(topic_matches):
-            doc = self.indexed_documents[topic_match.document_label].doc
-            sentences_character_start_index_in_document = doc[topic_match.sentences_start_index].idx
-            sentences_character_end_index_in_document = doc[topic_match.sentences_end_index].idx + \
-                len(doc[topic_match.sentences_end_index].text)
-            word_infos_to_word_infos = {}
-            for match in topic_match.structural_matches:
-                for word_match in match.word_matches:
-                    if word_match.document_subword is not None:
-                        subword = word_match.document_subword
-                        relative_start_index = doc[subword.containing_token_index].idx + \
-                            subword.char_start_index - \
-                            sentences_character_start_index_in_document
-                        relative_end_index = relative_start_index + len(subword.text)
-                    else:
-                        relative_start_index = word_match.first_document_token.idx - \
-                            sentences_character_start_index_in_document
-                        relative_end_index = word_match.last_document_token.idx + \
-                            len(word_match.last_document_token.text) - \
-                            sentences_character_start_index_in_document
-                    if match.is_overlapping_relation:
-                        word_info = WordInfo(
-                            relative_start_index, relative_end_index, 'overlapping_relation',
-                            word_match.explain())
-                    elif match.from_single_word_phraselet or \
-                            match.word_matches[0].document_token.i == \
-                            match.word_matches[1].document_token.i: # two subwords within word:
-                        word_info = WordInfo(
-                            relative_start_index, relative_end_index, 'single',
-                            word_match.explain())
-                    else:
-                        word_info = WordInfo(
-                            relative_start_index, relative_end_index, 'relation',
-                            word_match.explain())
-                    if word_info in word_infos_to_word_infos:
-                        existing_word_info = word_infos_to_word_infos[word_info]
-                        if not existing_word_info.type == 'overlapping_relation':
-                            if match.is_overlapping_relation:
-                                existing_word_info.type = 'overlapping_relation'
-                            elif not match.from_single_word_phraselet and not \
-                                    match.word_matches[0].document_token.i == \
-                                    match.word_matches[1].document_token.i:
-                                    # two subwords within word::
-                                existing_word_info.type = 'relation'
-                    else:
-                        word_infos_to_word_infos[word_info] = word_info
-            for word_info in list(word_infos_to_word_infos.keys()):
-                if get_containing_word_info_key(word_infos_to_word_infos, word_info) is not None:
-                    del word_infos_to_word_infos[word_info]
-            if topic_match.subword_index is not None:
-                subword = doc[topic_match.index_within_document]._.holmes.subwords\
-                    [topic_match.subword_index]
-                highest_activation_relative_start_index = \
-                    doc[subword.containing_token_index].idx + \
-                    subword.char_start_index - \
-                    sentences_character_start_index_in_document
-                highest_activation_relative_end_index = \
-                    highest_activation_relative_start_index + len(subword.text)
-            else:
-                highest_activation_relative_start_index = \
-                    doc[topic_match.index_within_document].idx - \
-                    sentences_character_start_index_in_document
-                highest_activation_relative_end_index = doc[topic_match.index_within_document].idx \
-                    + len(doc[topic_match.index_within_document].text) - \
-                    sentences_character_start_index_in_document
-            highest_activation_word_info = WordInfo(
-                highest_activation_relative_start_index, highest_activation_relative_end_index,
-                'temp', 'temp')
-            containing_word_info = get_containing_word_info_key(
-                word_infos_to_word_infos, highest_activation_word_info)
-            if containing_word_info is not None:
-                highest_activation_word_info = containing_word_info
-            word_infos_to_word_infos[highest_activation_word_info].is_highest_activation = True
-            word_infos = sorted(
-                word_infos_to_word_infos.values(), key=lambda word_info: (
-                    word_info.relative_start_index, word_info.relative_end_index))
-            topic_match_dict = {
-                'document_label': topic_match.document_label,
-                'text': topic_match.text,
-                'text_to_match': text_to_match,
-                'rank': str(topic_match_counter + 1),   # ties are corrected by
-                                                        # TopicMatchDictionaryOrderer
-                'sentences_character_start_index_in_document':
-                sentences_character_start_index_in_document,
-                'sentences_character_end_index_in_document':
-                sentences_character_end_index_in_document,
-                'score': topic_match.score,
-                'word_infos': [
-                    [
-                        word_info.relative_start_index, word_info.relative_end_index,
-                        word_info.type, word_info.is_highest_activation, word_info.explanation]
-                    for word_info in word_infos]
-                    # The word infos are labelled by array index alone to prevent the JSON from
-                    # becoming too bloated
-            }
-            topic_match_dicts.append(topic_match_dict)
-        return TopicMatchDictionaryOrderer().order(
-            topic_match_dicts, self.number_of_results, tied_result_quotient)
-
 class TopicMatchDictionaryOrderer:
     # extracted into its own class to facilite use by MultiprocessingManager
 
@@ -1019,608 +1240,3 @@ class TopicMatchDictionaryOrderer:
                 following_topic_match_counter += 1
             topic_match_counter = following_topic_match_counter
         return topic_match_dicts
-
-
-class SupervisedTopicTrainingUtils:
-
-    def __init__(self, overlap_memory_size, oneshot):
-        self.overlap_memory_size = overlap_memory_size
-        self.oneshot = oneshot
-
-    def get_labels_to_classification_frequencies_dict(
-            self, *, matches, labels_to_classifications_dict):
-        """ Builds a dictionary from search phrase (phraselet) labels to classification
-            frequencies. Depending on the training phase, which is signalled by the parameters, the
-            dictionary tracks either raw frequencies for each search phrase label or points to a
-            second dictionary from classification labels to frequencies.
-
-            Parameters:
-
-            matches -- the structural matches from which to build the dictionary
-            labels_to_classifications_dict -- a dictionary from document labels to document
-                classifications, or 'None' if the target dictionary should contain raw frequencies.
-        """
-        def increment(search_phrase_label, document_label):
-            if labels_to_classifications_dict is not None:
-                if search_phrase_label not in labels_to_frequencies_dict:
-                    classification_frequency_dict = {}
-                    labels_to_frequencies_dict[search_phrase_label] = classification_frequency_dict
-                else:
-                    classification_frequency_dict = labels_to_frequencies_dict[search_phrase_label]
-                classification = labels_to_classifications_dict[document_label]
-                if classification in classification_frequency_dict:
-                    classification_frequency_dict[classification] += 1
-                else:
-                    classification_frequency_dict[classification] = 1
-            else:
-                if search_phrase_label not in labels_to_frequencies_dict:
-                    labels_to_frequencies_dict[search_phrase_label] = 1
-                else:
-                    labels_to_frequencies_dict[search_phrase_label] += 1
-
-        def relation_match_involves_whole_word_containing_subwords(match):
-            # Where there are subwords, we suppress relation matches with the
-            # entire word. The same rule is not applied to single-word matches because
-            # it still makes sense to track words with more than three subwords.
-            return len(match.word_matches) > 1 and \
-                len(
-                    [
-                        word_match for word_match in match.word_matches if
-                        len(word_match.document_token._.holmes.subwords) > 0 and
-                        word_match.document_subword is None]
-                ) > 0
-
-        labels_to_frequencies_dict = {}
-        matches = [
-            match for match in matches if not
-            relation_match_involves_whole_word_containing_subwords(match)]
-        matches = sorted(
-            matches, key=lambda match: (
-                match.document_label, match.index_within_document,
-                match.get_subword_index_for_sorting()))
-        for index, match in enumerate(matches):
-            if self.oneshot:
-                if ('this_document_label' not in locals()) or \
-                        this_document_label != match.document_label:
-                    this_document_label = match.document_label
-                    search_phrases_added_for_this_document = set()
-                if match.search_phrase_label not in search_phrases_added_for_this_document:
-                    increment(match.search_phrase_label, match.document_label)
-                    search_phrases_added_for_this_document.add(match.search_phrase_label)
-            else:
-                increment(match.search_phrase_label, match.document_label)
-            if not match.from_single_word_phraselet:
-                previous_match_index = index
-                number_of_analyzed_matches_counter = 0
-                while previous_match_index > 0 and number_of_analyzed_matches_counter \
-                        <= self.overlap_memory_size:
-                    previous_match_index -= 1
-                    previous_match = matches[previous_match_index]
-                    if previous_match.document_label != match.document_label:
-                        break
-                    if previous_match.from_single_word_phraselet:
-                        continue
-                    if previous_match.search_phrase_label == match.search_phrase_label:
-                        continue # otherwise coreference resolution leads to phrases being
-                                 # combined with themselves
-                    number_of_analyzed_matches_counter += 1
-                    previous_word_match_doc_indexes = [
-                        word_match.get_document_index() for word_match in
-                        previous_match.word_matches]
-                    for word_match in match.word_matches:
-                        if word_match.get_document_index() in previous_word_match_doc_indexes:
-                            # the same word is involved in both matches, so combine them
-                            # into a new label
-                            label_parts = sorted((
-                                previous_match.search_phrase_label, match.search_phrase_label))
-                            combined_label = '/'.join((label_parts[0], label_parts[1]))
-                            if self.oneshot:
-                                if combined_label not in search_phrases_added_for_this_document:
-                                    increment(combined_label, match.document_label)
-                                    search_phrases_added_for_this_document.add(combined_label)
-                            else:
-                                increment(combined_label, match.document_label)
-        return labels_to_frequencies_dict
-
-    def record_matches(
-            self, *, phraselet_labels_to_search_phrases, linguistic_object_factory,
-            structural_matcher, sorted_label_dict, doc_label, doc, matrix, row_index, verbose):
-        """ Matches a document against the currently stored phraselets and records the matches
-            in a matrix.
-
-            Parameters:
-
-            phraselet_labels_to_search_phrases -- a dictionary from search phrase (phraselet)
-                labels to search phrase objects.
-            linguistic_object_factory -- the linguistic object factory to use.
-            structural_matcher -- the structural matcher to use for comparisons.
-            sorted_label_dict -- a dictionary from search phrase (phraselet) labels to their own
-                alphabetic sorting indexes.
-            doc_label -- the document label, or 'None' if there is none.
-            doc -- the document to be matched.
-            matrix -- the matrix within which to record the matches.
-            row_index -- the row number within the matrix corresponding to the document.
-            verbose -- if 'True', matching information is outputted to the console.
-        """
-        indexed_document = linguistic_object_factory.index_document(doc)
-        indexed_documents = {doc_label:indexed_document}
-        found = False
-        for label, occurrences in \
-                self.get_labels_to_classification_frequencies_dict(
-                    matches=structural_matcher.match(
-                        indexed_documents=indexed_documents,
-                        search_phrases=phraselet_labels_to_search_phrases.values(),
-                        output_document_matching_message_to_console=verbose,
-                        match_depending_on_single_words=None,
-                        compare_embeddings_on_root_words=False,
-                        compare_embeddings_on_non_root_words=True,
-                        document_labels_to_indexes_for_reverse_matching_sets=None,
-                        document_labels_to_indexes_for_embedding_reverse_matching_sets=None),
-                    labels_to_classifications_dict=None
-                ).items():
-            if self.oneshot:
-                occurrences = 1
-            if label in sorted_label_dict: # may not be the case for compound labels
-                label_index = sorted_label_dict[label]
-                matrix[row_index, label_index] = occurrences
-                found = True
-        return found
-
-class SupervisedTopicTrainingBasis:
-    """ Holder object for training documents and their classifications from which one or more
-        'SupervisedTopicModelTrainer' objects can be derived. This class is *NOT* threadsafe.
-    """
-    def __init__(
-            self, *, linguistic_object_factory, structural_matcher, classification_ontology,
-            overlap_memory_size, oneshot, match_all_words, verbose):
-        """ Parameters:
-
-            linguistic_object_factory -- the linguistic object factory to use
-            structural_matcher -- the structural matcher to use.
-            classification_ontology -- an Ontology object incorporating relationships between
-                classification labels.
-            overlap_memory_size -- how many non-word phraselet matches to the left should be
-                checked for words in common with a current match.
-            oneshot -- whether the same word or relationship matched multiple times should be
-                counted once only (value 'True') or multiple times (value 'False')
-            match_all_words -- whether all single words should be taken into account
-                (value 'True') or only single words with noun tags (value 'False')
-            verbose -- if 'True', information about training progress is outputted to the console.
-        """
-        self.linguistic_object_factory = linguistic_object_factory
-        self.structural_matcher = structural_matcher
-        self.semantic_analyzer = linguistic_object_factory.semantic_analyzer
-        self.semantic_matching_helper = linguistic_object_factory.semantic_matching_helper
-        self.classification_ontology = classification_ontology
-        self._utils = SupervisedTopicTrainingUtils(overlap_memory_size, oneshot)
-        self._match_all_words = match_all_words
-        self.verbose = verbose
-
-        self.training_documents = {}
-        self.training_documents_labels_to_classifications_dict = {}
-        self.additional_classification_labels = set()
-        self.classification_implication_dict = {}
-        self.labels_to_classification_frequencies = None
-        self.phraselet_labels_to_phraselet_infos = {}
-        self.classifications = None
-
-    def parse_and_register_training_document(self, text, classification, label=None):
-        """ Parses and registers a document to use for training.
-
-            Parameters:
-
-            text -- the document text
-            classification -- the classification label
-            label -- a label with which to identify the document in verbose training output,
-                or 'None' if a random label should be assigned.
-        """
-        self.register_training_document(self.semantic_analyzer.parse(text), classification, label)
-
-    def register_training_document(self, doc, classification, label):
-        """ Registers a pre-parsed document to use for training.
-
-            Parameters:
-
-            doc -- the document
-            classification -- the classification label
-            label -- a label with which to identify the document in verbose training output,
-                or 'None' if a random label should be assigned.
-        """
-        if self.labels_to_classification_frequencies is not None:
-            raise RuntimeError(
-                "register_training_document() may not be called once prepare() has been called")
-        if label is None:
-            label = str(uuid.uuid4())
-        if label in self.training_documents:
-            raise DuplicateDocumentError(label)
-        if self.verbose:
-            print('Registering document', label)
-        indexed_document = self.linguistic_object_factory.index_document(doc)
-        self.training_documents[label] = indexed_document
-        self.linguistic_object_factory.add_phraselets_to_dict(
-            doc,
-            phraselet_labels_to_phraselet_infos=
-            self.phraselet_labels_to_phraselet_infos,
-            replace_with_hypernym_ancestors=True,
-            match_all_words=self._match_all_words,
-            ignore_relation_phraselets=False,
-            include_reverse_only=False,
-            stop_lemmas=self.semantic_matching_helper.\
-            supervised_document_classification_phraselet_stop_lemmas,
-            stop_tags=self.semantic_matching_helper.topic_matching_phraselet_stop_tags,
-            reverse_only_parent_lemmas=None,
-            words_to_corpus_frequencies=None,
-            maximum_corpus_frequency=None)
-        self.training_documents_labels_to_classifications_dict[label] = classification
-
-    def register_additional_classification_label(self, label):
-        """ Register an additional classification label which no training document has explicitly
-            but that should be assigned to documents whose explicit labels are related to the
-            additional classification label via the classification ontology.
-        """
-        if self.labels_to_classification_frequencies is not None:
-            raise RuntimeError(
-                "register_additional_classification_label() may not be called once prepare() has "\
-                " been called")
-        if self.classification_ontology is not None and \
-                self.classification_ontology.contains(label):
-            self.additional_classification_labels.add(label)
-
-    def prepare(self):
-        """ Matches the phraselets derived from the training documents against the training
-            documents to generate frequencies that also include combined labels, and examines the
-            explicit classification labels, the additional classification labels and the
-            classification ontology to derive classification implications.
-
-            Once this method has been called, the instance no longer accepts new training documents
-            or additional classification labels.
-        """
-        if self.labels_to_classification_frequencies is not None:
-            raise RuntimeError(
-                "prepare() may only be called once")
-        if self.verbose:
-            print('Matching documents against all phraselets')
-        search_phrases = self.linguistic_object_factory.create_search_phrases_from_phraselet_infos(
-            self.phraselet_labels_to_phraselet_infos.values()).values()
-        self.labels_to_classification_frequencies = self._utils.\
-            get_labels_to_classification_frequencies_dict(
-                matches=self.structural_matcher.match(
-                    indexed_documents=self.training_documents,
-                    search_phrases=search_phrases,
-                    output_document_matching_message_to_console=self.verbose,
-                    match_depending_on_single_words=None,
-                    compare_embeddings_on_root_words=False,
-                    compare_embeddings_on_non_root_words=True,
-                    document_labels_to_indexes_for_reverse_matching_sets=None,
-                    document_labels_to_indexes_for_embedding_reverse_matching_sets=None),
-                labels_to_classifications_dict=
-                self.training_documents_labels_to_classifications_dict)
-        self.classifications = sorted(set(
-            self.training_documents_labels_to_classifications_dict.values()
-            ).union(self.additional_classification_labels))
-        if len(self.classifications) < 2:
-            raise FewerThanTwoClassificationsError(len(self.classifications))
-        if self.classification_ontology is not None:
-            for parent in self.classifications:
-                for child in self.classifications:
-                    if self.classification_ontology.matches(parent, child):
-                        if child in self.classification_implication_dict.keys():
-                            self.classification_implication_dict[child].append(parent)
-                        else:
-                            self.classification_implication_dict[child] = [parent]
-
-    def train(
-            self, *, minimum_occurrences=4, cv_threshold=1.0, mlp_activation='relu',
-            mlp_solver='adam', mlp_learning_rate='constant', mlp_learning_rate_init=0.001,
-            mlp_max_iter=200, mlp_shuffle=True, mlp_random_state=42, overlap_memory_size=10,
-            hidden_layer_sizes=None):
-        """ Trains a model based on the prepared state.
-
-            Parameters:
-
-            minimum_occurrences -- the minimum number of times a word or relationship has to
-                occur in the context of at least one single classification for the phraselet
-                to be accepted into the final model.
-            cv_threshold -- the minimum coefficient of variation a word or relationship has
-                to occur with respect to explicit classification labels for the phraselet to be
-                accepted into the final model.
-            mlp_* -- see https://scikit-learn.org/stable/modules/generated/
-            sklearn.neural_network.MLPClassifier.html.
-            overlap_memory_size -- No longer has any effect - the value defined in __init__()
-                is used instead. Retained for backwards compatibility.
-            hidden_layer_sizes -- a tuple containing the number of neurons in each hidden layer, or
-                'None' if the topology should be determined automatically.
-        """
-
-        if self.labels_to_classification_frequencies is None:
-            raise RuntimeError("train() may only be called after prepare() has been called")
-        return SupervisedTopicModelTrainer(
-            training_basis=self,
-            semantic_analyzer=self.semantic_analyzer,
-            linguistic_object_factory=self.linguistic_object_factory,
-            structural_matcher=self.structural_matcher,
-            labels_to_classification_frequencies=self.labels_to_classification_frequencies,
-            phraselet_infos=self.phraselet_labels_to_phraselet_infos.values(),
-            minimum_occurrences=minimum_occurrences,
-            cv_threshold=cv_threshold,
-            mlp_activation=mlp_activation,
-            mlp_solver=mlp_solver,
-            mlp_learning_rate=mlp_learning_rate,
-            mlp_learning_rate_init=mlp_learning_rate_init,
-            mlp_max_iter=mlp_max_iter,
-            mlp_shuffle=mlp_shuffle,
-            mlp_random_state=mlp_random_state,
-            hidden_layer_sizes=hidden_layer_sizes,
-            utils=self._utils
-        )
-
-class SupervisedTopicModelTrainer:
-    """ Worker object used to train and generate models. This class is *NOT* threadsafe."""
-
-    def __init__(
-            self, *, training_basis, semantic_analyzer,
-            linguistic_object_factory, structural_matcher, labels_to_classification_frequencies,
-            phraselet_infos, minimum_occurrences, cv_threshold, mlp_activation, mlp_solver,
-            mlp_learning_rate, mlp_learning_rate_init, mlp_max_iter, mlp_shuffle, mlp_random_state,
-            hidden_layer_sizes, utils):
-
-        self._utils = utils
-        self._semantic_analyzer = linguistic_object_factory.semantic_analyzer
-        self._linguistic_object_factory = linguistic_object_factory
-        self._structural_matcher = structural_matcher
-        self._training_basis = training_basis
-        self._minimum_occurrences = minimum_occurrences
-        self._cv_threshold = cv_threshold
-        self._labels_to_classification_frequencies, self._phraselet_infos = self._filter(
-            labels_to_classification_frequencies, phraselet_infos)
-
-        if len(self._phraselet_infos) == 0:
-            raise NoPhraseletsAfterFilteringError(
-                ''.join((
-                    'minimum_occurrences: ', str(minimum_occurrences), '; cv_threshold: ',
-                    str(cv_threshold)))
-                )
-
-        phraselet_labels_to_search_phrases = \
-            self._linguistic_object_factory.create_search_phrases_from_phraselet_infos(
-                self._phraselet_infos)
-        self._sorted_label_dict = {}
-        for index, label in enumerate(sorted(self._labels_to_classification_frequencies.keys())):
-            self._sorted_label_dict[label] = index
-        self._input_matrix = dok_matrix((
-            len(self._training_basis.training_documents), len(self._sorted_label_dict)))
-        self._output_matrix = dok_matrix((
-            len(self._training_basis.training_documents),
-            len(self._training_basis.classifications)))
-
-        if self._training_basis.verbose:
-            print('Matching documents against filtered phraselets')
-        for index, document_label in enumerate(
-                sorted(self._training_basis.training_documents.keys())):
-            self._utils.record_matches(
-                linguistic_object_factory=self._linguistic_object_factory,
-                structural_matcher=self._structural_matcher,
-                phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
-                sorted_label_dict=self._sorted_label_dict,
-                doc_label=document_label,
-                doc=self._training_basis.training_documents[document_label].doc,
-                matrix=self._input_matrix,
-                row_index=index,
-                verbose=self._training_basis.verbose)
-            self._record_classifications_for_training(document_label, index)
-        self._hidden_layer_sizes = hidden_layer_sizes
-        if self._hidden_layer_sizes is None:
-            start = len(self._sorted_label_dict)
-            step = (len(self._training_basis.classifications) - len(self._sorted_label_dict)) / 3
-            self._hidden_layer_sizes = (start, int(start+step), int(start+(2*step)))
-        if self._training_basis.verbose:
-            print('Hidden layer sizes:', self._hidden_layer_sizes)
-        self._mlp = MLPClassifier(
-            activation=mlp_activation,
-            solver=mlp_solver,
-            hidden_layer_sizes=self._hidden_layer_sizes,
-            learning_rate=mlp_learning_rate,
-            learning_rate_init=mlp_learning_rate_init,
-            max_iter=mlp_max_iter,
-            shuffle=mlp_shuffle,
-            verbose=self._training_basis.verbose,
-            random_state=mlp_random_state)
-        self._mlp.fit(self._input_matrix, self._output_matrix)
-        if self._training_basis.verbose and self._mlp.n_iter_ < mlp_max_iter:
-            print('MLP neural network converged after', self._mlp.n_iter_, 'iterations.')
-
-    def _filter(self, labels_to_classification_frequencies, phraselet_infos):
-        """ Filters the phraselets in memory based on minimum_occurrences and cv_threshold. """
-
-        accepted = 0
-        under_minimum_occurrences = 0
-        under_minimum_cv = 0
-        new_labels_to_classification_frequencies = {}
-        for label, classification_frequencies in labels_to_classification_frequencies.items():
-            at_least_minimum = False
-            working_classification_frequencies = classification_frequencies.copy()
-            for classification in working_classification_frequencies:
-                if working_classification_frequencies[classification] >= self._minimum_occurrences:
-                    at_least_minimum = True
-            if not at_least_minimum:
-                under_minimum_occurrences += 1
-                continue
-            frequency_list = list(working_classification_frequencies.values())
-            # We only want to take explicit classification labels into account, i.e. ignore the
-            # classification ontology.
-            number_of_classification_labels = \
-                len(set(
-                    self._training_basis.training_documents_labels_to_classifications_dict.values())
-                    )
-            frequency_list.extend([0] * number_of_classification_labels)
-            frequency_list = frequency_list[:number_of_classification_labels]
-            if statistics.pstdev(frequency_list) / statistics.mean(frequency_list) >= \
-                    self._cv_threshold:
-                accepted += 1
-                new_labels_to_classification_frequencies[label] = classification_frequencies
-            else:
-                under_minimum_cv += 1
-        if self._training_basis.verbose:
-            print(
-                'Filtered: accepted', accepted, '; removed minimum occurrences',
-                under_minimum_occurrences, '; removed cv threshold',
-                under_minimum_cv)
-        new_phraselet_infos = [
-            phraselet_info for phraselet_info in phraselet_infos if
-            phraselet_info.label in new_labels_to_classification_frequencies.keys()]
-        return new_labels_to_classification_frequencies, new_phraselet_infos
-
-    def _record_classifications_for_training(self, document_label, index):
-        classification = self._training_basis.training_documents_labels_to_classifications_dict[
-            document_label]
-        classification_index = self._training_basis.classifications.index(classification)
-        self._output_matrix[index, classification_index] = 1
-        if classification in self._training_basis.classification_implication_dict:
-            for implied_classification in \
-                    self._training_basis.classification_implication_dict[classification]:
-                implied_classification_index = self._training_basis.classifications.index(
-                    implied_classification)
-                self._output_matrix[index, implied_classification_index] = 1
-
-    def classifier(self):
-        """ Returns a supervised topic classifier which contains no explicit references to the
-            training data and that can be serialized.
-        """
-        self._mlp.verbose = False # we no longer require output once we are using the model
-                                # to classify new documents
-        model = SupervisedTopicClassifierModel(
-            semantic_analyzer_model=self._semantic_analyzer.model,
-            structural_matcher_ontology=self._structural_matcher.ontology,
-            phraselet_infos=self._phraselet_infos,
-            mlp=self._mlp,
-            sorted_label_dict=self._sorted_label_dict,
-            classifications=self._training_basis.classifications,
-            overlap_memory_size=self._utils.overlap_memory_size,
-            oneshot=self._utils.oneshot,
-            analyze_derivational_morphology=
-            self._structural_matcher.analyze_derivational_morphology)
-        return SupervisedTopicClassifier(
-            self._semantic_analyzer, self._linguistic_object_factory,
-            self._structural_matcher, model, self._training_basis.verbose)
-
-class SupervisedTopicClassifierModel:
-    """ A serializable classifier model.
-
-        Parameters:
-
-        semantic_analyzer_model -- a string specifying the spaCy model with which this instance
-            was generated and with which it must be used.
-        structural_matcher_ontology -- the ontology used for matching documents against this model
-            (not the classification ontology!)
-        phraselet_infos -- the phraselets used for structural matching
-        mlp -- the neural network
-        sorted_label_dict -- a dictionary from search phrase (phraselet) labels to their own
-            alphabetic sorting indexes.
-        classifications -- an ordered list of classification labels corresponding to the
-            neural network outputs
-        overlap_memory_size -- how many non-word phraselet matches to the left should be
-            checked for words in common with a current match.
-        oneshot -- whether the same word or relationship matched multiple times should be
-            counted once only (value 'True') or multiple times (value 'False')
-        analyze_derivational_morphology -- the value of this manager parameter that was in force
-            when the model was built. The same value has to be in force when the model is
-            deserialized and reused.
-    """
-
-    def __init__(
-            self, semantic_analyzer_model, structural_matcher_ontology,
-            phraselet_infos, mlp, sorted_label_dict, classifications, overlap_memory_size,
-            oneshot, analyze_derivational_morphology):
-        self.semantic_analyzer_model = semantic_analyzer_model
-        self.structural_matcher_ontology = structural_matcher_ontology
-        self.phraselet_infos = phraselet_infos
-        self.mlp = mlp
-        self.sorted_label_dict = sorted_label_dict
-        self.classifications = classifications
-        self.overlap_memory_size = overlap_memory_size
-        self.oneshot = oneshot
-        self.analyze_derivational_morphology = analyze_derivational_morphology
-
-class SupervisedTopicClassifier:
-    """Classifies new documents based on a pre-trained model."""
-
-    def __init__(self, semantic_analyzer, linguistic_object_factory, structural_matcher, model,
-            verbose):
-        self.semantic_analyzer = semantic_analyzer
-        self.linguistic_object_factory = linguistic_object_factory
-        self.structural_matcher = structural_matcher
-        self.model = model
-        self.verbose = verbose
-        self.utils = SupervisedTopicTrainingUtils(model.overlap_memory_size, model.oneshot)
-        if self.semantic_analyzer.model != model.semantic_analyzer_model:
-            raise WrongModelDeserializationError(model.semantic_analyzer_model)
-        if hasattr(model, 'analyze_derivational_morphology'): # backwards compatibility
-            analyze_derivational_morphology = model.analyze_derivational_morphology
-        else:
-            analyze_derivational_morphology = False
-        if self.structural_matcher.analyze_derivational_morphology != \
-                analyze_derivational_morphology:
-            print(
-                ''.join((
-                    'manager: ', str(self.structural_matcher.analyze_derivational_morphology),
-                    '; model: ', str(analyze_derivational_morphology))))
-            raise IncompatibleAnalyzeDerivationalMorphologyDeserializationError(
-                ''.join((
-                    'manager: ', str(self.structural_matcher.analyze_derivational_morphology),
-                    '; model: ', str(analyze_derivational_morphology))))
-        self.structural_matcher.ontology = model.structural_matcher_ontology
-        self.linguistic_object_factory.ontology = model.structural_matcher_ontology
-        self.semantic_matching_helper = self.structural_matcher.semantic_matching_helper
-        self.semantic_matching_helper.ontology = model.structural_matcher_ontology
-        self.semantic_matching_helper.ontology_reverse_derivational_dict = \
-            self.linguistic_object_factory.get_ontology_reverse_derivational_dict()
-        self.phraselet_labels_to_search_phrases = \
-            self.linguistic_object_factory.create_search_phrases_from_phraselet_infos(
-                model.phraselet_infos)
-
-    def parse_and_classify(self, text):
-        """ Returns a list containing zero, one or many document classifications. Where more
-            than one classifications are returned, the labels are ordered by decreasing
-            probability.
-
-            Parameter:
-
-            text -- the text to parse and classify.
-        """
-        return self.classify(self.semantic_analyzer.parse(text))
-
-    def classify(self, doc):
-        """ Returns a list containing zero, one or many document classifications. Where more
-            than one classifications are returned, the labels are ordered by decreasing
-            probability.
-
-            Parameter:
-
-            doc -- the pre-parsed document to classify.
-        """
-
-        if self.model is None:
-            raise RuntimeError('No model defined')
-        new_document_matrix = dok_matrix((1, len(self.model.sorted_label_dict)))
-        if not self.utils.record_matches(
-                linguistic_object_factory=self.linguistic_object_factory,
-                structural_matcher=self.structural_matcher,
-                phraselet_labels_to_search_phrases=self.phraselet_labels_to_search_phrases,
-                sorted_label_dict=self.model.sorted_label_dict,
-                doc=doc,
-                doc_label='',
-                matrix=new_document_matrix,
-                row_index=0,
-                verbose=self.verbose):
-            return []
-        else:
-            classification_indexes = self.model.mlp.predict(new_document_matrix).nonzero()[1]
-            if len(classification_indexes) > 1:
-                probabilities = self.model.mlp.predict_proba(new_document_matrix)
-                classification_indexes = sorted(
-                    classification_indexes, key=lambda index: 1-probabilities[0, index])
-            return list(map(
-                lambda index: self.model.classifications[index], classification_indexes))
-
-    def serialize_model(self):
-        return jsonpickle.encode(self.model)

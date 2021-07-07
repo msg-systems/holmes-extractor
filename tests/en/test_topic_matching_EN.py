@@ -1,6 +1,6 @@
 import unittest
 import holmes_extractor as holmes
-from holmes_extractor.extensive_matching import TopicMatcher
+from holmes_extractor.topic_matching import TopicMatcher
 import os
 
 script_directory = os.path.dirname(os.path.realpath(__file__))

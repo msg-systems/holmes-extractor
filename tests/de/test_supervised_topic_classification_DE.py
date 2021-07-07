@@ -1,6 +1,6 @@
 import unittest
 import holmes_extractor as holmes
-from holmes_extractor.extensive_matching import SupervisedTopicClassifier
+from holmes_extractor.classification import SupervisedTopicClassifier
 
 holmes_manager = holmes.Manager('de_core_news_lg')
 
