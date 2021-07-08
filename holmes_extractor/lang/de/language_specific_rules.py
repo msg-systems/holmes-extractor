@@ -14,8 +14,6 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
 
     _adjectival_predicate_subject_pos = ('NOUN', 'PROPN', 'PRON')
 
-    noun_kernel_dep = ('nk', 'pnc')
-
     sibling_marker_deps = ('cj', 'app')
 
     _adjectival_predicate_subject_dep = 'sb'
@@ -875,6 +873,8 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
     noun_pos = ('NOUN', 'PROPN', 'ADJ')
 
     permissible_embedding_pos = ('NOUN', 'PROPN', 'ADJ', 'ADV')
+
+    noun_kernel_dep = ('nk', 'pnc')
 
     minimum_embedding_match_word_length = 4
 

@@ -102,7 +102,7 @@ if __name__ in ('__main__', 'example_search_DE_literature'):
     class RestHandler():
         def on_get(self, req, resp):
             resp.body = \
-                json.dumps(holmes_manager.topic_match_documents_returning_dictionaries_against(
+                json.dumps(holmes_manager.topic_match_documents_against(
                     req.params['entry'][0:200], only_one_result_per_document=True))
             resp.cache_control = ["s-maxage=31536000"]
 

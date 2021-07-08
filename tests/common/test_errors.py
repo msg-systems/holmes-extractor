@@ -229,7 +229,7 @@ class ErrorsTest(unittest.TestCase):
         with self.assertRaises(EmbeddingThresholdGreaterThanRelationThresholdError) as context:
             m = holmes.Manager('en_core_web_sm')
             m.parse_and_register_document("a")
-            coref_holmes_manager.topic_match_documents_returning_dictionaries_against("b",
+            coref_holmes_manager.topic_match_documents_against("b",
                                                                                       maximum_number_of_single_word_matches_for_relation_matching=1,
                                                                                       maximum_number_of_single_word_matches_for_embedding_matching=2)
 
@@ -238,6 +238,6 @@ class ErrorsTest(unittest.TestCase):
             m = holmes.MultiprocessingManager(
                 'en_core_web_sm', number_of_workers=1)
             m.parse_and_register_documents({'': "a"})
-            m.topic_match_documents_returning_dictionaries_against("b",
+            m.topic_match_documents_against("b",
                                                                    maximum_number_of_single_word_matches_for_relation_matching=1,
                                                                    maximum_number_of_single_word_matches_for_embedding_matching=2)

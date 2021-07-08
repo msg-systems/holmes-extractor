@@ -126,7 +126,7 @@ class MultithreadingTest(unittest.TestCase):
 
         def topic_match_within_thread():
             topic_matches = manager.topic_match_documents_against(
-                "Once upon a time a foal chased a hungry panther")
+                "Once upon a time a foal chased a hungry panther", return_dictionary=False)
             output = [topic_matches[0].document_label, topic_matches[0].text,
                       topic_matches[1].document_label, topic_matches[1].text]
             queue.put(output)

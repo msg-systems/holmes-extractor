@@ -24,9 +24,6 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
     # ("dog" in "The dog is tired")
     _adjectival_predicate_subject_pos = ('NOUN', 'PROPN', 'PRON')
 
-    # Dependency labels that mark noun kernel elements that are not the head noun
-    noun_kernel_dep = ('nmod', 'compound', 'appos', 'nummod')
-
     # Dependency labels that can mark righthand siblings
     sibling_marker_deps = ('conj', 'appos')
 
@@ -535,6 +532,9 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
 
     # Parts of speech for which embedding matching is attempted
     permissible_embedding_pos = ('NOUN', 'PROPN', 'ADJ', 'ADV')
+
+    # Dependency labels that mark noun kernel elements that are not the head noun
+    noun_kernel_dep = ('nmod', 'compound', 'appos', 'nummod')
 
     # Minimum length of a word taking part in an embedding-based match.
     # Necessary because of the proliferation of short nonsense strings in the vocabularies.

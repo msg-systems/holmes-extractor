@@ -25,7 +25,7 @@ class MultiprocessingTest(unittest.TestCase):
                                         'exact-reversed': "The animal chased the dog"})
         self.assertEqual(m.document_labels(), ['exact', 'exact-reversed', 'specific',
                                                'specific-reversed'])
-        self.assertEqual(m.topic_match_documents_returning_dictionaries_against(
+        self.assertEqual(m.topic_match_documents_against(
             "A dog chases an animal",
             relation_score=30,
             reverse_only_relation_score=20,
@@ -44,7 +44,7 @@ class MultiprocessingTest(unittest.TestCase):
                                         'exact-reversed': "The animal chased the dog"})
         self.assertEqual(m.document_labels(), ['exact', 'exact-reversed', 'specific',
                                                'specific-reversed'])
-        self.assertEqual(m.topic_match_documents_returning_dictionaries_against(
+        self.assertEqual(m.topic_match_documents_against(
             "A dog chases an animal",
             relation_score=30,
             reverse_only_relation_score=20,
@@ -63,7 +63,7 @@ class MultiprocessingTest(unittest.TestCase):
                                         'exact-reversed': "The animal chased the dog"})
         self.assertEqual(m.document_labels(), ['exact', 'exact-reversed', 'specific',
                                                'specific-reversed'])
-        self.assertEqual(m.topic_match_documents_returning_dictionaries_against(
+        self.assertEqual(m.topic_match_documents_against(
             "A dog chases an animal",
             relation_score=30,
             reverse_only_relation_score=20,
@@ -82,7 +82,7 @@ class MultiprocessingTest(unittest.TestCase):
                                         'exact-reversed': "The animal chased the dog"})
         self.assertEqual(m.document_labels(), ['exact', 'exact-reversed', 'specific',
                                                'specific-reversed'])
-        self.assertEqual(m.topic_match_documents_returning_dictionaries_against(
+        self.assertEqual(m.topic_match_documents_against(
             "A dog chases an animal", use_frequency_factor=False,
             relation_score=30,
             reverse_only_relation_score=20,
@@ -100,7 +100,7 @@ class MultiprocessingTest(unittest.TestCase):
                                         'exact-reversed': "The animal chased the dog"})
         self.assertEqual(m.document_labels(), ['exact', 'exact-reversed', 'specific',
                                                'specific-reversed'])
-        self.assertEqual(m.topic_match_documents_returning_dictionaries_against(
+        self.assertEqual(m.topic_match_documents_against(
             "A dog chases an animal",
             relation_score=30,
             reverse_only_relation_score=20,
@@ -134,7 +134,7 @@ class MultiprocessingTest(unittest.TestCase):
                                               'exact-reversed': exact_reversed})
         self.assertEqual(m.document_labels(), ['exact', 'exact-reversed', 'specific',
                                                'specific-reversed'])
-        self.assertEqual(m.topic_match_documents_returning_dictionaries_against(
+        self.assertEqual(m.topic_match_documents_against(
             "A dog chases an animal",
             relation_score=30,
             reverse_only_relation_score=20,
@@ -153,7 +153,7 @@ class MultiprocessingTest(unittest.TestCase):
                                         'exact-reversed': "The animal chased the dog"})
         self.assertEqual(m.document_labels(), ['exact', 'exact-reversed', 'specific',
                                                'specific-reversed'])
-        self.assertEqual(m.topic_match_documents_returning_dictionaries_against(
+        self.assertEqual(m.topic_match_documents_against(
             "A dog chases an animal", number_of_results=3, use_frequency_factor=False,
             relation_score=30,
             reverse_only_relation_score=20,
@@ -218,14 +218,14 @@ class MultiprocessingTest(unittest.TestCase):
     def _internal_test_multithreading_topic_matching(self, number_of_workers):
 
         def topic_match_within_thread():
-            normal_dict = m.topic_match_documents_returning_dictionaries_against(
+            normal_dict = m.topic_match_documents_against(
                 "A dog chases an animal", use_frequency_factor=False,
                 relation_score=30,
                 reverse_only_relation_score=20,
                 single_word_score=5,
                 single_word_any_tag_score=2,
                 different_match_cutoff_score=5)
-            reversed_dict = m.topic_match_documents_returning_dictionaries_against(
+            reversed_dict = m.topic_match_documents_against(
                 "The animal chased the dog", use_frequency_factor=False,
                 relation_score=30,
                 reverse_only_relation_score=20,
@@ -269,23 +269,23 @@ class MultiprocessingTest(unittest.TestCase):
                                         'T21': "The dog chased the cat",
                                         'T22': "The dog chased the cat"})
         topic_match_dictionaries = \
-            m.topic_match_documents_returning_dictionaries_against(
+            m.topic_match_documents_against(
                 "The dog chased the cat")
         self.assertEqual(len(topic_match_dictionaries), 4)
         topic_match_dictionaries = \
-            m.topic_match_documents_returning_dictionaries_against(
+            m.topic_match_documents_against(
                 "The dog chased the cat", document_label_filter="T")
         self.assertEqual(len(topic_match_dictionaries), 4)
         topic_match_dictionaries = \
-            m.topic_match_documents_returning_dictionaries_against(
+            m.topic_match_documents_against(
                 "The dog chased the cat", document_label_filter="T1")
         self.assertEqual(len(topic_match_dictionaries), 2)
         topic_match_dictionaries = \
-            m.topic_match_documents_returning_dictionaries_against(
+            m.topic_match_documents_against(
                 "The dog chased the cat", document_label_filter="T22")
         self.assertEqual(len(topic_match_dictionaries), 1)
         topic_match_dictionaries = \
-            m.topic_match_documents_returning_dictionaries_against(
+            m.topic_match_documents_against(
                 "The dog chased the cat", document_label_filter="X")
         self.assertEqual(len(topic_match_dictionaries), 0)
         m.close()
@@ -295,7 +295,7 @@ class MultiprocessingTest(unittest.TestCase):
                                           ontology=ontology, verbose=False)
         m.parse_and_register_documents({'': "A dog then and then and then and then and then a dog"})
         topic_match_dictionaries = \
-            m.topic_match_documents_returning_dictionaries_against(
+            m.topic_match_documents_against(
                 "A dog", different_match_cutoff_score=10000)
         self.assertEqual(len(topic_match_dictionaries), 2)
         m.close()
@@ -305,7 +305,7 @@ class MultiprocessingTest(unittest.TestCase):
                                           ontology=ontology, verbose=False)
         m.parse_and_register_documents({'': "A dog then and then and then and then and then a dog"})
         topic_match_dictionaries = \
-            m.topic_match_documents_returning_dictionaries_against(
+            m.topic_match_documents_against(
                 "A dog")
         self.assertEqual(len(topic_match_dictionaries), 1)
         m.close()

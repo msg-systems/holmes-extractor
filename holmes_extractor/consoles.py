@@ -215,7 +215,7 @@ class HolmesConsoles:
             try:
                 print()
                 topic_match_dicts = \
-                        self._holmes.topic_match_documents_returning_dictionaries_against(
+                        self._holmes.topic_match_documents_against(
                             search_text,
                             number_of_results=5,
                             only_one_result_per_document=only_one_result_per_document,

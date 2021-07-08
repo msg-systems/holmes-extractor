@@ -76,7 +76,7 @@ if __name__ in ('__main__', 'example_search_EN_literature'):
         def on_get(self, req, resp):
             resp.body = \
                 json.dumps(
-                    holmes_manager.topic_match_documents_returning_dictionaries_against(
+                    holmes_manager.topic_match_documents_against(
                         req.params['entry'][0:200]))
             resp.cache_control = ["s-maxage=31536000"]
 
