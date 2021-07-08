@@ -610,179 +610,179 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "The eating of a bone by a puppy")
         self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].word_matches[1].type, 'derivation')
+        self.assertEqual(matches[0].word_matches[1].word_match_type, 'derivation')
 
     def test_derivation_in_search_phrase_on_root(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "Somebody gives to a beneficiary")
         self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].word_matches[0].type, 'derivation')
+        self.assertEqual(matches[0].word_matches[0].word_match_type, 'derivation')
 
     def test_derivation_in_document_on_non_root(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "Somebody attempts an explanation")
         self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].word_matches[1].type, 'derivation')
+        self.assertEqual(matches[0].word_matches[1].word_match_type, 'derivation')
 
     def test_derivation_in_search_phrase_on_non_root(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "Somebody demands to explain")
         self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].word_matches[1].type, 'derivation')
+        self.assertEqual(matches[0].word_matches[1].word_match_type, 'derivation')
 
     def test_derivation_in_document_on_non_root_with_conjunction(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "Somebody attempts an explanation and an explanation")
         self.assertEqual(len(matches), 2)
-        self.assertEqual(matches[0].word_matches[1].type, 'derivation')
-        self.assertEqual(matches[1].word_matches[1].type, 'derivation')
+        self.assertEqual(matches[0].word_matches[1].word_match_type, 'derivation')
+        self.assertEqual(matches[1].word_matches[1].word_match_type, 'derivation')
 
     def test_derivation_in_search_phrase_on_non_root_with_conjunction(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "Somebody demands to explain and to explain")
         self.assertEqual(len(matches), 2)
-        self.assertEqual(matches[0].word_matches[1].type, 'derivation')
-        self.assertEqual(matches[1].word_matches[1].type, 'derivation')
+        self.assertEqual(matches[0].word_matches[1].word_match_type, 'derivation')
+        self.assertEqual(matches[1].word_matches[1].word_match_type, 'derivation')
 
     def test_derivation_in_document_on_single_word(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "neat")
         self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].word_matches[0].type, 'derivation')
+        self.assertEqual(matches[0].word_matches[0].word_match_type, 'derivation')
 
     def test_derivation_in_search_phrase_on_single_word(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "musical")
         self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].word_matches[0].type, 'derivation')
+        self.assertEqual(matches[0].word_matches[0].word_match_type, 'derivation')
 
     def test_derivation_in_document_on_single_word_with_ontology(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "month")
         self.assertEqual(len(matches), 2)
-        self.assertEqual(matches[0].word_matches[0].type, 'ontology')
-        self.assertEqual(matches[1].word_matches[0].type, 'derivation')
+        self.assertEqual(matches[0].word_matches[0].word_match_type, 'ontology')
+        self.assertEqual(matches[1].word_matches[0].word_match_type, 'derivation')
 
     def test_derivation_in_search_phrase_on_single_word_with_ontology(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "modestly")
         self.assertEqual(len(matches), 2)
-        self.assertEqual(matches[0].word_matches[0].type, 'derivation')
-        self.assertEqual(matches[1].word_matches[0].type, 'ontology')
+        self.assertEqual(matches[0].word_matches[0].word_match_type, 'derivation')
+        self.assertEqual(matches[1].word_matches[0].word_match_type, 'ontology')
 
     def test_derivation_in_document_on_non_root_with_ontology(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "Somebody attempts an invitation")
         self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].word_matches[1].type, 'ontology')
+        self.assertEqual(matches[0].word_matches[1].word_match_type, 'ontology')
 
     def test_derivation_in_search_phrase_on_non_root_with_ontology(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "Somebody shouts to explain")
         self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].word_matches[1].type, 'ontology')
+        self.assertEqual(matches[0].word_matches[1].word_match_type, 'ontology')
 
     def test_derivation_in_search_phrase_and_document_on_root_with_ontology(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "Somebody explains to a salesman")
         self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].word_matches[0].type, 'ontology')
+        self.assertEqual(matches[0].word_matches[0].word_match_type, 'ontology')
 
     def test_derivation_in_document_with_multiword_root_word(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "A big waste horse")
         self.assertEqual(len(matches), 2)
-        self.assertEqual(matches[0].word_matches[1].type, 'derivation')
+        self.assertEqual(matches[0].word_matches[1].word_match_type, 'derivation')
 
     def test_derivation_in_document_with_multiword_non_root_word(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "A waste horse was used")
         self.assertEqual(len(matches), 2)
-        self.assertEqual(matches[0].word_matches[1].type, 'derivation')
+        self.assertEqual(matches[0].word_matches[1].word_match_type, 'derivation')
 
     def test_derivation_in_document_with_multiword_single_word(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "a waste horse")
         self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].word_matches[0].type, 'derivation')
+        self.assertEqual(matches[0].word_matches[0].word_match_type, 'derivation')
 
     def test_derivation_in_document_with_multiword_single_word_control(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "a wastage horse")
         self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].word_matches[0].type, 'direct')
+        self.assertEqual(matches[0].word_matches[0].word_match_type, 'direct')
 
     def test_derivation_in_search_phrase_with_multiword_root_word(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "A small wastage horse")
         self.assertEqual(len(matches), 2)
-        self.assertEqual(matches[0].word_matches[1].type, 'direct')
+        self.assertEqual(matches[0].word_matches[1].word_match_type, 'direct')
 
     def test_derivation_in_search_phrase_with_multiword_non_root_word(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "A wastage horse was seen")
         self.assertEqual(len(matches), 2)
-        self.assertEqual(matches[0].word_matches[1].type, 'direct')
+        self.assertEqual(matches[0].word_matches[1].word_match_type, 'direct')
 
     def test_hyphenation_1(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "A big hyphenated-multiword")
         self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].word_matches[1].type, 'direct')
+        self.assertEqual(matches[0].word_matches[1].word_match_type, 'direct')
 
     def test_hyphenation_2(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "A big hyphenated multiword")
         self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].word_matches[1].type, 'direct')
+        self.assertEqual(matches[0].word_matches[1].word_match_type, 'direct')
 
     def test_hyphenation_3(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "A small hyphenated-multiword")
         self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].word_matches[1].type, 'direct')
+        self.assertEqual(matches[0].word_matches[1].word_match_type, 'direct')
 
     def test_hyphenation_4(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "A small hyphenated multiword")
         self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].word_matches[1].type, 'direct')
+        self.assertEqual(matches[0].word_matches[1].word_match_type, 'direct')
 
     def test_hyphenation_5(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "A big unhyphenated-multiword")
         self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].word_matches[1].type, 'direct')
+        self.assertEqual(matches[0].word_matches[1].word_match_type, 'direct')
 
     def test_hyphenation_6(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "A big unhyphenated multiword")
         self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].word_matches[1].type, 'direct')
+        self.assertEqual(matches[0].word_matches[1].word_match_type, 'direct')
 
     def test_hyphenation_7(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "A small unhyphenated-multiword")
         self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].word_matches[1].type, 'direct')
+        self.assertEqual(matches[0].word_matches[1].word_match_type, 'direct')
 
     def test_hyphenation_8(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "A small unhyphenated multiword")
         self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].word_matches[1].type, 'direct')
+        self.assertEqual(matches[0].word_matches[1].word_match_type, 'direct')
 
     def test_hyphenation_9(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "hyphenated-single-multiword")
         self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].word_matches[1].type, 'direct')
+        self.assertEqual(matches[0].word_matches[1].word_match_type, 'direct')
 
     def test_hyphenation_10(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "unhyphenated-single-multiword")
         self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].word_matches[0].type, 'direct')
+        self.assertEqual(matches[0].word_matches[0].word_match_type, 'direct')
 
     def test_dobj_matches_amod(self):
         matches = self._get_matches(nocoref_holmes_manager,

@@ -43,15 +43,15 @@ class Ontology:
                 self._graph.load(entry)
         else:
             self._graph.load(ontology_path)
-        self._owl_class_type = owl_class_type
-        self._owl_individual_type = owl_individual_type
-        self._owl_type_link = owl_type_link
-        self._owl_synonym_type = owl_synonym_type
-        self._owl_hyponym_type = owl_hyponym_type
-        self.words, self._multiwords = self._get_words()
-        self._match_dict = {}
+        self.owl_class_type = owl_class_type
+        self.owl_individual_type = owl_individual_type
+        self.owl_type_link = owl_type_link
+        self.owl_synonym_type = owl_synonym_type
+        self.owl_hyponym_type = owl_hyponym_type
+        self.words, self._multiwords = self.get_words()
+        self.match_dict = {}
         self.symmetric_matching = symmetric_matching
-        self._populate_dictionary()
+        self.populate_dictionary()
 
     class Entry:
         """Args:
@@ -67,25 +67,25 @@ class Ontology:
             self.depth = depth
             self.is_individual = is_individual
 
-    def _populate_dictionary(self):
+    def populate_dictionary(self):
         """Generates the dictionary from search phrase words to matching document words."""
 
-        for class_id, _, _ in self._get_classes():
-            entry_word = self._get_entry_word(class_id).lower()
-            if entry_word in self._match_dict:
-                entry_set = self._match_dict[entry_word]
+        for class_id, _, _ in self.get_classes():
+            entry_word = self.get_entry_word(class_id).lower()
+            if entry_word in self.match_dict:
+                entry_set = self.match_dict[entry_word]
             else:
-                self._match_dict[entry_word] = entry_set = set()
-            self._recursive_add_to_dict(
+                self.match_dict[entry_word] = entry_set = set()
+            self.recursive_add_to_dict(
                 entry_set, entry_word, class_id, set(), 0, False, False,
                 self.symmetric_matching)
-        for class_id, _, _ in self._get_individuals():
-            entry_word = self._get_entry_word(class_id).lower()
-            if entry_word in self._match_dict:
-                entry_set = self._match_dict[entry_word]
+        for class_id, _, _ in self.get_individuals():
+            entry_word = self.get_entry_word(class_id).lower()
+            if entry_word in self.match_dict:
+                entry_set = self.match_dict[entry_word]
             else:
-                self._match_dict[entry_word] = entry_set = set()
-            self._recursive_add_to_dict(
+                self.match_dict[entry_word] = entry_set = set()
+            self.recursive_add_to_dict(
                 entry_set, entry_word, class_id, set(), 0, True, False,
                 self.symmetric_matching)
 
@@ -103,8 +103,8 @@ class Ontology:
         Matching is defined as *candidate_word* being a hyponym, synonym or individual instance
         of *search_phrase_word*. Where *symmetric_matching==True*, matching also encompasses
         *search_phrase_word* being a hyponym of *candidate_word*."""
-        if search_phrase_word.lower() in self._match_dict.keys():
-            for entry in self._match_dict[search_phrase_word.lower()]:
+        if search_phrase_word.lower() in self.match_dict.keys():
+            for entry in self.match_dict[search_phrase_word.lower()]:
                 if entry.word.lower() == candidate_word.lower():
                     return entry
         return None
@@ -114,9 +114,9 @@ class Ontology:
             as well as the hypernyms where *symmetric_matching==True*.
             All words are set to lower case.
         """
-        if search_phrase_word.lower() in self._match_dict.keys():
+        if search_phrase_word.lower() in self.match_dict.keys():
             return set(map(
-                lambda entry: entry.word.lower(), self._match_dict[search_phrase_word.lower()]))
+                lambda entry: entry.word.lower(), self.match_dict[search_phrase_word.lower()]))
         else:
             return []
 
@@ -126,38 +126,38 @@ class Ontology:
             the corresponding depths.
             All words are set to lower case.
         """
-        if search_phrase_word.lower() in self._match_dict.keys():
+        if search_phrase_word.lower() in self.match_dict.keys():
             return set(map(
                 lambda entry: (entry.word.lower(), entry.depth),
-                self._match_dict[search_phrase_word.lower()]))
+                self.match_dict[search_phrase_word.lower()]))
         else:
             return []
 
-    def _get_classes(self):
+    def get_classes(self):
         """Returns all classes from the loaded ontology."""
         return self._graph.triples((
-            None, rdflib.term.URIRef(self._owl_type_link),
-            rdflib.term.URIRef(self._owl_class_type)))
+            None, rdflib.term.URIRef(self.owl_type_link),
+            rdflib.term.URIRef(self.owl_class_type)))
 
-    def _get_individuals(self):
+    def get_individuals(self):
         """Returns all classes from the loaded ontology."""
         return self._graph.triples((
-            None, rdflib.term.URIRef(self._owl_type_link),
-            rdflib.term.URIRef(self._owl_individual_type)))
+            None, rdflib.term.URIRef(self.owl_type_link),
+            rdflib.term.URIRef(self.owl_individual_type)))
 
-    def _get_words(self):
+    def get_words(self):
         """Finds all words in the loaded ontology and returns multiwords in a separate list."""
         words = []
         multiwords = []
         for class_id, _, _ in chain(
-                self._get_classes(), self._get_individuals()):
-            entry_word = self._get_entry_word(class_id)
+                self.get_classes(), self.get_individuals()):
+            entry_word = self.get_entry_word(class_id)
             words.append(entry_word.lower())
             if ' ' in entry_word:
                 multiwords.append(entry_word.lower())
         return words, multiwords
 
-    def _recursive_add_to_dict(
+    def recursive_add_to_dict(
             self, entry_set, word, working_entry_url, visited, depth, is_individual, is_hypernym,
             symmetric):
         """Adds synonyms and hyponyms of a search phrase word to its dictionary.
@@ -179,41 +179,41 @@ class Ontology:
         """
         if working_entry_url not in visited:
             visited.add(working_entry_url)
-            working_entry_word = self._get_entry_word(working_entry_url)
+            working_entry_word = self.get_entry_word(working_entry_url)
             if word.lower() != working_entry_word.lower():
                 entry_set.add(self.Entry(working_entry_word, depth, is_individual))
             if not is_hypernym: # prevent recursive traversal of adjacent branches
                 for entry, _, _ in self._graph.triples((
-                        None, rdflib.term.URIRef(self._owl_hyponym_type), working_entry_url)):
-                    self._recursive_add_to_dict(
+                        None, rdflib.term.URIRef(self.owl_hyponym_type), working_entry_url)):
+                    self.recursive_add_to_dict(
                         entry_set, word, entry, visited, depth+1, False, False, symmetric)
                 for entry, _, _ in self._graph.triples((
-                        None, rdflib.term.URIRef(self._owl_type_link), working_entry_url)):
-                    self._recursive_add_to_dict(
+                        None, rdflib.term.URIRef(self.owl_type_link), working_entry_url)):
+                    self.recursive_add_to_dict(
                         entry_set, word, entry, visited, depth+1, True, False, symmetric)
             for entry, _, _ in self._graph.triples((
-                    None, rdflib.term.URIRef(self._owl_synonym_type), working_entry_url)):
-                self._recursive_add_to_dict(
+                    None, rdflib.term.URIRef(self.owl_synonym_type), working_entry_url)):
+                self.recursive_add_to_dict(
                     entry_set, word, entry, visited, depth, False, False, symmetric)
             for _, _, entry in self._graph.triples((
-                    working_entry_url, rdflib.term.URIRef(self._owl_synonym_type), None)):
-                self._recursive_add_to_dict(
+                    working_entry_url, rdflib.term.URIRef(self.owl_synonym_type), None)):
+                self.recursive_add_to_dict(
                     entry_set, word, entry, visited, depth, False, False, symmetric)
             if symmetric and depth <= 0:
                 for _, _, entry in self._graph.triples((
-                        working_entry_url, rdflib.term.URIRef(self._owl_hyponym_type), None)):
-                    self._recursive_add_to_dict(
+                        working_entry_url, rdflib.term.URIRef(self.owl_hyponym_type), None)):
+                    self.recursive_add_to_dict(
                         entry_set, word, entry, visited, depth-1, False, True, symmetric)
                 if is_individual:
                     for _, _, entry in self._graph.triples((
-                            working_entry_url, rdflib.term.URIRef(self._owl_type_link), None)):
-                        if entry != rdflib.term.URIRef(self._owl_individual_type):
-                            self._recursive_add_to_dict(
+                            working_entry_url, rdflib.term.URIRef(self.owl_type_link), None)):
+                        if entry != rdflib.term.URIRef(self.owl_individual_type):
+                            self.recursive_add_to_dict(
                                 entry_set, word, entry, visited, depth-1, False, True, symmetric)
                 # setting depth to a negative value ensures the hypernym
                 # can never qualify as being equally or more specific than the original match.
 
-    def _get_entry_word(self, class_id):
+    def get_entry_word(self, class_id):
         """Converts an OWL URL into an entry word
 
         The fragment is retrieved from the URL and underscores are replaced with spaces.
@@ -228,17 +228,17 @@ class Ontology:
         """
         matching_set = set()
         for clazz in (
-                clazz for clazz, t, m in self._get_classes() if
-                self._get_entry_word(clazz).lower() == word.lower()):
+                clazz for clazz, t, m in self.get_classes() if
+                self.get_entry_word(clazz).lower() == word.lower()):
             this_class_set = set()
-            self._recursive_add_to_dict(
+            self.recursive_add_to_dict(
                 this_class_set, word, clazz, set(), 0, False, False, True)
             matching_set |= this_class_set
         for individual in (
-                individual for individual, t, m in self._get_individuals() if
-                self._get_entry_word(individual).lower() == word.lower()):
+                individual for individual, t, m in self.get_individuals() if
+                self.get_entry_word(individual).lower() == word.lower()):
             this_individual_set = set()
-            self._recursive_add_to_dict(
+            self.recursive_add_to_dict(
                 this_individual_set, word, individual, set(), 0, True, False, True)
             matching_set |= this_individual_set
         matching_list = sorted(matching_set, key=lambda entry: (entry.depth, entry.word))

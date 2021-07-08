@@ -1,6 +1,5 @@
 from ...parsing import SemanticAnalyzer, SemanticMatchingHelper, MatchImplication,\
     PhraseletTemplate, SemanticDependency
-from spacy.tokens import Token
 
 class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
 
@@ -14,81 +13,78 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
 
     # The part of speech tags that require a match in the search sentence when they occur within a
     # search_phrase
-    _matchable_pos = ('ADJ', 'ADP', 'ADV', 'NOUN', 'NUM', 'PROPN', 'VERB', 'AUX')
+    matchable_pos = ('ADJ', 'ADP', 'ADV', 'NOUN', 'NUM', 'PROPN', 'VERB', 'AUX')
 
     # The part of speech tags that can refer to the head of an adjectival predicate phrase
     # ("is" in "The dog is tired")
-    _adjectival_predicate_head_pos = ('VERB', 'AUX')
+    adjectival_predicate_head_pos = ('VERB', 'AUX')
 
     # The part of speech tags that can refer to the subject of a adjectival predicate
     # ("dog" in "The dog is tired")
-    _adjectival_predicate_subject_pos = ('NOUN', 'PROPN', 'PRON')
+    adjectival_predicate_subject_pos = ('NOUN', 'PROPN', 'PRON')
 
     # Dependency labels that can mark righthand siblings
     sibling_marker_deps = ('conj', 'appos')
 
     # Dependency label that marks the subject of an adjectival predicate
-    _adjectival_predicate_subject_dep = 'nsubj'
+    adjectival_predicate_subject_dep = 'nsubj'
 
     # Dependency label that marks the predicate of an adjectival predicate
-    _adjectival_predicate_predicate_dep = 'acomp'
+    adjectival_predicate_predicate_dep = 'acomp'
 
     # Part of speech that marks the predicate of an adjectival predicate
-    _adjectival_predicate_predicate_pos = 'ADJ'
+    adjectival_predicate_predicate_pos = 'ADJ'
 
     # Dependency label that marks a modifying adjective
-    _modifier_dep = 'amod'
+    modifier_dep = 'amod'
 
     # Original dependency label from nouns to prepositions
-    _spacy_noun_to_preposition_dep = 'prep'
+    spacy_noun_to_preposition_dep = 'prep'
 
     # Original dependency label from verbs to prepositions
-    _spacy_verb_to_preposition_dep = 'prep'
+    spacy_verb_to_preposition_dep = 'prep'
 
     # Added possible dependency label from nouns to prepositions
-    _holmes_noun_to_preposition_dep = 'prepposs'
+    holmes_noun_to_preposition_dep = 'prepposs'
 
     # Added possible dependency label from verbs to prepositions
-    _holmes_verb_to_preposition_dep = 'prepposs'
+    holmes_verb_to_preposition_dep = 'prepposs'
 
     # Dependency labels that occur in a conjunction phrase (righthand siblings and conjunctions)
-    _conjunction_deps = ('conj', 'appos', 'cc')
+    conjunction_deps = ('conj', 'appos', 'cc')
 
     # Syntactic tags that can mark interrogative pronouns
-    _matchable_blacklist_tags = ('WDT', 'WP', 'WRB')
+    matchable_blacklist_tags = ('WDT', 'WP', 'WRB')
 
     # Syntactic tags that exclude a token from being the child token within a semantic dependency
-    _semantic_dependency_excluded_tags = ('DT')
+    semantic_dependency_excluded_tags = ('DT')
 
     # Generic pronouns
-    _generic_pronoun_lemmas = ('something', 'somebody', 'someone')
+    generic_pronoun_lemmas = ('something', 'somebody', 'someone')
 
     # The word for 'or' in this language
-    _or_lemma = 'or'
+    or_lemma = 'or'
 
     # Where dependencies from a parent to a child are copied to the parent's righthand siblings,
     # it can make sense to mark the dependency as uncertain depending on the underlying spaCy
     # representations for the individual language
-    _mark_child_dependencies_copied_to_siblings_as_uncertain = True
+    mark_child_dependencies_copied_to_siblings_as_uncertain = True
 
     # Coreference chains are only processed up to this number of mentions away from the currently
     # matched document location
-    _maximum_mentions_in_coreference_chain = 3
+    maximum_mentions_in_coreference_chain = 3
 
     # Coreference chains are only processed up to this number of words away from the currently
     # matched document location
-    _maximum_word_distance_in_coreference_chain = 300
+    maximum_word_distance_in_coreference_chain = 300
 
-    # Presently depends purely on the language
-    _model_supports_coreference_resolution = True
-
-    def _add_subwords(self, token, subword_cache):
+    def add_subwords(self, token, subword_cache):
         """ Analyses the internal structure of the word to find atomic semantic elements. Is
             relevant for German and not currently implemented for English.
         """
         pass
 
-    def _set_negation(self, token):
+    def set_negation(self, token):
         """Marks the negation on the token. A token is negative if it or one of its ancestors
             has a negation word as a syntactic (not semantic!) child.
         """
@@ -108,10 +104,10 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
         if token.dep_ == 'ROOT':
             token._.holmes.is_negated = False
             return
-        self._set_negation(token.head)
+        self.set_negation(token.head)
         token._.holmes.is_negated = token.head._.holmes.is_negated
 
-    def _correct_auxiliaries_and_passives(self, token):
+    def correct_auxiliaries_and_passives(self, token):
         """Wherever auxiliaries and passives are found, derive the semantic information
             from the syntactic information supplied by spaCy.
         """
@@ -133,7 +129,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
             if token._.holmes.lemma == 'use' and token.tag_ == 'VBD' and len([
                     element for element in token._.holmes.children
                     if element.label == 'dobj']) == 0:
-                self._move_information_between_tokens(token, child)
+                self.move_information_between_tokens(token, child)
             elif token._.holmes.lemma == 'go':
                 # 'was going to' is marked as uncertain, 'is going to' is not marked as uncertain
                 uncertainty_flag = False
@@ -144,7 +140,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                     if other_dependency_token._.holmes.lemma == 'be' and \
                             other_dependency_token.tag_ == 'VBD':  # 'was going to'
                         uncertainty_flag = True
-                self._move_information_between_tokens(token, child)
+                self.move_information_between_tokens(token, child)
                 if uncertainty_flag:
                     for child_dependency in child._.holmes.children:
                         child_dependency.is_uncertain = True
@@ -177,7 +173,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                                     dependency.child_index, other_dependency.child_index,
                                     'nsubj', True))
 
-    def _handle_relative_constructions(self, token):
+    def handle_relative_constructions(self, token):
         if token.dep_ == 'relcl':
             for dependency in token._.holmes.children:
                 child = dependency.child_token(token.doc)
@@ -192,10 +188,9 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                     working_index = whose_pronoun_token.i
                     while working_index >= token.sent.start:
                         # find the antecedent (possessed entity)
-                        for dependency in (
-                                dependency for dependency in
+                        if len ([1 for working_dependency in
                                 whose_pronoun_token.doc[working_index]._.holmes.children
-                                if dependency.label == 'relcl'):
+                                if working_dependency.label == 'relcl']) > 0:
                             working_token = child.doc[working_index]
                             working_token = working_token.doc[
                                 working_token._.holmes.token_or_lefthand_sibling_index]
@@ -295,7 +290,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                                     child.i)
                 break
 
-    def _holmes_lemma(self, token):
+    def holmes_lemma(self, token):
         """Relabel the lemmas of phrasal verbs in sentences like 'he gets up' to incorporate
             the entire phrasal verb to facilitate matching.
         """
@@ -309,7 +304,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
             return participle_test_doc[2].lemma_.lower()
         return token.lemma_.lower()
 
-    def _language_specific_derived_holmes_lemma(self, token, lemma):
+    def language_specific_derived_holmes_lemma(self, token, lemma):
         """Generates and returns a derived lemma where appropriate, otherwise returns *None*.
         """
         if (token is None or token.pos_ == 'NOUN') and len(lemma) >= 10:
@@ -362,7 +357,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
             return lemmatization_doc[2].lemma_.lower()
         return None
 
-    def _perform_language_specific_tasks(self, token):
+    def perform_language_specific_tasks(self, token):
 
         # Because phrasal verbs are conflated into a single lemma, remove the dependency
         # from the verb to the preposition and mark the preposition is unmatchable
@@ -515,8 +510,8 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
         if token.tag_.startswith('NN') or token._.holmes.is_involved_in_coreference():
             for adjective_dep in (
                     dep for dep in token._.holmes.children if
-                    dep.label == self._modifier_dep and dep.child_token(token.doc).pos_ ==
-                    self._adjectival_predicate_predicate_pos):
+                    dep.label == self.modifier_dep and dep.child_token(token.doc).pos_ ==
+                    self.adjectival_predicate_predicate_pos):
                 adj_token = adjective_dep.child_token(token.doc)
                 for verb_dep in (
                         dep for dep in adj_token._.holmes.children if

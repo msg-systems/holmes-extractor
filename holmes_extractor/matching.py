@@ -3,7 +3,7 @@ from string import punctuation
 from threading import Lock
 from numpy import dot
 from numpy.linalg import norm
-from spacy.tokens.token import Token
+from spacy.tokens import Token
 from .errors import DuplicateDocumentError, NoSearchPhraseError, NoSearchedDocumentError
 from .parsing import Subword, Index
 
@@ -47,7 +47,7 @@ class WordMatch:
     def __init__(
             self, search_phrase_token, search_phrase_word, document_token,
             first_document_token, last_document_token, document_subword, document_word,
-            type, similarity_measure, is_negated, is_uncertain,
+            word_match_type, similarity_measure, is_negated, is_uncertain,
             structurally_matched_document_token, extracted_word, depth):
 
         self.search_phrase_token = search_phrase_token
@@ -57,7 +57,7 @@ class WordMatch:
         self.last_document_token = last_document_token
         self.document_subword = document_subword
         self.document_word = document_word
-        self.type = type
+        self.word_match_type = word_match_type
         self.similarity_measure = similarity_measure
         self.is_negated = is_negated
         self.is_uncertain = is_uncertain
@@ -80,18 +80,18 @@ class WordMatch:
         """ Creates a human-readable explanation of the word match from the perspective of the
             document word (e.g. to be used as a tooltip over it)."""
         search_phrase_display_word = self.search_phrase_token._.holmes.lemma.upper()
-        if self.type == 'direct':
+        if self.word_match_type == 'direct':
             return ''.join(("Matches ", search_phrase_display_word, " directly."))
-        elif self.type == 'derivation':
+        elif self.word_match_type == 'derivation':
             return ''.join(("Has a common stem with ", search_phrase_display_word, "."))
-        elif self.type == 'entity':
+        elif self.word_match_type == 'entity':
             return ''.join(("Matches the ", search_phrase_display_word, " placeholder."))
-        elif self.type == 'embedding':
+        elif self.word_match_type == 'embedding':
             printable_similarity = str(int(self.similarity_measure * 100))
             return ''.join((
                 "Has a word embedding that is ", printable_similarity,
                 "% similar to ", search_phrase_display_word, "."))
-        elif self.type == 'ontology':
+        elif self.word_match_type == 'ontology':
             working_depth = self.depth
             if working_depth > 4:
                 working_depth = 4
@@ -101,7 +101,7 @@ class WordMatch:
                 "Is ", ONTOLOGY_DEPTHS_TO_NAMES[working_depth], " of ",
                 search_phrase_display_word, " in the ontology."))
         else:
-            raise RuntimeError(' '.join(('Unrecognized type', self.type)))
+            raise RuntimeError(' '.join(('Unrecognized type', self.word_match_type)))
 
 class Match:
     """A match between a search phrase and a document.
@@ -196,7 +196,7 @@ class ThreadsafeContainer:
 
         self._lock = Lock()
 
-    def _rebuild_word_dictionaries(self):
+    def rebuild_word_dictionaries(self):
         self._words_to_corpus_frequencies = {}
         for indexed_document in self._indexed_documents.values():
             words_to_token_info_dict = indexed_document.words_to_token_info_dict
@@ -276,7 +276,7 @@ class ThreadsafeContainer:
             of the most frequent word in the corpus. """
         with self._lock:
             if self._word_dictionaries_need_rebuilding:
-                self._rebuild_word_dictionaries()
+                self.rebuild_word_dictionaries()
             return self._words_to_corpus_frequencies, self._maximum_corpus_frequency
 
 class StructuralMatcher:
@@ -312,7 +312,7 @@ class StructuralMatcher:
     def cosine_similarity(self, vector1, vector2):
         return dot (vector1,vector2) / (norm(vector1) * norm(vector2))
 
-    def _match_type(self, search_phrase_and_document_derived_lemmas_identical, *match_types):
+    def match_type(self, search_phrase_and_document_derived_lemmas_identical, *match_types):
         if 'ontology' in match_types and search_phrase_and_document_derived_lemmas_identical:
             # an ontology entry happens to have created a derivation word match before the
             # derivation match itself was processed, so mark the type as 'derivation'.
@@ -324,7 +324,7 @@ class StructuralMatcher:
         else:
             return 'direct'
 
-    def _match_recursively(
+    def match_recursively(
             self, *, search_phrase, search_phrase_token, document, document_token,
             document_subword_index, search_phrase_tokens_to_word_matches,
             search_phrase_and_document_visited_table, is_uncertain,
@@ -430,7 +430,7 @@ class StructuralMatcher:
                                 if working_document_child_index in \
                                         search_phrase_and_document_visited_table[
                                         dependency.child_index] or \
-                                        self._match_recursively(
+                                        self.match_recursively(
                                         search_phrase=search_phrase,
                                         search_phrase_token=dependency.child_token(
                                             search_phrase_token.doc),
@@ -462,7 +462,7 @@ class StructuralMatcher:
                                     document_parent_subword.dependency_label,
                                     inverse_polarity=False):
                             at_least_one_document_dependency_tried = True
-                            if self._match_recursively(
+                            if self.match_recursively(
                                     search_phrase=search_phrase,
                                     search_phrase_token=dependency.child_token(
                                         search_phrase_token.doc),
@@ -491,7 +491,7 @@ class StructuralMatcher:
                                     document_parent_subword.governing_dependency_label,
                                     inverse_polarity=True):
                             at_least_one_document_dependency_tried = True
-                            if self._match_recursively(
+                            if self.match_recursively(
                                     search_phrase=search_phrase,
                                     search_phrase_token=dependency.child_token(
                                         search_phrase_token.doc),
@@ -606,7 +606,8 @@ class StructuralMatcher:
 
         def loop_document_multiword_representations(multiword_span):
             yield multiword_span.text, 'direct', multiword_span.derived_lemma
-            hyphen_normalized_word = self.semantic_matching_helper.normalize_hyphens(multiword_span.text)
+            hyphen_normalized_word = \
+                self.semantic_matching_helper.normalize_hyphens(multiword_span.text)
             if hyphen_normalized_word != multiword_span.text:
                 yield hyphen_normalized_word, 'direct', multiword_span.derived_lemma
             if multiword_span.text != multiword_span.lemma:
@@ -670,7 +671,7 @@ class StructuralMatcher:
                             handle_match(
                                 search_phrase_token._.holmes.lemma,
                                 multiword_span_representation,
-                                self._match_type(
+                                self.match_type(
                                     search_phrase_derived_lemma == multispan_derived_lemma,
                                     search_phrase_match_type, document_match_type),
                                 0, first_document_token=multiword_span.tokens[0],
@@ -696,7 +697,7 @@ class StructuralMatcher:
                         document_word_representation.lower():
                     handle_match(
                         search_phrase_word_representation, document_word_representation,
-                        self._match_type(
+                        self.match_type(
                             search_phrase_derived_lemma == document_derived_lemma,
                             search_phrase_match_type, document_match_type)
                         , 0)
@@ -714,16 +715,16 @@ class StructuralMatcher:
                 compare_embeddings_on_non_root_words or search_phrase.root_token.i ==
                 search_phrase_token.i) and search_phrase_token.i in \
                 search_phrase.matchable_non_entity_tokens_to_vectors.keys() and \
-                self._embedding_matching_permitted(search_phrase_token):
+                self.embedding_matching_permitted(search_phrase_token):
             search_phrase_vector = search_phrase.matchable_non_entity_tokens_to_vectors[
                 search_phrase_token.i]
             if document_subword_index is not None:
-                if not self._embedding_matching_permitted(
+                if not self.embedding_matching_permitted(
                         document_token._.holmes.subwords[document_subword_index]):
                     return False
                 document_vector = document_token._.holmes.subwords[document_subword_index].vector
             else:
-                if not self._embedding_matching_permitted(document_token):
+                if not self.embedding_matching_permitted(document_token):
                     return False
                 document_vector = document_token._.holmes.vector
 
@@ -741,7 +742,7 @@ class StructuralMatcher:
                     return True
         return False
 
-    def _embedding_matching_permitted(self, obj):
+    def embedding_matching_permitted(self, obj):
         if isinstance(obj, Token):
             if len(obj._.holmes.lemma.split()) > 1:
                 working_lemma = obj.lemma_
@@ -753,9 +754,11 @@ class StructuralMatcher:
         elif isinstance(obj, Subword):
             return len(obj.lemma) >= \
                 self.semantic_matching_helper.minimum_embedding_match_word_length
+        else:
+            raise RuntimeError("'obj' must be either a Token or a Subword")
 
-    def _build_matches(
-            self, *, search_phrase, document, search_phrase_tokens_to_word_matches, document_label):
+    def build_matches(
+            self, *, search_phrase, search_phrase_tokens_to_word_matches, document_label):
         """Investigate possible matches when recursion is complete."""
 
         def mention_root_or_token_index(token):
@@ -826,7 +829,7 @@ class StructuralMatcher:
 
             for word_match in (
                     word_match for word_match in word_matches
-                    if word_match.type in ('direct', 'derivation', 'ontology')):
+                    if word_match.word_match_type in ('direct', 'derivation', 'ontology')):
                 working_entries = []
                 # First loop through getting ontology entries for all mentions in the cluster
                 for search_phrase_representation, _ in \
@@ -1013,7 +1016,7 @@ class StructuralMatcher:
                 matches_to_return.append(match)
         return matches_to_return
 
-    def _get_matches_starting_at_root_word_match(
+    def get_matches_starting_at_root_word_match(
             self, search_phrase, document, document_token, document_subword_index, document_label,
             compare_embeddings_on_non_root_words):
         """Begin recursive matching where a search phrase root token has matched a document
@@ -1028,7 +1031,7 @@ class StructuralMatcher:
         # corresponds to the search phrase token with its index and contains the Index objects
         # for the document words for which a match to that search phrase token has been attempted.
         search_phrase_and_document_visited_table = [set() for token in search_phrase.doc]
-        self._match_recursively(
+        self.match_recursively(
             search_phrase=search_phrase,
             search_phrase_token=search_phrase.root_token,
             document=document,
@@ -1039,9 +1042,8 @@ class StructuralMatcher:
             is_uncertain=document_token._.holmes.is_uncertain,
             structurally_matched_document_token=document_token,
             compare_embeddings_on_non_root_words=compare_embeddings_on_non_root_words)
-        working_matches = self._build_matches(
+        working_matches = self.build_matches(
             search_phrase=search_phrase,
-            document=document,
             search_phrase_tokens_to_word_matches=search_phrase_tokens_to_word_matches,
             document_label=document_label)
         matches_to_return.extend(working_matches)
@@ -1114,7 +1116,7 @@ class StructuralMatcher:
                 if not search_phrase.has_single_matchable_word and match_depending_on_single_words:
                     continue
                 if search_phrase.has_single_matchable_word and \
-                        match_depending_on_single_words == False:
+                        match_depending_on_single_words is False:
                     continue
                 if not match_specific_indexes and (search_phrase.reverse_only or \
                         search_phrase.treat_as_reverse_only_during_initial_relation_matching):
@@ -1144,7 +1146,7 @@ class StructuralMatcher:
                                     document_match_type = 'derivation'
                                 else:
                                     document_match_type = 'direct'
-                                match_type = self._match_type(
+                                match_type = self.match_type(
                                     False, search_phrase_match_type, document_match_type)
                                 minimal_match = Match(
                                     search_phrase.label, document_label, True,
@@ -1208,7 +1210,7 @@ class StructuralMatcher:
                     for token in doc:
                         if token.pos_ in self.semantic_matching_helper.noun_pos:
                             matches.extend(
-                                self._get_matches_starting_at_root_word_match(
+                                self.get_matches_starting_at_root_word_match(
                                     search_phrase, doc, token, None, document_label,
                                     compare_embeddings_on_non_root_words))
                     continue
@@ -1249,7 +1251,7 @@ class StructuralMatcher:
                         self.semantic_matching_helper.is_entity_search_phrase_token(
                             search_phrase.root_token, search_phrase.topic_match_phraselet) \
                         and not search_phrase.reverse_only and \
-                        self._embedding_matching_permitted(search_phrase.root_token):
+                        self.embedding_matching_permitted(search_phrase.root_token):
                     if not search_phrase.topic_match_phraselet and \
                             len(search_phrase.root_token._.holmes.lemma.split()) > 1:
                         root_token_lemma_to_use = search_phrase.root_token.lemma_
@@ -1277,14 +1279,14 @@ class StructuralMatcher:
                             example_index = indexes_to_match[0]
                             example_document_token = doc[example_index.token_index]
                             if example_index.is_subword():
-                                if not self._embedding_matching_permitted(
+                                if not self.embedding_matching_permitted(
                                         example_document_token._.holmes.subwords[
                                         example_index.subword_index]):
                                     continue
                                 document_vector = example_document_token._.holmes.subwords[
                                     example_index.subword_index].vector
                             else:
-                                if not self._embedding_matching_permitted(example_document_token):
+                                if not self.embedding_matching_permitted(example_document_token):
                                     continue
                                 document_vector = example_document_token._.holmes.vector
                             if search_phrase_vector is not None and document_vector is not None:
@@ -1297,7 +1299,7 @@ class StructuralMatcher:
                         root_lexeme_to_indexes_to_match_dict[root_token_lemma_to_use] = \
                             working_indexes_to_match_for_cache_set
                 for index_to_match in sorted(matched_indexes_set):
-                    matches.extend(self._get_matches_starting_at_root_word_match(
+                    matches.extend(self.get_matches_starting_at_root_word_match(
                         search_phrase, doc, doc[index_to_match.token_index],
                         index_to_match.subword_index, document_label,
                         compare_embeddings_on_non_root_words))

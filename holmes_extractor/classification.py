@@ -3,10 +3,8 @@ import statistics
 import jsonpickle
 from scipy.sparse import dok_matrix
 from sklearn.neural_network import MLPClassifier
-from .parsing import SemanticMatchingHelperFactory
 from .errors import WrongModelDeserializationError, FewerThanTwoClassificationsError, \
         DuplicateDocumentError, NoPhraseletsAfterFilteringError, \
-        EmbeddingThresholdGreaterThanRelationThresholdError, \
         IncompatibleAnalyzeDerivationalMorphologyDeserializationError
 
 class SupervisedTopicTrainingUtils:
@@ -15,7 +13,7 @@ class SupervisedTopicTrainingUtils:
         self.overlap_memory_size = overlap_memory_size
         self.oneshot = oneshot
 
-    def get_labels_to_classification_frequencies_dict(
+    def getlabels_to_classification_frequencies_dict(
             self, *, matches, labels_to_classifications_dict):
         """ Builds a dictionary from search phrase (phraselet) labels to classification
             frequencies. Depending on the training phase, which is signalled by the parameters, the
@@ -134,7 +132,7 @@ class SupervisedTopicTrainingUtils:
         indexed_documents = {doc_label:indexed_document}
         found = False
         for label, occurrences in \
-                self.get_labels_to_classification_frequencies_dict(
+                self.getlabels_to_classification_frequencies_dict(
                     matches=structural_matcher.match(
                         indexed_documents=indexed_documents,
                         search_phrases=phraselet_labels_to_search_phrases.values(),
@@ -180,8 +178,8 @@ class SupervisedTopicTrainingBasis:
         self.semantic_analyzer = linguistic_object_factory.semantic_analyzer
         self.semantic_matching_helper = linguistic_object_factory.semantic_matching_helper
         self.classification_ontology = classification_ontology
-        self._utils = SupervisedTopicTrainingUtils(overlap_memory_size, oneshot)
-        self._match_all_words = match_all_words
+        self.utils = SupervisedTopicTrainingUtils(overlap_memory_size, oneshot)
+        self.match_all_words = match_all_words
         self.verbose = verbose
 
         self.training_documents = {}
@@ -230,7 +228,7 @@ class SupervisedTopicTrainingBasis:
             phraselet_labels_to_phraselet_infos=
             self.phraselet_labels_to_phraselet_infos,
             replace_with_hypernym_ancestors=True,
-            match_all_words=self._match_all_words,
+            match_all_words=self.match_all_words,
             ignore_relation_phraselets=False,
             include_reverse_only=False,
             stop_lemmas=self.semantic_matching_helper.\
@@ -270,8 +268,8 @@ class SupervisedTopicTrainingBasis:
             print('Matching documents against all phraselets')
         search_phrases = self.linguistic_object_factory.create_search_phrases_from_phraselet_infos(
             self.phraselet_labels_to_phraselet_infos.values()).values()
-        self.labels_to_classification_frequencies = self._utils.\
-            get_labels_to_classification_frequencies_dict(
+        self.labels_to_classification_frequencies = self.utils.\
+            getlabels_to_classification_frequencies_dict(
                 matches=self.structural_matcher.match(
                     indexed_documents=self.training_documents,
                     search_phrases=search_phrases,
@@ -300,8 +298,7 @@ class SupervisedTopicTrainingBasis:
     def train(
             self, *, minimum_occurrences=4, cv_threshold=1.0, mlp_activation='relu',
             mlp_solver='adam', mlp_learning_rate='constant', mlp_learning_rate_init=0.001,
-            mlp_max_iter=200, mlp_shuffle=True, mlp_random_state=42, overlap_memory_size=10,
-            hidden_layer_sizes=None):
+            mlp_max_iter=200, mlp_shuffle=True, mlp_random_state=42, hidden_layer_sizes=None):
         """ Trains a model based on the prepared state.
 
             Parameters:
@@ -314,8 +311,6 @@ class SupervisedTopicTrainingBasis:
                 accepted into the final model.
             mlp_* -- see https://scikit-learn.org/stable/modules/generated/
             sklearn.neural_network.MLPClassifier.html.
-            overlap_memory_size -- No longer has any effect - the value defined in __init__()
-                is used instead. Retained for backwards compatibility.
             hidden_layer_sizes -- a tuple containing the number of neurons in each hidden layer, or
                 'None' if the topology should be determined automatically.
         """
@@ -324,7 +319,6 @@ class SupervisedTopicTrainingBasis:
             raise RuntimeError("train() may only be called after prepare() has been called")
         return SupervisedTopicModelTrainer(
             training_basis=self,
-            semantic_analyzer=self.semantic_analyzer,
             linguistic_object_factory=self.linguistic_object_factory,
             structural_matcher=self.structural_matcher,
             labels_to_classification_frequencies=self.labels_to_classification_frequencies,
@@ -339,30 +333,29 @@ class SupervisedTopicTrainingBasis:
             mlp_shuffle=mlp_shuffle,
             mlp_random_state=mlp_random_state,
             hidden_layer_sizes=hidden_layer_sizes,
-            utils=self._utils
+            utils=self.utils
         )
 
 class SupervisedTopicModelTrainer:
     """ Worker object used to train and generate models. This class is *NOT* threadsafe."""
 
     def __init__(
-            self, *, training_basis, semantic_analyzer,
-            linguistic_object_factory, structural_matcher, labels_to_classification_frequencies,
-            phraselet_infos, minimum_occurrences, cv_threshold, mlp_activation, mlp_solver,
-            mlp_learning_rate, mlp_learning_rate_init, mlp_max_iter, mlp_shuffle, mlp_random_state,
-            hidden_layer_sizes, utils):
+            self, *, training_basis, linguistic_object_factory, structural_matcher,
+            labels_to_classification_frequencies, phraselet_infos, minimum_occurrences,
+            cv_threshold, mlp_activation, mlp_solver, mlp_learning_rate, mlp_learning_rate_init,
+            mlp_max_iter, mlp_shuffle, mlp_random_state, hidden_layer_sizes, utils):
 
-        self._utils = utils
-        self._semantic_analyzer = linguistic_object_factory.semantic_analyzer
-        self._linguistic_object_factory = linguistic_object_factory
-        self._structural_matcher = structural_matcher
-        self._training_basis = training_basis
-        self._minimum_occurrences = minimum_occurrences
-        self._cv_threshold = cv_threshold
-        self._labels_to_classification_frequencies, self._phraselet_infos = self._filter(
+        self.utils = utils
+        self.semantic_analyzer = linguistic_object_factory.semantic_analyzer
+        self.linguistic_object_factory = linguistic_object_factory
+        self.structural_matcher = structural_matcher
+        self.training_basis = training_basis
+        self.minimum_occurrences = minimum_occurrences
+        self.cv_threshold = cv_threshold
+        self.labels_to_classification_frequencies, self.phraselet_infos = self.filter(
             labels_to_classification_frequencies, phraselet_infos)
 
-        if len(self._phraselet_infos) == 0:
+        if len(self.phraselet_infos) == 0:
             raise NoPhraseletsAfterFilteringError(
                 ''.join((
                     'minimum_occurrences: ', str(minimum_occurrences), '; cv_threshold: ',
@@ -370,38 +363,38 @@ class SupervisedTopicModelTrainer:
                 )
 
         phraselet_labels_to_search_phrases = \
-            self._linguistic_object_factory.create_search_phrases_from_phraselet_infos(
-                self._phraselet_infos)
-        self._sorted_label_dict = {}
-        for index, label in enumerate(sorted(self._labels_to_classification_frequencies.keys())):
-            self._sorted_label_dict[label] = index
-        self._input_matrix = dok_matrix((
-            len(self._training_basis.training_documents), len(self._sorted_label_dict)))
-        self._output_matrix = dok_matrix((
-            len(self._training_basis.training_documents),
-            len(self._training_basis.classifications)))
+            self.linguistic_object_factory.create_search_phrases_from_phraselet_infos(
+                self.phraselet_infos)
+        self.sorted_label_dict = {}
+        for index, label in enumerate(sorted(self.labels_to_classification_frequencies.keys())):
+            self.sorted_label_dict[label] = index
+        self.input_matrix = dok_matrix((
+            len(self.training_basis.training_documents), len(self.sorted_label_dict)))
+        self.output_matrix = dok_matrix((
+            len(self.training_basis.training_documents),
+            len(self.training_basis.classifications)))
 
-        if self._training_basis.verbose:
+        if self.training_basis.verbose:
             print('Matching documents against filtered phraselets')
         for index, document_label in enumerate(
-                sorted(self._training_basis.training_documents.keys())):
-            self._utils.record_matches(
-                linguistic_object_factory=self._linguistic_object_factory,
-                structural_matcher=self._structural_matcher,
+                sorted(self.training_basis.training_documents.keys())):
+            self.utils.record_matches(
+                linguistic_object_factory=self.linguistic_object_factory,
+                structural_matcher=self.structural_matcher,
                 phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
-                sorted_label_dict=self._sorted_label_dict,
+                sorted_label_dict=self.sorted_label_dict,
                 doc_label=document_label,
-                doc=self._training_basis.training_documents[document_label].doc,
-                matrix=self._input_matrix,
+                doc=self.training_basis.training_documents[document_label].doc,
+                matrix=self.input_matrix,
                 row_index=index,
-                verbose=self._training_basis.verbose)
-            self._record_classifications_for_training(document_label, index)
+                verbose=self.training_basis.verbose)
+            self.record_classifications_for_training(document_label, index)
         self._hidden_layer_sizes = hidden_layer_sizes
         if self._hidden_layer_sizes is None:
-            start = len(self._sorted_label_dict)
-            step = (len(self._training_basis.classifications) - len(self._sorted_label_dict)) / 3
+            start = len(self.sorted_label_dict)
+            step = (len(self.training_basis.classifications) - len(self.sorted_label_dict)) / 3
             self._hidden_layer_sizes = (start, int(start+step), int(start+(2*step)))
-        if self._training_basis.verbose:
+        if self.training_basis.verbose:
             print('Hidden layer sizes:', self._hidden_layer_sizes)
         self._mlp = MLPClassifier(
             activation=mlp_activation,
@@ -411,64 +404,64 @@ class SupervisedTopicModelTrainer:
             learning_rate_init=mlp_learning_rate_init,
             max_iter=mlp_max_iter,
             shuffle=mlp_shuffle,
-            verbose=self._training_basis.verbose,
+            verbose=self.training_basis.verbose,
             random_state=mlp_random_state)
-        self._mlp.fit(self._input_matrix, self._output_matrix)
-        if self._training_basis.verbose and self._mlp.n_iter_ < mlp_max_iter:
+        self._mlp.fit(self.input_matrix, self.output_matrix)
+        if self.training_basis.verbose and self._mlp.n_iter_ < mlp_max_iter:
             print('MLP neural network converged after', self._mlp.n_iter_, 'iterations.')
 
-    def _filter(self, labels_to_classification_frequencies, phraselet_infos):
+    def filter(self, labels_to_classification_frequencies, phraselet_infos):
         """ Filters the phraselets in memory based on minimum_occurrences and cv_threshold. """
 
         accepted = 0
-        under_minimum_occurrences = 0
+        underminimum_occurrences = 0
         under_minimum_cv = 0
-        new_labels_to_classification_frequencies = {}
+        newlabels_to_classification_frequencies = {}
         for label, classification_frequencies in labels_to_classification_frequencies.items():
             at_least_minimum = False
             working_classification_frequencies = classification_frequencies.copy()
             for classification in working_classification_frequencies:
-                if working_classification_frequencies[classification] >= self._minimum_occurrences:
+                if working_classification_frequencies[classification] >= self.minimum_occurrences:
                     at_least_minimum = True
             if not at_least_minimum:
-                under_minimum_occurrences += 1
+                underminimum_occurrences += 1
                 continue
             frequency_list = list(working_classification_frequencies.values())
             # We only want to take explicit classification labels into account, i.e. ignore the
             # classification ontology.
             number_of_classification_labels = \
                 len(set(
-                    self._training_basis.training_documents_labels_to_classifications_dict.values())
+                    self.training_basis.training_documents_labels_to_classifications_dict.values())
                     )
             frequency_list.extend([0] * number_of_classification_labels)
             frequency_list = frequency_list[:number_of_classification_labels]
             if statistics.pstdev(frequency_list) / statistics.mean(frequency_list) >= \
-                    self._cv_threshold:
+                    self.cv_threshold:
                 accepted += 1
-                new_labels_to_classification_frequencies[label] = classification_frequencies
+                newlabels_to_classification_frequencies[label] = classification_frequencies
             else:
                 under_minimum_cv += 1
-        if self._training_basis.verbose:
+        if self.training_basis.verbose:
             print(
                 'Filtered: accepted', accepted, '; removed minimum occurrences',
-                under_minimum_occurrences, '; removed cv threshold',
+                underminimum_occurrences, '; removed cv threshold',
                 under_minimum_cv)
-        new_phraselet_infos = [
+        newphraselet_infos = [
             phraselet_info for phraselet_info in phraselet_infos if
-            phraselet_info.label in new_labels_to_classification_frequencies.keys()]
-        return new_labels_to_classification_frequencies, new_phraselet_infos
+            phraselet_info.label in newlabels_to_classification_frequencies.keys()]
+        return newlabels_to_classification_frequencies, newphraselet_infos
 
-    def _record_classifications_for_training(self, document_label, index):
-        classification = self._training_basis.training_documents_labels_to_classifications_dict[
+    def record_classifications_for_training(self, document_label, index):
+        classification = self.training_basis.training_documents_labels_to_classifications_dict[
             document_label]
-        classification_index = self._training_basis.classifications.index(classification)
-        self._output_matrix[index, classification_index] = 1
-        if classification in self._training_basis.classification_implication_dict:
+        classification_index = self.training_basis.classifications.index(classification)
+        self.output_matrix[index, classification_index] = 1
+        if classification in self.training_basis.classification_implication_dict:
             for implied_classification in \
-                    self._training_basis.classification_implication_dict[classification]:
-                implied_classification_index = self._training_basis.classifications.index(
+                    self.training_basis.classification_implication_dict[classification]:
+                implied_classification_index = self.training_basis.classifications.index(
                     implied_classification)
-                self._output_matrix[index, implied_classification_index] = 1
+                self.output_matrix[index, implied_classification_index] = 1
 
     def classifier(self):
         """ Returns a supervised topic classifier which contains no explicit references to the
@@ -477,19 +470,19 @@ class SupervisedTopicModelTrainer:
         self._mlp.verbose = False # we no longer require output once we are using the model
                                 # to classify new documents
         model = SupervisedTopicClassifierModel(
-            semantic_analyzer_model=self._semantic_analyzer.model,
-            structural_matcher_ontology=self._structural_matcher.ontology,
-            phraselet_infos=self._phraselet_infos,
+            semantic_analyzer_model=self.semantic_analyzer.model,
+            structural_matcher_ontology=self.structural_matcher.ontology,
+            phraselet_infos=self.phraselet_infos,
             mlp=self._mlp,
-            sorted_label_dict=self._sorted_label_dict,
-            classifications=self._training_basis.classifications,
-            overlap_memory_size=self._utils.overlap_memory_size,
-            oneshot=self._utils.oneshot,
+            sorted_label_dict=self.sorted_label_dict,
+            classifications=self.training_basis.classifications,
+            overlap_memory_size=self.utils.overlap_memory_size,
+            oneshot=self.utils.oneshot,
             analyze_derivational_morphology=
-            self._structural_matcher.analyze_derivational_morphology)
+            self.structural_matcher.analyze_derivational_morphology)
         return SupervisedTopicClassifier(
-            self._semantic_analyzer, self._linguistic_object_factory,
-            self._structural_matcher, model, self._training_basis.verbose)
+            self.semantic_analyzer, self.linguistic_object_factory,
+            self.structural_matcher, model, self.training_basis.verbose)
 
 class SupervisedTopicClassifierModel:
     """ A serializable classifier model.

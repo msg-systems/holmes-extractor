@@ -1,4 +1,3 @@
-import pkg_resources
 from multiprocessing import Process, Queue, Manager as Multiprocessing_manager, cpu_count
 from threading import Lock
 from string import punctuation
@@ -6,16 +5,17 @@ import traceback
 import sys
 import os
 import jsonpickle
+import pkg_resources
 import spacy
+import coreferee
 from spacy import Language
 from spacy.tokens import Doc, Token
 from thinc.api import Config
 from .errors import *
 from .matching import StructuralMatcher, ThreadsafeContainer
 from .parsing import SemanticAnalyzerFactory, SemanticAnalyzer, SemanticMatchingHelperFactory,\
-    SemanticMatchingHelper, LinguisticObjectFactory
-from .classification import SupervisedTopicTrainingBasis, SupervisedTopicTrainingUtils,\
-    SupervisedTopicClassifier, SupervisedTopicClassifierModel
+    LinguisticObjectFactory
+from .classification import SupervisedTopicTrainingBasis, SupervisedTopicClassifier
 from .topic_matching import TopicMatcher
 from .consoles import HolmesConsoles
 
@@ -55,7 +55,7 @@ class Manager:
 
     model -- the name of the spaCy model, e.g. *en_core_web_trf*
     overall_similarity_threshold -- the overall similarity threshold for embedding-based
-        matching. Defaults to *1.0*, which deactivates embedding-based matching.
+        matching. Dxefaults to *1.0*, which deactivates embedding-based matching.
     embedding_based_matching_on_root_words -- determines whether or not embedding-based
         matching should be attempted on search-phrase root tokens, which has a considerable
         performance hit. Defaults to *False*.
@@ -107,8 +107,7 @@ class Manager:
         self.linguistic_object_factory = LinguisticObjectFactory(
             self.semantic_analyzer, self.semantic_matching_helper, ontology,
             overall_similarity_threshold, embedding_based_matching_on_root_words,
-            analyze_derivational_morphology, perform_coreference_resolution,
-            use_reverse_dependency_matching)
+            analyze_derivational_morphology, perform_coreference_resolution)
         self.semantic_matching_helper.ontology_reverse_derivational_dict = \
             self.linguistic_object_factory.get_ontology_reverse_derivational_dict()
         self.structural_matcher = StructuralMatcher(
@@ -257,7 +256,7 @@ class Manager:
                     'document_word': word_match.document_word,
                     'document_phrase': self.semantic_matching_helper.get_dependent_phrase(
                         word_match.document_token, word_match.document_subword),
-                    'match_type': word_match.type,
+                    'match_type': word_match.word_match_type,
                     'similarity_measure': str(word_match.similarity_measure),
                     'involves_coreference': word_match.involves_coreference,
                     'extracted_word': word_match.extracted_word,

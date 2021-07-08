@@ -1,6 +1,6 @@
+from spacy.tokens import Token
 from ...parsing import SemanticAnalyzer, SemanticMatchingHelper, MatchImplication,\
     PhraseletTemplate, SemanticDependency, Subword
-from spacy.tokens import Token
 
 class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
 
@@ -8,105 +8,101 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
 
     noun_pos = ('NOUN', 'PROPN', 'ADJ')
 
-    _matchable_pos = ('ADJ', 'ADP', 'ADV', 'NOUN', 'NUM', 'PROPN', 'VERB', 'AUX')
+    matchable_pos = ('ADJ', 'ADP', 'ADV', 'NOUN', 'NUM', 'PROPN', 'VERB', 'AUX')
 
-    _adjectival_predicate_head_pos = ('AUX')
+    adjectival_predicate_head_pos = ('AUX')
 
-    _adjectival_predicate_subject_pos = ('NOUN', 'PROPN', 'PRON')
+    adjectival_predicate_subject_pos = ('NOUN', 'PROPN', 'PRON')
 
     sibling_marker_deps = ('cj', 'app')
 
-    _adjectival_predicate_subject_dep = 'sb'
+    adjectival_predicate_subject_dep = 'sb'
 
-    _adjectival_predicate_predicate_dep = 'pd'
+    adjectival_predicate_predicate_dep = 'pd'
 
-    _adjectival_predicate_predicate_pos = 'ADV'
+    adjectival_predicate_predicate_pos = 'ADV'
 
-    _modifier_dep = 'nk'
+    modifier_dep = 'nk'
 
-    _spacy_noun_to_preposition_dep = 'mnr'
+    spacy_noun_to_preposition_dep = 'mnr'
 
-    _spacy_verb_to_preposition_dep = 'mo'
+    spacy_verb_to_preposition_dep = 'mo'
 
-    _holmes_noun_to_preposition_dep = 'mnrposs'
+    holmes_noun_to_preposition_dep = 'mnrposs'
 
-    _holmes_verb_to_preposition_dep = 'moposs'
+    holmes_verb_to_preposition_dep = 'moposs'
 
-    _conjunction_deps = ('cj', 'cd', 'punct', 'app')
+    conjunction_deps = ('cj', 'cd', 'punct', 'app')
 
-    _matchable_blacklist_tags = ('PWAT', 'PWAV', 'PWS')
+    matchable_blacklist_tags = ('PWAT', 'PWAV', 'PWS')
 
-    _semantic_dependency_excluded_tags = ('ART')
+    semantic_dependency_excluded_tags = ('ART')
 
-    _generic_pronoun_lemmas = ('jemand', 'etwas')
+    generic_pronoun_lemmas = ('jemand', 'etwas')
 
-    _or_lemma = 'oder'
+    or_lemma = 'oder'
 
-    _mark_child_dependencies_copied_to_siblings_as_uncertain = False
+    mark_child_dependencies_copied_to_siblings_as_uncertain = False
 
-    # Never used at the time of writing
-    _maximum_mentions_in_coreference_chain = 3
+    maximum_mentions_in_coreference_chain = 3
 
-    # Never used at the time of writing
-    _maximum_word_distance_in_coreference_chain = 300
-
-    _model_supports_coreference_resolution = False
+    maximum_word_distance_in_coreference_chain = 300
 
     # Only words at least this long are examined for possible subwords
-    _minimum_length_for_subword_search = 10
+    minimum_length_for_subword_search = 10
 
     # Part-of-speech tags examined for subwords
     # Verbs are not examined because the separable parts that would typically be found as
     # subwords are too short to be found.
-    _tag_for_subword_search = ('NE', 'NNE', 'NN', 'TRUNC', 'ADJA', 'ADJD', 'XY')
+    tag_for_subword_search = ('NE', 'NNE', 'NN', 'TRUNC', 'ADJA', 'ADJD', 'XY')
 
     # Absolute minimum length of a subword.
-    _minimum_subword_length = 3
+    minimum_subword_length = 3
 
     # Subwords at least this long are more likely to be genuine (not nonsensical) vocab entries.
-    _minimum_long_subword_length = 6
+    minimum_long_subword_length = 6
 
     # Subwords longer than this are likely not be atomic and solutions that split them up are
     # preferred
-    _maximum_realistic_subword_length = 12
+    maximum_realistic_subword_length = 12
 
     # Scoring bonus where a Fugen-S follows a whitelisted ending
     # (one where a Fugen-S is normally expected)
-    _fugen_s_after_whitelisted_ending_bonus = 5
+    fugen_s_after_whitelisted_ending_bonus = 5
 
     # Scoring bonus where a Fugen-S follows an ending where it is neither expected nor disallowed
-    _fugen_s_after_non_whitelisted_non_blacklisted_ending_bonus = 3
+    fugen_s_after_non_whitelisted_non_blacklisted_ending_bonus = 3
 
     # Both words around a Fugen-S have to be at least this long for the scoring bonus to be applied
-    _fugen_s_whitelist_bonus_surrounding_word_minimum_length = 5
+    fugen_s_whitelist_bonus_surrounding_word_minimum_length = 5
 
     # Endings after which a Fugen-S is normally expected
-    _fugen_s_ending_whitelist = (
+    fugen_s_ending_whitelist = (
         'tum', 'ling', 'ion', 'tät', 'heit', 'keit', 'schaft', 'sicht', 'ung')
 
     # Endings after which a Fugen_S is normally disallowed
-    _fugen_s_ending_blacklist = (
+    fugen_s_ending_blacklist = (
         'a', 'ä', 'e', 'i', 'o', 'ö', 'u', 'ü', 'nt', 'sch', 's', 'ß', 'st', 'tz', 'z')
 
     # Whitelisted subwords
-    _subword_whitelist = (
+    subword_whitelist = (
         'haltig')
 
     # Blacklisted subwords
-    _subword_blacklist = (
+    subword_blacklist = (
         'igkeit', 'igkeiten', 'digkeit', 'digkeiten', 'schaft', 'schaften',
         'keit', 'keiten', 'lichkeit', 'lichkeiten', 'tigten', 'tigung', 'tigungen', 'barkeit',
         'barkeiten', 'heit', 'heiten', 'ung', 'ungen', 'aften', 'erung', 'erungen', 'mungen', 'tig')
 
     # Bigraphs of two consonants that can occur at the start of a subword.
-    _subword_start_consonant_bigraph_whitelist = (
+    subword_start_consonant_bigraph_whitelist = (
         'bl', 'br', 'ch', 'cl', 'cr', 'dr', 'fl', 'fr', 'gl', 'gm', 'gn', 'gr', 'kl', 'kn', 'kr',
         'kw', 'pf', 'ph', 'pl', 'pn', 'pr', 'ps', 'rh', 'sc', 'sh', 'sk', 'sl', 'sm', 'sp', 'st',
         'sw', 'sz', 'th', 'tr', 'vl', 'vr', 'wr', 'zw')
 
     # Bigraphs of two consonants that can occur at the end of a subword.
     # Bigraphs where the second consonant is 's' are always allowed.
-    _subword_end_consonant_bigraph_whitelist = (
+    subword_end_consonant_bigraph_whitelist = (
         'bb', 'bs', 'bt', 'ch', 'ck', 'ct', 'dd', 'ds', 'dt', 'ff', 'fs', 'ft', 'gd', 'gg', 'gn',
         'gs', 'gt', 'hb', 'hd', 'hf', 'hg', 'hk', 'hl', 'hm', 'hn', 'hp', 'hr', 'hs', 'ht', 'ks',
         'kt', 'lb', 'lc', 'ld', 'lf', 'lg', 'lk', 'll', 'lm', 'ln', 'lp', 'ls', 'lt', 'lx', 'lz',
@@ -116,18 +112,18 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
         'ts', 'tt', 'tz', 'xt', 'zt', 'ßt')
 
     # Letters that can represent vowel sounds
-    _vowels = ('a', 'e', 'i', 'o', 'u', 'ä', 'ö', 'ü', 'y')
+    vowels = ('a', 'e', 'i', 'o', 'u', 'ä', 'ö', 'ü', 'y')
 
     # Subwords used in analysis but not recorded on the Holmes dictionary instances. At present
     # the code only supports these in word-final position; word-initial position would require
     # a code change.
-    _non_recorded_subword_list = ('lein', 'chen')
+    non_recorded_subword_list = ('lein', 'chen')
 
     # Subword solutions that scored higher than this are regarded as probably wrong and so are
     # not recorded.
-    _maximum_acceptable_subword_score = 8
+    maximum_acceptable_subword_score = 8
 
-    def _is_oov(self, word):
+    def is_oov(self, word):
         working_word = word.lower()
         if not self.vectors_nlp.vocab[working_word].is_oov:
             return False
@@ -136,11 +132,11 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
         working_word = ''.join((working_word[0].upper(), working_word[1:]))
         return self.vectors_nlp.vocab[working_word].is_oov
 
-    def _is_separable_prefix(self, token:Token):
+    def is_separable_prefix(self, token:Token):
         return token.dep_ == 'svp' or (token.dep_ == 'mo' and token.pos_ == 'ADP' and
             len(list(token.children)) == 0)
 
-    def _add_subwords(self, token, subword_cache):
+    def add_subwords(self, token, subword_cache):
 
         class PossibleSubword:
             """ A subword within a possible solution.
@@ -160,22 +156,22 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
 
         def get_subword(lemma, initial_index, length):
             # find the shortest subword longer than length, unless length is less than
-            # _minimum_long_subword_length, in which case only that length is tried. This strategy
+            # minimum_long_subword_length, in which case only that length is tried. This strategy
             # is necessary because of the large number of nonsensical short vocabulary entries.
             for end_index in range(initial_index + length, len(lemma) + 1):
                 possible_word = lemma[initial_index: end_index]
-                if (not self._is_oov(possible_word) or possible_word in self._subword_whitelist) \
+                if (not self.is_oov(possible_word) or possible_word in self.subword_whitelist) \
                         and len(possible_word) >= 2 and \
                         (
-                            possible_word[0] in self._vowels or possible_word[1] in self._vowels
+                            possible_word[0] in self.vowels or possible_word[1] in self.vowels
                             or
-                            possible_word[:2] in self._subword_start_consonant_bigraph_whitelist) \
+                            possible_word[:2] in self.subword_start_consonant_bigraph_whitelist) \
                         and (
-                            possible_word[-1] in self._vowels or possible_word[-2] in self._vowels
+                            possible_word[-1] in self.vowels or possible_word[-2] in self.vowels
                             or
-                            possible_word[-2:] in self._subword_end_consonant_bigraph_whitelist):
+                            possible_word[-2:] in self.subword_end_consonant_bigraph_whitelist):
                     return possible_word
-                elif length < self._minimum_long_subword_length:
+                elif length < self.minimum_long_subword_length:
                     break
             return None
 
@@ -183,18 +179,18 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
             # Lower scores are better.
             number = 0
             for subword in possible_solution:
-                # subwords shorter than _minimum_long_subword_length: penalty of 2
-                if len(subword.text) < self._minimum_long_subword_length:
-                    number += 2 * (self._minimum_long_subword_length - len(subword.text))
+                # subwords shorter than minimum_long_subword_length: penalty of 2
+                if len(subword.text) < self.minimum_long_subword_length:
+                    number += 2 * (self.minimum_long_subword_length - len(subword.text))
                 # subwords longer than 12: penalty of 2
-                elif len(subword.text) > self._maximum_realistic_subword_length:
-                    number += 2 * (len(subword.text) - self._maximum_realistic_subword_length)
+                elif len(subword.text) > self.maximum_realistic_subword_length:
+                    number += 2 * (len(subword.text) - self.maximum_realistic_subword_length)
                 # fugen-s after a whitelist ending
                 if subword.fugen_s_status == 2:
-                    number -= self._fugen_s_after_whitelisted_ending_bonus
+                    number -= self.fugen_s_after_whitelisted_ending_bonus
                 # fugen-s after an ending that is neither whitelist nor blacklist
                 elif subword.fugen_s_status == 1:
-                    number -= self._fugen_s_after_non_whitelisted_non_blacklisted_ending_bonus
+                    number -= self.fugen_s_after_non_whitelisted_non_blacklisted_ending_bonus
             return number
 
         def scan_recursively_for_subwords(lemma, initial_index=0):
@@ -202,10 +198,10 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
             if initial_index == 0: # only need to check on the initial (outermost) call
                 for char in lemma:
                     if not char.isalpha() and char != '-':
-                        return
+                        return None
             if initial_index + 1 < len(lemma) and lemma[initial_index] == '-':
                 return scan_recursively_for_subwords(lemma, initial_index + 1)
-            lengths = list(range(self._minimum_subword_length, 1 + len(lemma) - initial_index))
+            lengths = list(range(self.minimum_subword_length, 1 + len(lemma) - initial_index))
             possible_solutions = []
             working_subword = None
             for length in lengths:
@@ -213,7 +209,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                     # we are catching up with the length already returned by get_subword
                     continue
                 working_subword = get_subword(lemma, initial_index, length)
-                if working_subword is None or working_subword in self._subword_blacklist or \
+                if working_subword is None or working_subword in self.subword_blacklist or \
                         '-' in working_subword:
                     continue
                 possible_solution = [PossibleSubword(working_subword, initial_index, 0)]
@@ -245,17 +241,17 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                 possible_solution = [PossibleSubword(working_subword, initial_index, 0)]
                 following_subwords = scan_recursively_for_subwords(lemma, following_initial_index)
                 if following_subwords is not None:
-                    for ending in self._fugen_s_ending_whitelist:
+                    for ending in self.fugen_s_ending_whitelist:
                         if working_subword.endswith(ending):
                             following_subwords[0].fugen_s_status = 2
                     if following_subwords[0].fugen_s_status == 0 and len(working_subword) >= \
-                            self._fugen_s_whitelist_bonus_surrounding_word_minimum_length and \
+                            self.fugen_s_whitelist_bonus_surrounding_word_minimum_length and \
                             len(following_subwords[0].text) >= \
-                            self._fugen_s_whitelist_bonus_surrounding_word_minimum_length:
+                            self.fugen_s_whitelist_bonus_surrounding_word_minimum_length:
                         # if the first does not have a whitelist ending and one of the words is
                         # short, do not give the score bonus
                         following_subwords[0].fugen_s_status = 1
-                        for ending in self._fugen_s_ending_blacklist:
+                        for ending in self.fugen_s_ending_blacklist:
                             # blacklist ending: take the bonus away again
                             if working_subword.endswith(ending):
                                 following_subwords[0].fugen_s_status = 0
@@ -263,7 +259,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                     possible_solutions.append(possible_solution)
             if len(possible_solutions) > 0:
                 possible_solutions = sorted(
-                    possible_solutions, key=lambda possible_solution: score(possible_solution))
+                    possible_solutions, key=score)
                 return possible_solutions[0]
 
         def get_lemmatization_doc(possible_subwords, pos):
@@ -271,7 +267,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
             # overhead, we concatenate the subwords in the form:
             # Subword1. Subword2. Subword3
             entry_words = []
-            for counter in range(len(possible_subwords)):
+            for counter, _ in enumerate(possible_subwords):
                 if counter + 1 == len(possible_subwords) and pos == 'ADJ':
                     entry_words.append(possible_subwords[counter].text)
                 else:
@@ -279,8 +275,8 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
             subword_lemmatization_string = ' . '.join(entry_words)
             return self.spacy_parse(subword_lemmatization_string)
 
-        if not token.tag_ in self._tag_for_subword_search or (
-                len(token._.holmes.lemma) < self._minimum_length_for_subword_search and
+        if not token.tag_ in self.tag_for_subword_search or (
+                len(token._.holmes.lemma) < self.minimum_length_for_subword_search and
                 '-' not in token._.holmes.lemma):
             return
         if token.text in subword_cache:
@@ -296,7 +292,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
             working_subwords = []
             possible_subwords = scan_recursively_for_subwords(token._.holmes.lemma)
             if possible_subwords is None or score(possible_subwords) > \
-                    self._maximum_acceptable_subword_score:
+                    self.maximum_acceptable_subword_score:
                 return
             if len(possible_subwords) == 1 and token._.holmes.lemma.isalpha():
                 # not ... isalpha(): hyphenation
@@ -319,20 +315,20 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                             if final_subword_counter > 0 and \
                                     first_sibling_possible_subwords[
                                         final_subword_counter].text \
-                                    in self._non_recorded_subword_list:
+                                    in self.non_recorded_subword_list:
                                 final_subword_counter -= 1
                             for counter in range(final_subword_counter):
                                 first_sibling_possible_subword = \
                                     first_sibling_possible_subwords[counter]
                                 if first_sibling_possible_subword.text in \
-                                        self._non_recorded_subword_list:
+                                        self.non_recorded_subword_list:
                                     continue
                                 text = first_sibling.text[
                                     first_sibling_possible_subword.char_start_index:
                                     first_sibling_possible_subword.char_start_index +
                                     len(first_sibling_possible_subword.text)]
                                 lemma = first_sibling_lemmatization_doc[counter*2].lemma_.lower()
-                                derived_lemma = self.derived_holmes_lemma(None, lemma)
+                                derived_lemma = self.derivedholmes_lemma(None, lemma)
                                 working_subwords.append(Subword(
                                     first_sibling.i, index, text, lemma, derived_lemma,
                                     self.get_vector(lemma),
@@ -342,13 +338,13 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                 lemmatization_doc = get_lemmatization_doc(possible_subwords, token.pos_)
                 for counter, possible_subword in enumerate(possible_subwords):
                     possible_subword = possible_subwords[counter]
-                    if possible_subword.text in self._non_recorded_subword_list:
+                    if possible_subword.text in self.non_recorded_subword_list:
                         continue
                     text = token.text[
                         possible_subword.char_start_index:
                         possible_subword.char_start_index + len(possible_subword.text)]
                     lemma = lemmatization_doc[counter*2].lemma_.lower()
-                    derived_lemma = self.derived_holmes_lemma(None, lemma)
+                    derived_lemma = self.derivedholmes_lemma(None, lemma)
                     working_subwords.append(Subword(
                         token.i, index, text, lemma, derived_lemma, self.get_vector(lemma),
                         possible_subword.char_start_index, None, None, None, None))
@@ -371,14 +367,14 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                                     last_sibling_possible_subword = \
                                         last_sibling_possible_subwords[counter]
                                     if last_sibling_possible_subword.text in \
-                                            self._non_recorded_subword_list:
+                                            self.non_recorded_subword_list:
                                         continue
                                     text = last_sibling.text[
                                         last_sibling_possible_subword.char_start_index:
                                         last_sibling_possible_subword.char_start_index +
                                         len(last_sibling_possible_subword.text)]
                                     lemma = last_sibling_lemmatization_doc[counter*2].lemma_.lower()
-                                    derived_lemma = self.derived_holmes_lemma(None, lemma)
+                                    derived_lemma = self.derivedholmes_lemma(None, lemma)
                                     working_subwords.append(Subword(
                                         last_sibling.i, index, text, lemma, derived_lemma,
                                         self.get_vector(lemma),
@@ -414,7 +410,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                 subword.lemma for subword in token._.holmes.subwords):
             token._.holmes.is_negated = True
 
-    def _set_negation(self, token):
+    def set_negation(self, token):
         """Marks the negation on the token. A token is negative if it or one of its ancestors
             has a negation word as a syntactic (not semantic!) child.
         """
@@ -428,10 +424,10 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
         if token.dep_ == 'ROOT':
             token._.holmes.is_negated = False
             return
-        self._set_negation(token.head)
+        self.set_negation(token.head)
         token._.holmes.is_negated = token.head._.holmes.is_negated
 
-    def _correct_auxiliaries_and_passives(self, token):
+    def correct_auxiliaries_and_passives(self, token):
         """Wherever auxiliaries and passives are found, derive the semantic information
             from the syntactic information supplied by spaCy.
         """
@@ -441,7 +437,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                 processed_auxiliary_indexes.append(token.i)
                 if (token.pos_ == 'AUX' or token.tag_.startswith('VM')) and len([
                         dependency for dependency in token._.holmes.children if
-                        dependency.child_index >= 0 and self._is_separable_prefix(
+                        dependency.child_index >= 0 and self.is_separable_prefix(
                             token.doc[dependency.child_index])]) == 0: # 'vorhaben'
                     for dependency in (
                             dependency for dependency in token._.holmes.children
@@ -449,7 +445,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                             token.doc[dependency.child_index].dep_ in ('oc', 'pd')):
                         token._.holmes.is_matchable = False
                         child = token.doc[dependency.child_index]
-                        self._move_information_between_tokens(token, child)
+                        self.move_information_between_tokens(token, child)
                         # VM indicates a modal verb, which has to be marked as uncertain
                         if token.tag_.startswith('VM') or dependency.is_uncertain:
                             for child_dependency in child._.holmes.children:
@@ -513,7 +509,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
         if token.dep_ == 'ROOT':
             correct_auxiliaries_and_passives_recursively(token, [])
 
-    def _handle_relative_constructions(self, token):
+    def handle_relative_constructions(self, token):
         for dependency in (
                 dependency for dependency in token._.holmes.children if
                 dependency.child_index >= 0 and
@@ -547,13 +543,13 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                             dependency.child_index, 0 - (working_dependency.child_index + 1),
                             None)]
 
-    def _holmes_lemma(self, token):
+    def holmes_lemma(self, token):
         """Relabel the lemmas of separable verbs in sentences like 'er steht auf' to incorporate
             the entire separable verb to facilitate matching.
         """
         if token.pos_ in ('VERB', 'AUX') and token.tag_ not in ('VAINF', 'VMINF', 'VVINF', 'VVIZU'):
             for child in token.children:
-                if self._is_separable_prefix(child):
+                if self.is_separable_prefix(child):
                     child_lemma = child.lemma_.lower()
                     if child_lemma == 'einen':
                         child_lemma = 'ein'
@@ -588,20 +584,20 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
 
     _ung_ending_blacklist = ('sprung', 'schwung', 'nibelung')
 
-    def _language_specific_derived_holmes_lemma(self, token, lemma):
+    def language_specific_derived_holmes_lemma(self, token, lemma):
         """ token is None where *lemma* belongs to a subword """
 
         # verbs with 'ieren' -> 'ation'
         if (token is None or token.pos_ == 'VERB') and len(lemma) > 9 and \
                 lemma.endswith('ieren'):
             working_lemma = ''.join((lemma[:-5], 'ation'))
-            if not self._is_oov(working_lemma):
+            if not self.is_oov(working_lemma):
                 return working_lemma
         # nouns with 'ierung' -> 'ation'
         if (token is None or token.pos_ == 'NOUN') and len(lemma) > 10 and \
                 lemma.endswith('ierung'):
             working_lemma = ''.join((lemma[:-6], 'ation'))
-            if not self._is_oov(working_lemma):
+            if not self.is_oov(working_lemma):
                 return working_lemma
         # nominalization with 'ung'
         if (token is None or token.tag_ == 'NN') and lemma.endswith('ung'):
@@ -626,31 +622,31 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
             # replace umlauts in the last 8 characters of the derived lemma
             working_lemma = working_lemma.replace('ä', 'a').replace('ö', 'o').replace('ü', 'u')
             working_lemma = ''.join((lemma[:-12], working_lemma))
-            if not self._is_oov(working_lemma):
+            if not self.is_oov(working_lemma):
                 return working_lemma
             if lemma[-4] == 'l': # 'lein' where original word ends in 'l'
                 second_working_lemma = ''.join((working_lemma, 'l'))
-                if not self._is_oov(working_lemma):
+                if not self.is_oov(working_lemma):
                     return second_working_lemma
             second_working_lemma = lemma[:-4] # 'Löffelchen'
-            if not self._is_oov(second_working_lemma):
+            if not self.is_oov(second_working_lemma):
                 return second_working_lemma
             if lemma[-4] == 'l': # 'Schlüsselein'
                 second_working_lemma = ''.join((second_working_lemma, 'l'))
-                if not self._is_oov(second_working_lemma):
+                if not self.is_oov(second_working_lemma):
                     return second_working_lemma
             return working_lemma
         if (token is None or token.tag_ == 'NN') and lemma.endswith('e') and len(lemma) > 1 and \
-                not lemma[-2] in self._vowels:
+                not lemma[-2] in self.vowels:
             # for comparability with diminutive forms, e.g. äuglein <-> auge
             return lemma[:-1]
         return None
 
-    def _perform_language_specific_tasks(self, token):
+    def perform_language_specific_tasks(self, token):
 
         # Because separable verbs are conflated into a single lemma, remove the dependency
         # from the verb to the preposition
-        if self._is_separable_prefix(token) and token.head.pos_ in ('VERB', 'AUX') and \
+        if self.is_separable_prefix(token) and token.head.pos_ in ('VERB', 'AUX') and \
                 token.head.tag_ not in ('VAINF', 'VMINF', 'VVINF', 'VVIZU'):
             token.head._.holmes.remove_dependency_with_child_index(token.i)
             token._.holmes.is_matchable = False
@@ -695,7 +691,9 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
         # Loop through the structure around a dependent verb to find the lexical token at which
         # to add new dependencies, and find out whether it is active or passive so we know
         # whether to add an 'sb' or an 'oa'.
-        def find_target_tokens_and_dependency_recursively(token, visited=[]):
+        def find_target_tokens_and_dependency_recursively(token, visited=None):
+            if visited is None:
+                visited = []
             visited.append(token.i)
             tokens_to_return = []
             target_dependency = 'sb'
@@ -805,7 +803,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                 dependency for dependency in token._.holmes.children
                 if dependency.label == 'nk' and token.pos_ in ('NOUN', 'PROPN')
                 and token.dep_ == 'sb' and dependency.child_token(token.doc).pos_ ==
-                self._adjectival_predicate_predicate_pos):
+                self.adjectival_predicate_predicate_pos):
             child_token = dependency.child_token(token.doc)
             relevant_dependencies = [child_dependency for child_dependency in
                 child_token._.holmes.children if child_dependency.label in ('oc', 're') and
@@ -835,7 +833,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
             dependency for dependency in token._.holmes.children
             if token.pos_ == 'VERB' and dependency.label == 'sb' and not
             dependency.is_uncertain and (dependency.child_token(token.doc).i == 0 or
-            token.doc[dependency.child_token(token.doc).i-1].dep_ not in self._conjunction_deps)]
+            token.doc[dependency.child_token(token.doc).i-1].dep_ not in self.conjunction_deps)]
         if len(dependencies) > 0 and len([
                 object_dependency for object_dependency
                 in dependencies if object_dependency.label == 'oa' and not
@@ -854,7 +852,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
             dependency for dependency in token._.holmes.children
             if token.pos_ == 'VERB' and dependency.label == 'oa' and not
             dependency.is_uncertain and (dependency.child_token(token.doc).i == 0 or
-            token.doc[dependency.child_token(token.doc).i-1].dep_ not in self._conjunction_deps)]
+            token.doc[dependency.child_token(token.doc).i-1].dep_ not in self.conjunction_deps)]
         if len(dependencies) > 0 and len([
                 object_dependency for object_dependency
                 in dependencies if object_dependency.label == 'sb' and not

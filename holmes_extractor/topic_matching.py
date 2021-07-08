@@ -1,11 +1,6 @@
-import uuid
-import statistics
-import jsonpickle
-from .parsing import SemanticMatchingHelperFactory, Index
-from .errors import WrongModelDeserializationError, FewerThanTwoClassificationsError, \
-        DuplicateDocumentError, NoPhraseletsAfterFilteringError, \
-        EmbeddingThresholdGreaterThanRelationThresholdError, \
-        IncompatibleAnalyzeDerivationalMorphologyDeserializationError
+
+from .parsing import Index
+from .errors import EmbeddingThresholdGreaterThanRelationThresholdError
 
 class TopicMatch:
     """A topic match between some text and part of a document. Note that the end indexes refer
@@ -165,7 +160,7 @@ class TopicMatcher:
         self.only_one_result_per_document = only_one_result_per_document
         self.number_of_results = number_of_results
         self.document_label_filter = document_label_filter
-        self._words_to_phraselet_word_match_infos = {}
+        self.words_to_phraselet_word_match_infos = {}
 
         # First get single-word matches
         structural_matches = self.structural_matcher.match(
@@ -267,11 +262,11 @@ class TopicMatcher:
             score_sorted_structural_matches, position_sorted_structural_matches)
 
     def get_phraselet_word_match_info(self, word):
-        if word in self._words_to_phraselet_word_match_infos:
-            return self._words_to_phraselet_word_match_infos[word]
+        if word in self.words_to_phraselet_word_match_infos:
+            return self.words_to_phraselet_word_match_infos[word]
         else:
             phraselet_word_match_info = PhraseletWordMatchInfo()
-            self._words_to_phraselet_word_match_infos[word] = phraselet_word_match_info
+            self.words_to_phraselet_word_match_infos[word] = phraselet_word_match_info
             return phraselet_word_match_info
 
     def set_phraselet_to_reverse_only_where_too_many_single_word_matches(self, phraselet):
@@ -280,8 +275,8 @@ class TopicMatcher:
         """
         parent_token = phraselet.root_token
         parent_word = parent_token._.holmes.lemma_or_derived_lemma()
-        if parent_word in self._words_to_phraselet_word_match_infos:
-            parent_phraselet_word_match_info = self._words_to_phraselet_word_match_infos[
+        if parent_word in self.words_to_phraselet_word_match_infos:
+            parent_phraselet_word_match_info = self.words_to_phraselet_word_match_infos[
                 parent_word]
             parent_single_word_match_corpus_words = \
                 parent_phraselet_word_match_info.single_word_match_corpus_words
@@ -308,10 +303,10 @@ class TopicMatcher:
 
         parent_token = phraselet.root_token
         parent_word = parent_token._.holmes.lemma_or_derived_lemma()
-        if parent_word in self._words_to_phraselet_word_match_infos and not \
+        if parent_word in self.words_to_phraselet_word_match_infos and not \
                 phraselet.reverse_only and not \
                 phraselet.treat_as_reverse_only_during_initial_relation_matching:
-            parent_phraselet_word_match_info = self._words_to_phraselet_word_match_infos[
+            parent_phraselet_word_match_info = self.words_to_phraselet_word_match_infos[
                 parent_word]
             parent_single_word_match_corpus_words = \
                 parent_phraselet_word_match_info.single_word_match_corpus_words
@@ -337,9 +332,9 @@ class TopicMatcher:
         child_token = [token for token in phraselet.matchable_tokens if token.i !=
                        parent_token.i][0]
         child_word = child_token._.holmes.lemma_or_derived_lemma()
-        if child_word in self._words_to_phraselet_word_match_infos:
+        if child_word in self.words_to_phraselet_word_match_infos:
             child_phraselet_word_match_info = \
-                    self._words_to_phraselet_word_match_infos[child_word]
+                    self.words_to_phraselet_word_match_infos[child_word]
             child_single_word_match_corpus_words = \
                     child_phraselet_word_match_info.single_word_match_corpus_words
             if phraselet.label in child_phraselet_word_match_info.\
@@ -416,27 +411,27 @@ class TopicMatcher:
     def rebuild_document_info_dict(self, matches, phraselet_labels_to_phraselet_infos):
 
         def process_word_match(match, parent): # 'True' -> parent, 'False' -> child
-            word_match = self._get_word_match_from_match(match, parent)
+            word_match = self.get_word_match_from_match(match, parent)
             word = word_match.search_phrase_token._.holmes.lemma_or_derived_lemma()
             phraselet_word_match_info = self.get_phraselet_word_match_info(word)
             corpus_word_position = CorpusWordPosition(
                 match.document_label, word_match.get_document_index())
             if parent:
-                self._add_to_dict_list(
+                self.add_to_dict_list(
                     phraselet_word_match_info.parent_match_corpus_words_to_matches,
                     corpus_word_position, match)
-                self._add_to_dict_list(
+                self.add_to_dict_list(
                     phraselet_word_match_info.phraselet_labels_to_parent_match_corpus_words,
                     match.search_phrase_label, corpus_word_position)
             else:
-                self._add_to_dict_list(
+                self.add_to_dict_list(
                     phraselet_word_match_info.child_match_corpus_words_to_matches,
                     corpus_word_position, match)
-                self._add_to_dict_list(
+                self.add_to_dict_list(
                     phraselet_word_match_info.phraselet_labels_to_child_match_corpus_words,
                     match.search_phrase_label, corpus_word_position)
 
-        self._words_to_phraselet_word_match_infos = {}
+        self.words_to_phraselet_word_match_infos = {}
         for match in matches:
             if match.from_single_word_phraselet:
                 phraselet_info = phraselet_labels_to_phraselet_infos[match.search_phrase_label]
@@ -452,7 +447,7 @@ class TopicMatcher:
     def filter_superfluous_matches(self, match):
 
         def get_other_matches_at_same_word(match, parent):  # 'True' -> parent, 'False' -> child
-            word_match = self._get_word_match_from_match(match, parent)
+            word_match = self.get_word_match_from_match(match, parent)
             word = word_match.search_phrase_token._.holmes.lemma_or_derived_lemma()
             phraselet_word_match_info = self.get_phraselet_word_match_info(word)
             corpus_word_position = CorpusWordPosition(
@@ -483,12 +478,12 @@ class TopicMatcher:
             return True
 
         def perform_checks_at_pole(match, parent): # pole is 'True' -> parent, 'False' -> child
-            this_this_pole_word_match = self._get_word_match_from_match(match, parent)
+            this_this_pole_word_match = self.get_word_match_from_match(match, parent)
             this_pole_index = this_this_pole_word_match.document_token.i
-            this_other_pole_word_match = self._get_word_match_from_match(match, not parent)
+            this_other_pole_word_match = self.get_word_match_from_match(match, not parent)
             for other_this_pole_match in get_other_matches_at_same_word(match, parent):
                 other_other_pole_word_match = \
-                    self._get_word_match_from_match(other_this_pole_match, not parent)
+                    self.get_word_match_from_match(other_this_pole_match, not parent)
                 if this_other_pole_word_match.document_subword is not None:
                     this_other_pole_subword_index = this_other_pole_word_match.\
                         document_subword.index
@@ -602,7 +597,7 @@ class TopicMatcher:
                         matches_to_return.append(this_match)
         return matches_to_return
 
-    def _get_word_match_from_match(self, match, parent):
+    def get_word_match_from_match(self, match, parent):
         ## child if parent==False
         for word_match in match.word_matches:
             if parent and word_match.search_phrase_token.dep_ == 'ROOT':
@@ -611,7 +606,7 @@ class TopicMatcher:
                 return word_match
         raise RuntimeError(''.join(('Word match not found with parent==', str(parent))))
 
-    def _add_to_dict_list(self, dictionary, key, value):
+    def add_to_dict_list(self, dictionary, key, value):
         if key in dictionary:
             dictionary[key].append(value)
         else:
@@ -652,10 +647,10 @@ class TopicMatcher:
             else:
                 inner_dict = {}
                 document_labels_to_indexes_to_phraselet_labels[match.document_label] = inner_dict
-            parent_word_match = self._get_word_match_from_match(match, True)
+            parent_word_match = self.get_word_match_from_match(match, True)
             self._add_to_dict_set(
                 inner_dict, parent_word_match.get_document_index(), match.search_phrase_label)
-            child_word_match = self._get_word_match_from_match(match, False)
+            child_word_match = self.get_word_match_from_match(match, False)
             self._add_to_dict_set(
                 inner_dict, child_word_match.get_document_index(), match.search_phrase_label)
         current_document_label = None
@@ -679,9 +674,9 @@ class TopicMatcher:
                     this_match_score = self.reverse_only_relation_score
                 else:
                     this_match_score = self.relation_score
-                this_match_parent_word_match = self._get_word_match_from_match(match, True)
+                this_match_parent_word_match = self.get_word_match_from_match(match, True)
                 this_match_parent_index = this_match_parent_word_match.get_document_index()
-                this_match_child_word_match = self._get_word_match_from_match(match, False)
+                this_match_child_word_match = self.get_word_match_from_match(match, False)
                 this_match_child_index = this_match_child_word_match.get_document_index()
                 other_relevant_phraselet_labels = get_set_from_dict(
                     indexes_to_phraselet_labels,
@@ -700,7 +695,7 @@ class TopicMatcher:
             if overall_similarity_measure < 1.0:
                 this_match_score *= self.embedding_penalty * overall_similarity_measure
             for word_match in (word_match for word_match in match.word_matches \
-                    if word_match.type == 'ontology'):
+                    if word_match.word_match_type == 'ontology'):
                 this_match_score *= (self.ontology_penalty ** (abs(word_match.depth) + 1))
             if match.search_phrase_label in phraselet_labels_to_phraselet_activation_trackers:
                 phraselet_activation_tracker = phraselet_labels_to_phraselet_activation_trackers[
@@ -850,7 +845,7 @@ class TopicMatcher:
             def __init__(self, relative_start_index, relative_end_index, typ, explanation):
                 self.relative_start_index = relative_start_index
                 self.relative_end_index = relative_end_index
-                self.type = typ
+                self.word_match_type = typ
                 self.explanation = explanation
                 self.is_highest_activation = False
 
@@ -909,14 +904,14 @@ class TopicMatcher:
                             word_match.explain())
                     if word_info in word_infos_to_word_infos:
                         existing_word_info = word_infos_to_word_infos[word_info]
-                        if not existing_word_info.type == 'overlapping_relation':
+                        if not existing_word_info.word_match_type == 'overlapping_relation':
                             if match.is_overlapping_relation:
-                                existing_word_info.type = 'overlapping_relation'
+                                existing_word_info.word_match_type = 'overlapping_relation'
                             elif not match.from_single_word_phraselet and not \
                                     match.word_matches[0].document_token.i == \
                                     match.word_matches[1].document_token.i:
                                     # two subwords within word::
-                                existing_word_info.type = 'relation'
+                                existing_word_info.word_match_type = 'relation'
                     else:
                         word_infos_to_word_infos[word_info] = word_info
             for word_info in list(word_infos_to_word_infos.keys()):
@@ -963,7 +958,8 @@ class TopicMatcher:
                 'word_infos': [
                     [
                         word_info.relative_start_index, word_info.relative_end_index,
-                        word_info.type, word_info.is_highest_activation, word_info.explanation]
+                        word_info.word_match_type, word_info.is_highest_activation,
+                        word_info.explanation]
                     for word_info in word_infos]
                     # The word infos are labelled by array index alone to prevent the JSON from
                     # becoming too bloated

@@ -241,15 +241,15 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
                              cv_threshold=0, mlp_max_iter=10000)
         self.assertEqual(['prepgovernor-noun: animal-lead', 'word: animal', 'word: computer',
                           'word: lead', 'word: robot'],
-                         list(trainer._sorted_label_dict.keys()))
+                         list(trainer.sorted_label_dict.keys()))
         self.assertEqual([[0.0, 1.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0],
                           [1.0, 1.0, 0.0, 1.0, 0.0], [0.0, 1.0, 0.0,
                                                       0.0, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0],
-                          [0.0, 0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 1.0]], trainer._input_matrix.toarray().tolist())
+                          [0.0, 0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0, 1.0]], trainer.input_matrix.toarray().tolist())
         self.assertEqual([[0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0], [0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0],
                           [0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0], [1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0], [0.0,
                                                                                                      1.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0,
-                                                                                                                                                                          1.0, 0.0, 0.0, 0.0]], trainer._output_matrix.toarray().tolist())
+                                                                                                                                                                          1.0, 0.0, 0.0, 0.0]], trainer.output_matrix.toarray().tolist())
         self.assertEqual((5, 5, 6), trainer._hidden_layer_sizes)
         stc = trainer.classifier()
         self.assertEqual(stc.parse_and_classify(
@@ -298,17 +298,17 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
                              cv_threshold=0, mlp_max_iter=10000)
         self.assertEqual(['prepgovernor-noun: animal-lead', 'word: animal', 'word: computer',
                           'word: lead', 'word: on', 'word: robot'],
-                         list(trainer._sorted_label_dict.keys()))
+                         list(trainer.sorted_label_dict.keys()))
         self.assertEqual([[0.0, 1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
                           [1.0, 1.0, 0.0, 1.0, 1.0, 0.0], [
                               0.0, 1.0, 0.0, 0.0, 0.0, 0.0],
                           [0.0, 1.0, 0.0, 0.0, 0.0, 0.0], [
                               0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
-                          [0.0, 0.0, 0.0, 0.0, 0.0, 1.0]], trainer._input_matrix.toarray().tolist())
+                          [0.0, 0.0, 0.0, 0.0, 0.0, 1.0]], trainer.input_matrix.toarray().tolist())
         self.assertEqual([[0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 1.0], [0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0],
                           [0.0, 1.0, 0.0, 0.0, 1.0, 1.0, 0.0], [1.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0], [0.0,
                                                                                                      1.0, 0.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0,
-                                                                                                                                                                          1.0, 0.0, 0.0, 0.0]], trainer._output_matrix.toarray().tolist())
+                                                                                                                                                                          1.0, 0.0, 0.0, 0.0]], trainer.output_matrix.toarray().tolist())
         self.assertEqual((6, 6, 6), trainer._hidden_layer_sizes)
         stc = trainer.classifier()
         self.assertEqual(stc.parse_and_classify(
@@ -348,18 +348,18 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
                                                   'gym')
         sttb.prepare()
         trainer = sttb.train(minimum_occurrences=4, cv_threshold=0.0)
-        self.assertEqual(list(trainer._sorted_label_dict.keys()),
+        self.assertEqual(list(trainer.sorted_label_dict.keys()),
                          ['predicate-actor: chasing-animal',
                           'predicate-actor: chasing-animal/predicate-patient: chasing-animal',
                           'predicate-patient: chasing-animal', 'word: animal'])
-        self.assertEqual(set(map(lambda phr: phr.label, trainer._phraselet_infos)),
+        self.assertEqual(set(map(lambda phr: phr.label, trainer.phraselet_infos)),
                          {'predicate-actor: chasing-animal',
                           'predicate-patient: chasing-animal', 'word: animal'})
         trainer2 = sttb.train(minimum_occurrences=4, cv_threshold=1)
-        self.assertEqual(list(trainer2._sorted_label_dict.keys()),
+        self.assertEqual(list(trainer2.sorted_label_dict.keys()),
                          ['predicate-actor: chasing-animal',
                           'predicate-actor: chasing-animal/predicate-patient: chasing-animal',
                           'predicate-patient: chasing-animal'])
-        self.assertEqual(set(map(lambda phr: phr.label, trainer2._phraselet_infos)),
+        self.assertEqual(set(map(lambda phr: phr.label, trainer2.phraselet_infos)),
                          {'predicate-actor: chasing-animal',
                           'predicate-patient: chasing-animal'})

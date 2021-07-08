@@ -814,7 +814,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
             """They demanded an explanation. Somebody attempted it.""")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].word_matches[1].type, 'derivation')
+        self.assertEqual(matches[0].word_matches[1].word_match_type, 'derivation')
 
     def test_coreference_linked_parent_token_indexes(self):
         coref_holmes_manager.remove_all_documents()

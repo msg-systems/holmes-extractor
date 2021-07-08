@@ -271,7 +271,7 @@ class GermanSupervisedTopicClassificationTest(unittest.TestCase):
             'verb-acc: benutzen-maus')
         # should not have any effect because the supervised topic objects have their own
         # StructuralMatcher instance
-        self.assertEqual(list(trainer._sorted_label_dict.keys()),
+        self.assertEqual(list(trainer.sorted_label_dict.keys()),
                          ['intcompound: hund-plüsch', 'intcompound: hund-plüsch/verb-nom: jagd-hund',
                           'verb-acc: benutzen-maus',
                           'verb-acc: benutzen-maus/verb-nom: benutzen-programmierer', 'verb-acc: jagd-hund',
@@ -293,7 +293,7 @@ class GermanSupervisedTopicClassificationTest(unittest.TestCase):
                                                                                                                                                          0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0,
                                                                                                                                                                                                                        0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0,
                                                                                                                                                                                                                        0.0, 0.0, 0.0]],
-                trainer._input_matrix.toarray().tolist())
+                trainer.input_matrix.toarray().tolist())
         else:
             self.assertEqual([
                 [0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,
@@ -304,10 +304,10 @@ class GermanSupervisedTopicClassificationTest(unittest.TestCase):
                                                                                                                                                          0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 1.0, 2.0, 0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0,
                                                                                                                                                                                                                        0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 1.0, 1.0,
                                                                                                                                                                                                                        0.0, 0.0, 0.0]],
-                trainer._input_matrix.toarray().tolist())
+                trainer.input_matrix.toarray().tolist())
 
         self.assertEqual([[1.0, 0.0], [1.0, 0.0], [0.0, 1.0], [0.0, 1.0], [0.0, 1.0]],
-                         trainer._output_matrix.toarray().tolist())
+                         trainer.output_matrix.toarray().tolist())
         self.assertEqual((22, 15, 8), trainer._hidden_layer_sizes)
         stc = trainer.classifier()
         self.assertEqual(stc.parse_and_classify(
@@ -376,22 +376,22 @@ class GermanSupervisedTopicClassificationTest(unittest.TestCase):
             "Ein Programmierer schreibt Python", 'IT', 'i2')
         sttb.prepare()
         trainer = sttb.train(minimum_occurrences=2, cv_threshold=0.0)
-        self.assertEqual(list(trainer._sorted_label_dict.keys()),
+        self.assertEqual(list(trainer.sorted_label_dict.keys()),
                          ['verb-acc: benutzen-maus',
                           'verb-acc: benutzen-maus/verb-nom: benutzen-programmierer',
                           'verb-nom: benutzen-programmierer', 'verb-nom: jagd-katz',
                           'word: hund', 'word: katz', 'word: maus', 'word: programmierer'])
-        self.assertEqual(set(map(lambda phr: phr.label, trainer._phraselet_infos)),
+        self.assertEqual(set(map(lambda phr: phr.label, trainer.phraselet_infos)),
                          {'verb-acc: benutzen-maus',
                           'verb-nom: benutzen-programmierer', 'verb-nom: jagd-katz',
                           'word: hund', 'word: katz', 'word: maus', 'word: programmierer'})
         trainer2 = sttb.train(minimum_occurrences=2, cv_threshold=1)
-        self.assertEqual(list(trainer2._sorted_label_dict.keys()),
+        self.assertEqual(list(trainer2.sorted_label_dict.keys()),
                          ['verb-acc: benutzen-maus',
                           'verb-acc: benutzen-maus/verb-nom: benutzen-programmierer',
                           'verb-nom: benutzen-programmierer', 'verb-nom: jagd-katz',
                           'word: hund', 'word: katz', 'word: programmierer'])
-        self.assertEqual(set(map(lambda phr: phr.label, trainer2._phraselet_infos)),
+        self.assertEqual(set(map(lambda phr: phr.label, trainer2.phraselet_infos)),
                          {'verb-acc: benutzen-maus',
                           'verb-nom: benutzen-programmierer', 'verb-nom: jagd-katz',
                           'word: hund', 'word: katz', 'word: programmierer'})

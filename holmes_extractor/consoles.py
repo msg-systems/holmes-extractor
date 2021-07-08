@@ -1,14 +1,16 @@
-from .errors import *
+from .errors import SearchPhraseContainsNegationError, SearchPhraseContainsConjunctionError,\
+    SearchPhraseContainsCoreferringPronounError, SearchPhraseWithoutMatchableWordsError,\
+    NoSearchPhraseError, SearchPhraseContainsMultipleClausesError
 
 class HolmesConsoles:
     """Manages the consoles."""
 
     def __init__(self, holmes):
-        self._holmes = holmes
-        self._semantic_analyzer = holmes.semantic_analyzer
-        self._structural_matcher = holmes.structural_matcher
+        self.holmes = holmes
+        self.semantic_analyzer = holmes.semantic_analyzer
+        self.structural_matcher = holmes.structural_matcher
 
-    def _match_description(self, match_dict):
+    def match_description(self, match_dict):
         """Returns a user-readable representation of a match dictionary."""
         match_description_to_return = ''
         if match_dict['negated']:
@@ -26,7 +28,7 @@ class HolmesConsoles:
                 str(overall_similarity_measure)))
         return match_description_to_return
 
-    def _string_representation_of_word_match(self, word_match):
+    def string_representation_of_word_match(self, word_match):
         """Returns a user-readable representation of a word match."""
         if word_match['document_word'] != word_match['extracted_word']:
             extracted_word = ''.join(("(refers to '", word_match['extracted_word'], "')"))
@@ -40,32 +42,32 @@ class HolmesConsoles:
         string = ''.join((string, ")"))
         return string
 
-    def _common(self):
+    def common(self):
         """Contains functionality common to both consoles."""
         print("Holmes version 2.2 written by richard.hudson@msg.group")
-        print("Language is", self._semantic_analyzer.language_name)
-        print("Model is", self._semantic_analyzer.model)
-        if self._structural_matcher.ontology is None:
+        print("Language is", self.semantic_analyzer.language_name)
+        print("Model is", self.semantic_analyzer.model)
+        if self.structural_matcher.ontology is None:
             print("No ontology is being used")
         else:
-            print("Ontology is", self._structural_matcher.ontology.path)
-            if self._structural_matcher.ontology.symmetric_matching:
+            print("Ontology is", self.structural_matcher.ontology.path)
+            if self.structural_matcher.ontology.symmetric_matching:
                 print("Symmetric matching is ON")
             else:
                 print("Symmetric matching is OFF")
-        if self._structural_matcher.perform_coreference_resolution:
+        if self.structural_matcher.perform_coreference_resolution:
             print("Coreference resolution is ON")
         else:
             print("Coreference resolution is OFF")
-        if self._structural_matcher.analyze_derivational_morphology:
+        if self.structural_matcher.analyze_derivational_morphology:
             print("Derivational morphology analysis is ON")
         else:
             print("Derivational morphology analysis is OFF")
         print(
             "Overall similarity threshold is", str(
-                self._structural_matcher.overall_similarity_threshold))
-        if self._structural_matcher.overall_similarity_threshold < 1.0:
-            if self._structural_matcher.embedding_based_matching_on_root_words:
+                self.structural_matcher.overall_similarity_threshold))
+        if self.structural_matcher.overall_similarity_threshold < 1.0:
+            if self.structural_matcher.embedding_based_matching_on_root_words:
                 print("Embedding-based matching on root words is ON")
             else:
                 print("Embedding-based matching on root words is OFF")
@@ -75,20 +77,20 @@ class HolmesConsoles:
         """Starts a chatbot mode console enabling the matching of pre-registered search phrases
             to documents (chatbot entries) entered ad-hoc by the user.
         """
-        self._common()
+        self.common()
         print('Chatbot mode')
         print()
-        if len(self._holmes.threadsafe_container._search_phrases) == 0:
+        if len(self.holmes.threadsafe_container._search_phrases) == 0:
             raise RuntimeError('No search_phrases registered.')
         # Display search phrases
-        for search_phrase in self._holmes.threadsafe_container._search_phrases:
+        for search_phrase in self.holmes.threadsafe_container._search_phrases:
             print(''.join(("Search phrase '", search_phrase.doc.text, "'")))
             # only has an effect when debug==True
-            self._semantic_analyzer.debug_structures(search_phrase.doc)
-            if self._structural_matcher.ontology is not None:
+            self.semantic_analyzer.debug_structures(search_phrase.doc)
+            if self.structural_matcher.ontology is not None:
                 for token in search_phrase.matchable_tokens:
                     lemma = token._.holmes.lemma
-                    matching_terms = self._structural_matcher.ontology.get_words_matching(
+                    matching_terms = self.structural_matcher.ontology.get_words_matching(
                         lemma)
                     if len(matching_terms) > 0:
                         print(lemma, 'also matches', matching_terms)
@@ -102,27 +104,27 @@ class HolmesConsoles:
             print()
             if search_sentence in ('exit', 'exit()', 'bye'):
                 break
-            match_dicts = self._holmes.match_search_phrases_against(entry=search_sentence)
+            match_dicts = self.holmes.match_search_phrases_against(entry=search_sentence)
             for match_dict in match_dicts:
                 print()
                 print(''.join((
                     "Matched search phrase '",
-                    match_dict['search_phrase'], "'", self._match_description(match_dict),
+                    match_dict['search_phrase'], "'", self.match_description(match_dict),
                     ":")))
                 word_matches_string = '; '.join(map(
-                    self._string_representation_of_word_match, match_dict['word_matches']))
+                    self.string_representation_of_word_match, match_dict['word_matches']))
                 print(word_matches_string)
 
     def start_structural_search_mode(self):
         """Starts a structural search mode console enabling the matching of pre-registered documents
             to search phrases entered ad-hoc by the user.
         """
-        self._common()
+        self.common()
         print('Structural search mode')
         print()
-        if len(self._holmes.document_labels()) == 0:
+        if len(self.holmes.document_labels()) == 0:
             raise RuntimeError('No documents registered.')
-        document_labels = '; '.join(self._holmes.document_labels())
+        document_labels = '; '.join(self.holmes.document_labels())
         print(': '.join(('Documents', document_labels)))
         print()
         while True:
@@ -138,7 +140,7 @@ class HolmesConsoles:
             print()
             match_dicts = []
             try:
-                match_dicts = self._holmes.match_documents_against(search_phrase_text=search_phrase)
+                match_dicts = self.holmes.match_documents_against(search_phrase_text=search_phrase)
                 if len(match_dicts) == 0:
                     print('No structural matching results were returned.')
                 else:
@@ -174,10 +176,10 @@ class HolmesConsoles:
                 print(''.join((
                     "Matched document '", match_dict['document'],
                     "' at index ", str(match_dict['index_within_document']),
-                    self._match_description(match_dict), ":")))
+                    self.match_description(match_dict), ":")))
                 print(''.join(('"', match_dict['sentences_within_document'], '"')))
                 word_matches_string = '; '.join(
-                    map(self._string_representation_of_word_match, match_dict['word_matches']))
+                    map(self.string_representation_of_word_match, match_dict['word_matches']))
                 print(word_matches_string)
 
     def start_topic_matching_search_mode(
@@ -192,12 +194,12 @@ class HolmesConsoles:
             only_one_result_per_document -- if 'True', prevents multiple topic match
             results from being returned for the same document.
         """
-        self._common()
+        self.common()
         print('Topic matching search mode')
         print()
-        if len(self._holmes.document_labels()) == 0:
+        if len(self.holmes.document_labels()) == 0:
             raise RuntimeError('No documents registered.')
-        document_labels = '; '.join(self._holmes.document_labels())
+        document_labels = '; '.join(self.holmes.document_labels())
         print(': '.join(('Documents', document_labels)))
         print()
         while True:
@@ -215,7 +217,7 @@ class HolmesConsoles:
             try:
                 print()
                 topic_match_dicts = \
-                        self._holmes.topic_match_documents_against(
+                        self.holmes.topic_match_documents_against(
                             search_text,
                             number_of_results=5,
                             only_one_result_per_document=only_one_result_per_document,

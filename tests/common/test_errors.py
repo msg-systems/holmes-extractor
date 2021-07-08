@@ -159,7 +159,7 @@ class ErrorsTest(unittest.TestCase):
                 "The cat was chased by the dog", 'pets')
             serialized_doc = nocoref_holmes_manager.serialize_document('pets')
             document = jsonpickle.decode(serialized_doc)
-            document._version = 1
+            document.version = 1
             serialized_doc = jsonpickle.encode(document)
             nocoref_holmes_manager.deserialize_and_register_document(
                 serialized_doc, 'pets2')

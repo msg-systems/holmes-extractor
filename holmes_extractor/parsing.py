@@ -1,10 +1,9 @@
 import math
-from abc import ABC, abstractmethod
-import coreferee
-import jsonpickle
 import importlib
-import pkg_resources
+from abc import ABC, abstractmethod
 from functools import total_ordering
+import jsonpickle
+import pkg_resources
 from spacy.tokens import Token, Doc
 from .errors import WrongModelDeserializationError, WrongVersionDeserializationError,\
         DocumentTooBigError, SearchPhraseContainsNegationError,\
@@ -251,8 +250,8 @@ class HolmesDictionary:
         self._derived_lemma = derived_lemma
 
     def lemma_or_derived_lemma(self):
-        if self.derived_lemma is not None:
-            return self.derived_lemma
+        if self._derived_lemma is not None:
+            return self._derived_lemma
         else:
             return self.lemma
 
@@ -325,16 +324,16 @@ class SerializedHolmesDocument:
     """
 
     def __init__(self, serialized_spacy_document, dictionaries, model):
-        self._serialized_spacy_document = serialized_spacy_document
-        self._dictionaries = dictionaries
-        self._model = model
-        self._version = SERIALIZED_DOCUMENT_VERSION
+        self.serialized_spacy_document = serialized_spacy_document
+        self.dictionaries = dictionaries
+        self.model = model
+        self.version = SERIALIZED_DOCUMENT_VERSION
 
     def holmes_document(self, semantic_analyzer):
         doc = Doc(semantic_analyzer.vectors_nlp.vocab).from_bytes(
-            self._serialized_spacy_document)
+            self.serialized_spacy_document)
         for token in doc:
-            token._.holmes = self._dictionaries[token.i]
+            token._.holmes = self.dictionaries[token.i]
         return doc
 
 class PhraseletTemplate:
@@ -521,7 +520,7 @@ class SearchPhrase:
                 add_word_information(entry_word, 'ontology', entry_depth)
                 if semantic_matching_helper.analyze_derivational_morphology:
                     working_derived_lemma = \
-                        semantic_analyzer.derived_holmes_lemma(
+                        semantic_analyzer.derivedholmes_lemma(
                             None, entry_word.lower())
                     if working_derived_lemma is not None:
                         add_word_information(working_derived_lemma, 'ontology', entry_depth)
@@ -610,14 +609,13 @@ class SemanticAnalyzer(ABC):
         self._derivational_dictionary = self._load_derivational_dictionary()
 
     def _load_derivational_dictionary(self):
-        language = self.nlp.meta['lang']
         in_package_filename = ''.join(('lang/', self.nlp.meta['lang'], '/data/derivation.csv'))
         absolute_filename = pkg_resources.resource_filename(__name__, in_package_filename)
         dictionary = {}
         with open(absolute_filename, "r", encoding="utf-8") as file:
             for line in file.readlines():
                 words = [word.strip() for word in line.split(',')]
-                for index in range(len(words)):
+                for index, _ in enumerate(words):
                     dictionary[words[index]] = words[0]
         return dictionary
 
@@ -644,42 +642,42 @@ class SemanticAnalyzer(ABC):
         """Adds the Holmes-specific information to each token within a spaCy document.
         """
         for token in spacy_doc:
-            lemma = self._holmes_lemma(token)
-            derived_lemma = self.derived_holmes_lemma(token, lemma)
+            lemma = self.holmes_lemma(token)
+            derived_lemma = self.derivedholmes_lemma(token, lemma)
             lexeme = self.vectors_nlp.vocab[token.lemma_ if len(lemma.split()) > 1 else lemma]
             vector = lexeme.vector if lexeme.has_vector and lexeme.vector_norm > 0 else None
             token._.set('holmes', HolmesDictionary(token.i, lemma, derived_lemma, vector))
         for token in spacy_doc:
-            self._set_negation(token)
+            self.set_negation(token)
         for token in spacy_doc:
             self._initialize_semantic_dependencies(token)
         for token in spacy_doc:
-            self._mark_if_righthand_sibling(token)
+            self.mark_if_righthand_sibling(token)
             token._.holmes.token_or_lefthand_sibling_index = self._lefthand_sibling_recursively(
                 token)
         for token in spacy_doc:
-            self._copy_any_sibling_info(token)
+            self.copy_any_sibling_info(token)
         subword_cache = {}
         for token in spacy_doc:
-            self._add_subwords(token, subword_cache)
+            self.add_subwords(token, subword_cache)
         for token in spacy_doc:
             self._set_coreference_information(token)
         for token in spacy_doc:
-            self._set_matchability(token)
+            self.set_matchability(token)
         for token in spacy_doc:
-            self._correct_auxiliaries_and_passives(token)
+            self.correct_auxiliaries_and_passives(token)
         for token in spacy_doc:
-            self._copy_any_sibling_info(token)
+            self.copy_any_sibling_info(token)
         for token in spacy_doc:
-            self._normalize_predicative_adjectives(token)
+            self.normalize_predicative_adjectives(token)
         for token in spacy_doc:
-            self._handle_relative_constructions(token)
+            self.handle_relative_constructions(token)
         for token in spacy_doc:
-            self._create_additional_preposition_phrase_semantic_dependencies(token)
+            self.create_additional_preposition_phrase_semantic_dependencies(token)
         for token in spacy_doc:
-            self._perform_language_specific_tasks(token)
+            self.perform_language_specific_tasks(token)
         for token in spacy_doc:
-            self._create_convenience_dependencies(token)
+            self.create_convenience_dependencies(token)
         return spacy_doc
 
     def model_supports_embeddings(self):
@@ -689,7 +687,7 @@ class SemanticAnalyzer(ABC):
         """If *token* is a righthand sibling, return the index of the token that has a sibling
             reference to it, otherwise return the index of *token* itself.
         """
-        if token.dep_ not in self._conjunction_deps:
+        if token.dep_ not in self.conjunction_deps:
             return token.i
         else:
             return self._lefthand_sibling_recursively(token.head)
@@ -731,10 +729,10 @@ class SemanticAnalyzer(ABC):
 
     def from_serialized_string(self, serialized_spacy_doc):
         serialized_document = jsonpickle.decode(serialized_spacy_doc)
-        if serialized_document._model != self.model:
-            raise WrongModelDeserializationError(serialized_document._model)
-        if serialized_document._version != SERIALIZED_DOCUMENT_VERSION:
-            raise WrongVersionDeserializationError(serialized_document._version)
+        if serialized_document.model != self.model:
+            raise WrongModelDeserializationError(serialized_document.model)
+        if serialized_document.version != SERIALIZED_DOCUMENT_VERSION:
+            raise WrongVersionDeserializationError(serialized_document.version)
         return serialized_document.holmes_document(self)
 
     def _set_coreference_information(self, token):
@@ -748,12 +746,12 @@ class SemanticAnalyzer(ABC):
             if this_token_mention_index > -1:
                 for mention_index, mention in enumerate(chain):
                     if this_token_mention_index - mention_index > \
-                            self._maximum_mentions_in_coreference_chain or \
+                            self.maximum_mentions_in_coreference_chain or \
                             abs (mention.root_index - token.i) > \
-                            self._maximum_word_distance_in_coreference_chain:
+                            self.maximum_word_distance_in_coreference_chain:
                         continue
                     if mention_index - this_token_mention_index > \
-                            self._maximum_mentions_in_coreference_chain:
+                            self.maximum_mentions_in_coreference_chain:
                         break
                     token._.holmes.mentions.append(Mention(mention.root_index,
                             [token.i] if token.i in mention.token_indexes
@@ -765,77 +763,75 @@ class SemanticAnalyzer(ABC):
 
     language_name = NotImplemented
 
-    default_vectors_model_name = NotImplemented
+    default_vectorsmodel_name = NotImplemented
 
     noun_pos = NotImplemented
 
-    _matchable_pos = NotImplemented
+    matchable_pos = NotImplemented
 
-    _adjectival_predicate_head_pos = NotImplemented
+    adjectival_predicate_head_pos = NotImplemented
 
-    _adjectival_predicate_subject_pos = NotImplemented
+    adjectival_predicate_subject_pos = NotImplemented
 
     sibling_marker_deps = NotImplemented
 
-    _adjectival_predicate_subject_dep = NotImplemented
+    adjectival_predicate_subject_dep = NotImplemented
 
-    _adjectival_predicate_predicate_dep = NotImplemented
+    adjectival_predicate_predicate_dep = NotImplemented
 
-    _adjectival_predicate_predicate_pos = NotImplemented
+    adjectival_predicate_predicate_pos = NotImplemented
 
-    _modifier_dep = NotImplemented
+    modifier_dep = NotImplemented
 
-    _spacy_noun_to_preposition_dep = NotImplemented
+    spacy_noun_to_preposition_dep = NotImplemented
 
-    _spacy_verb_to_preposition_dep = NotImplemented
+    spacy_verb_to_preposition_dep = NotImplemented
 
-    _holmes_noun_to_preposition_dep = NotImplemented
+    holmes_noun_to_preposition_dep = NotImplemented
 
-    _holmes_verb_to_preposition_dep = NotImplemented
+    holmes_verb_to_preposition_dep = NotImplemented
 
-    _conjunction_deps = NotImplemented
+    conjunction_deps = NotImplemented
 
-    _matchable_blacklist_tags = NotImplemented
+    matchable_blacklist_tags = NotImplemented
 
-    _semantic_dependency_excluded_tags = NotImplemented
+    semantic_dependency_excluded_tags = NotImplemented
 
-    _generic_pronoun_lemmas = NotImplemented
+    generic_pronoun_lemmas = NotImplemented
 
-    _or_lemma = NotImplemented
+    or_lemma = NotImplemented
 
-    _mark_child_dependencies_copied_to_siblings_as_uncertain = NotImplemented
+    mark_child_dependencies_copied_to_siblings_as_uncertain = NotImplemented
 
-    _maximum_mentions_in_coreference_chain = NotImplemented
+    maximum_mentions_in_coreference_chain = NotImplemented
 
-    _maximum_word_distance_in_coreference_chain = NotImplemented
-
-    _model_supports_coreference_resolution = NotImplemented
+    maximum_word_distance_in_coreference_chain = NotImplemented
 
     @abstractmethod
-    def _add_subwords(self, token, subword_cache):
+    def add_subwords(self, token, subword_cache):
         pass
 
     @abstractmethod
-    def _set_negation(self, token):
+    def set_negation(self, token):
         pass
 
     @abstractmethod
-    def _correct_auxiliaries_and_passives(self, token):
+    def correct_auxiliaries_and_passives(self, token):
         pass
 
     @abstractmethod
-    def _perform_language_specific_tasks(self, token):
+    def perform_language_specific_tasks(self, token):
         pass
 
     @abstractmethod
-    def _handle_relative_constructions(self, token):
+    def handle_relative_constructions(self, token):
         pass
 
     @abstractmethod
-    def _holmes_lemma(self, token):
+    def holmes_lemma(self, token):
         pass
 
-    def derived_holmes_lemma(self, token, lemma):
+    def derivedholmes_lemma(self, token, lemma):
         if lemma in self._derivational_dictionary:
             derived_lemma = self._derivational_dictionary[lemma]
             if lemma == derived_lemma: # basis entry, so do not call language specific method
@@ -843,35 +839,35 @@ class SemanticAnalyzer(ABC):
             else:
                 return derived_lemma
         else:
-            return self._language_specific_derived_holmes_lemma(token, lemma)
+            return self.language_specific_derived_holmes_lemma(token, lemma)
 
     @abstractmethod
-    def _language_specific_derived_holmes_lemma(self, token, lemma):
+    def language_specific_derived_holmes_lemma(self, token, lemma):
         pass
 
     def _initialize_semantic_dependencies(self, token):
         for child in (
                 child for child in token.children if child.dep_ != 'punct' and
-                child.tag_ not in self._semantic_dependency_excluded_tags):
+                child.tag_ not in self.semantic_dependency_excluded_tags):
             token._.holmes.children.append(SemanticDependency(token.i, child.i, child.dep_))
 
-    def _mark_if_righthand_sibling(self, token):
+    def mark_if_righthand_sibling(self, token):
         if token.dep_ in self.sibling_marker_deps:  # i.e. is righthand sibling
             working_token = token
             working_or_conjunction_flag = False
             # work up through the tree until the lefthandmost sibling element with the
             # semantic relationships to the rest of the sentence is reached
-            while working_token.dep_ in self._conjunction_deps:
+            while working_token.dep_ in self.conjunction_deps:
                 working_token = working_token.head
                 for working_child in working_token.children:
-                    if working_child.lemma_ == self._or_lemma:
+                    if working_child.lemma_ == self.or_lemma:
                         working_or_conjunction_flag = True
             # add this element to the lefthandmost sibling as a righthand sibling
             working_token._.holmes.righthand_siblings.append(token.i)
             if working_or_conjunction_flag:
                 working_token._.holmes.is_involved_in_or_conjunction = True
 
-    def _copy_any_sibling_info(self, token):
+    def copy_any_sibling_info(self, token):
         # Copy the or conjunction flag to righthand siblings
         if token._.holmes.is_involved_in_or_conjunction:
             for righthand_sibling in token._.holmes.righthand_siblings:
@@ -915,46 +911,46 @@ class SemanticAnalyzer(ABC):
                         sibling_dependency.label == dependency.label and not
                         token._.holmes.has_dependency_with_child_index(
                         sibling_dependency.child_index)]) == 0 and \
-                        dependency.label not in self._conjunction_deps and not \
+                        dependency.label not in self.conjunction_deps and not \
                         righthand_sibling_token._.holmes.has_dependency_with_child_index(
                             dependency.child_index) \
                         and righthand_sibling != dependency.child_index:
                     righthand_sibling_token._.holmes.children.append(SemanticDependency(
                         righthand_sibling, dependency.child_index, dependency.label,
-                        self._mark_child_dependencies_copied_to_siblings_as_uncertain
+                        self.mark_child_dependencies_copied_to_siblings_as_uncertain
                         or dependency.is_uncertain))
 
-    def _normalize_predicative_adjectives(self, token):
+    def normalize_predicative_adjectives(self, token):
         """Change phrases like *the town is old* and *the man is poor* so their
             semantic structure is equivalent to *the old town* and *the poor man*.
         """
-        if token.pos_ in self._adjectival_predicate_head_pos:
+        if token.pos_ in self.adjectival_predicate_head_pos:
             altered = False
             for predicative_adjective_index in (
                     dependency.child_index for dependency in \
                     token._.holmes.children if dependency.label ==
-                    self._adjectival_predicate_predicate_dep and
+                    self.adjectival_predicate_predicate_dep and
                     token.doc[dependency.child_index].pos_ ==
-                    self._adjectival_predicate_predicate_pos and
+                    self.adjectival_predicate_predicate_pos and
                     dependency.child_index >= 0):
                 for subject_index in (
                         dependency.child_index for dependency in
                         token._.holmes.children if dependency.label ==
-                        self._adjectival_predicate_subject_dep and (
+                        self.adjectival_predicate_subject_dep and (
                             dependency.child_token(token.doc).pos_ in
-                            self._adjectival_predicate_subject_pos or
+                            self.adjectival_predicate_subject_pos or
                             dependency.child_token(token.doc)._.holmes.is_involved_in_coreference()
                         and dependency.child_index >= 0
                         and dependency.child_index != predicative_adjective_index)):
                     token.doc[subject_index]._.holmes.children.append(
                         SemanticDependency(
-                            subject_index, predicative_adjective_index, self._modifier_dep))
+                            subject_index, predicative_adjective_index, self.modifier_dep))
                     altered = True
             if altered:
                 token._.holmes.children = [SemanticDependency(
                     token.i, 0 - (subject_index + 1), None)]
 
-    def _create_additional_preposition_phrase_semantic_dependencies(self, token):
+    def create_additional_preposition_phrase_semantic_dependencies(self, token):
         """In structures like 'Somebody needs insurance for a period' it seems to be
             mainly language-dependent whether the preposition phrase is analysed as being
             dependent on the preceding noun or the preceding verb. We add an additional, new
@@ -990,17 +986,17 @@ class SemanticAnalyzer(ABC):
                 # from the verb(s)
                 for governing_verb in governing_verbs:
                     if preceding_noun._.holmes.has_dependency_with_child_index_and_label(
-                            token.i, self._spacy_noun_to_preposition_dep) and not \
+                            token.i, self.spacy_noun_to_preposition_dep) and not \
                             governing_verb._.holmes.has_dependency_with_child_index_and_label(
-                                token.i, self._spacy_verb_to_preposition_dep):
+                                token.i, self.spacy_verb_to_preposition_dep):
                         add_dependencies_pointing_to_preposition_and_siblings(
-                            governing_verb, self._holmes_verb_to_preposition_dep)
+                            governing_verb, self.holmes_verb_to_preposition_dep)
                 # if the verb(s) governs the preposition, add new possible dependencies
                 # from the noun
                 if governing_verbs[0]._.holmes.has_dependency_with_child_index_and_label(
-                        token.i, self._spacy_verb_to_preposition_dep) and not \
+                        token.i, self.spacy_verb_to_preposition_dep) and not \
                         preceding_noun._.holmes.has_dependency_with_child_index_and_label(
-                            token.i, self._spacy_noun_to_preposition_dep):
+                            token.i, self.spacy_noun_to_preposition_dep):
                     # check the preposition is not pointing back to a relative clause
                     for preposition_dep_index in (
                             dep.child_index for dep in token._.holmes.children
@@ -1009,18 +1005,18 @@ class SemanticAnalyzer(ABC):
                                 has_dependency_with_label('relcl'):
                             return
                     add_dependencies_pointing_to_preposition_and_siblings(
-                        preceding_noun, self._holmes_noun_to_preposition_dep)
+                        preceding_noun, self.holmes_noun_to_preposition_dep)
 
-    def _set_matchability(self, token):
+    def set_matchability(self, token):
         """Marks whether this token, if it appears in a search phrase, should require a counterpart
         in a document being matched.
         """
         token._.holmes.is_matchable = (
-            token.pos_ in self._matchable_pos or token._.holmes.is_involved_in_coreference()) \
-            and token.tag_ not in self._matchable_blacklist_tags and \
-            token._.holmes.lemma not in self._generic_pronoun_lemmas
+            token.pos_ in self.matchable_pos or token._.holmes.is_involved_in_coreference()) \
+            and token.tag_ not in self.matchable_blacklist_tags and \
+            token._.holmes.lemma not in self.generic_pronoun_lemmas
 
-    def _move_information_between_tokens(self, from_token, to_token):
+    def move_information_between_tokens(self, from_token, to_token):
         """Moves semantic child and sibling information from one token to another.
 
         Args:
@@ -1039,7 +1035,8 @@ class SemanticAnalyzer(ABC):
                 dependency for dependency in from_token._.holmes.children
                 if not to_token._.holmes.has_dependency_with_child_index(dependency.child_index)
                 and to_token.i != dependency.child_index and
-                to_token.i not in to_token.doc[dependency.child_index]._.holmes.righthand_siblings and dependency.child_index not in to_token._.holmes.righthand_siblings):
+                to_token.i not in to_token.doc[dependency.child_index]._.holmes.righthand_siblings
+                and dependency.child_index not in to_token._.holmes.righthand_siblings):
             to_token._.holmes.children.append(SemanticDependency(
                 to_token.i, dependency.child_index, dependency.label, dependency.is_uncertain))
         from_token._.holmes.children = [SemanticDependency(from_token.i, 0 - (to_token.i + 1))]
@@ -1058,7 +1055,7 @@ class SemanticAnalyzer(ABC):
                 if token.i != to_token.i:
                     token._.holmes.righthand_siblings.append(to_token.i)
 
-    def _create_convenience_dependencies(self, token):
+    def create_convenience_dependencies(self, token):
         for child_dependency in (
                 child_dependency for child_dependency in token._.holmes.children
                 if child_dependency.child_index >= 0):
@@ -1083,8 +1080,7 @@ class LinguisticObjectFactory:
     def __init__(
             self, semantic_analyzer, semantic_matching_helper, ontology,
             overall_similarity_threshold, embedding_based_matching_on_root_words,
-            analyze_derivational_morphology, perform_coreference_resolution,
-            use_reverse_dependency_matching):
+            analyze_derivational_morphology, perform_coreference_resolution):
         """Args:
 
         semantic_analyzer -- the *SemanticAnalyzer* object to use
@@ -1308,7 +1304,7 @@ class LinguisticObjectFactory:
                         subword.containing_token_index != token.i]) > 0:
                     index_list.remove(index)
 
-        self._redefine_multiwords_on_head_tokens(doc)
+        self.redefine_multiwords_on_head_tokens(doc)
         token_indexes_to_multiword_lemmas = {}
         token_indexes_within_multiwords_to_ignore = []
         for token in (token for token in doc if len(token._.holmes.lemma.split()) == 1):
@@ -1518,7 +1514,7 @@ class LinguisticObjectFactory:
             create_search_phrase_from_phraselet(phraselet_info) for phraselet_info in
             phraselet_infos}
 
-    def _redefine_multiwords_on_head_tokens(self, doc):
+    def redefine_multiwords_on_head_tokens(self, doc):
 
         def loop_textual_representations(multiword_span):
             for representation, _ in self.semantic_matching_helper.loop_textual_representations(
@@ -1576,7 +1572,7 @@ class LinguisticObjectFactory:
             return token
 
         if phraselet_template is None:
-            self._redefine_multiwords_on_head_tokens(search_phrase_doc)
+            self.redefine_multiwords_on_head_tokens(search_phrase_doc)
             # where a multiword exists as an ontology entry, the multiword should be used for
             # matching rather than the individual words. Not relevant for topic matching
             # phraselets because the multiword will already have been set as the Holmes
@@ -1733,7 +1729,7 @@ class LinguisticObjectFactory:
                 normalized_ontology_word = \
                     self.semantic_matching_helper.normalize_hyphens(ontology_word)
                 for textual_word in normalized_ontology_word.split():
-                    derived_lemma = self.semantic_analyzer.derived_holmes_lemma(
+                    derived_lemma = self.semantic_analyzer.derivedholmes_lemma(
                         None, textual_word.lower())
                     if derived_lemma is None:
                         derived_lemma = textual_word

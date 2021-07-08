@@ -166,7 +166,7 @@ class MultithreadingTest(unittest.TestCase):
                 self.assertEqual(match.word_matches[0].document_word, 'People')
                 self.assertEqual(
                     match.word_matches[0].search_phrase_word, 'people')
-                self.assertEqual(match.word_matches[0].type, 'direct')
+                self.assertEqual(match.word_matches[0].word_match_type, 'direct')
                 self.assertEqual(match.word_matches[0].document_token.i, 0)
                 self.assertEqual(
                     match.word_matches[0].search_phrase_token.i, 0)
@@ -174,7 +174,7 @@ class MultithreadingTest(unittest.TestCase):
                     match.word_matches[1].document_word, 'discuss')
                 self.assertEqual(
                     match.word_matches[1].search_phrase_word, 'discuss')
-                self.assertEqual(match.word_matches[1].type, 'direct')
+                self.assertEqual(match.word_matches[1].word_match_type, 'direct')
                 self.assertEqual(match.word_matches[1].document_token.i, 1)
                 self.assertEqual(
                     match.word_matches[1].search_phrase_token.i, 1)
@@ -182,7 +182,7 @@ class MultithreadingTest(unittest.TestCase):
                     match.word_matches[2].document_word, 'irrelevancy')
                 self.assertEqual(
                     match.word_matches[2].search_phrase_word, 'irrelevancy')
-                self.assertEqual(match.word_matches[2].type, 'direct')
+                self.assertEqual(match.word_matches[2].word_match_type, 'direct')
                 self.assertEqual(match.word_matches[2].document_token.i, 2)
                 self.assertEqual(
                     match.word_matches[2].search_phrase_token.i, 2)
