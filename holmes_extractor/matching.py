@@ -1339,14 +1339,23 @@ class StructuralMatcher:
             text_word_matches = []
             for word_match in match.word_matches:
                 text_word_matches.append({
+                    'search_phrase_token_index': word_match.search_phrase_token.i,
                     'search_phrase_word': word_match.search_phrase_word,
+                    'document_token_index': word_match.document_token.i,
+                    'first_document_token_index': word_match.first_document_token.i,
+                    'last_document_token_index': word_match.last_document_token.i,
+                    'structurally_matched_document_token_index':
+                        word_match.structurally_matched_document_token.i,
                     'document_word': word_match.document_word,
                     'document_phrase': self.semantic_matching_helper.get_dependent_phrase(
                         word_match.document_token, word_match.document_subword),
                     'match_type': word_match.word_match_type,
+                    'negated': word_match.is_negated,
+                    'uncertain': word_match.is_uncertain,
                     'similarity_measure': str(word_match.similarity_measure),
                     'involves_coreference': word_match.involves_coreference,
                     'extracted_word': word_match.extracted_word,
+                    'depth': word_match.depth,
                     'explanation': word_match.explain()})
             match_dict['word_matches'] = text_word_matches
             match_dicts.append(match_dict)

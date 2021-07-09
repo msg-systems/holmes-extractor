@@ -826,8 +826,7 @@ class TopicMatcher:
             topic_matches, key=lambda topic_match: (
                 0-topic_match.score, topic_match.start_index - topic_match.end_index))
 
-    def get_topic_match_dictionaries(
-            self):
+    def get_topic_match_dictionaries(self):
 
         class WordInfo:
 
