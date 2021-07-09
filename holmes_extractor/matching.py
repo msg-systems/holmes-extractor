@@ -1,4 +1,5 @@
 import copy
+import sys
 from string import punctuation
 from threading import Lock
 from numpy import dot
@@ -113,6 +114,7 @@ class Match:
     is_uncertain -- *True* if this match is uncertain.
     involves_coreference -- *True* if this match was found using coreference resolution.
     search_phrase_label -- the label of the search phrase that matched.
+    search_phrase_text -- the text of the search phrase that matched.
     document_label -- the label of the document that matched.
     from_single_word_phraselet -- *True* if this is a match against a single-word
         phraselet.
@@ -125,13 +127,14 @@ class Match:
     """
 
     def __init__(
-            self, search_phrase_label, document_label, from_single_word_phraselet,
-            from_topic_match_phraselet_created_without_matching_tags,
+            self, search_phrase_label, search_phrase_text, document_label,
+            from_single_word_phraselet, from_topic_match_phraselet_created_without_matching_tags,
             from_reverse_only_topic_match_phraselet):
         self.word_matches = []
         self.is_negated = False
         self.is_uncertain = False
         self.search_phrase_label = search_phrase_label
+        self.search_phrase_text = search_phrase_text
         self.document_label = document_label
         self.from_single_word_phraselet = from_single_word_phraselet
         self.from_topic_match_phraselet_created_without_matching_tags = \
@@ -149,7 +152,8 @@ class Match:
 
     def __copy__(self):
         match_to_return = Match(
-            self.search_phrase_label, self.document_label, self.from_single_word_phraselet,
+            self.search_phrase_label, self.search_phrase_text,
+            self.document_label, self.from_single_word_phraselet,
             self.from_topic_match_phraselet_created_without_matching_tags,
             self.from_reverse_only_topic_match_phraselet)
         match_to_return.word_matches = self.word_matches.copy()
@@ -930,7 +934,7 @@ class StructuralMatcher:
                 containing_subword_token_indexes]) == 0
 
         matches = [Match(
-            search_phrase.label, document_label,
+            search_phrase.label, search_phrase.doc_text, document_label,
             search_phrase.topic_match_phraselet and search_phrase.has_single_matchable_word,
             search_phrase.topic_match_phraselet_created_without_matching_tags,
             search_phrase.reverse_only)]
@@ -1149,8 +1153,8 @@ class StructuralMatcher:
                                 match_type = self.match_type(
                                     False, search_phrase_match_type, document_match_type)
                                 minimal_match = Match(
-                                    search_phrase.label, document_label, True,
-                                    search_phrase.
+                                    search_phrase.label, search_phrase.doc_text, document_label,
+                                    True, search_phrase.
                                     topic_match_phraselet_created_without_matching_tags,
                                     search_phrase.reverse_only)
                                 minimal_match.index_within_document = index.token_index
@@ -1304,3 +1308,50 @@ class StructuralMatcher:
                         index_to_match.subword_index, document_label,
                         compare_embeddings_on_non_root_words))
         return sorted(matches, key=lambda match: 1 - float(match.overall_similarity_measure))
+
+    def build_match_dictionaries(self, matches):
+        """Builds and returns a sorted list of match dictionaries."""
+        match_dicts = []
+        for match in matches:
+            earliest_sentence_index = sys.maxsize
+            latest_sentence_index = -1
+            for word_match in match.word_matches:
+                sentence_index = word_match.document_token.sent.start
+                if sentence_index < earliest_sentence_index:
+                    earliest_sentence_index = sentence_index
+                if sentence_index > latest_sentence_index:
+                    latest_sentence_index = sentence_index
+            sentences_string = ' '.join(
+                sentence.text.strip() for sentence in
+                match.word_matches[0].document_token.doc.sents if sentence.start >=
+                earliest_sentence_index and sentence.start <= latest_sentence_index)
+
+            match_dict = {
+                'search_phrase_label': match.search_phrase_label,
+                'search_phrase_text': match.search_phrase_text,
+                'document': match.document_label,
+                'index_within_document': match.index_within_document,
+                'sentences_within_document': sentences_string,
+                'negated': match.is_negated,
+                'uncertain': match.is_uncertain,
+                'involves_coreference': match.involves_coreference,
+                'overall_similarity_measure': match.overall_similarity_measure}
+            text_word_matches = []
+            for word_match in match.word_matches:
+                text_word_matches.append({
+                    'search_phrase_word': word_match.search_phrase_word,
+                    'document_word': word_match.document_word,
+                    'document_phrase': self.semantic_matching_helper.get_dependent_phrase(
+                        word_match.document_token, word_match.document_subword),
+                    'match_type': word_match.word_match_type,
+                    'similarity_measure': str(word_match.similarity_measure),
+                    'involves_coreference': word_match.involves_coreference,
+                    'extracted_word': word_match.extracted_word,
+                    'explanation': word_match.explain()})
+            match_dict['word_matches'] = text_word_matches
+            match_dicts.append(match_dict)
+        return match_dicts
+
+    def sort_match_dictionaries(self, match_dictionaries):
+        return sorted(match_dictionaries,
+            key=lambda match_dict: 1 - float(match_dict['overall_similarity_measure']))

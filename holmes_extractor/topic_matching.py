@@ -119,7 +119,7 @@ class TopicMatcher:
     """A topic matcher object. See manager.py for details of the properties."""
 
     def __init__(
-            self, *, semantic_matching_helper, structural_matcher, indexed_documents,
+            self, *, structural_matcher, indexed_documents,
             text_to_match, phraselet_labels_to_phraselet_infos, phraselet_labels_to_search_phrases,
             embedding_based_matching_on_root_words, maximum_activation_distance, relation_score,
             reverse_only_relation_score, single_word_score, single_word_any_tag_score,
@@ -135,14 +135,13 @@ class TopicMatcher:
                 str(maximum_number_of_single_word_matches_for_embedding_matching),
                 'relation',
                 str(maximum_number_of_single_word_matches_for_relation_matching))))
-        self.semantic_matching_helper = semantic_matching_helper
         self.structural_matcher = structural_matcher
+        self.semantic_matching_helper = structural_matcher.semantic_matching_helper
         self.indexed_documents = indexed_documents
         self.text_to_match = text_to_match
         self.phraselet_labels_to_phraselet_infos = phraselet_labels_to_phraselet_infos
         self.phraselet_labels_to_search_phrases = phraselet_labels_to_search_phrases
         self.embedding_based_matching_on_root_words = embedding_based_matching_on_root_words
-        self._ontology = structural_matcher.ontology
         self.maximum_activation_distance = maximum_activation_distance
         self.relation_score = relation_score
         self.reverse_only_relation_score = reverse_only_relation_score
@@ -828,17 +827,7 @@ class TopicMatcher:
                 0-topic_match.score, topic_match.start_index - topic_match.end_index))
 
     def get_topic_match_dictionaries(
-            self, *, tied_result_quotient):
-        """Returns a list of dictionaries representing the results of a topic match between an
-            entered text and the loaded documents. Callers of this method do not have to manage any
-            further dependencies on spaCy or Holmes.
-
-        Properties:
-
-        topic_matches -- a list of *TopicMatch* objects.
-        tied_result_quotient -- the quotient between a result and following results above which
-            the results are interpreted as tied
-        """
+            self):
 
         class WordInfo:
 
@@ -965,5 +954,4 @@ class TopicMatcher:
                     # becoming too bloated
             }
             topic_match_dicts.append(topic_match_dict)
-        return TopicMatchDictionaryOrderer().order(
-            topic_match_dicts, self.number_of_results, tied_result_quotient)
+            return topic_match_dicts

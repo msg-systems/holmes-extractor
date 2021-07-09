@@ -14,8 +14,6 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
 
     adjectival_predicate_subject_pos = ('NOUN', 'PROPN', 'PRON')
 
-    sibling_marker_deps = ('cj', 'app')
-
     adjectival_predicate_subject_dep = 'sb'
 
     adjectival_predicate_predicate_dep = 'pd'
@@ -47,6 +45,8 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
     maximum_mentions_in_coreference_chain = 3
 
     maximum_word_distance_in_coreference_chain = 300
+
+    sibling_marker_deps = ('cj', 'app')
 
     # Only words at least this long are examined for possible subwords
     minimum_length_for_subword_search = 10
@@ -328,7 +328,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                                     first_sibling_possible_subword.char_start_index +
                                     len(first_sibling_possible_subword.text)]
                                 lemma = first_sibling_lemmatization_doc[counter*2].lemma_.lower()
-                                derived_lemma = self.derivedholmes_lemma(None, lemma)
+                                derived_lemma = self.derived_holmes_lemma(None, lemma)
                                 working_subwords.append(Subword(
                                     first_sibling.i, index, text, lemma, derived_lemma,
                                     self.get_vector(lemma),
@@ -344,7 +344,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                         possible_subword.char_start_index:
                         possible_subword.char_start_index + len(possible_subword.text)]
                     lemma = lemmatization_doc[counter*2].lemma_.lower()
-                    derived_lemma = self.derivedholmes_lemma(None, lemma)
+                    derived_lemma = self.derived_holmes_lemma(None, lemma)
                     working_subwords.append(Subword(
                         token.i, index, text, lemma, derived_lemma, self.get_vector(lemma),
                         possible_subword.char_start_index, None, None, None, None))
@@ -374,7 +374,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                                         last_sibling_possible_subword.char_start_index +
                                         len(last_sibling_possible_subword.text)]
                                     lemma = last_sibling_lemmatization_doc[counter*2].lemma_.lower()
-                                    derived_lemma = self.derivedholmes_lemma(None, lemma)
+                                    derived_lemma = self.derived_holmes_lemma(None, lemma)
                                     working_subwords.append(Subword(
                                         last_sibling.i, index, text, lemma, derived_lemma,
                                         self.get_vector(lemma),
@@ -520,7 +520,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                 # find the antecedent
                 counter -= 1
                 working_token = token.doc[counter]
-                if working_token.pos_ in ('NOUN', 'PROPN') and working_token.dep_ not in \
+                if working_token.pos_ in ('NOUN', 'PROPN') and working_token.dep_ not in
                         self.sibling_marker_deps:
                     working_dependency = None
                     for antecedent in (
@@ -996,6 +996,8 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
     entity_defined_multiword_pos = ('NOUN', 'PROPN')
 
     entity_defined_multiword_entity_types = ('PER', 'LOC')
+
+    sibling_marker_deps = ('cj', 'app')
 
     def normalize_hyphens(self, word):
         """ Normalizes hyphens in a multiword for ontology matching. Depending on the language,

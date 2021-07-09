@@ -23,9 +23,6 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
     # ("dog" in "The dog is tired")
     adjectival_predicate_subject_pos = ('NOUN', 'PROPN', 'PRON')
 
-    # Dependency labels that can mark righthand siblings
-    sibling_marker_deps = ('conj', 'appos')
-
     # Dependency label that marks the subject of an adjectival predicate
     adjectival_predicate_subject_dep = 'nsubj'
 
@@ -77,6 +74,9 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
     # Coreference chains are only processed up to this number of words away from the currently
     # matched document location
     maximum_word_distance_in_coreference_chain = 300
+
+    # Dependency labels that can mark righthand siblings
+    sibling_marker_deps = ('conj', 'appos')
 
     def add_subwords(self, token, subword_cache):
         """ Analyses the internal structure of the word to find atomic semantic elements. Is
@@ -698,6 +698,9 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
 
     # The entity labels permitted for elements of an entity-defined multiword.
     entity_defined_multiword_entity_types = ('PERSON', 'ORG', 'GPE', 'WORK_OF_ART')
+
+    # Dependency labels that can mark righthand siblings
+    sibling_marker_deps = ('conj', 'appos')
 
     def normalize_hyphens(self, word):
         """ Normalizes hyphens for ontology matching. Depending on the language,

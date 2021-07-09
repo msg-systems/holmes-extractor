@@ -109,7 +109,7 @@ class SupervisedTopicTrainingUtils:
         return labels_to_frequencies_dict
 
     def record_matches(
-            self, *, phraselet_labels_to_search_phrases, linguistic_object_factory,
+            self, *, phraselet_labels_to_search_phrases, semantic_matching_helper,
             structural_matcher, sorted_label_dict, doc_label, doc, matrix, row_index, verbose):
         """ Matches a document against the currently stored phraselets and records the matches
             in a matrix.
@@ -118,7 +118,7 @@ class SupervisedTopicTrainingUtils:
 
             phraselet_labels_to_search_phrases -- a dictionary from search phrase (phraselet)
                 labels to search phrase objects.
-            linguistic_object_factory -- the linguistic object factory to use.
+            semantic_matching_helper -- the semantic matching helper to use.
             structural_matcher -- the structural matcher to use for comparisons.
             sorted_label_dict -- a dictionary from search phrase (phraselet) labels to their own
                 alphabetic sorting indexes.
@@ -128,7 +128,7 @@ class SupervisedTopicTrainingUtils:
             row_index -- the row number within the matrix corresponding to the document.
             verbose -- if 'True', matching information is outputted to the console.
         """
-        indexed_document = linguistic_object_factory.index_document(doc)
+        indexed_document = semantic_matching_helper.index_document(doc)
         indexed_documents = {doc_label:indexed_document}
         found = False
         for label, occurrences in \
@@ -221,7 +221,7 @@ class SupervisedTopicTrainingBasis:
             raise DuplicateDocumentError(label)
         if self.verbose:
             print('Registering document', label)
-        indexed_document = self.linguistic_object_factory.index_document(doc)
+        indexed_document = self.semantic_matching_helper.index_document(doc)
         self.training_documents[label] = indexed_document
         self.linguistic_object_factory.add_phraselets_to_dict(
             doc,
@@ -348,6 +348,7 @@ class SupervisedTopicModelTrainer:
         self.utils = utils
         self.semantic_analyzer = linguistic_object_factory.semantic_analyzer
         self.linguistic_object_factory = linguistic_object_factory
+        self.semantic_matching_helper = linguistic_object_factory.semantic_matching_helper
         self.structural_matcher = structural_matcher
         self.training_basis = training_basis
         self.minimum_occurrences = minimum_occurrences
@@ -379,7 +380,7 @@ class SupervisedTopicModelTrainer:
         for index, document_label in enumerate(
                 sorted(self.training_basis.training_documents.keys())):
             self.utils.record_matches(
-                linguistic_object_factory=self.linguistic_object_factory,
+                semantic_matching_helper=self.semantic_matching_helper,
                 structural_matcher=self.structural_matcher,
                 phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
                 sorted_label_dict=self.sorted_label_dict,
@@ -529,6 +530,7 @@ class SupervisedTopicClassifier:
             verbose):
         self.semantic_analyzer = semantic_analyzer
         self.linguistic_object_factory = linguistic_object_factory
+        self.semantic_matching_helper = linguistic_object_factory.semantic_matching_helper
         self.structural_matcher = structural_matcher
         self.model = model
         self.verbose = verbose
@@ -584,7 +586,7 @@ class SupervisedTopicClassifier:
             raise RuntimeError('No model defined')
         new_document_matrix = dok_matrix((1, len(self.model.sorted_label_dict)))
         if not self.utils.record_matches(
-                linguistic_object_factory=self.linguistic_object_factory,
+                semantic_matching_helper=self.semantic_matching_helper,
                 structural_matcher=self.structural_matcher,
                 phraselet_labels_to_search_phrases=self.phraselet_labels_to_search_phrases,
                 sorted_label_dict=self.model.sorted_label_dict,
