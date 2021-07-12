@@ -12,12 +12,14 @@ from spacy import Language
 from spacy.tokens import Doc, Token
 from thinc.api import Config
 from .errors import *
-from .matching import StructuralMatcher, ThreadsafeContainer
+from .matching import StructuralMatcher
 from .parsing import SemanticAnalyzerFactory, SemanticAnalyzer, SemanticMatchingHelperFactory,\
     LinguisticObjectFactory, SERIALIZED_DOCUMENT_VERSION
 from .classification import SupervisedTopicTrainingBasis, SupervisedTopicClassifier
 from .topic_matching import TopicMatcher, TopicMatchDictionaryOrderer
 from .consoles import HolmesConsoles
+
+TIMEOUT_SECONDS = 300
 
 absolute_config_filename = pkg_resources.resource_filename(__name__, 'config.cfg')
 config = Config().from_disk(absolute_config_filename)
@@ -80,7 +82,7 @@ class Manager:
             embedding_based_matching_on_root_words=False, ontology=None,
             analyze_derivational_morphology=True, perform_coreference_resolution=True,
             use_reverse_dependency_matching=True, debug=False, verbose=False,
-            number_of_workers=None):
+            number_of_workers:int=None):
         self.verbose = verbose
         self.nlp = get_nlp(model)
         with pipeline_components_lock:
@@ -129,6 +131,8 @@ class Manager:
                 phraselet_template.template_sentence)
         if number_of_workers is None:
             number_of_workers = cpu_count()
+        elif not 0 < number_of_workers:
+            raise ValueError('number_of_workers must be a postitive integer.')
         self.number_of_workers = number_of_workers
         self.next_worker_to_use = 0
         self.multiprocessor_manager = Multiprocessing_manager()
@@ -163,7 +167,7 @@ class Manager:
         return_values = []
         exception_worker_label = None
         for _ in range(number_of_messages):
-            worker_label, return_value, return_info = reply_queue.get()
+            worker_label, return_value, return_info = reply_queue.get(timeout=TIMEOUT_SECONDS)
             if isinstance(return_info, Exception):
                 if exception_worker_label is None:
                     exception_worker_label = worker_label
@@ -197,7 +201,7 @@ class Manager:
                     self.word_dictionaries_need_rebuilding = True
                     self.input_queues[worker_queue_number].put((
                         self.worker.register_serialized_document,
-                        (serialized_doc, label), reply_queue))
+                        (serialized_doc, label), reply_queue), TIMEOUT_SECONDS)
         self.handle_response(reply_queue, len(document_dictionary), 'register_serialized_documents')
 
     def register_serialized_document(self, serialized_document, label):
@@ -229,9 +233,11 @@ class Manager:
         with self.lock:
             if label in self.document_labels_to_worker_queues:
                 self.input_queues[self.document_labels_to_worker_queues[label]].put((
-                    self.worker.remove_document, (label,), reply_queue))
+                    self.worker.remove_document, (label,), reply_queue), TIMEOUT_SECONDS)
                 del self.document_labels_to_worker_queues[label]
                 self.word_dictionaries_need_rebuilding = True
+            else:
+                return
         self.handle_response(reply_queue, 1, 'remove_document')
 
     def remove_all_documents(self):
@@ -239,7 +245,7 @@ class Manager:
         with self.lock:
             for worker_index in range(self.number_of_workers):
                 self.input_queues[worker_index].put((
-                    self.worker.remove_all_documents, None, reply_queue))
+                    self.worker.remove_all_documents, None, reply_queue), TIMEOUT_SECONDS)
             self.word_dictionaries_need_rebuilding = True
             self.document_labels_to_worker_queues = {}
         self.handle_response(reply_queue, self.number_of_workers, 'remove_all_documents')
@@ -263,7 +269,7 @@ class Manager:
         with self.lock:
             if label in self.document_labels_to_worker_queues:
                 self.input_queues[self.document_labels_to_worker_queues[label]].put((
-                    self.worker.get_serialized_document, (label,), reply_queue))
+                    self.worker.get_serialized_document, (label,), reply_queue), TIMEOUT_SECONDS)
             else:
                 return None
         return self.handle_response(reply_queue, 1, 'serialize_document')[0]
@@ -291,15 +297,15 @@ class Manager:
             search phrase text.
         """
         search_phrase = self.internal_get_search_phrase(search_phrase_text, label)
+        search_phrase.pack()
         reply_queue = self.multiprocessor_manager.Queue()
         with self.lock:
             for worker_index in range(self.number_of_workers):
                 self.input_queues[worker_index].put((
                     self.worker.register_search_phrase,
-                    (search_phrase,), reply_queue))
+                    (search_phrase,), reply_queue), TIMEOUT_SECONDS)
             self.search_phrases.append(search_phrase)
         self.handle_response(reply_queue, self.number_of_workers, 'register_search_phrase')
-
         return search_phrase
 
     def remove_all_search_phrases_with_label(self, label):
@@ -308,7 +314,7 @@ class Manager:
             for worker_index in range(self.number_of_workers):
                 self.input_queues[worker_index].put((
                     self.worker.remove_all_search_phrases_with_label,
-                    (label,), reply_queue))
+                    (label,), reply_queue), TIMEOUT_SECONDS)
             self.search_phrases = [search_phrase for search_phrase in self.search_phrases
                 if search_phrase.label != label]
         self.handle_response(reply_queue, self.number_of_workers,
@@ -319,33 +325,71 @@ class Manager:
         with self.lock:
             for worker_index in range(self.number_of_workers):
                 self.input_queues[worker_index].put((
-                    self.worker.remove_all_search_phrases, None, reply_queue))
+                    self.worker.remove_all_search_phrases, None, reply_queue), TIMEOUT_SECONDS)
             self.search_phrases = []
         self.handle_response(reply_queue, self.number_of_workers, 'remove_all_search_phrases')
 
     def match(self, search_phrase_text=None, document_text=None):
-        if search_phrase_text is not None and document_text is not None:
-            raise ValueError('At most one of search_phrase_text and document_text may be specified; matching must use at least one of pre-registered search phrases and pre-registered documents.')
         if search_phrase_text is not None:
             search_phrase = self.internal_get_search_phrase(search_phrase_text, '')
         else:
             search_phrase = None
         if document_text is not None:
             serialized_document = self.nlp(document_text).to_bytes()
+            with self.lock:
+                first_worker_queue_number = self.next_worker_queue_number()
             number_of_workers = 1
         else:
             serialized_document = None
+            first_worker_queue_number = 0
             number_of_workers = self.number_of_workers
         reply_queue = self.multiprocessor_manager.Queue()
-        for worker_index in range(number_of_workers):
+        for worker_index in range(first_worker_queue_number, number_of_workers):
             self.input_queues[worker_index].put((
-                self.worker.match, (serialized_document, search_phrase), reply_queue))
+                self.worker.match, (serialized_document, search_phrase), reply_queue),
+                TIMEOUT_SECONDS)
         worker_match_dictss = self.handle_response(reply_queue, number_of_workers,
             'match')
         match_dicts = []
         for worker_match_dicts in worker_match_dictss:
             match_dicts.extend(worker_match_dicts)
         return self.structural_matcher.sort_match_dictionaries(match_dicts)
+
+    def get_corpus_frequency_information(self):
+        with self.lock:
+            if self.word_dictionaries_need_rebuilding:
+                reply_queue = self.multiprocessor_manager.Queue()
+                worker_frequency_dict = {}
+                for worker_index in range(self.number_of_workers):
+                    self.input_queues[worker_index].put((
+                        self.worker.get_words_to_corpus_frequencies, None, reply_queue),
+                        TIMEOUT_SECONDS)
+                exception_worker_label = None
+                for _ in range(self.number_of_workers):
+                    worker_label, return_value, return_info = reply_queue.get(
+                        timeout=TIMEOUT_SECONDS)
+                    if isinstance(return_info, Exception):
+                        if exception_worker_label is None:
+                            exception_worker_label = worker_label
+                    else:
+                        worker_frequency_dict.update(return_value)
+                        if self.verbose:
+                            print(return_info)
+                    if exception_worker_label is not None:
+                        print(''.join(('ERROR executing ', method_name, '() on ',
+                        exception_worker_label,
+                        '. Please examine the output from the worker processes to identify the problem.')))
+                self.words_to_corpus_frequencies = {}
+                for word in worker_frequency_dict:
+                    if word in self.words_to_corpus_frequencies:
+                        self.words_to_corpus_frequencies[word] += \
+                            worker_frequency_dict[word]
+                    else:
+                        self.words_to_corpus_frequencies[word] = \
+                            worker_frequency_dict[word]
+                self.maximum_corpus_frequency = max(self.words_to_corpus_frequencies.values())
+                self.word_dictionaries_need_rebuilding = False
+            return self.words_to_corpus_frequencies, self.maximum_corpus_frequency
 
     def topic_match_documents_against(
             self, text_to_match, *, use_frequency_factor=True, maximum_activation_distance=75,
@@ -356,7 +400,7 @@ class Manager:
             maximum_number_of_single_word_matches_for_relation_matching=500,
             maximum_number_of_single_word_matches_for_embedding_matching=100,
             sideways_match_extent=100, only_one_result_per_document=False, number_of_results=10,
-            document_label_filter=None, return_dictionary=True, tied_result_quotient=0.9):
+            document_label_filter=None, tied_result_quotient=0.9):
 
         """Returns the results of a topic match between an entered text and the loaded documents.
 
@@ -404,11 +448,8 @@ class Manager:
         number_of_results -- the number of topic match objects to return.
         document_label_filter -- optionally, a string with which document labels must start to
             be considered for inclusion in the results.
-        return_dictionary -- if *True*, dictionaries are returned that have no dependencies on
-            Holmes or spaCy; if *False*, topic match objects are returned.
         tied_result_quotient -- the quotient between a result and following results above which
-            the results are interpreted as tied. Only has an effect when *return_dictionary*
-            is *True*.
+            the results are interpreted as tied.
         """
         if maximum_number_of_single_word_matches_for_embedding_matching > \
                 maximum_number_of_single_word_matches_for_relation_matching:
@@ -417,44 +458,14 @@ class Manager:
                 str(maximum_number_of_single_word_matches_for_embedding_matching),
                 'relation',
                 str(maximum_number_of_single_word_matches_for_relation_matching))))
-        reply_queue = self.multiprocessor_manager.Queue()
         if use_frequency_factor:
-            with self.lock:
-                if self.word_dictionaries_need_rebuilding:
-                    worker_frequency_dict = {}
-                    for worker_index in range(self.number_of_workers):
-                        self.input_queues[worker_index].put((
-                            self.worker.get_words_to_corpus_frequencies, None, reply_queue))
-                    exception_worker_label = None
-                    for _ in range(self.number_of_workers):
-                        worker_label, return_value, return_info = reply_queue.get()
-                        if isinstance(return_info, Exception):
-                            if exception_worker_label is None:
-                                exception_worker_label = worker_label
-                        else:
-                            worker_frequency_dict.update(return_value)
-                            if self.verbose:
-                                print(return_info)
-                        if exception_worker_label is not None:
-                            print(''.join(('ERROR executing ', method_name, '() on ',
-                            exception_worker_label,
-                            '. Please examine the output from the worker processes to identify the problem.')))
-                    self.words_to_corpus_frequencies = {}
-                    for word in worker_frequency_dict:
-                        if word in self.words_to_corpus_frequencies:
-                            self.words_to_corpus_frequencies[word] += \
-                                worker_frequency_dict[word]
-                        else:
-                            self.words_to_corpus_frequencies[word] = \
-                                worker_frequency_dict[word]
-                    self.maximum_corpus_frequency = max(self.words_to_corpus_frequencies.values())
-                    self.word_dictionaries_need_rebuilding = False
-                words_to_corpus_frequencies = self.words_to_corpus_frequencies
-                maximum_corpus_frequency = self.maximum_corpus_frequency
+            words_to_corpus_frequencies, maximum_corpus_frequency = \
+                self.get_corpus_frequency_information()
         else:
             words_to_corpus_frequencies = None
             maximum_corpus_frequency = None
 
+        reply_queue = self.multiprocessor_manager.Queue()
         text_to_match_doc = self.semantic_analyzer.parse(text_to_match)
         phraselet_labels_to_phraselet_infos = \
             self.linguistic_object_factory.get_phraselet_labels_to_phraselet_infos(
@@ -466,6 +477,8 @@ class Manager:
         phraselet_labels_to_search_phrases = \
             self.linguistic_object_factory.create_search_phrases_from_phraselet_infos(
                 phraselet_labels_to_phraselet_infos.values())
+        for search_phrase in phraselet_labels_to_search_phrases.values():
+            search_phrase.pack()
 
         for worker_index in range(self.number_of_workers):
             self.input_queues[worker_index].put((
@@ -479,7 +492,7 @@ class Manager:
                 maximum_number_of_single_word_matches_for_relation_matching,
                 maximum_number_of_single_word_matches_for_embedding_matching,
                 sideways_match_extent, only_one_result_per_document, number_of_results,
-                document_label_filter), reply_queue))
+                document_label_filter), reply_queue), TIMEOUT_SECONDS)
         worker_topic_match_dictss = self.handle_response(reply_queue,
             self.number_of_workers, 'match')
         topic_match_dicts = []
@@ -600,16 +613,16 @@ class Worker:
                     return_value, return_info = method(state, *args)
                 else:
                     return_value, return_info = method(state)
-                reply_queue.put((worker_label, return_value, return_info))
+                reply_queue.put((worker_label, return_value, return_info), TIMEOUT_SECONDS)
             except Exception as err:
                 print(self.error_header(method, args, worker_label))
                 print(traceback.format_exc())
-                reply_queue.put((worker_label, None, err))
+                reply_queue.put((worker_label, None, err), TIMEOUT_SECONDS)
             except:
                 print(self.error_header(method, args, worker_label))
                 print(traceback.format_exc())
                 err_identifier = str(sys.exc_info()[0])
-                reply_queue.put((worker_label, None, err_identifier))
+                reply_queue.put((worker_label, None, err_identifier), TIMEOUT_SECONDS)
 
     def get_indexed_document(self, state, serialized_doc):
         doc = Doc(state['vocab']).from_bytes(serialized_doc)
@@ -643,6 +656,7 @@ class Worker:
             return None, ' '.join(('No document found with label', label))
 
     def register_search_phrase(self, state, search_phrase):
+        search_phrase.unpack(state['vocab'])
         state['search_phrases'].append(search_phrase)
         return None, ' '.join(('Registered search phrase with label', search_phrase.label))
 
@@ -701,6 +715,8 @@ class Worker:
             document_label_filter):
         if len(state['indexed_documents']) == 0:
             return [], 'No stored documents to match against'
+        for search_phrase in phraselet_labels_to_search_phrases.values():
+            search_phrase.unpack(state['vocab'])
         topic_matcher = TopicMatcher(
             structural_matcher=state['structural_matcher'],
             indexed_documents=state['indexed_documents'],
@@ -734,6 +750,7 @@ class HolmesBroker:
         self.nlp = nlp
         self.pid = os.getpid()
         self.semantic_analyzer = get_semantic_analyzer(nlp)
+        self.set_extensions()
 
     def __call__(self, doc:Doc) -> Doc:
         if os.getpid() != self.pid:

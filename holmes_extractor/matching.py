@@ -1247,6 +1247,12 @@ class StructuralMatcher:
                     'last_document_token_index': word_match.last_document_token.i,
                     'structurally_matched_document_token_index':
                         word_match.structurally_matched_document_token.i,
+                    'document_subword_index':
+                        word_match.document_subword.index
+                        if word_match.document_subword is not None else None,
+                    'document_subword_containing_token_index':
+                        word_match.document_subword.containing_token_index
+                        if word_match.document_subword is not None else None,
                     'document_word': word_match.document_word,
                     'document_phrase': self.semantic_matching_helper.get_dependent_phrase(
                         word_match.document_token, word_match.document_subword),

@@ -7,11 +7,14 @@ script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join(
     (script_directory, 'test_ontology.owl')))
 holmes_manager = holmes.Manager('en_core_web_trf',
-                                perform_coreference_resolution=True, ontology=ontology)
+                                perform_coreference_resolution=True, ontology=ontology,
+                                number_of_workers=1)
 no_ontology_holmes_manager = holmes.Manager('en_core_web_trf',
-                                            perform_coreference_resolution=True)
+                                            perform_coreference_resolution=True,
+                                            number_of_workers=1)
 no_coref_holmes_manager = holmes.Manager('en_core_web_trf',
-                                         perform_coreference_resolution=False, ontology=ontology)
+                                         perform_coreference_resolution=False, ontology=ontology,
+                                         number_of_workers=1)
 
 
 class EnglishSupervisedTopicClassificationTest(unittest.TestCase):

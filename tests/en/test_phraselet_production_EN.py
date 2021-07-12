@@ -6,16 +6,20 @@ script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join(
     (script_directory, 'test_ontology.owl')))
 ontology_holmes_manager = holmes.Manager(model='en_core_web_trf',
-                                         perform_coreference_resolution=False, ontology=ontology)
+                                         perform_coreference_resolution=False, ontology=ontology,
+                                         number_of_workers=1)
 ontology_holmes_manager_adm_false = holmes.Manager(model='en_core_web_trf',
                                                    perform_coreference_resolution=False, ontology=ontology,
-                                                   analyze_derivational_morphology=False)
+                                                   analyze_derivational_morphology=False,
+                                                   number_of_workers=1)
 symmetric_ontology = holmes.Ontology(os.sep.join((script_directory, 'test_ontology.owl')),
                                      symmetric_matching=True)
 symmetric_ontology_nocoref_holmes_manager = holmes.Manager(model='en_core_web_trf',
-                                                           ontology=symmetric_ontology, perform_coreference_resolution=False)
+                                                           ontology=symmetric_ontology, perform_coreference_resolution=False,
+                                                           number_of_workers=1)
 no_ontology_coref_holmes_manager = holmes.Manager(model='en_core_web_trf',
-                                                  perform_coreference_resolution=True)
+                                                  perform_coreference_resolution=True,
+                                                  number_of_workers=True)
 
 
 class EnglishPhraseletProductionTest(unittest.TestCase):

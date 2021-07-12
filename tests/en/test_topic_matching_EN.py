@@ -7,11 +7,14 @@ script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join((script_directory, 'test_ontology.owl')),
                            symmetric_matching=True)
 holmes_manager_coref = holmes.Manager(model='en_core_web_trf', ontology=ontology,
-                                      overall_similarity_threshold=0.65, perform_coreference_resolution=True)
+                                      overall_similarity_threshold=0.65, perform_coreference_resolution=True,
+                                      number_of_workers=2)
 holmes_manager_coref_embedding_on_root = holmes.Manager(model='en_core_web_trf', ontology=ontology,
-                                                        overall_similarity_threshold=0.65, embedding_based_matching_on_root_words=True)
+                                                        overall_similarity_threshold=0.65, embedding_based_matching_on_root_words=True,
+                                                        number_of_workers=1)
 holmes_manager_coref_no_embeddings = holmes.Manager(model='en_core_web_trf', ontology=ontology,
-                                                    overall_similarity_threshold=1, perform_coreference_resolution=True)
+                                                    overall_similarity_threshold=1, perform_coreference_resolution=True,
+                                                    number_of_workers=1)
 
 
 class EnglishTopicMatchingTest(unittest.TestCase):
@@ -23,15 +26,15 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         topic_matches = manager.topic_match_documents_against(text_to_match, relation_score=20,
                                                               reverse_only_relation_score=15, single_word_score=10, single_word_any_tag_score=5,
                                                               different_match_cutoff_score=10,
-                                                              use_frequency_factor=use_frequency_factor, return_dictionary=False)
-        self.assertEqual(int(topic_matches[0].score), highest_score)
+                                                              use_frequency_factor=use_frequency_factor)
+        self.assertEqual(int(topic_matches[0]['score']), highest_score)
 
     def test_no_match(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document("A plant grows")
         topic_matches = holmes_manager_coref.topic_match_documents_against("fewfew",
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
-                                                                           single_word_any_tag_score=5, return_dictionary=False)
+                                                                           single_word_any_tag_score=5)
         self.assertEqual(topic_matches, [])
 
     def test_no_match_stopwords(self):
@@ -39,7 +42,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         holmes_manager_coref.parse_and_register_document("then")
         topic_matches = holmes_manager_coref.topic_match_documents_against("then",
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
-                                                                           single_word_any_tag_score=5, return_dictionary=False)
+                                                                           single_word_any_tag_score=5)
         self.assertEqual(topic_matches, [])
 
     def test_direct_matching(self):
@@ -279,8 +282,8 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                            single_word_any_tag_score=5,
                                                                            maximum_number_of_single_word_matches_for_relation_matching=0,
-                                                                           maximum_number_of_single_word_matches_for_embedding_matching=0, return_dictionary=False)
-        self.assertEqual(int(topic_matches[0].score), 24)
+                                                                           maximum_number_of_single_word_matches_for_embedding_matching=0)
+        self.assertEqual(int(topic_matches[0]['score']), 24)
 
     def test_suppressed_relation_matching_picked_up_during_reverse_matching(self):
         holmes_manager_coref.remove_all_documents()
@@ -290,8 +293,8 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                            single_word_any_tag_score=5,
                                                                            maximum_number_of_single_word_matches_for_relation_matching=1,
-                                                                           maximum_number_of_single_word_matches_for_embedding_matching=0, return_dictionary=False)
-        self.assertEqual(int(topic_matches[0].score), 82)
+                                                                           maximum_number_of_single_word_matches_for_embedding_matching=0)
+        self.assertEqual(int(topic_matches[0]['score']), 82)
 
     def test_suppressed_relation_matching_picked_up_during_reverse_matching_with_coreference(self):
         holmes_manager_coref.remove_all_documents()
@@ -301,8 +304,8 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                            single_word_any_tag_score=5,
                                                                            maximum_number_of_single_word_matches_for_relation_matching=1,
-                                                                           maximum_number_of_single_word_matches_for_embedding_matching=0, return_dictionary=False)
-        self.assertEqual(int(topic_matches[0].score), 83)
+                                                                           maximum_number_of_single_word_matches_for_embedding_matching=0)
+        self.assertEqual(int(topic_matches[0]['score']), 83)
 
     def test_suppressed_relation_matching_picked_up_during_reverse_matching_with_reverse_dependency(self):
         holmes_manager_coref.remove_all_documents()
@@ -312,8 +315,8 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                            single_word_any_tag_score=5,
                                                                            maximum_number_of_single_word_matches_for_relation_matching=1,
-                                                                           maximum_number_of_single_word_matches_for_embedding_matching=0, return_dictionary=False)
-        self.assertEqual(int(topic_matches[0].score), 34)
+                                                                           maximum_number_of_single_word_matches_for_embedding_matching=0)
+        self.assertEqual(int(topic_matches[0]['score']), 34)
 
     def test_relation_matching_suppressed_control_embedding_based_matching_on_root_words(self):
         holmes_manager_coref_embedding_on_root.remove_all_documents()
@@ -324,9 +327,8 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             relation_score=20, reverse_only_relation_score=15, single_word_score=10,
             single_word_any_tag_score=5,
             maximum_number_of_single_word_matches_for_relation_matching=0,
-            maximum_number_of_single_word_matches_for_embedding_matching=0,
-            return_dictionary=False)
-        self.assertEqual(int(topic_matches[0].score), 82)
+            maximum_number_of_single_word_matches_for_embedding_matching=0)
+        self.assertEqual(int(topic_matches[0]['score']), 82)
 
     def test_reverse_matching_suppressed_with_relation_matching(self):
         holmes_manager_coref.remove_all_documents()
@@ -336,8 +338,8 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                            single_word_any_tag_score=5,
                                                                            maximum_number_of_single_word_matches_for_relation_matching=1,
-                                                                           maximum_number_of_single_word_matches_for_embedding_matching=0, return_dictionary=False)
-        self.assertEqual(int(topic_matches[0].score), 14)
+                                                                           maximum_number_of_single_word_matches_for_embedding_matching=0)
+        self.assertEqual(int(topic_matches[0]['score']), 14)
 
     def test_reverse_matching_suppressed_with_relation_matching_embedding_value_also_1(self):
         holmes_manager_coref.remove_all_documents()
@@ -347,8 +349,8 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                            single_word_any_tag_score=5,
                                                                            maximum_number_of_single_word_matches_for_relation_matching=1,
-                                                                           maximum_number_of_single_word_matches_for_embedding_matching=1, return_dictionary=False)
-        self.assertEqual(int(topic_matches[0].score), 14)
+                                                                           maximum_number_of_single_word_matches_for_embedding_matching=1)
+        self.assertEqual(int(topic_matches[0]['score']), 14)
 
     def test_reverse_matching_suppressed_with_embedding_reverse_matching_parent(self):
         holmes_manager_coref.remove_all_documents()
@@ -357,8 +359,8 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         topic_matches = holmes_manager_coref.topic_match_documents_against("A car with an engine",
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                            single_word_any_tag_score=5,
-                                                                           maximum_number_of_single_word_matches_for_embedding_matching=0, return_dictionary=False)
-        self.assertEqual(int(topic_matches[0].score), 29)
+                                                                           maximum_number_of_single_word_matches_for_embedding_matching=0)
+        self.assertEqual(int(topic_matches[0]['score']), 29)
 
     def test_reverse_matching_suppressed_with_embedding_reverse_matching_parent_control(self):
         holmes_manager_coref.remove_all_documents()
@@ -367,8 +369,8 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         topic_matches = holmes_manager_coref.topic_match_documents_against("A car with an engine",
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                            single_word_any_tag_score=5,
-                                                                           maximum_number_of_single_word_matches_for_embedding_matching=1, return_dictionary=False)
-        self.assertEqual(int(topic_matches[0].score), 51)
+                                                                           maximum_number_of_single_word_matches_for_embedding_matching=1)
+        self.assertEqual(int(topic_matches[0]['score']), 51)
 
     def test_reverse_matching_suppressed_with_embedding_reverse_matching_child(self):
         holmes_manager_coref.remove_all_documents()
@@ -377,8 +379,8 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         topic_matches = holmes_manager_coref.topic_match_documents_against("An engine with a car",
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                            single_word_any_tag_score=5,
-                                                                           maximum_number_of_single_word_matches_for_embedding_matching=0, return_dictionary=False)
-        self.assertEqual(int(topic_matches[0].score), 14)
+                                                                           maximum_number_of_single_word_matches_for_embedding_matching=0)
+        self.assertEqual(int(topic_matches[0]['score']), 14)
 
     def test_reverse_matching_suppressed_with_embedding_reverse_matching_child_control(self):
         holmes_manager_coref.remove_all_documents()
@@ -387,8 +389,8 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         topic_matches = holmes_manager_coref.topic_match_documents_against("An engine with a car",
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                            single_word_any_tag_score=5,
-                                                                           maximum_number_of_single_word_matches_for_embedding_matching=1, return_dictionary=False)
-        self.assertEqual(int(topic_matches[0].score), 25)
+                                                                           maximum_number_of_single_word_matches_for_embedding_matching=1)
+        self.assertEqual(int(topic_matches[0]['score']), 25)
 
     def test_entity_matching_suppressed_with_relation_matching_for_governor(self):
         holmes_manager_coref.remove_all_documents()
@@ -398,8 +400,8 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                            single_word_any_tag_score=5,
                                                                            maximum_number_of_single_word_matches_for_relation_matching=1,
-                                                                           maximum_number_of_single_word_matches_for_embedding_matching=0, return_dictionary=False)
-        self.assertEqual(int(topic_matches[0].score), 14)
+                                                                           maximum_number_of_single_word_matches_for_embedding_matching=0)
+        self.assertEqual(int(topic_matches[0]['score']), 14)
 
     def test_entity_matching_suppressed_with_relation_matching_for_governor_control(self):
         holmes_manager_coref.remove_all_documents()
@@ -409,8 +411,8 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                            single_word_any_tag_score=5,
                                                                            maximum_number_of_single_word_matches_for_relation_matching=1,
-                                                                           maximum_number_of_single_word_matches_for_embedding_matching=0, return_dictionary=False)
-        self.assertEqual(int(topic_matches[0].score), 34)
+                                                                           maximum_number_of_single_word_matches_for_embedding_matching=0)
+        self.assertEqual(int(topic_matches[0]['score']), 34)
 
     def test_entity_matching_suppressed_with_relation_matching_for_governed(self):
         holmes_manager_coref.remove_all_documents()
@@ -421,9 +423,8 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             relation_score=20, reverse_only_relation_score=15, single_word_score=10,
             single_word_any_tag_score=5,
             maximum_number_of_single_word_matches_for_relation_matching=1,
-            maximum_number_of_single_word_matches_for_embedding_matching=0,
-            return_dictionary=False)
-        self.assertEqual(int(topic_matches[0].score), 14)
+            maximum_number_of_single_word_matches_for_embedding_matching=0)
+        self.assertEqual(int(topic_matches[0]['score']), 14)
 
     def test_entity_matching_suppressed_with_relation_matching_for_governed_control(self):
         holmes_manager_coref.remove_all_documents()
@@ -434,9 +435,8 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             relation_score=20, reverse_only_relation_score=15, single_word_score=10,
             single_word_any_tag_score=5,
             maximum_number_of_single_word_matches_for_relation_matching=1,
-            maximum_number_of_single_word_matches_for_embedding_matching=0,
-            return_dictionary=False)
-        self.assertEqual(int(topic_matches[0].score), 34)
+            maximum_number_of_single_word_matches_for_embedding_matching=0)
+        self.assertEqual(int(topic_matches[0]['score']), 34)
 
     def test_reverse_matching_noun_coreference_on_governor(self):
         self._check_equals("A car with an engine", "I saw an automobile. I saw it with an engine",
@@ -717,82 +717,69 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         holmes_manager_coref.parse_and_register_document(
             "I saw a man. The man walked")
         topic_matches = holmes_manager_coref.topic_match_documents_against("A man walks",
-                                                                           relation_score=20, single_word_score=10, single_word_any_tag_score=5, return_dictionary=False)
-        self.assertEqual(int(topic_matches[0].score), 34)
-        self.assertEqual(topic_matches[0].sentences_start_index, 5)
-        self.assertEqual(topic_matches[0].sentences_end_index, 7)
-        self.assertEqual(topic_matches[0].start_index, 6)
-        self.assertEqual(topic_matches[0].end_index, 7)
-        self.assertEqual(topic_matches[0].relative_start_index, 1)
-        self.assertEqual(topic_matches[0].relative_end_index, 2)
+                                                                           relation_score=20, single_word_score=10, single_word_any_tag_score=5)
+        self.assertEqual(int(topic_matches[0]['score']), 34)
+        self.assertEqual(topic_matches[0]['sentences_start_index'], 5)
+        self.assertEqual(topic_matches[0]['sentences_end_index'], 7)
+        self.assertEqual(topic_matches[0]['start_index'], 6)
+        self.assertEqual(topic_matches[0]['end_index'], 7)
 
     def test_coreference_double_match_on_governor(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document(
             "I saw a big man. The man walked")
         topic_matches = holmes_manager_coref.topic_match_documents_against(
-            "A big man", relation_score=20, single_word_score=10, single_word_any_tag_score=5,
-            return_dictionary=False)
-        self.assertEqual(int(topic_matches[0].score), 34)
-        self.assertEqual(topic_matches[0].sentences_start_index, 0)
-        self.assertEqual(topic_matches[0].sentences_end_index, 8)
-        self.assertEqual(topic_matches[0].start_index, 3)
-        self.assertEqual(topic_matches[0].end_index, 7)
-        self.assertEqual(topic_matches[0].relative_start_index, 3)
-        self.assertEqual(topic_matches[0].relative_end_index, 7)
+            "A big man", relation_score=20, single_word_score=10, single_word_any_tag_score=5)
+        self.assertEqual(int(topic_matches[0]['score']), 34)
+        self.assertEqual(topic_matches[0]['sentences_start_index'], 0)
+        self.assertEqual(topic_matches[0]['sentences_end_index'], 8)
+        self.assertEqual(topic_matches[0]['start_index'], 3)
+        self.assertEqual(topic_matches[0]['end_index'], 7)
 
     def test_coreference_double_match_same_distance(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document(
             "The man was big. Man walked.")
         topic_matches = holmes_manager_coref.topic_match_documents_against("A big man",
-                                                                           relation_score=20, single_word_score=10, single_word_any_tag_score=5, return_dictionary=False)
-        self.assertEqual(int(topic_matches[0].score), 34)
-        self.assertEqual(topic_matches[0].sentences_start_index, 0)
-        self.assertEqual(topic_matches[0].sentences_end_index, 7)
-        self.assertEqual(topic_matches[0].start_index, 1)
-        self.assertEqual(topic_matches[0].end_index, 5)
-        self.assertEqual(topic_matches[0].relative_start_index, 1)
-        self.assertEqual(topic_matches[0].relative_end_index, 5)
+                                                                           relation_score=20, single_word_score=10, single_word_any_tag_score=5)
+        self.assertEqual(int(topic_matches[0]['score']), 34)
+        self.assertEqual(topic_matches[0]['sentences_start_index'], 0)
+        self.assertEqual(topic_matches[0]['sentences_end_index'], 7)
+        self.assertEqual(topic_matches[0]['start_index'], 1)
+        self.assertEqual(topic_matches[0]['end_index'], 5)
 
     def test_indexes(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document(
             "This is an irrelevant sentence. I think a plant grows.")
         topic_matches = holmes_manager_coref.topic_match_documents_against(
-            "A plant grows", return_dictionary=False)
-        self.assertEqual(topic_matches[0].sentences_start_index, 6)
-        self.assertEqual(topic_matches[0].sentences_end_index, 11)
-        self.assertEqual(topic_matches[0].start_index, 9)
-        self.assertEqual(topic_matches[0].end_index, 10)
-        self.assertEqual(topic_matches[0].relative_start_index, 3)
-        self.assertEqual(topic_matches[0].relative_end_index, 4)
+            "A plant grows")
+        self.assertEqual(topic_matches[0]['sentences_start_index'], 6)
+        self.assertEqual(topic_matches[0]['sentences_end_index'], 11)
+        self.assertEqual(topic_matches[0]['start_index'], 9)
+        self.assertEqual(topic_matches[0]['end_index'], 10)
 
     def test_indexes_with_preceding_non_matched_dependent(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document(
             "I saw a big dog.")
         topic_matches = holmes_manager_coref.topic_match_documents_against(
-            "A big dog", return_dictionary=False)
-        self.assertEqual(topic_matches[0].sentences_start_index, 0)
-        self.assertEqual(topic_matches[0].sentences_end_index, 5)
-        self.assertEqual(topic_matches[0].start_index, 3)
-        self.assertEqual(topic_matches[0].end_index, 4)
-        self.assertEqual(topic_matches[0].relative_start_index, 3)
-        self.assertEqual(topic_matches[0].relative_end_index, 4)
+            "A big dog")
+        self.assertEqual(topic_matches[0]['sentences_start_index'], 0)
+        self.assertEqual(topic_matches[0]['sentences_end_index'], 5)
+        self.assertEqual(topic_matches[0]['start_index'], 3)
+        self.assertEqual(topic_matches[0]['end_index'], 4)
 
     def test_indexes_with_subsequent_non_matched_dependent(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document(
             "The dog I saw was big.")
         topic_matches = holmes_manager_coref.topic_match_documents_against(
-            "A big dog", return_dictionary=False)
-        self.assertEqual(topic_matches[0].sentences_start_index, 0)
-        self.assertEqual(topic_matches[0].sentences_end_index, 6)
-        self.assertEqual(topic_matches[0].start_index, 1)
-        self.assertEqual(topic_matches[0].end_index, 5)
-        self.assertEqual(topic_matches[0].relative_start_index, 1)
-        self.assertEqual(topic_matches[0].relative_end_index, 5)
+            "A big dog")
+        self.assertEqual(topic_matches[0]['sentences_start_index'], 0)
+        self.assertEqual(topic_matches[0]['sentences_end_index'], 6)
+        self.assertEqual(topic_matches[0]['start_index'], 1)
+        self.assertEqual(topic_matches[0]['end_index'], 5)
 
     def test_only_one_result_per_document(self):
         holmes_manager_coref.remove_all_documents()
@@ -810,7 +797,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self.assertEqual(
             len(holmes_manager_coref.topic_match_documents_against("Peter")), 2)
         self.assertEqual(len(holmes_manager_coref.topic_match_documents_against("Peter",
-                                                                                only_one_result_per_document=True, return_dictionary=False)), 1)
+                                                                                only_one_result_per_document=True)), 1)
 
     def test_match_cutoff(self):
         holmes_manager_coref.remove_all_documents()
@@ -827,9 +814,9 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 The dog chased the cat.
                 """)
         topic_matches = holmes_manager_coref.topic_match_documents_against(
-            "The dog chased the cat", return_dictionary=False)
-        self.assertEqual(topic_matches[0].start_index, 117)
-        self.assertEqual(topic_matches[0].end_index, 120)
+            "The dog chased the cat")
+        self.assertEqual(topic_matches[0]['start_index'], 117)
+        self.assertEqual(topic_matches[0]['end_index'], 120)
 
     def test_result_ordering_by_match_length_different_documents(self):
         holmes_manager_coref.remove_all_documents()
@@ -845,11 +832,11 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         A dog chased a cat. A cat
         """)
         topic_matches = holmes_manager_coref.topic_match_documents_against(
-            "The dog chased the cat", return_dictionary=False)
+            "The dog chased the cat")
         self.assertEqual(
-            topic_matches[0].end_index - topic_matches[0].start_index, 7)
+            topic_matches[0]['end_index'] - topic_matches[0]['start_index'], 7)
         self.assertEqual(
-            topic_matches[1].end_index - topic_matches[1].start_index, 4)
+            topic_matches[1]['end_index'] - topic_matches[1]['start_index'], 4)
 
     def test_dictionaries(self):
         holmes_manager_coref.remove_all_documents()
@@ -861,12 +848,12 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             holmes_manager_coref.topic_match_documents_against(
                 "The dog chased the cat", use_frequency_factor=False)
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'A dog chased a cat. A cat.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'sentences_character_start_index_in_document': 515, 'sentences_character_end_index_in_document': 541, 'score': 993.4666666666667, 'word_infos': [[2, 5, 'overlapping_relation', False, 'Matches DOG directly.'], [6, 12, 'overlapping_relation', False, 'Matches CHASE directly.'], [15, 18, 'overlapping_relation', True, 'Matches CAT directly.'], [22, 25, 'single', False, 'Matches CAT directly.']]}, {'document_label': '', 'text': 'A dog chased a cat.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'score': 993.4666666666667, 'word_infos': [[2, 5, 'overlapping_relation', False, 'Matches DOG directly.'], [6, 12, 'overlapping_relation', False, 'Matches CHASE directly.'], [15, 18, 'overlapping_relation', True, 'Matches CAT directly.']]}, {'document_label': 'animals', 'text': 'Dogs and cats.', 'text_to_match': 'The dog chased the cat', 'rank': '3', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 14, 'score': 98.66666666666667, 'word_infos': [[0, 4, 'single', False, 'Matches DOG directly.'], [9, 13, 'single', True, 'Matches CAT directly.']]}])
+                         [{'document_label': '', 'text': 'A dog chased a cat. A cat.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'index_within_document': 115, 'subword_index': None, 'start_index': 112, 'end_index': 118, 'sentences_start_index': 111, 'sentences_end_index': 119, 'sentences_character_start_index': 515, 'sentences_character_end_index': 541, 'score': 993.4666666666667, 'word_infos': [[2, 5, 'overlapping_relation', False, 'Matches DOG directly.'], [6, 12, 'overlapping_relation', False, 'Matches CHASE directly.'], [15, 18, 'overlapping_relation', True, 'Matches CAT directly.'], [22, 25, 'single', False, 'Matches CAT directly.']]}, {'document_label': '', 'text': 'A dog chased a cat.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 5, 'sentences_character_start_index': 0, 'sentences_character_end_index': 19, 'score': 993.4666666666667, 'word_infos': [[2, 5, 'overlapping_relation', False, 'Matches DOG directly.'], [6, 12, 'overlapping_relation', False, 'Matches CHASE directly.'], [15, 18, 'overlapping_relation', True, 'Matches CAT directly.']]}, {'document_label': 'animals', 'text': 'Dogs and cats.', 'text_to_match': 'The dog chased the cat', 'rank': '3', 'index_within_document': 2, 'subword_index': None, 'start_index': 0, 'end_index': 2, 'sentences_start_index': 0, 'sentences_end_index': 3, 'sentences_character_start_index': 0, 'sentences_character_end_index': 14, 'score': 98.66666666666667, 'word_infos': [[0, 4, 'single', False, 'Matches DOG directly.'], [9, 13, 'single', True, 'Matches CAT directly.']]}])
         topic_match_dictionaries = \
             holmes_manager_coref.topic_match_documents_against(
                 "The dog chased the cat", tied_result_quotient=0.01, use_frequency_factor=False)
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'A dog chased a cat. A cat.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'sentences_character_start_index_in_document': 515, 'sentences_character_end_index_in_document': 541, 'score': 993.4666666666667, 'word_infos': [[2, 5, 'overlapping_relation', False, "Matches DOG directly."], [6, 12, 'overlapping_relation', False, "Matches CHASE directly."], [15, 18, 'overlapping_relation', True, "Matches CAT directly."], [22, 25, 'single', False, "Matches CAT directly."]]}, {'document_label': '', 'text': 'A dog chased a cat.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'score': 993.4666666666667, 'word_infos': [[2, 5, 'overlapping_relation', False, "Matches DOG directly."], [6, 12, 'overlapping_relation', False, "Matches CHASE directly."], [15, 18, 'overlapping_relation', True, "Matches CAT directly."]]}, {'document_label': 'animals', 'text': 'Dogs and cats.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 14, 'score': 98.66666666666667, 'word_infos': [[0, 4, 'single', False, "Matches DOG directly."], [9, 13, 'single', True, "Matches CAT directly."]]}])
+                         [{'document_label': '', 'text': 'A dog chased a cat. A cat.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'index_within_document': 115, 'subword_index': None, 'start_index': 112, 'end_index': 118, 'sentences_start_index': 111, 'sentences_end_index': 119, 'sentences_character_start_index': 515, 'sentences_character_end_index': 541, 'score': 993.4666666666667, 'word_infos': [[2, 5, 'overlapping_relation', False, 'Matches DOG directly.'], [6, 12, 'overlapping_relation', False, 'Matches CHASE directly.'], [15, 18, 'overlapping_relation', True, 'Matches CAT directly.'], [22, 25, 'single', False, 'Matches CAT directly.']]}, {'document_label': '', 'text': 'A dog chased a cat.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 5, 'sentences_character_start_index': 0, 'sentences_character_end_index': 19, 'score': 993.4666666666667, 'word_infos': [[2, 5, 'overlapping_relation', False, 'Matches DOG directly.'], [6, 12, 'overlapping_relation', False, 'Matches CHASE directly.'], [15, 18, 'overlapping_relation', True, 'Matches CAT directly.']]}, {'document_label': 'animals', 'text': 'Dogs and cats.', 'text_to_match': 'The dog chased the cat', 'rank': '1=', 'index_within_document': 2, 'subword_index': None, 'start_index': 0, 'end_index': 2, 'sentences_start_index': 0, 'sentences_end_index': 3, 'sentences_character_start_index': 0, 'sentences_character_end_index': 14, 'score': 98.66666666666667, 'word_infos': [[0, 4, 'single', False, 'Matches DOG directly.'], [9, 13, 'single', True, 'Matches CAT directly.']]}])
 
     def test_dictionaries_with_multiword_in_relation_not_final(self):
         holmes_manager_coref.remove_all_documents()
@@ -877,7 +864,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             holmes_manager_coref.topic_match_documents_against(
                 "Richard Paul Hudson was coming")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'Richard Paul Hudson came home', 'text_to_match': 'Richard Paul Hudson was coming', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 29, 'score': 408.0, 'word_infos': [[0, 19, 'relation', False, "Matches RICHARD PAUL HUDSON directly."], [20, 24, 'relation', True, "Matches COME directly."]]}])
+                         [{'document_label': '', 'text': 'Richard Paul Hudson came home', 'text_to_match': 'Richard Paul Hudson was coming', 'rank': '1', 'index_within_document': 3, 'subword_index': None, 'start_index': 0, 'end_index': 3, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 29, 'score': 408.0, 'word_infos': [[0, 19, 'relation', False, 'Matches RICHARD PAUL HUDSON directly.'], [20, 24, 'relation', True, 'Matches COME directly.']]}])
 
     def test_dictionaries_with_multiword_alone(self):
         holmes_manager_coref.remove_all_documents()
@@ -887,7 +874,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             holmes_manager_coref.topic_match_documents_against(
                 "Richard Paul Hudson")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'Richard Paul Hudson', 'text_to_match': 'Richard Paul Hudson', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'score': 89.2, 'word_infos': [[0, 19, 'single', True, "Matches RICHARD PAUL HUDSON directly."]]}])
+                         [{'document_label': '', 'text': 'Richard Paul Hudson', 'text_to_match': 'Richard Paul Hudson', 'rank': '1', 'index_within_document': 2, 'subword_index': None, 'start_index': 0, 'end_index': 2, 'sentences_start_index': 0, 'sentences_end_index': 2, 'sentences_character_start_index': 0, 'sentences_character_end_index': 19, 'score': 89.2, 'word_infos': [[0, 19, 'single', True, 'Matches RICHARD PAUL HUDSON directly.']]}])
 
     def test_dictionaries_with_multiword_alone_and_entity_token_in_text_to_match(self):
         holmes_manager_coref.remove_all_documents()
@@ -897,7 +884,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             holmes_manager_coref.topic_match_documents_against(
                 "ENTITYPERSON")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'Richard Paul Hudson', 'text_to_match': 'ENTITYPERSON', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 19, 'score': 50.0, 'word_infos': [[0, 19, 'single', True, "Matches the ENTITYPERSON placeholder."]]}])
+                         [{'document_label': '', 'text': 'Richard Paul Hudson', 'text_to_match': 'ENTITYPERSON', 'rank': '1', 'index_within_document': 2, 'subword_index': None, 'start_index': 0, 'end_index': 2, 'sentences_start_index': 0, 'sentences_end_index': 2, 'sentences_character_start_index': 0, 'sentences_character_end_index': 19, 'score': 50.0, 'word_infos': [[0, 19, 'single', True, 'Matches the ENTITYPERSON placeholder.']]}])
 
     def test_dictionaries_with_multiword_as_single_word_and_relation(self):
         holmes_manager_coref_no_embeddings.remove_all_documents()
@@ -908,7 +895,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             holmes_manager_coref_no_embeddings.topic_match_documents_against(
                 "Somebody gives a present to Harry")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'Can somebody give Harry Potter his present', 'text_to_match': 'Somebody gives a present to Harry', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 42, 'score': 926.3511111111111, 'word_infos': [[13, 17, 'overlapping_relation', False, 'Matches GIVE directly.'], [18, 30, 'overlapping_relation', False, 'Is a synonym of HARRY in the ontology.'], [35, 42, 'overlapping_relation', True, 'Matches PRESENT directly.']]}])
+                         [{'document_label': '', 'text': 'Can somebody give Harry Potter his present', 'text_to_match': 'Somebody gives a present to Harry', 'rank': '1', 'index_within_document': 6, 'subword_index': None, 'start_index': 2, 'end_index': 6, 'sentences_start_index': 0, 'sentences_end_index': 6, 'sentences_character_start_index': 0, 'sentences_character_end_index': 42, 'score': 926.3511111111111, 'word_infos': [[13, 17, 'overlapping_relation', False, 'Matches GIVE directly.'], [18, 30, 'overlapping_relation', False, 'Is a synonym of HARRY in the ontology.'], [35, 42, 'overlapping_relation', True, 'Matches PRESENT directly.']]}])
 
     def test_result_ordering_by_match_length_different_documents(self):
         holmes_manager_coref.remove_all_documents()
@@ -918,9 +905,9 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         holmes_manager_coref.parse_and_register_document(
             "A dog chased a cat. A cat.", '2')
         topic_matches = holmes_manager_coref.topic_match_documents_against(
-            "The dog chased the cat", return_dictionary=False)
-        self.assertEqual(topic_matches[0].end_index, 7)
-        self.assertEqual(topic_matches[1].end_index, 4)
+            "The dog chased the cat")
+        self.assertEqual(topic_matches[0]['end_index'], 7)
+        self.assertEqual(topic_matches[1]['end_index'], 4)
 
     def test_filtering_with_topic_matches(self):
         holmes_manager_coref.remove_all_documents()
@@ -935,23 +922,23 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             "The dog chased the cat", "T22")
         topic_matches = \
             holmes_manager_coref.topic_match_documents_against(
-                "The dog chased the cat", return_dictionary=False)
+                "The dog chased the cat")
         self.assertEqual(len(topic_matches), 4)
         topic_matches = \
             holmes_manager_coref.topic_match_documents_against(
-                "The dog chased the cat", document_label_filter="T", return_dictionary=False)
+                "The dog chased the cat", document_label_filter="T")
         self.assertEqual(len(topic_matches), 4)
         topic_matches = \
             holmes_manager_coref.topic_match_documents_against(
-                "The dog chased the cat", document_label_filter="T1", return_dictionary=False)
+                "The dog chased the cat", document_label_filter="T1")
         self.assertEqual(len(topic_matches), 2)
         topic_matches = \
             holmes_manager_coref.topic_match_documents_against(
-                "The dog chased the cat", document_label_filter="T22", return_dictionary=False)
+                "The dog chased the cat", document_label_filter="T22")
         self.assertEqual(len(topic_matches), 1)
         topic_matches = \
             holmes_manager_coref.topic_match_documents_against(
-                "The dog chased the cat", document_label_filter="X", return_dictionary=False)
+                "The dog chased the cat", document_label_filter="X")
         self.assertEqual(len(topic_matches), 0)
 
     def test_filtering_with_topic_match_dictionaries(self):
@@ -995,7 +982,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             holmes_manager_coref.topic_match_documents_against(
                 "A big Unhyphenated Single Multiword")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'A big Unhyphenated Single Multiword', 'text_to_match': 'A big Unhyphenated Single Multiword', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 35, 'score': 369.2, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [6, 35, 'relation', True, 'Matches UNHYPHENATED SINGLE MULTIWORD directly.']]}])
+                         [{'document_label': '', 'text': 'A big Unhyphenated Single Multiword', 'text_to_match': 'A big Unhyphenated Single Multiword', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 35, 'score': 369.2, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [6, 35, 'relation', True, 'Matches UNHYPHENATED SINGLE MULTIWORD directly.']]}])
 
     def test_adjective_describing_entity_multiword_with_topic_match_dictionaries(self):
         holmes_manager_coref.remove_all_documents()
@@ -1006,7 +993,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             holmes_manager_coref.topic_match_documents_against(
                 "A big Richard Paul Hudson")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'A big Richard Paul Hudson', 'text_to_match': 'A big Richard Paul Hudson', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 25, 'score': 408.4, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [6, 25, 'relation', True, 'Matches RICHARD PAUL HUDSON directly.']]}])
+                        [{'document_label': '', 'text': 'A big Richard Paul Hudson', 'text_to_match': 'A big Richard Paul Hudson', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 408.4, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [6, 25, 'relation', True, 'Matches RICHARD PAUL HUDSON directly.']]}])
 
     def test_adjective_describing_double_multiword_with_topic_match_dictionaries_1(self):
         holmes_manager_coref.remove_all_documents()
@@ -1017,7 +1004,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             holmes_manager_coref.topic_match_documents_against(
                 "A big Richard Mimi Momo")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'A big Richard Mimi Momo', 'text_to_match': 'A big Richard Mimi Momo', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 23, 'score': 1017.8666666666667, 'word_infos': [[2, 5, 'overlapping_relation', False, 'Matches BIG directly.'], [6, 13, 'overlapping_relation', False, 'Matches RICHARD directly.'], [14, 23, 'overlapping_relation', True, 'Matches MIMI MOMO directly.']]}])
+                         [{'document_label': '', 'text': 'A big Richard Mimi Momo', 'text_to_match': 'A big Richard Mimi Momo', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 23, 'score': 1017.8666666666667, 'word_infos': [[2, 5, 'overlapping_relation', False, 'Matches BIG directly.'], [6, 13, 'overlapping_relation', False, 'Matches RICHARD directly.'], [14, 23, 'overlapping_relation', True, 'Matches MIMI MOMO directly.']]}])
 
     def test_adjective_describing_double_multiword_with_topic_match_dictionaries_2(self):
         holmes_manager_coref.remove_all_documents()
@@ -1028,7 +1015,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             holmes_manager_coref.topic_match_documents_against(
                 "A big Mimi Momo")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'A big Richard Mimi Momo', 'text_to_match': 'A big Mimi Momo', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 23, 'score': 369.2, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [14, 23, 'relation', True, 'Matches MIMI MOMO directly.']]}])
+                          [{'document_label': '', 'text': 'A big Richard Mimi Momo', 'text_to_match': 'A big Mimi Momo', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 23, 'score': 369.2, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [14, 23, 'relation', True, 'Matches MIMI MOMO directly.']]}])
 
     def test_adjective_describing_double_multiword_with_topic_match_dictionaries_3(self):
         holmes_manager_coref.remove_all_documents()
@@ -1039,7 +1026,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             holmes_manager_coref.topic_match_documents_against(
                 "A big Momo")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'A big Richard Mimi Momo', 'text_to_match': 'A big Momo', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 23, 'score': 319.2, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [19, 23, 'relation', True, 'Matches MOMO directly.']]}])
+                         [{'document_label': '', 'text': 'A big Richard Mimi Momo', 'text_to_match': 'A big Momo', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 23, 'score': 319.2, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [19, 23, 'relation', True, 'Matches MOMO directly.']]}])
 
     def test_different_match_cutoff_score_low(self):
         holmes_manager_coref.remove_all_documents()
@@ -1062,7 +1049,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self.assertEqual(len(topic_match_dictionaries), 2)
         topic_matches = \
             holmes_manager_coref.topic_match_documents_against(
-                "A dog", different_match_cutoff_score=10000, return_dictionary=False)
+                "A dog", different_match_cutoff_score=10000)
         self.assertEqual(len(topic_matches), 2)
 
     def test_different_match_cutoff_score_zero(self):
@@ -1076,7 +1063,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self.assertEqual(len(topic_match_dictionaries), 1)
         topic_matches = \
             holmes_manager_coref.topic_match_documents_against(
-                "A dog", different_match_cutoff_score=0, return_dictionary=False)
+                "A dog", different_match_cutoff_score=0)
         self.assertEqual(len(topic_matches), 1)
 
 
@@ -1091,5 +1078,5 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self.assertEqual(len(topic_match_dictionaries), 1)
         topic_matches = \
             holmes_manager_coref.topic_match_documents_against(
-                "A dog", return_dictionary=False)
+                "A dog")
         self.assertEqual(len(topic_matches), 1)

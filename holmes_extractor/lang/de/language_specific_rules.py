@@ -520,7 +520,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                 # find the antecedent
                 counter -= 1
                 working_token = token.doc[counter]
-                if working_token.pos_ in ('NOUN', 'PROPN') and working_token.dep_ not in
+                if working_token.pos_ in ('NOUN', 'PROPN') and working_token.dep_ not in \
                         self.sibling_marker_deps:
                     working_dependency = None
                     for antecedent in (

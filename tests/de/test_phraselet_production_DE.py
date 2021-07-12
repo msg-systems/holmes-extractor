@@ -5,7 +5,7 @@ import os
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join(
     (script_directory, 'test_ontology.owl')))
-holmes_manager = holmes.Manager('de_core_news_lg', ontology=ontology)
+holmes_manager = holmes.Manager('de_core_news_lg', ontology=ontology, number_of_workers=1)
 
 
 class GermanPhraseletProductionTest(unittest.TestCase):

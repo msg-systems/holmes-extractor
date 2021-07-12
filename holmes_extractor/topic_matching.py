@@ -938,10 +938,14 @@ class TopicMatcher:
                 'text_to_match': self.text_to_match,
                 'rank': str(topic_match_counter + 1),   # ties are corrected by
                                                         # TopicMatchDictionaryOrderer
-                'sentences_character_start_index_in_document':
-                sentences_character_start_index_in_document,
-                'sentences_character_end_index_in_document':
-                sentences_character_end_index_in_document,
+                'index_within_document': topic_match.index_within_document,
+                'subword_index': topic_match.subword_index,
+                'start_index': topic_match.start_index,
+                'end_index': topic_match.end_index,
+                'sentences_start_index': topic_match.sentences_start_index,
+                'sentences_end_index': topic_match.sentences_end_index,
+                'sentences_character_start_index': sentences_character_start_index_in_document,
+                'sentences_character_end_index': sentences_character_end_index_in_document,
                 'score': topic_match.score,
                 'word_infos': [
                     [
@@ -953,4 +957,4 @@ class TopicMatcher:
                     # becoming too bloated
             }
             topic_match_dicts.append(topic_match_dict)
-            return topic_match_dicts
+        return topic_match_dicts

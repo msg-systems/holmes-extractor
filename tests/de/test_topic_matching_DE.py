@@ -5,9 +5,11 @@ import os
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join(
     (script_directory, 'test_ontology.owl')))
-holmes_manager = holmes.Manager('de_core_news_lg', ontology=ontology)
+holmes_manager = holmes.Manager('de_core_news_lg', ontology=ontology,
+                                 number_of_workers=1)
 holmes_manager_with_embeddings = holmes.Manager('de_core_news_lg',
-                                                overall_similarity_threshold=0.65)
+                                                overall_similarity_threshold=0.65,
+                                                number_of_workers=2)
 
 
 class GermanTopicMatchingTest(unittest.TestCase):
@@ -18,9 +20,8 @@ class GermanTopicMatchingTest(unittest.TestCase):
         topic_matches = manager.topic_match_documents_against(text_to_match,
                                                               relation_score=20, reverse_only_relation_score=15,
                                                               single_word_score=10, single_word_any_tag_score=5,
-                                                              different_match_cutoff_score=10,
-                                                              return_dictionary=False)
-        self.assertEqual(int(topic_matches[0].score), highest_score)
+                                                              different_match_cutoff_score=10)
+        self.assertEqual(int(topic_matches[0]['score']), highest_score)
 
     def test_direct_matching(self):
         self._check_equals("Eine Pflanze wächst", "Eine Pflanze wächst", 34)
@@ -287,13 +288,11 @@ class GermanTopicMatchingTest(unittest.TestCase):
         holmes_manager.parse_and_register_document(
             "Dies ist ein irrelevanter Satz. Ich glaube, dass eine Pflanze wächst.")
         topic_matches = holmes_manager.topic_match_documents_against(
-            "Eine Pflanze wächst", return_dictionary=False)
-        self.assertEqual(topic_matches[0].sentences_start_index, 6)
-        self.assertEqual(topic_matches[0].sentences_end_index, 13)
-        self.assertEqual(topic_matches[0].start_index, 11)
-        self.assertEqual(topic_matches[0].end_index, 12)
-        self.assertEqual(topic_matches[0].relative_start_index, 5)
-        self.assertEqual(topic_matches[0].relative_end_index, 6)
+            "Eine Pflanze wächst")
+        self.assertEqual(topic_matches[0]['sentences_start_index'], 6)
+        self.assertEqual(topic_matches[0]['sentences_end_index'], 13)
+        self.assertEqual(topic_matches[0]['start_index'], 11)
+        self.assertEqual(topic_matches[0]['end_index'], 12)
 
     def test_same_index_different_documents(self):
         holmes_manager.remove_all_documents()
@@ -302,14 +301,14 @@ class GermanTopicMatchingTest(unittest.TestCase):
         holmes_manager.parse_and_register_document(
             "Eine Pflanze wächst.", '2')
         topic_matches = holmes_manager.topic_match_documents_against(
-            "Eine Pflanze wächst", return_dictionary=False)
+            "Eine Pflanze wächst")
         self.assertEqual(len(topic_matches), 2)
-        self.assertEqual(topic_matches[0].document_label, '1')
-        self.assertEqual(topic_matches[1].document_label, '2')
-        self.assertEqual(topic_matches[0].start_index, 1)
-        self.assertEqual(topic_matches[0].end_index, 2)
-        self.assertEqual(topic_matches[1].start_index, 1)
-        self.assertEqual(topic_matches[1].end_index, 2)
+        self.assertEqual(topic_matches[0]['document_label'], '1')
+        self.assertEqual(topic_matches[1]['document_label'], '2')
+        self.assertEqual(topic_matches[0]['start_index'], 1)
+        self.assertEqual(topic_matches[0]['end_index'], 2)
+        self.assertEqual(topic_matches[1]['start_index'], 1)
+        self.assertEqual(topic_matches[1]['end_index'], 2)
 
     def test_suppressed_relation_matching_picked_up_during_reverse_matching_subwords(self):
         holmes_manager.remove_all_documents()
@@ -320,10 +319,9 @@ class GermanTopicMatchingTest(unittest.TestCase):
                                                                      single_word_any_tag_score=5,
                                                                      different_match_cutoff_score=10,
                                                                      maximum_number_of_single_word_matches_for_relation_matching=1,
-                                                                     maximum_number_of_single_word_matches_for_embedding_matching=0,
-                                                                     return_dictionary=False
+                                                                     maximum_number_of_single_word_matches_for_embedding_matching=0
                                                                      )
-        self.assertEqual(int(topic_matches[0].score), 29)
+        self.assertEqual(int(topic_matches[0]['score']), 29)
 
     def test_reverse_matching_suppressed_with_embedding_reverse_matching_parent(self):
         holmes_manager_with_embeddings.remove_all_documents()
@@ -333,8 +331,8 @@ class GermanTopicMatchingTest(unittest.TestCase):
             "Das Königsabdanken",
             relation_score=20, reverse_only_relation_score=15, single_word_score=10,
             single_word_any_tag_score=5, different_match_cutoff_score=10,
-            maximum_number_of_single_word_matches_for_embedding_matching=0, return_dictionary=False)
-        self.assertEqual(int(topic_matches[0].score), 5)
+            maximum_number_of_single_word_matches_for_embedding_matching=0)
+        self.assertEqual(int(topic_matches[0]['score']), 5)
 
     def test_reverse_matching_suppressed_with_embedding_reverse_matching_parent_control(self):
         holmes_manager_with_embeddings.remove_all_documents()
@@ -344,9 +342,9 @@ class GermanTopicMatchingTest(unittest.TestCase):
             "Das Königsabdanken",
             relation_score=20, reverse_only_relation_score=15, single_word_score=10,
             single_word_any_tag_score=5, different_match_cutoff_score=10,
-            maximum_number_of_single_word_matches_for_embedding_matching=1,
-            return_dictionary=False)
-        self.assertEqual(int(topic_matches[0].score), 15)
+            maximum_number_of_single_word_matches_for_embedding_matching=1
+            )
+        self.assertEqual(int(topic_matches[0]['score']), 15)
 
     def test_reverse_matching_suppressed_with_embedding_reverse_matching_child(self):
         holmes_manager_with_embeddings.remove_all_documents()
@@ -356,9 +354,8 @@ class GermanTopicMatchingTest(unittest.TestCase):
             "Die Abdankenprinzen",
             relation_score=20, reverse_only_relation_score=15, single_word_score=10,
             single_word_any_tag_score=5,different_match_cutoff_score=10,
-            maximum_number_of_single_word_matches_for_embedding_matching=0,
-            return_dictionary=False)
-        self.assertEqual(int(topic_matches[0].score), 5)
+            maximum_number_of_single_word_matches_for_embedding_matching=0)
+        self.assertEqual(int(topic_matches[0]['score']), 5)
 
     def test_reverse_matching_suppressed_with_embedding_reverse_matching_child_control(self):
         holmes_manager_with_embeddings.remove_all_documents()
@@ -368,9 +365,8 @@ class GermanTopicMatchingTest(unittest.TestCase):
             "Die Abdankenprinzen",
             relation_score=20, reverse_only_relation_score=15, single_word_score=10,
             single_word_any_tag_score=5,different_match_cutoff_score=10,
-            maximum_number_of_single_word_matches_for_embedding_matching=1,
-            return_dictionary=False)
-        self.assertEqual(int(topic_matches[0].score), 14)
+            maximum_number_of_single_word_matches_for_embedding_matching=1)
+        self.assertEqual(int(topic_matches[0]['score']), 14)
 
     def test_disjunct_relation_mapping_within_subword_dictionaries(self):
         holmes_manager.remove_all_documents()
@@ -381,7 +377,7 @@ class GermanTopicMatchingTest(unittest.TestCase):
             holmes_manager.topic_match_documents_against(
                 "Symphonie von Information und Entführung von Löwen")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'Informationssymphonieentführung von Löwen', 'text_to_match': 'Symphonie von Information und Entführung von Löwen', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 41, 'score': 536.6666666666667, 'word_infos': [[0, 11, 'single', False, "Matches INFORMATION directly."], [12, 21, 'single', False, "Matches SYMPHONIE directly."], [21, 31, 'relation', False, "Matches ENTFÜHRUNG directly."], [36, 41, 'relation', True, "Matches LÖWE directly."]]}])
+                          [{'document_label': '', 'text': 'Informationssymphonieentführung von Löwen', 'text_to_match': 'Symphonie von Information und Entführung von Löwen', 'rank': '1', 'index_within_document': 2, 'subword_index': None, 'start_index': 0, 'end_index': 2, 'sentences_start_index': 0, 'sentences_end_index': 2, 'sentences_character_start_index': 0, 'sentences_character_end_index': 41, 'score': 536.6666666666667, 'word_infos': [[0, 11, 'single', False, 'Matches INFORMATION directly.'], [12, 21, 'single', False, 'Matches SYMPHONIE directly.'], [21, 31, 'relation', False, 'Matches ENTFÜHRUNG directly.'], [36, 41, 'relation', True, 'Matches LÖWE directly.']]}])
 
     def test_overlapping_relation_mapping_within_subword_dictionaries(self):
         holmes_manager.remove_all_documents()
@@ -391,9 +387,8 @@ class GermanTopicMatchingTest(unittest.TestCase):
         topic_match_dictionaries = \
             holmes_manager.topic_match_documents_against(
                 "Extraktion von Information und Löwen")
-
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'Informationsextraktion von Löwen', 'text_to_match': 'Extraktion von Information und Löwen', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 32, 'score': 488.00000000000004, 'word_infos': [[0, 11, 'single', False, "Matches INFORMATION directly."], [12, 22, 'relation', False, "Matches EXTRAKTION directly."], [27, 32, 'relation', True, "Matches LÖWE directly."]]}])
+                         [{'document_label': '', 'text': 'Informationsextraktion von Löwen', 'text_to_match': 'Extraktion von Information und Löwen', 'rank': '1', 'index_within_document': 2, 'subword_index': None, 'start_index': 0, 'end_index': 2, 'sentences_start_index': 0, 'sentences_end_index': 2, 'sentences_character_start_index': 0, 'sentences_character_end_index': 32, 'score': 488.00000000000006, 'word_infos': [[0, 11, 'single', False, 'Matches INFORMATION directly.'], [12, 22, 'relation', False, 'Matches EXTRAKTION directly.'], [27, 32, 'relation', True, 'Matches LÖWE directly.']]}])
 
     def test_subword_dictionaries_subword_is_not_peak(self):
         holmes_manager.remove_all_documents()
@@ -403,9 +398,8 @@ class GermanTopicMatchingTest(unittest.TestCase):
         topic_match_dictionaries = \
             holmes_manager.topic_match_documents_against(
                 "Informationsnehmen der Löwen")
-
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'Information und Löwen wurden genommen', 'text_to_match': 'Informationsnehmen der Löwen', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 37, 'score': 987.6, 'word_infos': [[0, 11, 'overlapping_relation', False, "Matches INFORMATION directly."], [16, 21, 'overlapping_relation', False, "Matches LÖWE directly."], [29, 37, 'overlapping_relation', True, "Matches NEHMEN directly."]]}])
+                         [{'document_label': '', 'text': 'Information und Löwen wurden genommen', 'text_to_match': 'Informationsnehmen der Löwen', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 0, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 37, 'score': 987.6, 'word_infos': [[0, 11, 'overlapping_relation', False, 'Matches INFORMATION directly.'], [16, 21, 'overlapping_relation', False, 'Matches LÖWE directly.'], [29, 37, 'overlapping_relation', True, 'Matches NEHMEN directly.']]}])
 
     def test_subword_conjunction_within_dictionaries_single_word_hyphen_first_word(self):
         holmes_manager.remove_all_documents()
@@ -415,9 +409,8 @@ class GermanTopicMatchingTest(unittest.TestCase):
         topic_match_dictionaries = \
             holmes_manager.topic_match_documents_against(
                 "Extraktion")
-
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'Informations- und Informationsextraktion', 'text_to_match': 'Extraktion', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 40, 'score': 50.0, 'word_infos': [[30, 40, 'single', True, 'Matches EXTRAKTION directly.']]}])
+                         [{'document_label': '', 'text': 'Informations- und Informationsextraktion', 'text_to_match': 'Extraktion', 'rank': '1', 'index_within_document': 0, 'subword_index': 1, 'start_index': 0, 'end_index': 2, 'sentences_start_index': 0, 'sentences_end_index': 2, 'sentences_character_start_index': 0, 'sentences_character_end_index': 40, 'score': 50.0, 'word_infos': [[30, 40, 'single', True, 'Matches EXTRAKTION directly.']]}])
 
     def test_subword_conjunction_within_dictionaries_single_word_hyphen_second_word(self):
         holmes_manager.remove_all_documents()
@@ -428,7 +421,7 @@ class GermanTopicMatchingTest(unittest.TestCase):
             holmes_manager.topic_match_documents_against(
                 "Information")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'Informationsextraktion und -extraktion', 'text_to_match': 'Information', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 38, 'score': 50.0, 'word_infos': [[0, 11, 'single', True, 'Matches INFORMATION directly.']]}])
+                         [{'document_label': '', 'text': 'Informationsextraktion und -extraktion', 'text_to_match': 'Information', 'rank': '1', 'index_within_document': 0, 'subword_index': 0, 'start_index': 0, 'end_index': 2, 'sentences_start_index': 0, 'sentences_end_index': 2, 'sentences_character_start_index': 0, 'sentences_character_end_index': 38, 'score': 50.0, 'word_infos': [[0, 11, 'single', True, 'Matches INFORMATION directly.']]}])
 
     def test_subword_conjunction_within_dictionaries_relation_hyphen_first_word(self):
         holmes_manager.remove_all_documents()
@@ -439,7 +432,7 @@ class GermanTopicMatchingTest(unittest.TestCase):
             holmes_manager.topic_match_documents_against(
                 "Das Abdanken eines Königs")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'Ein Königs- und Prinzenabdanken', 'text_to_match': 'Das Abdanken eines Königs', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 31, 'score': 150.0, 'word_infos': [[4, 9, 'single', False, 'Matches KÖNIG directly.'], [23, 31, 'single', True, 'Matches ABDANKEN directly.']]}])
+                         [{'document_label': '', 'text': 'Ein Königs- und Prinzenabdanken', 'text_to_match': 'Das Abdanken eines Königs', 'rank': '1', 'index_within_document': 1, 'subword_index': 1, 'start_index': 1, 'end_index': 3, 'sentences_start_index': 0, 'sentences_end_index': 3, 'sentences_character_start_index': 0, 'sentences_character_end_index': 31, 'score': 150.0, 'word_infos': [[4, 9, 'single', False, 'Matches KÖNIG directly.'], [23, 31, 'single', True, 'Matches ABDANKEN directly.']]}])
 
     def test_subword_conjunction_within_dictionaries_relation_hyphen_second_word(self):
         holmes_manager.remove_all_documents()
@@ -450,7 +443,7 @@ class GermanTopicMatchingTest(unittest.TestCase):
             holmes_manager.topic_match_documents_against(
                 "Das Prinz eines Königs")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'Ein Königsabdanken und -prinz', 'text_to_match': 'Das Prinz eines Königs', 'rank': '1', 'sentences_character_start_index_in_document': 0, 'sentences_character_end_index_in_document': 29, 'score': 150.0, 'word_infos': [[4, 9, 'single', False, 'Matches KÖNIG directly.'], [24, 29, 'single', True, 'Matches PRINZ directly.']]}])
+                         [{'document_label': '', 'text': 'Ein Königsabdanken und -prinz', 'text_to_match': 'Das Prinz eines Königs', 'rank': '1', 'index_within_document': 3, 'subword_index': 1, 'start_index': 1, 'end_index': 3, 'sentences_start_index': 0, 'sentences_end_index': 3, 'sentences_character_start_index': 0, 'sentences_character_end_index': 29, 'score': 150.0, 'word_infos': [[4, 9, 'single', False, 'Matches KÖNIG directly.'], [24, 29, 'single', True, 'Matches PRINZ directly.']]}])
 
     def test_no_error(self):
         holmes_manager_with_embeddings.remove_all_documents()

@@ -6,7 +6,8 @@ script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join(
     (script_directory, 'test_ontology.owl')))
 coref_holmes_manager = holmes.Manager(model='en_core_web_trf', ontology=ontology,
-                                      perform_coreference_resolution=True)
+                                      perform_coreference_resolution=True,
+                                      number_of_workers=2)
 coref_holmes_manager.register_search_phrase("A dog chases a cat")
 coref_holmes_manager.register_search_phrase("A big horse chases a cat")
 coref_holmes_manager.register_search_phrase("A tiger chases a little cat")
@@ -29,19 +30,21 @@ coref_holmes_manager.register_search_phrase("Somebody attempts to explain")
 coref_holmes_manager.register_search_phrase("An adopted boy")
 coref_holmes_manager.register_search_phrase("A running boy")
 no_coref_holmes_manager = holmes.Manager(model='en_core_web_trf', ontology=ontology,
-                                         perform_coreference_resolution=False)
+                                         perform_coreference_resolution=False,
+                                         number_of_workers=1)
 no_coref_holmes_manager.register_search_phrase("A dog chases a cat")
 embeddings_coref_holmes_manager = holmes.Manager(model='en_core_web_trf',
-                                                 overall_similarity_threshold=0.85)
+                                                 overall_similarity_threshold=0.85,
+                                                 number_of_workers=2)
 embeddings_coref_holmes_manager.register_search_phrase('A man loves a woman')
 
 
 class CoreferenceEnglishMatchingTest(unittest.TestCase):
 
     def _check_word_match(self, match, word_match_index, document_token_index, extracted_word):
-        word_match = match.word_matches[word_match_index]
-        self.assertEqual(word_match.document_token.i, document_token_index)
-        self.assertEqual(word_match.extracted_word, extracted_word)
+        word_match = match['word_matches'][word_match_index]
+        self.assertEqual(word_match['document_token_index'], document_token_index)
+        self.assertEqual(word_match['extracted_word'], extracted_word)
 
     def test_simple_pronoun_coreference_same_sentence(self):
         coref_holmes_manager.remove_all_documents()
@@ -456,7 +459,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
         self._check_word_match(matches[0], 0, 3, 'dog')
-        self.assertTrue(matches[0].is_uncertain)
+        self.assertTrue(matches[0]['uncertain'])
 
     def test_pronoun_coreferent_in_passive_verbal_governing_clause(self):
         coref_holmes_manager.remove_all_documents()
@@ -465,7 +468,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
         self._check_word_match(matches[0], 2, 3, 'cat')
-        self.assertTrue(matches[0].is_uncertain)
+        self.assertTrue(matches[0]['uncertain'])
 
     def test_pronoun_coreferent_in_active_adjectival_governing_clause(self):
         coref_holmes_manager.remove_all_documents()
@@ -474,7 +477,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
         self._check_word_match(matches[0], 0, 3, 'dog')
-        self.assertTrue(matches[0].is_uncertain)
+        self.assertTrue(matches[0]['uncertain'])
 
     def test_pronoun_coreferent_in_passive_adjectival_governing_clause(self):
         coref_holmes_manager.remove_all_documents()
@@ -483,7 +486,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
         self._check_word_match(matches[0], 2, 3, 'cat')
-        self.assertTrue(matches[0].is_uncertain)
+        self.assertTrue(matches[0]['uncertain'])
 
     def test_noun_coreferent_in_active_verbal_governing_clause(self):
         coref_holmes_manager.remove_all_documents()
@@ -493,7 +496,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         self.assertEqual(len(matches), 1)
         self._check_word_match(matches[0], 0, 3, 'big')
         self._check_word_match(matches[0], 1, 7, 'horse')
-        self.assertTrue(matches[0].is_uncertain)
+        self.assertTrue(matches[0]['uncertain'])
 
     def test_noun_coreferent_in_passive_verbal_governing_clause(self):
         coref_holmes_manager.remove_all_documents()
@@ -503,7 +506,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         self.assertEqual(len(matches), 1)
         self._check_word_match(matches[0], 2, 3, 'little')
         self._check_word_match(matches[0], 3, 7, 'cat')
-        self.assertTrue(matches[0].is_uncertain)
+        self.assertTrue(matches[0]['uncertain'])
 
     def test_noun_coreferent_in_active_adjectival_governing_clause(self):
         coref_holmes_manager.remove_all_documents()
@@ -513,7 +516,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         self.assertEqual(len(matches), 1)
         self._check_word_match(matches[0], 0, 3, 'big')
         self._check_word_match(matches[0], 1, 7, 'horse')
-        self.assertTrue(matches[0].is_uncertain)
+        self.assertTrue(matches[0]['uncertain'])
 
     def test_noun_coreferent_in_passive_adjectival_governing_clause(self):
         coref_holmes_manager.remove_all_documents()
@@ -523,7 +526,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         self.assertEqual(len(matches), 1)
         self._check_word_match(matches[0], 2, 3, 'little')
         self._check_word_match(matches[0], 3, 7, 'cat')
-        self.assertTrue(matches[0].is_uncertain)
+        self.assertTrue(matches[0]['uncertain'])
 
     def test_pronoun_coreferent_in_ambiguous_noun_or_verb_dependency(self):
         coref_holmes_manager.remove_all_documents()
@@ -532,7 +535,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
         self._check_word_match(matches[0], 0, 3, 'university')
-        self.assertTrue(matches[0].is_uncertain)
+        self.assertTrue(matches[0]['uncertain'])
 
     def test_reflexive_pronoun_coreferent(self):
         coref_holmes_manager.remove_all_documents()
@@ -636,7 +639,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         coref_holmes_manager.remove_all_documents()
         coref_holmes_manager.parse_and_register_document(
             "A sentence. I saw a dog and it was chasing a cat. Another sentence.")
-        matches = coref_holmes_manager.match_returning_dictionaries()
+        matches = coref_holmes_manager.match()
         self.assertEqual(matches[0]['sentences_within_document'],
                          "I saw a dog and it was chasing a cat.")
 
@@ -644,7 +647,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         coref_holmes_manager.remove_all_documents()
         coref_holmes_manager.parse_and_register_document(
             "A sentence. I saw a dog.It was chasing a cat. Another sentence.")
-        matches = coref_holmes_manager.match_returning_dictionaries()
+        matches = coref_holmes_manager.match()
         self.assertEqual(matches[0]['sentences_within_document'],
                          "I saw a dog. It was chasing a cat.")
 
@@ -652,7 +655,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         coref_holmes_manager.remove_all_documents()
         coref_holmes_manager.parse_and_register_document(
             "A sentence. I saw a dog. I was happy.It was chasing a cat. Another sentence.")
-        matches = coref_holmes_manager.match_returning_dictionaries()
+        matches = coref_holmes_manager.match()
         self.assertEqual(matches[0]['sentences_within_document'],
                          "I saw a dog. I was happy. It was chasing a cat.")
 
@@ -660,7 +663,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         coref_holmes_manager.remove_all_documents()
         coref_holmes_manager.parse_and_register_document(
             "I saw a dog.I was happy. It was chasing a cat.")
-        matches = coref_holmes_manager.match_returning_dictionaries()
+        matches = coref_holmes_manager.match()
         self.assertEqual(matches[0]['sentences_within_document'],
                          "I saw a dog. I was happy. It was chasing a cat.")
 
@@ -671,7 +674,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
                 the kindest heart; he had loved her so much, and she had loved
                 him in return; they had kissed and loved each other, and the
                 boy had been her joy, her second life.""")
-        matches = embeddings_coref_holmes_manager.match_returning_dictionaries()
+        matches = embeddings_coref_holmes_manager.match()
 
     def test_maximum_mentions_difference(self):
         coref_holmes_manager.remove_all_documents()
@@ -692,20 +695,20 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         coref_holmes_manager.parse_and_register_document(
             """I saw a dog. It was chasing a cat.""")
         matches = coref_holmes_manager.match()
-        self.assertTrue(matches[0].involves_coreference)
-        self.assertTrue(matches[0].word_matches[0].involves_coreference)
-        self.assertFalse(matches[0].word_matches[1].involves_coreference)
-        self.assertFalse(matches[0].word_matches[2].involves_coreference)
+        self.assertTrue(matches[0]['involves_coreference'])
+        self.assertTrue(matches[0]['word_matches'][0]['involves_coreference'])
+        self.assertFalse(matches[0]['word_matches'][1]['involves_coreference'])
+        self.assertFalse(matches[0]['word_matches'][2]['involves_coreference'])
 
     def test_involves_coreference_false(self):
         coref_holmes_manager.remove_all_documents()
         coref_holmes_manager.parse_and_register_document(
             """A dog was chasing a cat.""")
         matches = coref_holmes_manager.match()
-        self.assertFalse(matches[0].involves_coreference)
-        self.assertFalse(matches[0].word_matches[0].involves_coreference)
-        self.assertFalse(matches[0].word_matches[0].involves_coreference)
-        self.assertFalse(matches[0].word_matches[0].involves_coreference)
+        self.assertFalse(matches[0]['involves_coreference'])
+        self.assertFalse(matches[0]['word_matches'][0]['involves_coreference'])
+        self.assertFalse(matches[0]['word_matches'][0]['involves_coreference'])
+        self.assertFalse(matches[0]['word_matches'][0]['involves_coreference'])
 
     def test_adjective_verb_phrase_as_search_phrase_matches_simple(self):
         coref_holmes_manager.remove_all_documents()
@@ -713,7 +716,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
             """We discussed holidays. They were very hard to find.""")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
-        self.assertFalse(matches[0].is_uncertain)
+        self.assertFalse(matches[0]['uncertain'])
 
     def test_adjective_verb_phrase_as_search_phrase_no_match_with_normal_phrase(self):
         coref_holmes_manager.remove_all_documents()
@@ -729,7 +732,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 2)
         for match in matches:
-            self.assertFalse(match.is_uncertain)
+            self.assertFalse(match['uncertain'])
 
     def test_objective_adjective_verb_phrase_matches_normal_search_phrase_simple(self):
         coref_holmes_manager.remove_all_documents()
@@ -737,7 +740,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
             """We discussed policies. They was very hard to find""")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
-        self.assertTrue(matches[0].is_uncertain)
+        self.assertTrue(matches[0]['uncertain'])
 
     def test_objective_adjective_verb_phrase_matches_normal_search_phrase_compound(self):
         coref_holmes_manager.remove_all_documents()
@@ -746,7 +749,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 4)
         for match in matches:
-            self.assertTrue(match.is_uncertain)
+            self.assertTrue(match['uncertain'])
 
     def test_subjective_adjective_verb_phrase_matches_normal_search_phrase_simple(self):
         coref_holmes_manager.remove_all_documents()
@@ -754,7 +757,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
             """We saw the man. He was very glad to sing""")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
-        self.assertTrue(matches[0].is_uncertain)
+        self.assertTrue(matches[0]['uncertain'])
 
     def test_subjective_adjective_verb_phrase_matches_normal_search_phrase_compound(self):
         coref_holmes_manager.remove_all_documents()
@@ -763,7 +766,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 4)
         for match in matches:
-            self.assertTrue(match.is_uncertain)
+            self.assertTrue(match['uncertain'])
 
     def test_prepositional_phrase_no_conjunction(self):
         coref_holmes_manager.remove_all_documents()
@@ -772,7 +775,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
         for match in matches:
-            self.assertFalse(match.is_uncertain)
+            self.assertFalse(match['uncertain'])
 
     def test_prepositional_phrase_with_conjunction(self):
         coref_holmes_manager.remove_all_documents()
@@ -781,7 +784,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 2)
         for match in matches:
-            self.assertFalse(match.is_uncertain)
+            self.assertFalse(match['uncertain'])
 
     def test_coreference_of_noun_phrase_with_conjunction_only_one_matches(self):
         coref_holmes_manager.remove_all_documents()
@@ -790,7 +793,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
         for match in matches:
-            self.assertFalse(match.is_uncertain)
+            self.assertFalse(match['uncertain'])
 
     def test_coreference_of_noun_phrase_with_conjunction_both_match(self):
         coref_holmes_manager.remove_all_documents()
@@ -799,7 +802,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 2)
         for match in matches:
-            self.assertFalse(match.is_uncertain)
+            self.assertFalse(match['uncertain'])
 
     def test_coreference_of_noun_phrase_with_conjunction_multiple_clusters(self):
         coref_holmes_manager.remove_all_documents()
@@ -814,14 +817,13 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
             """They demanded an explanation. Somebody attempted it.""")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0].word_matches[1].word_match_type, 'derivation')
+        self.assertEqual(matches[0]['word_matches'][1]['match_type'], 'derivation')
 
     def test_coreference_linked_parent_token_indexes(self):
         coref_holmes_manager.remove_all_documents()
         coref_holmes_manager.parse_and_register_document(
             "I saw a house. I saw it in the village.", 'village')
-        doc = coref_holmes_manager.threadsafe_container.get_document(
-            'village')
+        doc = coref_holmes_manager.get_document('village')
         self.assertTrue(doc[7]._.holmes.is_involved_in_coreference)
         self.assertEqual(doc[10]._.holmes.coreference_linked_parent_dependencies,
                          [[3, 'pobjp'], [6, 'pobjp'], [7, 'pobjp'], [8, 'pobj']])
@@ -831,7 +833,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         coref_holmes_manager.parse_and_register_document("I saw a boy. Someone had adopted him")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
-        self.assertTrue(matches[0].is_uncertain)
+        self.assertTrue(matches[0]['uncertain'])
         self._check_word_match(matches[0], 1, 3, 'boy')
 
     def test_nsubj_matches_amod(self):
@@ -846,8 +848,8 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
             "I saw a boy and a boy. Someone had adopted them")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 2)
-        self.assertTrue(matches[0].is_uncertain)
-        self.assertTrue(matches[1].is_uncertain)
+        self.assertTrue(matches[0]['uncertain'])
+        self.assertTrue(matches[1]['uncertain'])
 
     def test_nsubj_matches_amod_with_conjunction(self):
         coref_holmes_manager.remove_all_documents()
