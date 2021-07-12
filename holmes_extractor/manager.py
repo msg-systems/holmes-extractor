@@ -19,7 +19,7 @@ from .classification import SupervisedTopicTrainingBasis, SupervisedTopicClassif
 from .topic_matching import TopicMatcher, TopicMatchDictionaryOrderer
 from .consoles import HolmesConsoles
 
-TIMEOUT_SECONDS = 300
+TIMEOUT_SECONDS = 5
 
 absolute_config_filename = pkg_resources.resource_filename(__name__, 'config.cfg')
 config = Config().from_disk(absolute_config_filename)
@@ -329,6 +329,10 @@ class Manager:
             self.search_phrases = []
         self.handle_response(reply_queue, self.number_of_workers, 'remove_all_search_phrases')
 
+    def list_search_phrase_labels(self):
+        with self.lock:
+            return sorted(list(set([search_phrase.label for search_phrase in self.search_phrases])))
+
     def match(self, search_phrase_text=None, document_text=None):
         if search_phrase_text is not None:
             search_phrase = self.internal_get_search_phrase(search_phrase_text, '')
@@ -337,14 +341,15 @@ class Manager:
         if document_text is not None:
             serialized_document = self.nlp(document_text).to_bytes()
             with self.lock:
-                first_worker_queue_number = self.next_worker_queue_number()
+                worker_queue_number = self.next_worker_queue_number()
+            worker_range = range(worker_queue_number, worker_queue_number + 1)
             number_of_workers = 1
         else:
             serialized_document = None
-            first_worker_queue_number = 0
             number_of_workers = self.number_of_workers
+            worker_range = range(number_of_workers)
         reply_queue = self.multiprocessor_manager.Queue()
-        for worker_index in range(first_worker_queue_number, number_of_workers):
+        for worker_index in worker_range:
             self.input_queues[worker_index].put((
                 self.worker.match, (serialized_document, search_phrase), reply_queue),
                 TIMEOUT_SECONDS)

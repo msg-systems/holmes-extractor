@@ -179,11 +179,6 @@ class Match:
                 return word_match.document_subword.index
         raise RuntimeError('No word match with search phrase token with root dependency')
 
-    def get_word_match_with_search_phrase_word_index(self, search_phrase_word_index):
-        word_matches = [word_match for word_match in self.word_matches if
-            word_match.search_phrase_token.i == search_phrase_word_index]
-        return word_matches[0] if len(word_matches) > 0 else None
-
 class StructuralMatcher:
     """The class responsible for matching search phrases with documents."""
 
