@@ -19,7 +19,7 @@ from .classification import SupervisedTopicTrainingBasis, SupervisedTopicClassif
 from .topic_matching import TopicMatcher, TopicMatchDictionaryOrderer
 from .consoles import HolmesConsoles
 
-TIMEOUT_SECONDS = 5
+TIMEOUT_SECONDS = 300
 
 absolute_config_filename = pkg_resources.resource_filename(__name__, 'config.cfg')
 config = Config().from_disk(absolute_config_filename)
@@ -168,7 +168,10 @@ class Manager:
         exception_worker_label = None
         for _ in range(number_of_messages):
             worker_label, return_value, return_info = reply_queue.get(timeout=TIMEOUT_SECONDS)
-            if isinstance(return_info, Exception):
+            if isinstance(return_info, WrongModelDeserializationError) or \
+                    isinstance(return_info, WrongVersionDeserializationError):
+                raise return_info
+            elif isinstance(return_info, Exception):
                 if exception_worker_label is None:
                     exception_worker_label = worker_label
             else:
@@ -336,6 +339,8 @@ class Manager:
     def match(self, search_phrase_text=None, document_text=None):
         if search_phrase_text is not None:
             search_phrase = self.internal_get_search_phrase(search_phrase_text, '')
+        elif len(self.list_search_phrase_labels()) == 0:
+            raise NoSearchPhraseError('At least one search phrase is required for matching.')
         else:
             search_phrase = None
         if document_text is not None:
@@ -345,6 +350,9 @@ class Manager:
             worker_range = range(worker_queue_number, worker_queue_number + 1)
             number_of_workers = 1
         else:
+            with self.lock:
+                if len(self.document_labels_to_worker_queues) == 0:
+                    raise NoDocumentError('At least one document is required for matching.')
             serialized_document = None
             number_of_workers = self.number_of_workers
             worker_range = range(number_of_workers)
@@ -361,6 +369,14 @@ class Manager:
         return self.structural_matcher.sort_match_dictionaries(match_dicts)
 
     def get_corpus_frequency_information(self):
+
+        def merge_dicts_adding_common_values(dict1, dict2):
+           dict_to_return = {**dict1, **dict2}
+           for key, value in dict_to_return.items():
+               if key in dict1 and key in dict2:
+                   dict_to_return[key] = dict1[key] + dict2[key]
+           return dict_to_return
+
         with self.lock:
             if self.word_dictionaries_need_rebuilding:
                 reply_queue = self.multiprocessor_manager.Queue()
@@ -377,7 +393,8 @@ class Manager:
                         if exception_worker_label is None:
                             exception_worker_label = worker_label
                     else:
-                        worker_frequency_dict.update(return_value)
+                        worker_frequency_dict = merge_dicts_adding_common_values(
+                            worker_frequency_dict, return_value)
                         if self.verbose:
                             print(return_info)
                     if exception_worker_label is not None:
@@ -463,6 +480,9 @@ class Manager:
                 str(maximum_number_of_single_word_matches_for_embedding_matching),
                 'relation',
                 str(maximum_number_of_single_word_matches_for_relation_matching))))
+        with self.lock:
+            if len(self.document_labels_to_worker_queues) == 0:
+                raise NoDocumentError('At least one document is required for matching.')
         if use_frequency_factor:
             words_to_corpus_frequencies, maximum_corpus_frequency = \
                 self.get_corpus_frequency_information()
@@ -588,7 +608,7 @@ class Manager:
             maximum_number_of_single_word_matches_for_embedding_matching)
 
     def close(self):
-        for worker in self._workers:
+        for worker in self.workers:
             worker.terminate()
 
 class Worker:
@@ -637,8 +657,8 @@ class Worker:
         if doc._.holmes_document_info.serialized_document_version != \
                 state['serialized_document_version']:
             raise WrongVersionDeserializationError('; '.join((
-                state['serialized_document_version'],
-                doc._.holmes_document_info.serialized_document_version)))
+                str(state['serialized_document_version']),
+                str(doc._.holmes_document_info.serialized_document_version))))
         return state['structural_matcher'].semantic_matching_helper.index_document(doc)
 
     def register_serialized_document(self, state, serialized_doc, label):

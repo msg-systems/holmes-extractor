@@ -4,10 +4,10 @@ from holmes_extractor.errors import *
 import jsonpickle
 
 nocoref_holmes_manager = holmes.Manager('en_core_web_trf', analyze_derivational_morphology=False,
-                                        perform_coreference_resolution=False)
+                                        perform_coreference_resolution=False, number_of_workers=2)
 coref_holmes_manager = holmes.Manager(
-    'en_core_web_trf', perform_coreference_resolution=True)
-german_holmes_manager = holmes.Manager('de_core_news_lg')
+    'en_core_web_trf', perform_coreference_resolution=True, number_of_workers=1)
+german_holmes_manager = holmes.Manager('de_core_news_lg', number_of_workers=1)
 
 
 class ErrorsTest(unittest.TestCase):
@@ -27,6 +27,11 @@ class ErrorsTest(unittest.TestCase):
             holmes.Manager(model='en_core_web_sm',
                            overall_similarity_threshold=0.85)
 
+    def test_number_of_workers_out_of_range(self):
+        with self.assertRaises(ValueError) as context:
+            holmes.Manager(model='en_core_web_sm',
+                           number_of_workers=0)
+
     def test_language_not_supported(self):
         with self.assertRaises(ValueError) as context:
             holmes.Manager(model='pl_core_news_sm')
@@ -42,11 +47,6 @@ class ErrorsTest(unittest.TestCase):
             nocoref_holmes_manager.remove_all_search_phrases()
             nocoref_holmes_manager.register_search_phrase(
                 "A dog does not chase a cat")
-
-    def test_search_phrase_contains_non_coreferring_pronoun(self):
-        nocoref_holmes_manager.remove_all_search_phrases()
-        nocoref_holmes_manager.register_search_phrase(
-            "A cat has a dog chasing it")
 
     def test_search_phrase_contains_pronoun_coreference_switched_off(self):
         nocoref_holmes_manager.remove_all_search_phrases()
@@ -98,50 +98,36 @@ class ErrorsTest(unittest.TestCase):
             nocoref_holmes_manager.parse_and_register_document("A", "A")
             nocoref_holmes_manager.parse_and_register_document("A", "A")
 
-    def test_duplicate_document_with_register_parsed_document(self):
-        with self.assertRaises(DuplicateDocumentError) as context:
-            nocoref_holmes_manager.remove_all_documents()
-            holmes_doc = nocoref_holmes_manager.semantic_analyzer.parse("A")
-            holmes_doc2 = nocoref_holmes_manager.semantic_analyzer.parse("B")
-            nocoref_holmes_manager.register_parsed_document(holmes_doc, 'C')
-            nocoref_holmes_manager.register_parsed_document(holmes_doc2, 'C')
-
-    def test_duplicate_document_with_deserialize_and_register_document(self):
+    def test_duplicate_document_with_register_serialized_document(self):
         with self.assertRaises(DuplicateDocumentError) as context:
             nocoref_holmes_manager.remove_all_documents()
             nocoref_holmes_manager.parse_and_register_document("A", '')
             deserialized_doc = nocoref_holmes_manager.serialize_document('')
-            nocoref_holmes_manager.deserialize_and_register_document(
+            nocoref_holmes_manager.register_serialized_document(
                 deserialized_doc, '')
 
-    def test_duplicate_document_with_parse_and_register_documents_multiprocessing(self):
+    def test_duplicate_document_with_register_serialized_documents(self):
         with self.assertRaises(DuplicateDocumentError) as context:
-            m = holmes.MultiprocessingManager(
-                'en_core_web_sm', number_of_workers=2)
-            m.parse_and_register_documents({'A': "A"})
-            m.parse_and_register_documents({'A': "A"})
-
-    def test_duplicate_document_with_deserialize_and_register_document_multiprocessing(self):
-        with self.assertRaises(DuplicateDocumentError) as context:
-            m_normal = holmes.Manager(
-                'en_core_web_sm', perform_coreference_resolution=False)
-            m_normal.remove_all_documents()
-            m_normal.parse_and_register_document("A", '')
-            deserialized_doc = m_normal.serialize_document('')
-            m = holmes.MultiprocessingManager('en_core_web_sm',
-                                              perform_coreference_resolution=False, number_of_workers=2)
-            m.deserialize_and_register_documents({'A': deserialized_doc})
-            m.deserialize_and_register_documents({'A': deserialized_doc})
+            nocoref_holmes_manager.remove_all_documents()
+            nocoref_holmes_manager.parse_and_register_document("A", '')
+            deserialized_doc = nocoref_holmes_manager.serialize_document('')
+            nocoref_holmes_manager.register_serialized_documents(
+                {'': deserialized_doc})
 
     def test_no_search_phrase_error(self):
         with self.assertRaises(NoSearchPhraseError) as context:
             nocoref_holmes_manager.remove_all_search_phrases()
-            nocoref_holmes_manager.match_search_phrases_against("Try this")
+            nocoref_holmes_manager.match(document_text="Try this")
 
-    def test_no_document_error(self):
-        with self.assertRaises(NoSearchedDocumentError) as context:
+    def test_no_document_error_structural_match(self):
+        with self.assertRaises(NoDocumentError) as context:
             nocoref_holmes_manager.remove_all_documents()
-            nocoref_holmes_manager.match_documents_against("Try this")
+            nocoref_holmes_manager.match(search_phrase_text="Try this")
+
+    def test_no_document_error_structural_match(self):
+        with self.assertRaises(NoDocumentError) as context:
+            nocoref_holmes_manager.remove_all_documents()
+            nocoref_holmes_manager.topic_match_documents_against(text_to_match="Try this")
 
     def test_wrong_model_deserialization_error_documents(self):
         with self.assertRaises(WrongModelDeserializationError) as context:
@@ -149,20 +135,18 @@ class ErrorsTest(unittest.TestCase):
             doc = nocoref_holmes_manager.parse_and_register_document(
                 "The cat was chased by the dog", 'pets')
             serialized_doc = nocoref_holmes_manager.serialize_document('pets')
-            german_holmes_manager.deserialize_and_register_document(
+            german_holmes_manager.register_serialized_document(
                 serialized_doc, 'pets')
 
     def test_wrong_version_deserialization_error_documents(self):
         with self.assertRaises(WrongVersionDeserializationError) as context:
             nocoref_holmes_manager.remove_all_documents()
-            doc = nocoref_holmes_manager.parse_and_register_document(
+            nocoref_holmes_manager.parse_and_register_document(
                 "The cat was chased by the dog", 'pets')
-            serialized_doc = nocoref_holmes_manager.serialize_document('pets')
-            document = jsonpickle.decode(serialized_doc)
-            document.version = 1
-            serialized_doc = jsonpickle.encode(document)
-            nocoref_holmes_manager.deserialize_and_register_document(
-                serialized_doc, 'pets2')
+            doc = nocoref_holmes_manager.get_document('pets')
+            doc._.holmes_document_info.serialized_document_version = 1
+            nocoref_holmes_manager.register_serialized_document(
+                doc.to_bytes(), 'pets2')
 
     def test_wrong_model_deserialization_error_supervised_models(self):
         with self.assertRaises(WrongModelDeserializationError) as context:
@@ -225,19 +209,10 @@ class ErrorsTest(unittest.TestCase):
             sttb.prepare()
             sttb.train()
 
-    def test_embedding_threshold_higher_than_relation_threshold_normal_manager(self):
+    def test_embedding_threshold_higher_than_relation_threshold(self):
         with self.assertRaises(EmbeddingThresholdGreaterThanRelationThresholdError) as context:
             m = holmes.Manager('en_core_web_sm')
             m.parse_and_register_document("a")
             coref_holmes_manager.topic_match_documents_against("b",
                                                                                       maximum_number_of_single_word_matches_for_relation_matching=1,
                                                                                       maximum_number_of_single_word_matches_for_embedding_matching=2)
-
-    def test_embedding_threshold_higher_than_relation_threshold_multiprocessing_manager(self):
-        with self.assertRaises(EmbeddingThresholdGreaterThanRelationThresholdError) as context:
-            m = holmes.MultiprocessingManager(
-                'en_core_web_sm', number_of_workers=1)
-            m.parse_and_register_documents({'': "a"})
-            m.topic_match_documents_against("b",
-                                                                   maximum_number_of_single_word_matches_for_relation_matching=1,
-                                                                   maximum_number_of_single_word_matches_for_embedding_matching=2)

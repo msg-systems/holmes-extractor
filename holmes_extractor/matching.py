@@ -5,7 +5,7 @@ from threading import Lock
 from numpy import dot
 from numpy.linalg import norm
 from spacy.tokens import Token
-from .errors import DuplicateDocumentError, NoSearchPhraseError, NoSearchedDocumentError
+from .errors import DuplicateDocumentError, NoSearchPhraseError, NoDocumentError
 from .parsing import Subword, Index
 
 ONTOLOGY_DEPTHS_TO_NAMES = {
@@ -988,11 +988,6 @@ class StructuralMatcher:
         match_specific_indexes = document_labels_to_indexes_for_reverse_matching_sets is not None \
             or document_labels_to_indexes_for_embedding_reverse_matching_sets is not None
 
-        if len(indexed_documents) == 0:
-            raise NoSearchedDocumentError(
-                'At least one searched document is required to match.')
-        if len(search_phrases) == 0:
-            raise NoSearchPhraseError('At least one search_phrase is required to match.')
         matches = []
         for document_label, registered_document in indexed_documents.items():
             if document_label_filter is not None and document_label is not None and not \
@@ -1265,4 +1260,5 @@ class StructuralMatcher:
 
     def sort_match_dictionaries(self, match_dictionaries):
         return sorted(match_dictionaries,
-            key=lambda match_dict: 1 - float(match_dict['overall_similarity_measure']))
+            key=lambda match_dict: (1 - float(match_dict['overall_similarity_measure']),
+                match_dict['document']))

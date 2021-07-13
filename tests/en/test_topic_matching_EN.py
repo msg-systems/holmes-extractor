@@ -15,6 +15,8 @@ holmes_manager_coref_embedding_on_root = holmes.Manager(model='en_core_web_trf',
 holmes_manager_coref_no_embeddings = holmes.Manager(model='en_core_web_trf', ontology=ontology,
                                                     overall_similarity_threshold=1, perform_coreference_resolution=True,
                                                     number_of_workers=1)
+ontology_for_sm_tests = holmes.Ontology(os.sep.join((script_directory, 'test_ontology.owl')))
+
 
 
 class EnglishTopicMatchingTest(unittest.TestCase):
@@ -1080,3 +1082,109 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             holmes_manager_coref.topic_match_documents_against(
                 "A dog")
         self.assertEqual(len(topic_matches), 1)
+
+    def test_one_worker_frequency_factor(self):
+        m = holmes.Manager('en_core_web_sm', ontology=ontology_for_sm_tests,
+            number_of_workers=1)
+        m.parse_and_register_document("I saw a dog. It was chasing a cat", 'specific')
+        m.parse_and_register_document("The dog chased the animal", 'exact')
+        m.parse_and_register_document("The cat chased the dog", 'specific-reversed')
+        m.parse_and_register_document("The animal chased the dog", 'exact-reversed')
+        self.assertEqual(m.document_labels(), ['exact', 'exact-reversed', 'specific',
+                                               'specific-reversed'])
+        self.assertEqual(m.topic_match_documents_against(
+            "A dog chases an animal",
+            relation_score=30,
+            reverse_only_relation_score=20,
+            single_word_score=5,
+            single_word_any_tag_score=2,
+            different_match_cutoff_score=5),
+            [{'document_label': 'exact', 'text': 'The dog chased the animal', 'text_to_match': 'A dog chases an animal', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 44.27418511677267, 'word_infos': [[4, 7, 'overlapping_relation', False, 'Matches DOG directly.'], [8, 14, 'overlapping_relation', False, 'Matches CHASE directly.'], [19, 25, 'overlapping_relation', True, 'Matches ANIMAL directly.']]}, {'document_label': 'specific', 'text': 'I saw a dog. It was chasing a cat', 'text_to_match': 'A dog chases an animal', 'rank': '2', 'index_within_document': 9, 'subword_index': None, 'start_index': 3, 'end_index': 9, 'sentences_start_index': 0, 'sentences_end_index': 9, 'sentences_character_start_index': 0, 'sentences_character_end_index': 33, 'score': 35.641203421657025, 'word_infos': [[8, 11, 'overlapping_relation', False, 'Matches DOG directly.'], [20, 27, 'overlapping_relation', False, 'Is a synonym of CHASE in the ontology.'], [30, 33, 'overlapping_relation', True, 'Is a child of ANIMAL in the ontology.']]}, {'document_label': 'exact-reversed', 'text': 'The animal chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3=', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 19.954440383093182, 'word_infos': [[4, 10, 'single', False, 'Matches ANIMAL directly.'], [11, 17, 'relation', False, 'Matches CHASE directly.'], [22, 25, 'relation', True, 'Is a child of ANIMAL in the ontology.']]}, {'document_label': 'specific-reversed', 'text': 'The cat chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3=', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 22, 'score': 19.302449037645065, 'word_infos': [[4, 7, 'single', False, 'Is a child of ANIMAL in the ontology.'], [8, 14, 'relation', False, 'Matches CHASE directly.'], [19, 22, 'relation', True, 'Is a child of ANIMAL in the ontology.']]}])
+
+        m.close()
+
+    def test_two_workers_frequency_factor_control(self):
+        m = holmes.Manager('en_core_web_sm', ontology=ontology_for_sm_tests, number_of_workers=2)
+        m.parse_and_register_document("I saw a dog. It was chasing a cat", 'specific')
+        m.parse_and_register_document("The dog chased the animal", 'exact')
+        m.parse_and_register_document("The cat chased the dog", 'specific-reversed')
+        m.parse_and_register_document("The animal chased the dog", 'exact-reversed')
+        self.assertEqual(m.document_labels(), ['exact', 'exact-reversed', 'specific',
+                                               'specific-reversed'])
+        self.assertEqual(m.topic_match_documents_against(
+            "A dog chases an animal",
+            relation_score=30,
+            reverse_only_relation_score=20,
+            single_word_score=5,
+            single_word_any_tag_score=2,
+            different_match_cutoff_score=5),
+            [{'document_label': 'exact', 'text': 'The dog chased the animal', 'text_to_match': 'A dog chases an animal', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 44.27418511677267, 'word_infos': [[4, 7, 'overlapping_relation', False, 'Matches DOG directly.'], [8, 14, 'overlapping_relation', False, 'Matches CHASE directly.'], [19, 25, 'overlapping_relation', True, 'Matches ANIMAL directly.']]}, {'document_label': 'specific', 'text': 'I saw a dog. It was chasing a cat', 'text_to_match': 'A dog chases an animal', 'rank': '2', 'index_within_document': 9, 'subword_index': None, 'start_index': 3, 'end_index': 9, 'sentences_start_index': 0, 'sentences_end_index': 9, 'sentences_character_start_index': 0, 'sentences_character_end_index': 33, 'score': 35.641203421657025, 'word_infos': [[8, 11, 'overlapping_relation', False, 'Matches DOG directly.'], [20, 27, 'overlapping_relation', False, 'Is a synonym of CHASE in the ontology.'], [30, 33, 'overlapping_relation', True, 'Is a child of ANIMAL in the ontology.']]}, {'document_label': 'exact-reversed', 'text': 'The animal chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3=', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 19.954440383093182, 'word_infos': [[4, 10, 'single', False, 'Matches ANIMAL directly.'], [11, 17, 'relation', False, 'Matches CHASE directly.'], [22, 25, 'relation', True, 'Is a child of ANIMAL in the ontology.']]}, {'document_label': 'specific-reversed', 'text': 'The cat chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3=', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 22, 'score': 19.302449037645065, 'word_infos': [[4, 7, 'single', False, 'Is a child of ANIMAL in the ontology.'], [8, 14, 'relation', False, 'Matches CHASE directly.'], [19, 22, 'relation', True, 'Is a child of ANIMAL in the ontology.']]}])
+        m.close()
+
+    def test_number_of_results(self):
+        m = holmes.Manager('en_core_web_sm', ontology=ontology_for_sm_tests,
+            number_of_workers=2)
+        m.parse_and_register_document("I saw a dog. It was chasing a cat", 'specific')
+        m.parse_and_register_document("The dog chased the animal", 'exact')
+        m.parse_and_register_document("The cat chased the dog", 'specific-reversed')
+        m.parse_and_register_document("The animal chased the dog", 'exact-reversed')
+        self.assertEqual(m.document_labels(), ['exact', 'exact-reversed', 'specific',
+                                               'specific-reversed'])
+        self.assertEqual(m.topic_match_documents_against(
+            "A dog chases an animal", number_of_results=3, use_frequency_factor=True,
+            relation_score=30,
+            reverse_only_relation_score=20,
+            single_word_score=5,
+            single_word_any_tag_score=2,
+            different_match_cutoff_score=5),
+            [{'document_label': 'exact', 'text': 'The dog chased the animal', 'text_to_match': 'A dog chases an animal', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 44.27418511677267, 'word_infos': [[4, 7, 'overlapping_relation', False, 'Matches DOG directly.'], [8, 14, 'overlapping_relation', False, 'Matches CHASE directly.'], [19, 25, 'overlapping_relation', True, 'Matches ANIMAL directly.']]}, {'document_label': 'specific', 'text': 'I saw a dog. It was chasing a cat', 'text_to_match': 'A dog chases an animal', 'rank': '2', 'index_within_document': 9, 'subword_index': None, 'start_index': 3, 'end_index': 9, 'sentences_start_index': 0, 'sentences_end_index': 9, 'sentences_character_start_index': 0, 'sentences_character_end_index': 33, 'score': 35.641203421657025, 'word_infos': [[8, 11, 'overlapping_relation', False, 'Matches DOG directly.'], [20, 27, 'overlapping_relation', False, 'Is a synonym of CHASE in the ontology.'], [30, 33, 'overlapping_relation', True, 'Is a child of ANIMAL in the ontology.']]}, {'document_label': 'exact-reversed', 'text': 'The animal chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 19.954440383093182, 'word_infos': [[4, 10, 'single', False, 'Matches ANIMAL directly.'], [11, 17, 'relation', False, 'Matches CHASE directly.'], [22, 25, 'relation', True, 'Is a child of ANIMAL in the ontology.']]}])
+        m.close()
+
+    def test_multithreading_filtering_with_topic_match_dictionaries(self):
+        m = holmes.Manager('en_core_web_sm', number_of_workers=2,
+                                          ontology=ontology_for_sm_tests)
+
+        m.parse_and_register_document("The dog chased the cat", 'T11')
+        m.parse_and_register_document("The dog chased the cat", 'T12')
+        m.parse_and_register_document("The dog chased the cat", 'T21')
+        m.parse_and_register_document("The dog chased the cat", 'T22')
+        topic_match_dictionaries = \
+            m.topic_match_documents_against(
+                "The dog chased the cat")
+        self.assertEqual(len(topic_match_dictionaries), 4)
+        topic_match_dictionaries = \
+            m.topic_match_documents_against(
+                "The dog chased the cat", document_label_filter="T")
+        self.assertEqual(len(topic_match_dictionaries), 4)
+        topic_match_dictionaries = \
+            m.topic_match_documents_against(
+                "The dog chased the cat", document_label_filter="T1")
+        self.assertEqual(len(topic_match_dictionaries), 2)
+        topic_match_dictionaries = \
+            m.topic_match_documents_against(
+                "The dog chased the cat", document_label_filter="T22")
+        self.assertEqual(len(topic_match_dictionaries), 1)
+        topic_match_dictionaries = \
+            m.topic_match_documents_against(
+                "The dog chased the cat", document_label_filter="X")
+        self.assertEqual(len(topic_match_dictionaries), 0)
+        m.close()
+
+    def test_different_match_cutoff_score_high(self):
+        m = holmes.Manager('en_core_web_sm', number_of_workers=2,
+                                          ontology=ontology_for_sm_tests)
+        m.parse_and_register_document("A dog then and then and then and then and then a dog")
+        topic_match_dictionaries = \
+            m.topic_match_documents_against(
+                "A dog", different_match_cutoff_score=10000)
+        self.assertEqual(len(topic_match_dictionaries), 2)
+        m.close()
+
+    def test_different_match_cutoff_score_control(self):
+        m = holmes.Manager('en_core_web_sm', number_of_workers=2,
+                                          ontology=ontology_for_sm_tests)
+        m.parse_and_register_document("A dog then and then and then and then and then a dog")
+        topic_match_dictionaries = m.topic_match_documents_against(
+                "A dog")
+        self.assertEqual(len(topic_match_dictionaries), 1)
+        m.close()

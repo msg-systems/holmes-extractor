@@ -907,3 +907,8 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
     def test_formerly_problematic_sentence_no_exception_thrown(self):
         nlp(
             "Mothers with vouchers for themselves and their young childrenwere finding that many eligible products were gone.")
+
+    def test_pipe(self):
+        docs = list(nlp.pipe(['some dogs', 'some cats']))
+        self.assertEqual(docs[0][1]._.holmes.lemma, 'dog')
+        self.assertEqual(docs[1][1]._.holmes.lemma, 'cat')

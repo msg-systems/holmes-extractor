@@ -27,7 +27,7 @@ class DuplicateDocumentError(HolmesError):
 class NoSearchPhraseError(HolmesError):
     pass
 
-class NoSearchedDocumentError(HolmesError):
+class NoDocumentError(HolmesError):
     pass
 
 class WrongModelDeserializationError(HolmesError):
