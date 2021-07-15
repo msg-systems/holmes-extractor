@@ -712,8 +712,6 @@ class SemanticAnalyzer(ABC):
 
     language_name = NotImplemented
 
-    default_vectorsmodel_name = NotImplemented
-
     noun_pos = NotImplemented
 
     matchable_pos = NotImplemented
@@ -961,7 +959,8 @@ class SemanticAnalyzer(ABC):
         in a document being matched.
         """
         token._.holmes.is_matchable = (
-            token.pos_ in self.matchable_pos or token._.holmes.is_involved_in_coreference()) \
+            token.pos_ in self.matchable_pos or token._.holmes.is_involved_in_coreference()
+            or len(token._.holmes.subwords) > 0) \
             and token.tag_ not in self.matchable_blacklist_tags and \
             token._.holmes.lemma not in self.generic_pronoun_lemmas
 

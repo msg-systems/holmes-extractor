@@ -272,7 +272,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
     def test_modal_verb_with_conjunction(self):
         doc = nlp(
-            "Der Hund und der Löwe können die Katze und die Maus jagen")
+            "Die Katze und die Maus können den Hund und den Löwen jagen")
         self.assertEqual(doc[11]._.holmes.string_representation_of_children(),
                          '1:sb(U); 4:sb(U); 7:oa(U); 10:oa(U)')
         self.assertEqual(
@@ -354,7 +354,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = nlp(
             "Der Abschluss von einer Versicherung durch einen Makler")
         self.assertEqual(doc[1]._.holmes.string_representation_of_children(),
-                         '2:mnr; 4:pobjo; 5:mnr; 7:pobjb')
+                         '2:pg; 4:pobjo; 5:mnr; 7:pobjb')
 
     def test_genitive_and_durch_phrase(self):
         doc = nlp(
@@ -551,8 +551,8 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
     def test_multiple_preposition_dependencies_added_to_noun(self):
         doc = nlp(
-            "Der Mitarbeiter braucht eine Versicherung für die nächsten fünf Jahre und in Europa")
-        self.assertEqual(doc[2]._.holmes.string_representation_of_children(),
+            "Der Mitarbeiter wird eine Versicherung für die nächsten fünf Jahre und in Europa brauchen")
+        self.assertEqual(doc[13]._.holmes.string_representation_of_children(),
                          '1:sb; 4:oa; 5:moposs(U); 9:pobjp(U); 11:moposs(U); 12:pobjp(U)')
         self.assertEqual(doc[4]._.holmes.string_representation_of_children(
         ), '5:mnr; 9:pobjp; 11:mnr; 12:pobjp')
@@ -615,9 +615,9 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = nlp(
             "Richard und Thomas war schwer und schwierig zu erreichen und zu bekommen.")
         self.assertEqual(doc[8]._.holmes.string_representation_of_children(),
-                         '0:arg(U); 2:arg(U); 4:mo; 6:mo; 7:pm; 9:cd')
+                         '0:arg(U); 2:arg(U); 4:pd; 6:pd; 7:pm; 9:cd')
         self.assertEqual(doc[11]._.holmes.string_representation_of_children(),
-                         '0:arg(U); 2:arg(U); 4:mo; 6:mo; 10:pm')
+                         '0:arg(U); 2:arg(U); 4:pd; 6:pd; 10:pm')
 
     def test_adjective_verb_clause_with_zu_subjective_zu_integrated_simple(self):
         doc = nlp("Richard war froh hineinzugehen.")
@@ -662,7 +662,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[5]._.holmes.string_representation_of_children(),
                          '1:sb; 4:sb; 6:cd')
         self.assertEqual(doc[7]._.holmes.string_representation_of_children(),
-                         '9:sb; 12:sb')
+                         '1:sb; 4:sb; 9:oa; 12:oa')
 
     def test_ungrammatical_two_accusatives(self):
         doc = nlp("Den Hund jagt den Hund")
@@ -711,9 +711,9 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[7]._.holmes.string_representation_of_children(),
                          '-5:None')
         self.assertEqual(doc[11]._.holmes.string_representation_of_children(),
-                         '1:pobjp(U); 4:pobjp; 6:mo; 8:sb; 9:cd; 10:sb; 12:cd')
+                         '1:pobjo; 4:pobjo; 6:op; 8:sb; 10:sb; 12:cd')
         self.assertEqual(doc[13]._.holmes.string_representation_of_children(),
-                         '1:pobjp(U); 4:pobjp; 6:mo; 8:sb; 10:sb')
+                         '1:pobjo; 4:pobjo; 6:op; 8:sb; 10:sb')
 
     def test_conjunction_with_subject_object_and_verb_further_right(self):
         doc = nlp("Der Mann aß das Fleisch und trank.")
@@ -940,8 +940,8 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
     def test_nonsense_word(self):
 
-        doc = nlp("WiderrufsbelehrungWiderrufsrechtSie")
-        self.assertEqual(len(doc[0]._.holmes.subwords), 5)
+        doc = nlp("WiderrufsbelehrungWiderrufsrecht.")
+        self.assertEqual(len(doc[0]._.holmes.subwords), 4)
 
         self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Widerruf')
         self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'widerruf')
@@ -951,8 +951,6 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[0]._.holmes.subwords[2].lemma, 'widerruf')
         self.assertEqual(doc[0]._.holmes.subwords[3].text, 'recht')
         self.assertEqual(doc[0]._.holmes.subwords[3].lemma, 'recht')
-        self.assertEqual(doc[0]._.holmes.subwords[4].text, 'Sie')
-        self.assertEqual(doc[0]._.holmes.subwords[4].lemma, 'ich')
 
     def test_nonsense_word_with_number(self):
 
@@ -1663,6 +1661,8 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[2]._.holmes.subwords[4].governor_index, None)
         self.assertEqual(
             doc[2]._.holmes.subwords[4].governing_dependency_label, None)
+
+        self.assertTrue(doc[2]._.holmes.is_matchable)
 
         self.assertEqual(doc[4]._.holmes.subwords[0].text, 'Fein')
         self.assertEqual(doc[4]._.holmes.subwords[0].lemma, 'fein')

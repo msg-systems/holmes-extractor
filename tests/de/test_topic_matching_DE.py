@@ -98,7 +98,7 @@ class GermanTopicMatchingTest(unittest.TestCase):
                            holmes_manager_with_embeddings)
 
     def test_reverse_only_parent_lemma_become_reversed(self):
-        self._check_equals("Ein Präsident wird ein Politiker", "Ein Politiker wird ein Präsident", 24,
+        self._check_equals("Ein Präsident wird ein Politiker", "Ein Politiker wird ein Präsident", 39,
                            holmes_manager_with_embeddings)
 
     def test_reverse_only_parent_lemma_aux_in_document(self):
@@ -256,11 +256,11 @@ class GermanTopicMatchingTest(unittest.TestCase):
                            holmes_manager)
 
     def test_entity_matching_with_single_word_subword_match(self):
-        self._check_equals("Ein ENTITYPER singt",
+        self._check_equals("Ein ENTITYLOC singt",
                            "Informationsextraktion hat sich durchgesetzt", 10)
 
     def test_entity_matching_with_relation_subword_match(self):
-        self._check_equals("Ein ENTITYPER setzt sich durch",
+        self._check_equals("Ein ENTITYLOC setzt sich durch",
                            "Informationsextraktion hat sich durchgesetzt", 34)
 
     def test_entitynoun_matching_with_relation_subword_match(self):
@@ -276,12 +276,12 @@ class GermanTopicMatchingTest(unittest.TestCase):
                            "Informationsextraktion", 25)
 
     def test_reverse_derivation_1(self):
-        self._check_equals("Urlaubsverkauf",
-                           "ein verkaufter Urlaub", 29)
+        self._check_equals("Wohnungsverkauf",
+                           "eine verkaufte Wohnung", 29)
 
     def test_reverse_derivation_2(self):
-        self._check_equals("ein verkaufter Urlaub",
-                           "Urlaubsverkauf", 25)
+        self._check_equals("eine verkaufte Wohnung",
+                           "Wohnungsverkauf", 25)
 
     def test_indexes(self):
         holmes_manager.remove_all_documents()

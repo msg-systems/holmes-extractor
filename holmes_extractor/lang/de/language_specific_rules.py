@@ -1,3 +1,4 @@
+from string import punctuation
 from spacy.tokens import Token
 from ...parsing import SemanticAnalyzer, SemanticMatchingHelper, MatchImplication,\
     PhraseletTemplate, SemanticDependency, Subword
@@ -51,10 +52,13 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
     # Only words at least this long are examined for possible subwords
     minimum_length_for_subword_search = 10
 
+    # Part-of-speech pos examined for subwords
+    pos_for_subword_search = ('X')
+
     # Part-of-speech tags examined for subwords
     # Verbs are not examined because the separable parts that would typically be found as
     # subwords are too short to be found.
-    tag_for_subword_search = ('NE', 'NNE', 'NN', 'TRUNC', 'ADJA', 'ADJD', 'XY')
+    tag_for_subword_search = ('NE', 'NNE', 'NN', 'TRUNC', 'ADJA', 'ADJD', '$(')
 
     # Absolute minimum length of a subword.
     minimum_subword_length = 3
@@ -275,9 +279,10 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
             subword_lemmatization_string = ' . '.join(entry_words)
             return self.spacy_parse(subword_lemmatization_string)
 
-        if not token.tag_ in self.tag_for_subword_search or (
+        if not (token.tag_ in self.tag_for_subword_search or token.pos_ in
+                self.pos_for_subword_search) or (
                 len(token._.holmes.lemma) < self.minimum_length_for_subword_search and
-                '-' not in token._.holmes.lemma):
+                '-' not in token._.holmes.lemma) or token._.holmes.lemma in punctuation:
             return
         if token.text in subword_cache:
             cached_subwords = subword_cache[token.text]
@@ -435,7 +440,8 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
         def correct_auxiliaries_and_passives_recursively(token, processed_auxiliary_indexes):
             if token.i not in processed_auxiliary_indexes:
                 processed_auxiliary_indexes.append(token.i)
-                if (token.pos_ == 'AUX' or token.tag_.startswith('VM')) and len([
+                if (token.pos_ == 'AUX' or token.tag_.startswith('VM') or
+                        token.tag_.startswith('VA')) and len([
                         dependency for dependency in token._.holmes.children if
                         dependency.child_index >= 0 and self.is_separable_prefix(
                             token.doc[dependency.child_index])]) == 0: # 'vorhaben'
@@ -880,7 +886,7 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
 
     topic_matching_reverse_only_parent_lemmas = (
         ('sein', 'AUX'), ('werden', 'AUX'), ('haben', 'AUX'), ('sagen', 'VERB'),
-        ('machen', 'VERB'), ('tun', 'VERB'))
+        ('machen', 'VERB'), ('tun', 'VERB'), ('haben', 'VERB'), ('werden', 'VERB'))
 
     topic_matching_phraselet_stop_tags = ('PPER', 'PDS', 'PRF')
 
@@ -900,13 +906,15 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             document_dependencies=['sb', 'oa', 'ag', 'intcompound', 'pobjb', 'pobjo'],
             reverse_document_dependencies=['nk']),
         'mo': MatchImplication(search_phrase_dependency='mo',
-            document_dependencies=['moposs', 'mnr', 'mnrposs', 'nk', 'oc']),
+            document_dependencies=['moposs', 'mnr', 'mnrposs', 'nk', 'oc', 'pd']),
         'mnr': MatchImplication(search_phrase_dependency='mnr',
             document_dependencies=['mnrposs', 'mo', 'moposs', 'nk', 'oc']),
         'nk': MatchImplication(search_phrase_dependency='nk',
             document_dependencies=['ag', 'pobjo', 'intcompound', 'oc', 'mo'],
             reverse_document_dependencies=['sb', 'ag', 'oa', 'arg', 'pobjo',
                 'intcompound']),
+        'pd': MatchImplication(search_phrase_dependency='pd',
+            document_dependencies=['moposs', 'mo']),
         'pobjo': MatchImplication(search_phrase_dependency='pobjo',
             document_dependencies=['ag', 'intcompound'],
             reverse_document_dependencies=['nk']),

@@ -63,10 +63,10 @@ holmes_manager_with_embeddings.register_search_phrase("Ein König tritt zurück"
 holmes_manager_with_embeddings.register_search_phrase(
     "Die Abdankung eines Königs")
 holmes_manager_with_embeddings.register_search_phrase("Informationskönig")
-holmes_manager_with_embeddings.register_search_phrase("Teller")
+holmes_manager_with_embeddings.register_search_phrase("Erholung")
 holmes_manager_with_embeddings.register_search_phrase("herabfallen")
 holmes_manager_with_embeddings.register_search_phrase(
-    "Jemand isst von einem Jeden")
+    "Jemand geht auf eine Kur")
 
 
 class GermanStructuralMatchingTest(unittest.TestCase):
@@ -1093,8 +1093,13 @@ class GermanStructuralMatchingTest(unittest.TestCase):
 
     def test_no_embedding_match_word_too_short(self):
         matches = self._get_matches(holmes_manager_with_embeddings,
-                                    "Ein Jeden hat das gemacht")
-        self.assertEqual(len(matches), 0)
+                                    "Sie ging auf eine Erholung")
+        self.assertEqual(len(matches), 1)
+
+    def test_no_embedding_match_word_too_short_control(self):
+        matches = self._get_matches(holmes_manager_with_embeddings,
+                                    "Sie ging auf eine Kur")
+        self.assertEqual(len(matches), 1)
 
     def test_no_embedding_wrong_pos(self):
         matches = self._get_matches(holmes_manager_with_embeddings,
@@ -1103,12 +1108,12 @@ class GermanStructuralMatchingTest(unittest.TestCase):
 
     def test_no_embedding_subword_too_short(self):
         matches = self._get_matches(holmes_manager_with_embeddings,
-                                    "Jedeninteresse")
+                                    "Kurinteresse")
         self.assertEqual(len(matches), 0)
 
     def test_no_embedding_search_phrase_word_too_short(self):
         matches = self._get_matches(holmes_manager_with_embeddings,
-                                    "Jemand isst von einem Teller")
+                                    "Jemand geht auf eine Kur")
         self.assertEqual(len(matches), 1)
 
     def test_recursion_problem_solved(self):
