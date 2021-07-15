@@ -206,11 +206,12 @@ class MultithreadingTest(unittest.TestCase):
                                                 ' '.join(('Irrelevant', str(counter))))
             manager.register_search_phrase("People discuss irrelevancies")
 
+        serialized_document = manager.nlp('People discuss irrelevancies').to_bytes()
+
         for i in range(NUMBER_OF_THREADS):
             t = Thread(target=add_document_and_search_phrase, args=(i,))
             t.start()
 
-        serialized_document = manager.nlp('People discuss irrelevancies').to_bytes()
         last_number_of_matches = 0
         for counter in range(500):
             matches = [match for match in manager.match() if
