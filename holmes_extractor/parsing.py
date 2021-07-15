@@ -48,14 +48,20 @@ class SemanticDependency:
 
         doc -- the document containing the token.
         """
-        return doc[self.parent_index]
+        index = self.parent_index
+        if index < 0:
+            index = -1 - index
+        return doc[index]
 
     def child_token(self, doc):
         """Convenience method to return the child token of this dependency.
 
         doc -- the document containing the token.
         """
-        return doc[self.child_index]
+        index = self.child_index
+        if index < 0:
+            index = -1 - index
+        return doc[index]
 
     def __str__(self):
         """e.g. *2:nsubj* or *2:nsubj(U)* to represent uncertainty."""
@@ -631,9 +637,9 @@ class SemanticAnalyzer(ABC):
         for token in spacy_doc:
             self.copy_any_sibling_info(token)
         for token in spacy_doc:
-            self.normalize_predicative_adjectives(token)
-        for token in spacy_doc:
             self.handle_relative_constructions(token)
+        for token in spacy_doc:
+            self.normalize_predicative_adjectives(token)
         for token in spacy_doc:
             self.create_additional_preposition_phrase_semantic_dependencies(token)
         for token in spacy_doc:

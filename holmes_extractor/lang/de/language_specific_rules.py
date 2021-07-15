@@ -8,7 +8,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
 
     noun_pos = ('NOUN', 'PROPN', 'ADJ')
 
-    matchable_pos = ('ADJ', 'ADP', 'ADV', 'NOUN', 'NUM', 'PROPN', 'VERB', 'AUX')
+    matchable_pos = ('ADJ', 'ADP', 'ADV', 'NOUN', 'NUM', 'PROPN', 'VERB', 'AUX', 'X', 'INTJ')
 
     adjectival_predicate_head_pos = ('AUX')
 

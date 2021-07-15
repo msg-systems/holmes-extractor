@@ -209,7 +209,7 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         doc = nlp(
             "I had spent three years ruminating and that I knew")
         self.assertEqual(doc[5]._.holmes.string_representation_of_children(),
-                         '4:nsubj(U)')
+                         '0:nsubj(U)')
 
     def test_who_one_antecedent(self):
         doc = nlp("The dog who chased the cat was tired")
@@ -292,7 +292,7 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         doc = nlp(
             "The cat and the mouse that the dog chased were tired")
         self.assertEqual(doc[8]._.holmes.string_representation_of_children(),
-                         '1:dobj(U); 4:dobj; 7:nsubj')
+                         '1:dobj; 4:dobj(U); 7:nsubj')
 
     def test_relant_one_antecedent(self):
         doc = nlp("The cat the dog chased was tired")
@@ -374,11 +374,11 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         doc = nlp(
             "The building and the office that you ate and consumed your roll at were new")
         self.assertEqual(doc[12]._.holmes.string_representation_of_children(),
-                         '1:pobj; 4:pobj(U)')
+                         '1:pobj(U); 4:pobj')
         self.assertEqual(doc[7]._.holmes.string_representation_of_children(),
                          '1:pobjp(U); 4:pobjp(U); 6:nsubj; 8:cc; 9:conj; 12:prep(U)')
         self.assertEqual(doc[9]._.holmes.string_representation_of_children(),
-                         '1:pobjp; 4:pobjp(U); 6:nsubj(U); 11:dobj; 12:prep')
+                         '1:pobjp(U); 4:pobjp; 6:nsubj(U); 11:dobj; 12:prep')
 
     def test_displaced_preposition_that_with_second_preposition_preposition_points_to_that(self):
         doc = nlp(
@@ -451,7 +451,7 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
     def test_negative_modal_verb(self):
         doc = nlp("He cannot do it")
         self.assertEqual(doc[3]._.holmes.string_representation_of_children(),
-                         '0:nsubj(U); 1:aux; 2:aux; 4:dobj(U)')
+                         '0:nsubj(U); 1:aux; 2:neg(U); 4:dobj(U)')
         self.assertTrue(doc[3]._.holmes.is_negated)
 
     def test_ought_to(self):
@@ -500,7 +500,7 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         doc = nlp(
             "He talked about the cat and the mouse chased by the dog and the tiger")
         self.assertEqual(doc[8]._.holmes.string_representation_of_children(),
-                         '4:dobj; 7:dobj; 9:agent; 11:pobjb; 14:pobjb')
+                         '4:dobj; 7:dobj; 9:agent; 11:pobjb; 14:dobj')
 
     def test_subjective_modifying_adverbial_phrase(self):
         doc = nlp("The lion-chased cat came home")
@@ -684,13 +684,13 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         doc = nlp(
             "The employee needs insurance for the next five years")
         self.assertEqual(doc[3]._.holmes.string_representation_of_children(),
-                         '4:prep; 8:pobjp')
+                         '4:prepposs(U); 8:pobjp(U)')
 
     def test_multiple_preposition_dependencies_added_to_noun(self):
         doc = nlp(
             "The employee needs insurance for the next five years and in Europe")
         self.assertEqual(doc[3]._.holmes.string_representation_of_children(),
-                         '4:prep; 8:pobjp; 10:prep; 11:pobjp')
+                         '4:prepposs(U); 8:pobjp(U); 10:prepposs(U); 11:pobjp(U)')
 
     def test_single_preposition_dependency_added_to_coreferring_pronoun(self):
         doc = nlp(
@@ -912,3 +912,7 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         docs = list(nlp.pipe(['some dogs', 'some cats']))
         self.assertEqual(docs[0][1]._.holmes.lemma, 'dog')
         self.assertEqual(docs[1][1]._.holmes.lemma, 'cat')
+
+    def test_predicative_adjective_in_relative_clause(self):
+        doc = nlp("He saw his son, who was sad.")
+        self.assertEqual(doc[3]._.holmes.string_representation_of_children(), '2:poss; 6:relcl; 7:amod')

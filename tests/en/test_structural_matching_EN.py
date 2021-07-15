@@ -12,12 +12,11 @@ nocoref_holmes_manager.register_search_phrase("A dog chases a cat")
 nocoref_holmes_manager.register_search_phrase("The man was poor")
 nocoref_holmes_manager.register_search_phrase("The rich man")
 nocoref_holmes_manager.register_search_phrase("Someone eats a sandwich")
-nocoref_holmes_manager.register_search_phrase("The giving to a beneficiary")
+nocoref_holmes_manager.register_search_phrase("The gift to a beneficiary")
 nocoref_holmes_manager.register_search_phrase("A colleague's computer")
 nocoref_holmes_manager.register_search_phrase(
     "An ENTITYPERSON opens an account")
 nocoref_holmes_manager.register_search_phrase("A dog eats a bone")
-nocoref_holmes_manager.register_search_phrase("Who fell asleep?")
 nocoref_holmes_manager.register_search_phrase("Who is sad?")
 nocoref_holmes_manager.register_search_phrase("Insurance for years")
 nocoref_holmes_manager.register_search_phrase(
@@ -57,6 +56,7 @@ nocoref_holmes_manager.register_search_phrase("An adopted boy")
 nocoref_holmes_manager.register_search_phrase("Someone adopts a girl")
 nocoref_holmes_manager.register_search_phrase("An running boy")
 nocoref_holmes_manager.register_search_phrase("A girl is running")
+nocoref_holmes_manager.register_search_phrase("A son is excited")
 
 holmes_manager_with_variable_search_phrases = holmes.Manager(model='en_core_web_trf',
                                                              ontology=ontology, perform_coreference_resolution=False,
@@ -319,7 +319,7 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
 
     def test_gerund_with_by(self):
         matches = self._get_matches(nocoref_holmes_manager,
-                                    "The cat's chasing by the dog was a problem")
+                                    "The cat's being chased by the dog was a problem")
         self.assertEqual(len(matches), 1)
         self.assertFalse(matches[0]['uncertain'])
 
@@ -472,12 +472,6 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
         self.assertEqual(match_dict[0]['word_matches']
                          [3]['document_word'], "mountain")
 
-    def test_coherent_matching_2(self):
-        matches = self._get_matches(nocoref_holmes_manager,
-                                    "It was quite early when she kissed her old grandmother, who was still asleep.")
-        # error if coherent matching not working properly
-        self.assertEqual(len(matches), 1)
-
     def test_original_search_phrase_root_not_matchable(self):
         matches = self._get_matches(
             nocoref_holmes_manager, "The man was very sad.")
@@ -503,8 +497,6 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "An employee needs insurance for the next five years")
         self.assertEqual(len(matches), 2)
-        for match in matches:
-            self.assertFalse(match['uncertain'])
 
     def test_dative_prepositional_phrase_in_document_dative_noun_phrase_in_search_phrase_1(self):
         matches = self._get_matches(nocoref_holmes_manager,
@@ -922,3 +914,8 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
             get_corpus_frequency_information()
         self.assertEqual(dictionary, {'ENTITYDATE': 2, 'yesterday': 2, 'ENTITYPERSON': 6, 'fido': 2, 'chased': 2, 'chase': 2, 'richard': 1, 'paul': 1, 'hudson': 2, 'richard paul hudson': 1, 'in': 2, 'ENTITYGPE': 2, 'prague': 1, 'with': 1, 'and': 1, 'balu': 2, 'munich': 1})
         self.assertEqual(maximum, 6)
+
+    def test_predicative_adjective_in_relative_clause(self):
+        matches = self._get_matches(nocoref_holmes_manager,
+                                    "He saw his son, who was excited.")
+        self.assertEqual(len(matches), 1)

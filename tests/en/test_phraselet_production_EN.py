@@ -87,7 +87,7 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
 
     def test_verb_indirect_object_no_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "Somebody gives something to a plant",
-                           ['predicate-recipient: give-plant', 'word: plant'])
+                           ['predicate-recipient: gift-plant', 'word: plant'])
 
     def test_noun_adjective_no_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "A healthy plant",
@@ -382,7 +382,7 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
         word_phraselet = dict['word: anonymity']
         self.assertEqual(word_phraselet.parent_lemma, 'anonymous')
         self.assertEqual(word_phraselet.parent_derived_lemma, 'anonymity')
-        relation_phraselet = dict['governor-adjective: use-anonymity']
+        relation_phraselet = dict['predicate-patient: use-anonymity']
         self.assertEqual(relation_phraselet.child_lemma, 'anonymous')
         self.assertEqual(relation_phraselet.child_derived_lemma, 'anonymity')
 

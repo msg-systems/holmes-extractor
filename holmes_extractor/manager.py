@@ -69,8 +69,6 @@ class Manager:
     use_reverse_dependency_matching -- *True* if appropriate dependencies in documents can be
         matched to dependencies in search phrases where the two dependencies point in opposite
         directions. Defaults to *True*.
-    debug -- a boolean value specifying whether debug representations should be outputted
-        for parsed sentences. Defaults to *False*.
     number_of_workers -- the number of worker processes to use, or *None* if the number of worker
         processes should depend on the number of available cores. Defaults to *None*
     verbose -- a boolean value specifying whether multiprocessing messages should be outputted to
@@ -81,7 +79,7 @@ class Manager:
             self, model, *, overall_similarity_threshold=1.0,
             embedding_based_matching_on_root_words=False, ontology=None,
             analyze_derivational_morphology=True, perform_coreference_resolution=True,
-            use_reverse_dependency_matching=True, debug=False, verbose=False,
+            use_reverse_dependency_matching=True, verbose=False,
             number_of_workers:int=None):
         self.verbose = verbose
         self.nlp = get_nlp(model)
@@ -107,7 +105,6 @@ class Manager:
         self.semantic_matching_helper = SemanticMatchingHelperFactory().semantic_matching_helper(
             language=self.nlp.meta['lang'], ontology=ontology,
             analyze_derivational_morphology=analyze_derivational_morphology)
-        self.debug = debug
         self.overall_similarity_threshold = overall_similarity_threshold
         self.embedding_based_matching_on_root_words = embedding_based_matching_on_root_words
         self.perform_coreference_resolution = perform_coreference_resolution
@@ -281,6 +278,14 @@ class Manager:
         serialized_document = self.serialize_document(label)
         return None if serialized_document is None else \
             Doc(self.nlp.vocab).from_bytes(serialized_document)
+
+    def debug_document(self, label):
+        serialized_document = self.serialize_document(label)
+        if serialized_document is not None:
+            doc = Doc(self.nlp.vocab).from_bytes(serialized_document)
+            self.semantic_analyzer.debug_structures(doc)
+        else:
+            print('No document with label', label)
 
     def internal_get_search_phrase(self, search_phrase_text, label):
         if label is None:

@@ -13,7 +13,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
 
     # The part of speech tags that require a match in the search sentence when they occur within a
     # search_phrase
-    matchable_pos = ('ADJ', 'ADP', 'ADV', 'NOUN', 'NUM', 'PROPN', 'VERB', 'AUX')
+    matchable_pos = ('ADJ', 'ADP', 'ADV', 'NOUN', 'NUM', 'PROPN', 'VERB', 'AUX', 'X', 'INTJ')
 
     # The part of speech tags that can refer to the head of an adjectival predicate phrase
     # ("is" in "The dog is tired")

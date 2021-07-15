@@ -638,26 +638,26 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
     def test_dictionary_sentences_one_sentence(self):
         coref_holmes_manager.remove_all_documents()
         coref_holmes_manager.parse_and_register_document(
-            "A sentence. I saw a dog and it was chasing a cat. Another sentence.")
+            "A sentence. I saw a dog and he was chasing a cat. Another sentence.")
         matches = coref_holmes_manager.match()
         self.assertEqual(matches[0]['sentences_within_document'],
-                         "I saw a dog and it was chasing a cat.")
+                         "I saw a dog and he was chasing a cat.")
 
     def test_dictionary_sentences_two_sentences(self):
         coref_holmes_manager.remove_all_documents()
         coref_holmes_manager.parse_and_register_document(
-            "A sentence. I saw a dog.It was chasing a cat. Another sentence.")
+            "A sentence. I saw a dog.He was chasing a cat. Another sentence.")
         matches = coref_holmes_manager.match()
         self.assertEqual(matches[0]['sentences_within_document'],
-                         "I saw a dog. It was chasing a cat.")
+                         "I saw a dog. He was chasing a cat.")
 
     def test_dictionary_sentences_three_sentences(self):
         coref_holmes_manager.remove_all_documents()
         coref_holmes_manager.parse_and_register_document(
-            "A sentence. I saw a dog. I was happy.It was chasing a cat. Another sentence.")
+            "A sentence. I saw a dog. I was happy.He was chasing a cat. Another sentence.")
         matches = coref_holmes_manager.match()
         self.assertEqual(matches[0]['sentences_within_document'],
-                         "I saw a dog. I was happy. It was chasing a cat.")
+                         "I saw a dog. I was happy. He was chasing a cat.")
 
     def test_dictionary_sentences_three_sentences_none_surrounding(self):
         coref_holmes_manager.remove_all_documents()

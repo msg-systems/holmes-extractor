@@ -51,13 +51,13 @@ class ErrorsTest(unittest.TestCase):
     def test_search_phrase_contains_pronoun_coreference_switched_off(self):
         nocoref_holmes_manager.remove_all_search_phrases()
         nocoref_holmes_manager.register_search_phrase(
-            "A cat has a dog chasing it")
+            "A dog has a cat chasing it")
 
     def test_search_phrase_contains_coreferring_pronoun(self):
         with self.assertRaises(SearchPhraseContainsCoreferringPronounError) as context:
             coref_holmes_manager.remove_all_search_phrases()
             coref_holmes_manager.register_search_phrase(
-                "A cat has a dog chasing it")
+                "A dog has a cat chasing it")
 
     def test_search_phrase_contains_only_generic_pronoun(self):
         with self.assertRaises(SearchPhraseWithoutMatchableWordsError) as context:

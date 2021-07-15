@@ -590,8 +590,8 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                            holmes_manager_coref_embedding_on_root)
 
     def test_matches_in_opposite_directions(self):
-        self._check_equals("Mirror of Erised",
-                           "Mirror of Erised", 39,
+        self._check_equals("the mirror of Erised",
+                           "the mirror of Erised", 39,
                            holmes_manager_coref)
 
     def test_derived_form_text_to_match_single_word(self):
@@ -605,8 +605,8 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                            holmes_manager_coref)
 
     def test_derived_form_document_text_single_word(self):
-        self._check_equals("inform",
-                           "information", 5,
+        self._check_equals("give",
+                           "gift", 5,
                            holmes_manager_coref)
 
     def test_derived_form_text_to_match_single_word(self):
