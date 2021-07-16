@@ -730,6 +730,14 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                 tokens_to_return.append(token)
             return tokens_to_return, target_dependency
 
+        def has_morphs(token, *morphs):
+            if len(morphs) == 0:
+                raise ValueError('At least one morph is required.')
+            for morph in morphs:
+                if not morph in token.morph:
+                    return False
+            return True
+
         # 'Der Mann hat xxx, es zu yyy' and similar structures
         for dependency in (
                 dependency for dependency in token._.holmes.children
@@ -768,7 +776,9 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
             for target_token in target_tokens:
                 for other_dependency in (
                         other_dependency for other_dependency in
-                        dependencies_to_add if target_token.i != other_dependency.child_index):
+                        dependencies_to_add if target_token.i != other_dependency.child_index and
+                        len([dep for dep in target_token._.holmes.children if dep.label ==
+                        target_dependency and not dep.is_uncertain]) == 0):
                     # these dependencies are always uncertain
                     target_token._.holmes.children.append(SemanticDependency(
                         target_token.i, other_dependency.child_index, target_dependency, True))
@@ -781,7 +791,9 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
             target_tokens, target_dependency = find_target_tokens_and_dependency_recursively(
                 dependency.child_token(token.doc))
             for target_token in (target_token for target_token in target_tokens
-                    if target_token.i != token.i):
+                    if target_token.i != token.i and len([dep for dep in
+                    target_token._.holmes.children if dep.label ==
+                    target_dependency and not dep.is_uncertain]) == 0):
                 target_token._.holmes.children.append(SemanticDependency(
                     target_token.i, token.i, target_dependency, True))
 
@@ -800,7 +812,9 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                 for other_dependency in (
                         other_dependency for other_dependency
                         in token._.holmes.children if other_dependency.label == 'sb'):
-                    for target_token in target_tokens:
+                    for target_token in (target_token for target_token in target_tokens if
+                    len([dep for dep in target_token._.holmes.children if dep.label ==
+                    target_dependency and not dep.is_uncertain]) == 0):
                         target_token._.holmes.children.append(SemanticDependency(
                             target_token.i, other_dependency.child_index, target_dependency, True))
 
@@ -826,13 +840,29 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                     relevant_dependency.child_token(token.doc))
                 for target_token in (
                         target_token for target_token in target_tokens
-                        if target_token.i != dependency.parent_index):
+                        if target_token.i != dependency.parent_index and len([dep for dep in target_token._.holmes.children if dep.label ==
+                        target_dependency and not dep.is_uncertain]) == 0):
                     # these dependencies are always uncertain
                     target_token._.holmes.children.append(SemanticDependency(
                         target_token.i, dependency.parent_index, target_dependency, True))
 
         # sometimes two verb arguments are interpreted as both subjects or both objects,
         # if this occurs reinterpret them
+
+        def get_first_real_subject(dependencies):
+            potential_first_real_subject = None
+            for working_dep in dependencies:
+                potential_first_real_subject = working_dep.child_token(token.doc)
+                if has_morphs(potential_first_real_subject, 'Case=Nom', 'Gender=Masc',
+                        'Number=Sing'):
+                    # if there is a 'der' later on in the dependencies it must be the subject
+                    return potential_first_real_subject
+            for working_dep in dependencies:
+                potential_first_real_subject = working_dep.child_token(token.doc)
+                if not has_morphs(potential_first_real_subject, 'Case=Acc'):
+                    # a 'den' can never be the subject
+                    return potential_first_real_subject
+            return None
 
         # find first 'sb' dependency for verb
         dependencies = [
@@ -845,14 +875,15 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                 in dependencies if object_dependency.label == 'oa' and not
                 dependency.is_uncertain]) == 0:
             dependencies.sort(key=lambda dependency: dependency.child_index)
-            first_real_subject = dependencies[0].child_token(token.doc)
-            for real_subject_index in \
-                    first_real_subject._.holmes.get_sibling_indexes(token.doc):
-                for dependency in dependencies:
-                    if dependency.child_index == real_subject_index:
-                        dependencies.remove(dependency)
-            for dependency in (other_dependency for other_dependency in dependencies):
-                dependency.label = 'oa'
+            first_real_subject = get_first_real_subject(dependencies)
+            if first_real_subject is not None:
+                for real_subject_index in \
+                        first_real_subject._.holmes.get_sibling_indexes(token.doc):
+                    for dependency in dependencies:
+                        if dependency.child_index == real_subject_index:
+                            dependencies.remove(dependency)
+                for dependency in (other_dependency for other_dependency in dependencies):
+                    dependency.label = 'oa'
 
         dependencies = [
             dependency for dependency in token._.holmes.children
@@ -864,13 +895,15 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                 in dependencies if object_dependency.label == 'sb' and not
                 dependency.is_uncertain]) == 0:
             dependencies.sort(key=lambda dependency: dependency.child_index)
-            first_real_subject = dependencies[0].child_token(token.doc)
-            real_subject_indexes = first_real_subject._.holmes.get_sibling_indexes(token.doc)
-            if len(dependencies) > len(real_subject_indexes):
-                for dependency in (
-                        dependency for dependency in dependencies if
-                        dependency.child_index in real_subject_indexes):
-                    dependency.label = 'sb'
+            first_real_subject = get_first_real_subject(dependencies)
+            if first_real_subject is not None:
+                real_subject_indexes = \
+                    first_real_subject._.holmes.get_sibling_indexes(token.doc)
+                if len(dependencies) > len(real_subject_indexes):
+                    for dependency in (
+                            dependency for dependency in dependencies if
+                            dependency.child_index in real_subject_indexes):
+                        dependency.label = 'sb'
 
 class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
 
@@ -913,6 +946,9 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             document_dependencies=['ag', 'pobjo', 'intcompound', 'oc', 'mo'],
             reverse_document_dependencies=['sb', 'ag', 'oa', 'arg', 'pobjo',
                 'intcompound']),
+        'oc': MatchImplication(search_phrase_dependency='oc',
+            document_dependencies=['pobjo', 'ag', 'arg', 'intcompound', 'og', 'oa'],
+            reverse_document_dependencies=['nk']),
         'pd': MatchImplication(search_phrase_dependency='pd',
             document_dependencies=['moposs', 'mo']),
         'pobjo': MatchImplication(search_phrase_dependency='pobjo',

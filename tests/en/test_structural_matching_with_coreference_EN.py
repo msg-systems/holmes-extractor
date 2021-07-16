@@ -596,17 +596,6 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         self.assertEqual(len(matches), 1)
         self._check_word_match(matches[0], 0, 7, 'dog')
 
-    def test_repeated_noun_match_first_mention(self):
-        coref_holmes_manager.remove_all_documents()
-        coref_holmes_manager.parse_and_register_document(
-            "We saw a tired dog. The dog was chasing a donkey.")
-        matches = coref_holmes_manager.match()
-        self.assertEqual(len(matches), 2)
-        self._check_word_match(matches[0], 0, 3, 'tired')
-        self._check_word_match(matches[0], 1, 4, 'dog')
-        self._check_word_match(matches[1], 0, 3, 'tired')
-        self._check_word_match(matches[1], 1, 7, 'dog')
-
     def test_repeated_noun_match_both_mentions(self):
         coref_holmes_manager.remove_all_documents()
         coref_holmes_manager.parse_and_register_document(

@@ -1,4 +1,4 @@
-from multiprocessing import Process, Queue, Manager as Multiprocessing_manager, cpu_count
+from multiprocessing import Process, Queue, Manager as MultiprocessingManager, cpu_count
 from threading import Lock
 from string import punctuation
 import traceback
@@ -132,7 +132,7 @@ class Manager:
             raise ValueError('number_of_workers must be a postitive integer.')
         self.number_of_workers = number_of_workers
         self.next_worker_to_use = 0
-        self.multiprocessor_manager = Multiprocessing_manager()
+        self.multiprocessing_manager = MultiprocessingManager()
         self.worker = Worker() # will be copied to worker processes by value (Windows) or
                                 # by reference (Linux)
         self.workers = []
@@ -190,7 +190,7 @@ class Manager:
         label -- a label for the document which must be unique. Defaults to the empty string,
             which is intended for use cases involving single documents (typically user entries).
         """
-        reply_queue = self.multiprocessor_manager.Queue()
+        reply_queue = self.multiprocessing_manager.Queue()
         with self.lock:
             for label, serialized_doc in document_dictionary.items():
                 if label in self.document_labels_to_worker_queues:
@@ -229,7 +229,7 @@ class Manager:
 
         label -- the label of the document to be removed.
         """
-        reply_queue = self.multiprocessor_manager.Queue()
+        reply_queue = self.multiprocessing_manager.Queue()
         with self.lock:
             if label in self.document_labels_to_worker_queues:
                 self.input_queues[self.document_labels_to_worker_queues[label]].put((
@@ -241,7 +241,7 @@ class Manager:
         self.handle_response(reply_queue, 1, 'remove_document')
 
     def remove_all_documents(self):
-        reply_queue = self.multiprocessor_manager.Queue()
+        reply_queue = self.multiprocessing_manager.Queue()
         with self.lock:
             for worker_index in range(self.number_of_workers):
                 self.input_queues[worker_index].put((
@@ -265,7 +265,7 @@ class Manager:
 
         label -- the label of the document to be serialized.
         """
-        reply_queue = self.multiprocessor_manager.Queue()
+        reply_queue = self.multiprocessing_manager.Queue()
         with self.lock:
             if label in self.document_labels_to_worker_queues:
                 self.input_queues[self.document_labels_to_worker_queues[label]].put((
@@ -306,7 +306,7 @@ class Manager:
         """
         search_phrase = self.internal_get_search_phrase(search_phrase_text, label)
         search_phrase.pack()
-        reply_queue = self.multiprocessor_manager.Queue()
+        reply_queue = self.multiprocessing_manager.Queue()
         with self.lock:
             for worker_index in range(self.number_of_workers):
                 self.input_queues[worker_index].put((
@@ -317,7 +317,7 @@ class Manager:
         return search_phrase
 
     def remove_all_search_phrases_with_label(self, label):
-        reply_queue = self.multiprocessor_manager.Queue()
+        reply_queue = self.multiprocessing_manager.Queue()
         with self.lock:
             for worker_index in range(self.number_of_workers):
                 self.input_queues[worker_index].put((
@@ -329,7 +329,7 @@ class Manager:
             'remove_all_search_phrases_with_label')
 
     def remove_all_search_phrases(self):
-        reply_queue = self.multiprocessor_manager.Queue()
+        reply_queue = self.multiprocessing_manager.Queue()
         with self.lock:
             for worker_index in range(self.number_of_workers):
                 self.input_queues[worker_index].put((
@@ -361,7 +361,7 @@ class Manager:
             serialized_document = None
             number_of_workers = self.number_of_workers
             worker_range = range(number_of_workers)
-        reply_queue = self.multiprocessor_manager.Queue()
+        reply_queue = self.multiprocessing_manager.Queue()
         for worker_index in worker_range:
             self.input_queues[worker_index].put((
                 self.worker.match, (serialized_document, search_phrase), reply_queue),
@@ -384,7 +384,7 @@ class Manager:
 
         with self.lock:
             if self.word_dictionaries_need_rebuilding:
-                reply_queue = self.multiprocessor_manager.Queue()
+                reply_queue = self.multiprocessing_manager.Queue()
                 worker_frequency_dict = {}
                 for worker_index in range(self.number_of_workers):
                     self.input_queues[worker_index].put((
@@ -495,7 +495,7 @@ class Manager:
             words_to_corpus_frequencies = None
             maximum_corpus_frequency = None
 
-        reply_queue = self.multiprocessor_manager.Queue()
+        reply_queue = self.multiprocessing_manager.Queue()
         text_to_match_doc = self.semantic_analyzer.parse(text_to_match)
         phraselet_labels_to_phraselet_infos = \
             self.linguistic_object_factory.get_phraselet_labels_to_phraselet_infos(

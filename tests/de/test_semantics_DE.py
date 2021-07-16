@@ -217,13 +217,29 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[10]._.holmes.string_representation_of_children(),
                          '1:oa; 4:oa; 7:sb; 9:sb')
 
-    def test_complex_tense_verb_conjunction_active(self):
+    def test_complex_tense_verb_conjunction_active_1(self):
         doc = nlp(
             "Der Hund wird die Katze gejagt und gefressen haben")
         self.assertEqual(
             doc[5]._.holmes.string_representation_of_children(), '1:sb; 4:oa; 6:cd; 8:oc')
         self.assertEqual(
             doc[7]._.holmes.string_representation_of_children(), '1:sb; 4:oa; 8:oc')
+
+    def test_complex_tense_verb_conjunction_active_2(self):
+        doc = nlp(
+            "Die Katze wird der Hund gejagt und gefressen haben")
+        self.assertEqual(
+            doc[5]._.holmes.string_representation_of_children(), '1:oa; 4:sb; 6:cd; 8:oc')
+        self.assertEqual(
+            doc[7]._.holmes.string_representation_of_children(), '1:oa; 4:sb; 8:oc')
+
+    def test_complex_tense_verb_conjunction_active_3(self):
+        doc = nlp(
+            "Den Hund wird die Katze gejagt und gefressen haben")
+        self.assertEqual(
+            doc[5]._.holmes.string_representation_of_children(), '1:oa; 4:sb; 6:cd; 8:oc')
+        self.assertEqual(
+            doc[7]._.holmes.string_representation_of_children(), '1:oa; 4:sb; 8:oc')
 
     def test_complex_tense_verb_conjunction_passive(self):
         doc = nlp(
@@ -233,13 +249,29 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(
             doc[7]._.holmes.string_representation_of_children(), '1:oa; 4:sb')
 
-    def test_conjunction_everywhere_active(self):
+    def test_conjunction_everywhere_active_1(self):
         doc = nlp(
             "Der Hund und der Löwe werden die Katze und die Maus jagen und fressen")
         self.assertEqual(doc[11]._.holmes.string_representation_of_children(),
                          '1:sb; 4:sb; 7:oa; 10:oa; 12:cd')
         self.assertEqual(doc[13]._.holmes.string_representation_of_children(),
                          '1:sb; 4:sb; 7:oa; 10:oa')
+
+    def test_conjunction_everywhere_active_2(self):
+        doc = nlp(
+            "Die Katze und die Maus werden der Hund und der Löwe jagen und fressen")
+        self.assertEqual(doc[11]._.holmes.string_representation_of_children(),
+                         '1:oa; 4:oa; 7:sb; 10:sb; 12:cd')
+        self.assertEqual(doc[13]._.holmes.string_representation_of_children(),
+                         '1:oa; 4:oa; 7:sb; 10:sb')
+
+    def test_conjunction_everywhere_active_3(self):
+        doc = nlp(
+            "Den Hund und den Löwen werden die Katze und die Maus jagen und fressen")
+        self.assertEqual(doc[11]._.holmes.string_representation_of_children(),
+                         '1:oa; 4:oa; 7:sb; 10:sb; 12:cd')
+        self.assertEqual(doc[13]._.holmes.string_representation_of_children(),
+                         '1:oa; 4:oa; 7:sb; 10:sb')
 
     def test_conjunction_everywhere_passive(self):
         doc = nlp(
@@ -683,10 +715,10 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[7]._.holmes.string_representation_of_children(),
                          '9:oa; 12:oa')
 
-    def test_uncertain_subject_and_subject(self):
+    def test_subjects_in_main_and_subordinate_clauses(self):
         doc = nlp("Ich glaube, dass eine Pflanze wächst")
         self.assertEqual(doc[6]._.holmes.string_representation_of_children(),
-                         '0:sb(U); 3:cp; 5:sb')
+                         '3:cp; 5:sb')
 
     def test_moposs_before_governing_verb(self):
         doc = nlp("Ich möchte ein Konto für mein Kind eröffnen")
@@ -720,7 +752,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[6]._.holmes.string_representation_of_children(),
                          '1:sb')
 
-    def test_conjunction_with_subject_object_modal_and_verb_further_Right(self):
+    def test_conjunction_with_subject_object_modal_and_verb_further_right(self):
         doc = nlp(
             "Der Mann hat das Fleisch gegessen und getrunken.")
         self.assertEqual(doc[7]._.holmes.string_representation_of_children(),
