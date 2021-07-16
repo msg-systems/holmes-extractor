@@ -252,12 +252,13 @@ class StructuralMatcher:
                 at_least_one_document_dependency_tried = False
                 at_least_one_document_dependency_matched = False
                 # Loop through this token and any tokens linked to it by coreference
-                if self.perform_coreference_resolution and document_subword_index is None:
-                    parents = [
+                parents = [Index(document_token.i, document_subword_index)]
+                if self.perform_coreference_resolution and (document_subword_index is None or
+                        document_token._.holmes.subwords[document_subword_index].is_head):
+                    parents.extend([
                         Index(token_index, None) for token_index in
-                        document_token._.holmes.token_and_coreference_chain_indexes]
-                else:
-                    parents = [Index(document_token.i, document_subword_index)]
+                        document_token._.holmes.token_and_coreference_chain_indexes
+                        if token_index != document_token.i])
                 for working_document_parent_index in parents:
                     working_document_child_indexes = []
                     document_parent_token = document_token.doc[
@@ -720,10 +721,6 @@ class StructuralMatcher:
                 there may be a more specific piece of information elsewhere in the coreference
                 chain of a token that has been matched, in which case this piece of information
                 should be recorded in *word_match.extracted_word*.
-
-                If and when subwords and coreference resolution are analyzed together (at present
-                they subwords are available only for German, coreference resolution only for
-                English), this method will need to be updated to handle this.
             """
 
 
@@ -797,7 +794,8 @@ class StructuralMatcher:
                     return False
             if child_subword is not None and not child_subword.is_head:
                 return False
-            if self.perform_coreference_resolution and parent_subword is None:
+            if self.perform_coreference_resolution and (parent_subword is None
+                    or parent_subword.is_head):
                 parents = parent_token._.holmes.token_and_coreference_chain_indexes
                 children = child_token._.holmes.token_and_coreference_chain_indexes
             else:

@@ -3,29 +3,24 @@ import holmes_extractor as holmes
 import os
 
 script_directory = os.path.dirname(os.path.realpath(__file__))
+ontology = holmes.Ontology(os.sep.join(
+    (script_directory, 'test_ontology.owl')))
 coref_holmes_manager = holmes.Manager(model='de_core_news_lg',
-                                      number_of_workers=2)
+                                      ontology=ontology, number_of_workers=2)
 coref_holmes_manager.register_search_phrase("Ein Hund jagt eine Katze")
 coref_holmes_manager.register_search_phrase("Ein großes Pferd jagt eine Katze")
 coref_holmes_manager.register_search_phrase("Ein Tiger jagt eine kleine Katze")
 coref_holmes_manager.register_search_phrase("Ein großer Löwe jagt eine Katze")
 coref_holmes_manager.register_search_phrase("Ein ENTITYPER braucht Versicherung")
-coref_holmes_manager.register_search_phrase("A big company makes a loss")
-coref_holmes_manager.register_search_phrase(
-    "A dog who chases rats chases mice")
+coref_holmes_manager.register_search_phrase("Jemand versucht, zu erklären")
 coref_holmes_manager.register_search_phrase("ein müder Hund")
 coref_holmes_manager.register_search_phrase("Ein Gepard jagt einen Gepard")
 coref_holmes_manager.register_search_phrase("Ein Leopard jagt einen Leopard")
 
 coref_holmes_manager.register_search_phrase("Ein Urlaub ist schwer zu finden")
-coref_holmes_manager.register_search_phrase("A man sings")
-coref_holmes_manager.register_search_phrase("Somebody finds a policy")
-coref_holmes_manager.register_search_phrase(
-    "Somebody writes a book about an animal")
-coref_holmes_manager.register_search_phrase("Hermione breaks")
-coref_holmes_manager.register_search_phrase("Jemand versucht, zu erklären")
-coref_holmes_manager.register_search_phrase("An adopted boy")
-coref_holmes_manager.register_search_phrase("A running boy")
+coref_holmes_manager.register_search_phrase("Jemand liebt einen Elefanten")
+coref_holmes_manager.register_search_phrase("Jemand folgt einem Elefanten der Vergangenheit")
+coref_holmes_manager.register_search_phrase("Ein verkaufter Urlaub")
 nocoref_holmes_manager = holmes.Manager(model='de_core_news_lg',
                                         perform_coreference_resolution=False,
                                         number_of_workers=1)
@@ -34,10 +29,13 @@ nocoref_holmes_manager.register_search_phrase("Ein Hund jagt eine Katze")
 
 class CoreferenceEnglishMatchingTest(unittest.TestCase):
 
-    def _check_word_match(self, match, word_match_index, document_token_index, extracted_word):
+    def _check_word_match(self, match, word_match_index, document_token_index, extracted_word,
+        subword_index=None):
         word_match = match['word_matches'][word_match_index]
         self.assertEqual(word_match['document_token_index'], document_token_index)
         self.assertEqual(word_match['extracted_word'], extracted_word)
+        if subword_index is not None:
+            self.assertEqual(word_match['document_subword_index'], subword_index)
 
     def test_simple_pronoun_coreference_same_sentence(self):
         coref_holmes_manager.remove_all_documents()
@@ -295,3 +293,54 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
         self.assertEqual(matches[0]['word_matches'][1]['match_type'], 'derivation')
+
+    def test_coreference_and_last_subword_matched_simple(self):
+        coref_holmes_manager.remove_all_documents()
+        coref_holmes_manager.parse_and_register_document(
+            """Es gab einen Riesenelefanten. Alle liebten ihn.""")
+        matches = coref_holmes_manager.match()
+        self.assertEqual(len(matches), 1)
+        self._check_word_match(matches[0], 1, 3, 'elefant', 1)
+
+    def test_coreference_and_last_subword_matched_compound(self):
+        coref_holmes_manager.remove_all_documents()
+        coref_holmes_manager.parse_and_register_document(
+            """Es gab einen Riesenelefanten und einen zweiten Riesenelefanten. Alle liebten sie.""")
+        matches = coref_holmes_manager.match()
+        self.assertEqual(len(matches), 2)
+        self._check_word_match(matches[0], 1, 3, 'elefant', 1)
+        self._check_word_match(matches[1], 1, 7, 'elefant', 1)
+
+    def test_coreference_and_last_subword_and_previous_subword_matched_simple(self):
+        coref_holmes_manager.remove_all_documents()
+        coref_holmes_manager.parse_and_register_document(
+            """Es gab einen Vergangenheitselefanten. Alle folgten ihm.""")
+        matches = coref_holmes_manager.match()
+        self.assertEqual(len(matches), 1)
+        self._check_word_match(matches[0], 1, 3, 'elefant', 1)
+
+    def test_coreference_and_last_subword_and_previous_subword_matched_compound(self):
+        coref_holmes_manager.remove_all_documents()
+        coref_holmes_manager.parse_and_register_document(
+            """Es gab einen Vergangenheitselefanten und einen zweiten Vergangenheitselefanten. Alle folgten ihnen.""")
+        matches = coref_holmes_manager.match()
+        self.assertEqual(len(matches), 2)
+        self._check_word_match(matches[0], 1, 3, 'elefant', 1)
+        self._check_word_match(matches[1], 1, 7, 'elefant', 1)
+
+    def test_coreference_and_last_subword_and_reverse_dependency(self):
+        coref_holmes_manager.remove_all_documents()
+        coref_holmes_manager.parse_and_register_document(
+            """Es gab einen Versicherungsurlaub. Jemand verkaufte ihn.""")
+        matches = coref_holmes_manager.match()
+        self.assertEqual(len(matches), 1)
+        self._check_word_match(matches[0], 1, 3, 'urlaub', 1)
+
+    def test_coreference_and_last_subword_and_reverse_dependency(self):
+        coref_holmes_manager.remove_all_documents()
+        coref_holmes_manager.parse_and_register_document(
+            """Es gab einen Versicherungsurlaub und einen Versicherungsurlaub. Jemand verkaufte sie.""")
+        matches = coref_holmes_manager.match()
+        self.assertEqual(len(matches), 2)
+        self._check_word_match(matches[0], 1, 3, 'urlaub', 1)
+        self._check_word_match(matches[1], 1, 6, 'urlaub', 1)
