@@ -21,6 +21,7 @@ coref_holmes_manager.register_search_phrase("Ein Urlaub ist schwer zu finden")
 coref_holmes_manager.register_search_phrase("Jemand liebt einen Elefanten")
 coref_holmes_manager.register_search_phrase("Jemand folgt einem Elefanten der Vergangenheit")
 coref_holmes_manager.register_search_phrase("Ein verkaufter Urlaub")
+coref_holmes_manager.register_search_phrase("Eine große Firma hat Probleme")
 nocoref_holmes_manager = holmes.Manager(model='de_core_news_lg',
                                         perform_coreference_resolution=False,
                                         number_of_workers=1)
@@ -344,3 +345,20 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         self.assertEqual(len(matches), 2)
         self._check_word_match(matches[0], 1, 3, 'urlaub', 1)
         self._check_word_match(matches[1], 1, 6, 'urlaub', 1)
+
+    def test_different_extracted_word_not_in_ontology_with_pronoun(self):
+        coref_holmes_manager.remove_all_documents()
+        coref_holmes_manager.parse_and_register_document(
+            "Wir besprachen Peters GmbH. Die große Firma hatte Schwierigkeiten. Sie hatte Probleme.")
+        coref_holmes_manager.debug_document()
+        matches = coref_holmes_manager.match()
+        self.assertEqual(len(matches), 1)
+        self._check_word_match(matches[0], 1, 6, 'Peters')
+
+    def test_different_extracted_word_not_in_ontology_without_pronoun(self):
+        coref_holmes_manager.remove_all_documents()
+        coref_holmes_manager.parse_and_register_document(
+            "Wir besprachen Peters GmbH. Die große Firma hatte Probleme.")
+        matches = coref_holmes_manager.match()
+        self.assertEqual(len(matches), 1)
+        self._check_word_match(matches[0], 1, 6, 'Peters')

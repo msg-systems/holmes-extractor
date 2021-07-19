@@ -274,12 +274,12 @@ class Manager:
                 return None
         return self.handle_response(reply_queue, 1, 'serialize_document')[0]
 
-    def get_document(self, label):
+    def get_document(self, label=''):
         serialized_document = self.serialize_document(label)
         return None if serialized_document is None else \
             Doc(self.nlp.vocab).from_bytes(serialized_document)
 
-    def debug_document(self, label):
+    def debug_document(self, label=''):
         serialized_document = self.serialize_document(label)
         if serialized_document is not None:
             doc = Doc(self.nlp.vocab).from_bytes(serialized_document)

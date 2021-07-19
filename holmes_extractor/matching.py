@@ -39,10 +39,10 @@ class WordMatch:
         resolution is active.
     involves_coreference -- *True* if *document_token* and *structurally_matched_document_token*
         are different.
-    extracted_word -- within the coreference chain, the most specific term that corresponded to
-      document_word in the ontology.
+    extracted_word -- the most specific term that corresponded to *document_word* within the
+        coreference chain.
     depth -- the number of hyponym relationships linking *search_phrase_word* and
-        *extracted_word*, or *0* if ontology-based matching is not active.
+        *document_word*, or *0* if ontology-based matching is not active.
     """
 
     def __init__(
@@ -717,49 +717,31 @@ class StructuralMatcher:
             return new_word_matches
 
         def revise_extracted_words_based_on_coreference_resolution(word_matches):
-            """ When coreference resolution and ontology-based matching are both active,
-                there may be a more specific piece of information elsewhere in the coreference
-                chain of a token that has been matched, in which case this piece of information
-                should be recorded in *word_match.extracted_word*.
+            """ When coreference resolution is active, there may be a more specific piece of
+            information elsewhere in the coreference chain of a token that has been matched, in
+            which case this piece of information should be recorded in *word_match.extracted_word*.
             """
-
 
             for word_match in (
                     word_match for word_match in word_matches
-                    if word_match.word_match_type in ('direct', 'derivation', 'ontology')):
-                working_entries = []
-                # First loop through getting ontology entries for all mentions in the cluster
-                for search_phrase_representation, _ in \
-                        self.semantic_matching_helper.loop_textual_representations(
-                        word_match.search_phrase_token):
-                    for mention in word_match.document_token._.holmes.mentions:
-                        mention_root_token = word_match.document_token.doc[mention.root_index]
-                        for mention_representation, _ in \
-                                self.semantic_matching_helper.loop_textual_representations(
-                                mention_root_token):
-                            working_entries.append(
-                                self.ontology.matches(
-                                    search_phrase_representation, mention_representation))
-                        for multiword_span in \
-                                self.semantic_matching_helper.multiword_spans_with_head_token(
-                                mention_root_token):
-                            for multiword_representation, _ in \
-                                    self.semantic_matching_helper.loop_textual_representations(
-                                    multiword_span):
-                                working_entries.append(
-                                    self.ontology.matches(
-                                        search_phrase_representation, multiword_representation))
-
-                # Now loop through the ontology entries to see if any are more specific than
-                # the current value of *extracted_word*.
-                for working_entry in working_entries:
-                    if working_entry is None:
-                        continue
-                    if working_entry.is_individual:
-                        word_match.extracted_word = working_entry.word
+                    if word_match.word_match_type in ('direct', 'derivation', 'ontology')
+                    and word_match.document_subword is None and
+                    word_match.document_token._.holmes.most_specific_coreferring_term_index
+                    is not None):
+                most_specific_document_token = word_match.document_token.doc[
+                    word_match.document_token._.holmes.most_specific_coreferring_term_index]
+                if word_match.document_token._.holmes.lemma != \
+                        most_specific_document_token._.holmes.lemma:
+                    for multiword_span in \
+                            self.semantic_matching_helper.multiword_spans_with_head_token(
+                            word_match.document_token.doc[
+                            word_match.document_token._.holmes.
+                            most_specific_coreferring_term_index]):
+                        word_match.extracted_word = multiword_span.text
                         break
-                    elif working_entry.depth > word_match.depth:
-                        word_match.extracted_word = working_entry.word
+                    else:
+                        word_match.extracted_word = most_specific_document_token.text
+
             return word_matches
 
         def match_already_contains_structurally_matched_document_token(

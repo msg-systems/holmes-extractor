@@ -774,6 +774,37 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(
             doc[34]._.holmes.token_and_coreference_chain_indexes, [34, 22, 26, 30])
 
+    def test_most_specific_coreferring_term_index_with_pronoun(self):
+        doc = nlp("I saw Richard. The person came home. He was surprised.")
+        self.assertEqual(
+            doc[2]._.holmes.most_specific_coreferring_term_index, 2)
+        self.assertEqual(
+            doc[5]._.holmes.most_specific_coreferring_term_index, 2)
+        self.assertEqual(
+            doc[9]._.holmes.most_specific_coreferring_term_index, 2)
+        self.assertEqual(
+            doc[3]._.holmes.most_specific_coreferring_term_index, None)
+
+    def test_most_specific_coreferring_term_index_without_pronoun(self):
+        doc = nlp("I saw Richard. The person came home.")
+        self.assertEqual(
+            doc[2]._.holmes.most_specific_coreferring_term_index, 2)
+        self.assertEqual(
+            doc[5]._.holmes.most_specific_coreferring_term_index, 2)
+        self.assertEqual(
+            doc[3]._.holmes.most_specific_coreferring_term_index, None)
+
+    def test_most_specific_coreferring_term_index_with_coordination(self):
+        doc = nlp("I saw Richard. The person and Maria were talking. They came home.")
+        self.assertEqual(
+            doc[2]._.holmes.most_specific_coreferring_term_index, 2)
+        self.assertEqual(
+            doc[5]._.holmes.most_specific_coreferring_term_index, 2)
+        self.assertEqual(
+            doc[7]._.holmes.most_specific_coreferring_term_index, None)
+        self.assertEqual(
+            doc[9]._.holmes.most_specific_coreferring_term_index, None)
+
     def test_adjective_verb_clause_subjective_simple(self):
         doc = nlp("Richard was glad to understand.")
         self.assertEqual(doc[4]._.holmes.string_representation_of_children(),

@@ -686,6 +686,7 @@ class SemanticAnalyzer(ABC):
 
     def set_coreference_information(self, token):
         token._.holmes.token_and_coreference_chain_indexes = [token.i]
+        token._.holmes.most_specific_coreferring_term_index = None
         for chain in token._.coref_chains:
             this_token_mention_index = -1
             for mention_index, mention in enumerate(chain):
@@ -705,6 +706,10 @@ class SemanticAnalyzer(ABC):
                     token._.holmes.mentions.append(Mention(mention.root_index,
                             [token.i] if token.i in mention.token_indexes
                             else mention.token_indexes))
+            if len(chain[0]) == 1: # chains with coordinated mentions are not relevant to
+                                   # most specific mentions
+                token._.holmes.most_specific_coreferring_term_index = \
+                    chain[chain.most_specific_mention_index][0]
         working_set = set()
         for mention in (m for m in token._.holmes.mentions if token.i not in m.indexes):
             working_set.update(mention.indexes)
