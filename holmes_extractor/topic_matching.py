@@ -547,13 +547,20 @@ class TopicMatcher:
                     return False
             return True
 
+        def is_intcompound_match_within_same_document_word(match):
+            # Where a relationship match involves subwords of the same word both on the
+            # searched text and on the document side, it should be ignored to prevent the
+            # activation becoming too high compared to normal single-word matches.
+            return (match.search_phrase_label.startswith('intcompound') and
+                len(set([wm.document_token.i for wm in match.word_matches])) == 1)
+
         if match.from_single_word_phraselet:
             return True
         if not perform_checks_at_pole(match, True):
             return False
         if not perform_checks_at_pole(match, False):
             return False
-        return True
+        return not is_intcompound_match_within_same_document_word(match)
 
     def remove_duplicates(self, matches):
         # Situations where the same document tokens have been matched by multiple phraselets
@@ -653,6 +660,7 @@ class TopicMatcher:
             self._add_to_dict_set(
                 inner_dict, child_word_match.get_document_index(), match.search_phrase_label)
         current_document_label = None
+        print([m.search_phrase_label for m in position_sorted_structural_matches])
         for pssm_index, match in enumerate(position_sorted_structural_matches):
             match.original_index_within_list = pssm_index # store for later use after resorting
             if match.document_label != current_document_label or pssm_index == 0:

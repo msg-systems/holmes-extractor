@@ -194,22 +194,22 @@ class GermanTopicMatchingTest(unittest.TestCase):
 
     def test_subwords_in_text_to_match_subwords_in_document_text_lemmatization_failed(self):
         self._check_equals("Mozartsymphonien",
-                           "Mozartsymphonie", 20,
+                           "Mozartsymphonie", 10,
                            holmes_manager)
 
     def test_subwords_conjunction_in_text_to_match(self):
         self._check_equals("Mozart- und Beethovensymphonie",
-                           "Mozartsymphonie", 20,
+                           "Mozartsymphonie", 10,
                            holmes_manager)
 
     def test_subwords_conjunction_in_document_text(self):
         self._check_equals("Mozartsymphonie",
-                           "Mozart- und Beethovensymphonie", 20,
+                           "Mozart- und Beethovensymphonie", 10,
                            holmes_manager)
 
     def test_subwords_conjunction_in_text_to_match_and_document_text(self):
         self._check_equals("Mozart- und Mahlersymphonie",
-                           "Mozart- und Beethovensymphonie", 20,
+                           "Mozart- und Beethovensymphonie", 10,
                            holmes_manager)
 
     def test_subword_matches_verbal_expression(self):
