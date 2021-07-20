@@ -9,9 +9,6 @@ ontology = holmes.Ontology(os.sep.join((script_directory, 'test_ontology.owl')),
 holmes_manager_coref = holmes.Manager(model='en_core_web_trf', ontology=ontology,
                                       overall_similarity_threshold=0.65, perform_coreference_resolution=True,
                                       number_of_workers=2)
-holmes_manager_coref_embedding_on_root = holmes.Manager(model='en_core_web_trf', ontology=ontology,
-                                                        overall_similarity_threshold=0.65, embedding_based_matching_on_root_words=True,
-                                                        number_of_workers=1)
 holmes_manager_coref_no_embeddings = holmes.Manager(model='en_core_web_trf', ontology=ontology,
                                                     overall_similarity_threshold=1, perform_coreference_resolution=True,
                                                     number_of_workers=1)
@@ -28,6 +25,8 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         topic_matches = manager.topic_match_documents_against(text_to_match, relation_score=20,
                                                               reverse_only_relation_score=15, single_word_score=10, single_word_any_tag_score=5,
                                                               different_match_cutoff_score=10,
+                                                              relation_matching_frequency_threshold=0.0,
+                                                              embedding_matching_frequency_threshold=0.0,
                                                               use_frequency_factor=use_frequency_factor)
         self.assertEqual(int(topic_matches[0]['score']), highest_score)
 
@@ -179,21 +178,30 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self._check_equals("I saw a king", "Somebody saw a queen", 15,
                            holmes_manager_coref)
 
-    def test_embedding_matching_root(self):
-        self._check_equals("I saw a king", "Somebody saw a queen", 19,
-                           holmes_manager_coref_embedding_on_root)
-
-    def test_embedding_matching_root_frequency_factor_control(self):
-        self._check_equals("I saw a king", "Somebody saw a queen. A queen. A queen. A queen.", 19,
-                           holmes_manager_coref_embedding_on_root)
-
     def test_embedding_matching_root_overall_similarity_too_low(self):
-        self._check_equals("I saw a king", "Somebody viewed a queen", 4,
-                           holmes_manager_coref_embedding_on_root)
+
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.parse_and_register_document(
+        "I saw a king.")
+        topic_matches = holmes_manager_coref.topic_match_documents_against("Somebody viewed a queen",
+        relation_score=20, reverse_only_relation_score=15, single_word_score=10,
+        single_word_any_tag_score=5,
+        relation_matching_frequency_threshold=0.0,
+        embedding_matching_frequency_threshold=1.0,
+        use_frequency_factor=False)
+        self.assertEqual(len(topic_matches), 0)
 
     def test_embedding_matching_root_word_only(self):
-        self._check_equals("king", "queen", 4,
-                           holmes_manager_coref_embedding_on_root)
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.parse_and_register_document(
+            "king")
+        topic_matches = holmes_manager_coref.topic_match_documents_against("queen",
+                                                                           relation_score=20, reverse_only_relation_score=15, single_word_score=10,
+                                                                           single_word_any_tag_score=5,
+                                                                           relation_matching_frequency_threshold=0.0,
+                                                                           embedding_matching_frequency_threshold=1.0,
+                                                                           use_frequency_factor=False)
+        self.assertEqual(len(topic_matches), 0)
 
     def test_matching_only_adjective(self):
         self._check_equals("nice", "nice", 5, holmes_manager_coref)
@@ -279,165 +287,172 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     def test_relation_matching_suppressed(self):
         holmes_manager_coref.remove_all_documents()
-        holmes_manager_coref.parse_and_register_document("A dog chases a cat")
-        topic_matches = holmes_manager_coref.topic_match_documents_against("A dog chases a cat",
+        holmes_manager_coref.parse_and_register_document("A dog chases a cat. A dog sees a cat. A dog sees a cat. A person was chasing a person. A person chased a person.")
+        topic_matches = holmes_manager_coref.topic_match_documents_against("A dog chases a cat.",
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                            single_word_any_tag_score=5,
-                                                                           maximum_number_of_single_word_matches_for_relation_matching=0,
-                                                                           maximum_number_of_single_word_matches_for_embedding_matching=0)
+                                                                           relation_matching_frequency_threshold=1.0,
+                                                                           embedding_matching_frequency_threshold=1.0,
+                                                                           use_frequency_factor=False)
         self.assertEqual(int(topic_matches[0]['score']), 24)
 
     def test_suppressed_relation_matching_picked_up_during_reverse_matching(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document(
-            "A dog chases a cat. A lion chases a tiger.")
+            "Chasing. Chasing. A dog chases a cat. A lion chases a tiger.")
         topic_matches = holmes_manager_coref.topic_match_documents_against("A dog chases a cat",
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                            single_word_any_tag_score=5,
-                                                                           maximum_number_of_single_word_matches_for_relation_matching=1,
-                                                                           maximum_number_of_single_word_matches_for_embedding_matching=0)
+                                                                           relation_matching_frequency_threshold=0.9,
+                                                                           embedding_matching_frequency_threshold=1.0,
+                                                                           use_frequency_factor=False)
         self.assertEqual(int(topic_matches[0]['score']), 82)
 
     def test_suppressed_relation_matching_picked_up_during_reverse_matching_with_coreference(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document(
-            "There was a man and there was a woman. He saw her. A lion sees a tiger.")
-        topic_matches = holmes_manager_coref.topic_match_documents_against("A man sees a woman",
+            "There was a cat. A dog chased it. A lion chases a tiger. Chasing. Chasing. ")
+        topic_matches = holmes_manager_coref.topic_match_documents_against("A dog chases a cat",
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                            single_word_any_tag_score=5,
-                                                                           maximum_number_of_single_word_matches_for_relation_matching=1,
-                                                                           maximum_number_of_single_word_matches_for_embedding_matching=0)
-        self.assertEqual(int(topic_matches[0]['score']), 83)
+                                                                           relation_matching_frequency_threshold=0.9,
+                                                                           embedding_matching_frequency_threshold=1.0,
+                                                                           use_frequency_factor=False)
+        self.assertEqual(int(topic_matches[0]['score']), 84)
 
     def test_suppressed_relation_matching_picked_up_during_reverse_matching_with_reverse_dependency(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document(
-            "Someone adopts the child. The child is here.")
+            "Someone adopts the child. The child is here. Children. Children. Children.")
         topic_matches = holmes_manager_coref.topic_match_documents_against("An adopted child",
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                            single_word_any_tag_score=5,
-                                                                           maximum_number_of_single_word_matches_for_relation_matching=1,
-                                                                           maximum_number_of_single_word_matches_for_embedding_matching=0)
-        self.assertEqual(int(topic_matches[0]['score']), 34)
+                                                                           relation_matching_frequency_threshold=0.9,
+                                                                           embedding_matching_frequency_threshold=1.0,
+                                                                           use_frequency_factor=False)
 
-    def test_relation_matching_suppressed_control_embedding_based_matching_on_root_words(self):
-        holmes_manager_coref_embedding_on_root.remove_all_documents()
-        holmes_manager_coref_embedding_on_root.parse_and_register_document(
-            "A dog chases a cat")
-        topic_matches = holmes_manager_coref_embedding_on_root.topic_match_documents_against(
-            "A dog chases a cat",
-            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
-            single_word_any_tag_score=5,
-            maximum_number_of_single_word_matches_for_relation_matching=0,
-            maximum_number_of_single_word_matches_for_embedding_matching=0)
-        self.assertEqual(int(topic_matches[0]['score']), 82)
+        self.assertEqual(int(topic_matches[0]['score']), 34)
 
     def test_reverse_matching_suppressed_with_relation_matching(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document(
-            "I was in Germany. I know Germany.")
+            "I was in Germany. I know Germany. Germany. Germany.")
         topic_matches = holmes_manager_coref.topic_match_documents_against("in Germany",
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                            single_word_any_tag_score=5,
-                                                                           maximum_number_of_single_word_matches_for_relation_matching=1,
-                                                                           maximum_number_of_single_word_matches_for_embedding_matching=0)
-        self.assertEqual(int(topic_matches[0]['score']), 14)
+                                                                           relation_matching_frequency_threshold=0.1, embedding_matching_frequency_threshold=0.6)
+        self.assertEqual(int(topic_matches[0]['score']), 10)
 
-    def test_reverse_matching_suppressed_with_relation_matching_embedding_value_also_1(self):
+    def test_reverse_matching_suppressed_with_relation_matching_embedding_value_same(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document(
-            "I was in Germany. I know Germany.")
+            "I was in Germany. I know Germany. Germany. Germany.")
         topic_matches = holmes_manager_coref.topic_match_documents_against("in Germany",
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                            single_word_any_tag_score=5,
-                                                                           maximum_number_of_single_word_matches_for_relation_matching=1,
-                                                                           maximum_number_of_single_word_matches_for_embedding_matching=1)
-        self.assertEqual(int(topic_matches[0]['score']), 14)
+                                                                           relation_matching_frequency_threshold=0.1, embedding_matching_frequency_threshold=0.1)
+        self.assertEqual(int(topic_matches[0]['score']), 10)
+
+    def test_reverse_matching_suppressed_with_relation_matching_control(self):
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.parse_and_register_document(
+            "I was in Germany. I know Germany. Germany. Germany.")
+        topic_matches = holmes_manager_coref.topic_match_documents_against("in Germany",
+                                                                           relation_score=20, reverse_only_relation_score=15, single_word_score=10,
+                                                                           single_word_any_tag_score=5,
+                                                                           relation_matching_frequency_threshold=1.0, embedding_matching_frequency_threshold=1.0)
+        self.assertEqual(int(topic_matches[0]['score']), 7)
 
     def test_reverse_matching_suppressed_with_embedding_reverse_matching_parent(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document(
-            "An automobile with an engine")
+            "An automobile with an engine. An engine. An engine.")
         topic_matches = holmes_manager_coref.topic_match_documents_against("A car with an engine",
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                            single_word_any_tag_score=5,
-                                                                           maximum_number_of_single_word_matches_for_embedding_matching=0)
+                                                                           relation_matching_frequency_threshold=0.0, embedding_matching_frequency_threshold=1.0,
+                                                                           use_frequency_factor=False)
         self.assertEqual(int(topic_matches[0]['score']), 29)
 
     def test_reverse_matching_suppressed_with_embedding_reverse_matching_parent_control(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document(
-            "An automobile with an engine")
+            "An automobile with an engine. An engine. An engine.")
         topic_matches = holmes_manager_coref.topic_match_documents_against("A car with an engine",
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                            single_word_any_tag_score=5,
-                                                                           maximum_number_of_single_word_matches_for_embedding_matching=1)
+                                                                           relation_matching_frequency_threshold=0.0, embedding_matching_frequency_threshold=0.0,
+                                                                           use_frequency_factor=False)
         self.assertEqual(int(topic_matches[0]['score']), 51)
 
     def test_reverse_matching_suppressed_with_embedding_reverse_matching_child(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document(
-            "An engine with an automobile")
+            "An engine with an automobile. An engine. An engine.")
         topic_matches = holmes_manager_coref.topic_match_documents_against("An engine with a car",
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                            single_word_any_tag_score=5,
-                                                                           maximum_number_of_single_word_matches_for_embedding_matching=0)
+                                                                           relation_matching_frequency_threshold=1.0, embedding_matching_frequency_threshold=1.0,
+                                                                           use_frequency_factor=False)
         self.assertEqual(int(topic_matches[0]['score']), 14)
 
     def test_reverse_matching_suppressed_with_embedding_reverse_matching_child_control(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document(
-            "An engine with an automobile")
+            "An engine with an automobile. An engine. An engine.")
         topic_matches = holmes_manager_coref.topic_match_documents_against("An engine with a car",
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                            single_word_any_tag_score=5,
-                                                                           maximum_number_of_single_word_matches_for_embedding_matching=1)
+                                                                           relation_matching_frequency_threshold=0.0, embedding_matching_frequency_threshold=0.0,
+                                                                           use_frequency_factor=False)
         self.assertEqual(int(topic_matches[0]['score']), 25)
 
     def test_entity_matching_suppressed_with_relation_matching_for_governor(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document(
-            "I was tired Richard Paul Hudson. I was a tired Richard Paul Hudson.")
+            "I was tired Richard Paul Hudson. I was a tired Richard Paul Hudson. I spoke to Richard Paul Hudson and he was tired.")
         topic_matches = holmes_manager_coref.topic_match_documents_against("tired ENTITYPERSON",
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                            single_word_any_tag_score=5,
-                                                                           maximum_number_of_single_word_matches_for_relation_matching=1,
-                                                                           maximum_number_of_single_word_matches_for_embedding_matching=0)
+                                                                           relation_matching_frequency_threshold=1.0, embedding_matching_frequency_threshold=1.0,
+                                                                           use_frequency_factor=False)
         self.assertEqual(int(topic_matches[0]['score']), 14)
 
     def test_entity_matching_suppressed_with_relation_matching_for_governor_control(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document(
-            "I was Richard Paul Hudson. I was a tired Richard Paul Hudson.")
+            "I was tired Richard Paul Hudson. I was a tired Richard Paul Hudson. I spoke to Richard Paul Hudson and he was tired.")
         topic_matches = holmes_manager_coref.topic_match_documents_against("tired ENTITYPERSON",
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                            single_word_any_tag_score=5,
-                                                                           maximum_number_of_single_word_matches_for_relation_matching=1,
-                                                                           maximum_number_of_single_word_matches_for_embedding_matching=0)
+                                                                           relation_matching_frequency_threshold=0.0, embedding_matching_frequency_threshold=0.0,
+                                                                           use_frequency_factor=False)
         self.assertEqual(int(topic_matches[0]['score']), 34)
 
     def test_entity_matching_suppressed_with_relation_matching_for_governed(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document(
-            "I knew Richard Paul Hudson. I knew Richard Paul Hudson.")
+            "I knew Richard Paul Hudson. I knew Richard Paul Hudson. I knew someone and spoke to Richard Paul Hudson.")
         topic_matches = holmes_manager_coref.topic_match_documents_against(
             "someone knows an ENTITYPERSON",
             relation_score=20, reverse_only_relation_score=15, single_word_score=10,
             single_word_any_tag_score=5,
-            maximum_number_of_single_word_matches_for_relation_matching=1,
-            maximum_number_of_single_word_matches_for_embedding_matching=0)
+            relation_matching_frequency_threshold=1.0,
+            embedding_matching_frequency_threshold=1.0,
+            use_frequency_factor=False)
         self.assertEqual(int(topic_matches[0]['score']), 14)
 
     def test_entity_matching_suppressed_with_relation_matching_for_governed_control(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document(
-            "I met Richard Paul Hudson. I knew Richard Paul Hudson.")
+            "I knew Richard Paul Hudson. I knew Richard Paul Hudson. I knew someone and spoke to Richard Paul Hudson.")
         topic_matches = holmes_manager_coref.topic_match_documents_against(
             "someone knows an ENTITYPERSON",
             relation_score=20, reverse_only_relation_score=15, single_word_score=10,
             single_word_any_tag_score=5,
-            maximum_number_of_single_word_matches_for_relation_matching=1,
-            maximum_number_of_single_word_matches_for_embedding_matching=0)
+            relation_matching_frequency_threshold=0.0,
+            embedding_matching_frequency_threshold=0.0,
+            use_frequency_factor=False)
         self.assertEqual(int(topic_matches[0]['score']), 34)
 
     def test_reverse_matching_noun_coreference_on_governor(self):
@@ -572,22 +587,22 @@ class EnglishTopicMatchingTest(unittest.TestCase):
     def test_multiword_in_text_to_search_and_in_document_not_root_match_on_embeddings(self):
         self._check_equals("Richard Paul Hudson came",
                            "I saw Richard Paul Hudson", 19,
-                           holmes_manager_coref_embedding_on_root)
+                           holmes_manager_coref)
 
     def test_multiword_in_text_to_search_and_in_document_root_match_on_embeddings(self):
         self._check_equals("the tired Richard Paul Hudson",
                            "I saw Richard Paul Hudson", 19,
-                           holmes_manager_coref_embedding_on_root)
+                           holmes_manager_coref)
 
     def test_multiword_in_text_to_search_and_in_document_not_root_no_embeddings(self):
         self._check_equals("Richard Paul Hudson came",
                            "I saw Richard Paul Hudson", 19,
-                           holmes_manager_coref_embedding_on_root)
+                           holmes_manager_coref)
 
     def test_multiword_in_text_to_search_and_in_document_root_no_embeddings(self):
         self._check_equals("the tired Richard Paul Hudson",
                            "I saw Richard Paul Hudson", 19,
-                           holmes_manager_coref_embedding_on_root)
+                           holmes_manager_coref)
 
     def test_matches_in_opposite_directions(self):
         self._check_equals("the mirror of Erised",
@@ -1098,8 +1113,9 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             reverse_only_relation_score=20,
             single_word_score=5,
             single_word_any_tag_score=2,
-            different_match_cutoff_score=5),
-            [{'document_label': 'exact', 'text': 'The dog chased the animal', 'text_to_match': 'A dog chases an animal', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 44.27418511677267, 'word_infos': [[4, 7, 'overlapping_relation', False, 'Matches DOG directly.'], [8, 14, 'overlapping_relation', False, 'Matches CHASE directly.'], [19, 25, 'overlapping_relation', True, 'Matches ANIMAL directly.']]}, {'document_label': 'specific', 'text': 'I saw a dog. It was chasing a cat', 'text_to_match': 'A dog chases an animal', 'rank': '2', 'index_within_document': 9, 'subword_index': None, 'start_index': 3, 'end_index': 9, 'sentences_start_index': 0, 'sentences_end_index': 9, 'sentences_character_start_index': 0, 'sentences_character_end_index': 33, 'score': 35.641203421657025, 'word_infos': [[8, 11, 'overlapping_relation', False, 'Matches DOG directly.'], [20, 27, 'overlapping_relation', False, 'Is a synonym of CHASE in the ontology.'], [30, 33, 'overlapping_relation', True, 'Is a child of ANIMAL in the ontology.']]}, {'document_label': 'exact-reversed', 'text': 'The animal chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3=', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 19.954440383093182, 'word_infos': [[4, 10, 'single', False, 'Matches ANIMAL directly.'], [11, 17, 'relation', False, 'Matches CHASE directly.'], [22, 25, 'relation', True, 'Is a child of ANIMAL in the ontology.']]}, {'document_label': 'specific-reversed', 'text': 'The cat chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3=', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 22, 'score': 19.302449037645065, 'word_infos': [[4, 7, 'single', False, 'Is a child of ANIMAL in the ontology.'], [8, 14, 'relation', False, 'Matches CHASE directly.'], [19, 22, 'relation', True, 'Is a child of ANIMAL in the ontology.']]}])
+            different_match_cutoff_score=5,
+            relation_matching_frequency_threshold=0.2),
+            [{'document_label': 'exact', 'text': 'The dog chased the animal', 'text_to_match': 'A dog chases an animal', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 17.654017250803907, 'word_infos': [[4, 7, 'overlapping_relation', False, 'Matches DOG directly.'], [8, 14, 'overlapping_relation', False, 'Matches CHASE directly.'], [19, 25, 'overlapping_relation', True, 'Matches ANIMAL directly.']]}, {'document_label': 'specific', 'text': 'I saw a dog. It was chasing a cat', 'text_to_match': 'A dog chases an animal', 'rank': '2', 'index_within_document': 9, 'subword_index': None, 'start_index': 3, 'end_index': 9, 'sentences_start_index': 0, 'sentences_end_index': 9, 'sentences_character_start_index': 0, 'sentences_character_end_index': 33, 'score': 14.777271168442839, 'word_infos': [[8, 11, 'overlapping_relation', False, 'Matches DOG directly.'], [20, 27, 'overlapping_relation', False, 'Is a synonym of CHASE in the ontology.'], [30, 33, 'overlapping_relation', True, 'Is a child of ANIMAL in the ontology.']]}, {'document_label': 'exact-reversed', 'text': 'The animal chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3=', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 8.083873269940398, 'word_infos': [[4, 10, 'single', False, 'Matches ANIMAL directly.'], [11, 17, 'relation', False, 'Matches CHASE directly.'], [22, 25, 'relation', True, 'Is a child of ANIMAL in the ontology.']]}, {'document_label': 'specific-reversed', 'text': 'The cat chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3=', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 22, 'score': 7.731063509742494, 'word_infos': [[4, 7, 'single', False, 'Is a child of ANIMAL in the ontology.'], [8, 14, 'relation', False, 'Matches CHASE directly.'], [19, 22, 'relation', True, 'Is a child of ANIMAL in the ontology.']]}])
 
         m.close()
 
@@ -1117,8 +1133,9 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             reverse_only_relation_score=20,
             single_word_score=5,
             single_word_any_tag_score=2,
-            different_match_cutoff_score=5),
-            [{'document_label': 'exact', 'text': 'The dog chased the animal', 'text_to_match': 'A dog chases an animal', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 44.27418511677267, 'word_infos': [[4, 7, 'overlapping_relation', False, 'Matches DOG directly.'], [8, 14, 'overlapping_relation', False, 'Matches CHASE directly.'], [19, 25, 'overlapping_relation', True, 'Matches ANIMAL directly.']]}, {'document_label': 'specific', 'text': 'I saw a dog. It was chasing a cat', 'text_to_match': 'A dog chases an animal', 'rank': '2', 'index_within_document': 9, 'subword_index': None, 'start_index': 3, 'end_index': 9, 'sentences_start_index': 0, 'sentences_end_index': 9, 'sentences_character_start_index': 0, 'sentences_character_end_index': 33, 'score': 35.641203421657025, 'word_infos': [[8, 11, 'overlapping_relation', False, 'Matches DOG directly.'], [20, 27, 'overlapping_relation', False, 'Is a synonym of CHASE in the ontology.'], [30, 33, 'overlapping_relation', True, 'Is a child of ANIMAL in the ontology.']]}, {'document_label': 'exact-reversed', 'text': 'The animal chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3=', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 19.954440383093182, 'word_infos': [[4, 10, 'single', False, 'Matches ANIMAL directly.'], [11, 17, 'relation', False, 'Matches CHASE directly.'], [22, 25, 'relation', True, 'Is a child of ANIMAL in the ontology.']]}, {'document_label': 'specific-reversed', 'text': 'The cat chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3=', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 22, 'score': 19.302449037645065, 'word_infos': [[4, 7, 'single', False, 'Is a child of ANIMAL in the ontology.'], [8, 14, 'relation', False, 'Matches CHASE directly.'], [19, 22, 'relation', True, 'Is a child of ANIMAL in the ontology.']]}])
+            different_match_cutoff_score=5,
+            relation_matching_frequency_threshold=0.2),
+            [{'document_label': 'exact', 'text': 'The dog chased the animal', 'text_to_match': 'A dog chases an animal', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 17.654017250803907, 'word_infos': [[4, 7, 'overlapping_relation', False, 'Matches DOG directly.'], [8, 14, 'overlapping_relation', False, 'Matches CHASE directly.'], [19, 25, 'overlapping_relation', True, 'Matches ANIMAL directly.']]}, {'document_label': 'specific', 'text': 'I saw a dog. It was chasing a cat', 'text_to_match': 'A dog chases an animal', 'rank': '2', 'index_within_document': 9, 'subword_index': None, 'start_index': 3, 'end_index': 9, 'sentences_start_index': 0, 'sentences_end_index': 9, 'sentences_character_start_index': 0, 'sentences_character_end_index': 33, 'score': 14.777271168442839, 'word_infos': [[8, 11, 'overlapping_relation', False, 'Matches DOG directly.'], [20, 27, 'overlapping_relation', False, 'Is a synonym of CHASE in the ontology.'], [30, 33, 'overlapping_relation', True, 'Is a child of ANIMAL in the ontology.']]}, {'document_label': 'exact-reversed', 'text': 'The animal chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3=', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 8.083873269940398, 'word_infos': [[4, 10, 'single', False, 'Matches ANIMAL directly.'], [11, 17, 'relation', False, 'Matches CHASE directly.'], [22, 25, 'relation', True, 'Is a child of ANIMAL in the ontology.']]}, {'document_label': 'specific-reversed', 'text': 'The cat chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3=', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 22, 'score': 7.731063509742494, 'word_infos': [[4, 7, 'single', False, 'Is a child of ANIMAL in the ontology.'], [8, 14, 'relation', False, 'Matches CHASE directly.'], [19, 22, 'relation', True, 'Is a child of ANIMAL in the ontology.']]}])
         m.close()
 
     def test_number_of_results(self):
@@ -1136,8 +1153,9 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             reverse_only_relation_score=20,
             single_word_score=5,
             single_word_any_tag_score=2,
-            different_match_cutoff_score=5),
-            [{'document_label': 'exact', 'text': 'The dog chased the animal', 'text_to_match': 'A dog chases an animal', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 44.27418511677267, 'word_infos': [[4, 7, 'overlapping_relation', False, 'Matches DOG directly.'], [8, 14, 'overlapping_relation', False, 'Matches CHASE directly.'], [19, 25, 'overlapping_relation', True, 'Matches ANIMAL directly.']]}, {'document_label': 'specific', 'text': 'I saw a dog. It was chasing a cat', 'text_to_match': 'A dog chases an animal', 'rank': '2', 'index_within_document': 9, 'subword_index': None, 'start_index': 3, 'end_index': 9, 'sentences_start_index': 0, 'sentences_end_index': 9, 'sentences_character_start_index': 0, 'sentences_character_end_index': 33, 'score': 35.641203421657025, 'word_infos': [[8, 11, 'overlapping_relation', False, 'Matches DOG directly.'], [20, 27, 'overlapping_relation', False, 'Is a synonym of CHASE in the ontology.'], [30, 33, 'overlapping_relation', True, 'Is a child of ANIMAL in the ontology.']]}, {'document_label': 'exact-reversed', 'text': 'The animal chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 19.954440383093182, 'word_infos': [[4, 10, 'single', False, 'Matches ANIMAL directly.'], [11, 17, 'relation', False, 'Matches CHASE directly.'], [22, 25, 'relation', True, 'Is a child of ANIMAL in the ontology.']]}])
+            different_match_cutoff_score=5,
+            relation_matching_frequency_threshold=0.2),
+            [{'document_label': 'exact', 'text': 'The dog chased the animal', 'text_to_match': 'A dog chases an animal', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 17.654017250803907, 'word_infos': [[4, 7, 'overlapping_relation', False, 'Matches DOG directly.'], [8, 14, 'overlapping_relation', False, 'Matches CHASE directly.'], [19, 25, 'overlapping_relation', True, 'Matches ANIMAL directly.']]}, {'document_label': 'specific', 'text': 'I saw a dog. It was chasing a cat', 'text_to_match': 'A dog chases an animal', 'rank': '2', 'index_within_document': 9, 'subword_index': None, 'start_index': 3, 'end_index': 9, 'sentences_start_index': 0, 'sentences_end_index': 9, 'sentences_character_start_index': 0, 'sentences_character_end_index': 33, 'score': 14.777271168442839, 'word_infos': [[8, 11, 'overlapping_relation', False, 'Matches DOG directly.'], [20, 27, 'overlapping_relation', False, 'Is a synonym of CHASE in the ontology.'], [30, 33, 'overlapping_relation', True, 'Is a child of ANIMAL in the ontology.']]}, {'document_label': 'exact-reversed', 'text': 'The animal chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 8.083873269940398, 'word_infos': [[4, 10, 'single', False, 'Matches ANIMAL directly.'], [11, 17, 'relation', False, 'Matches CHASE directly.'], [22, 25, 'relation', True, 'Is a child of ANIMAL in the ontology.']]}])
         m.close()
 
     def test_multithreading_filtering_with_topic_match_dictionaries(self):

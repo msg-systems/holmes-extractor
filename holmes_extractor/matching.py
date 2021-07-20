@@ -941,11 +941,9 @@ class StructuralMatcher:
         """Finds and returns matches between search phrases and documents.
         match_depending_on_single_words -- 'True' to match only single word search phrases,
             'False' to match only non-single-word search phrases and 'None' to match both.
-        compare_embeddings_on_root_words -- if 'True', embeddings on root words are compared
-            even if embedding_based_matching_on_root_words==False as long as
-            overall_similarity_threshold < 1.0.
-        compare_embeddings_on_non_root_words -- if 'False', embeddings on non-root words are not
-            compared even if overall_similarity_threshold < 1.0.
+        compare_embeddings_on_root_words -- if 'True', embeddings on root words are compared.
+        compare_embeddings_on_non_root_words -- if 'True', embeddings on non-root words are
+            compared.
         document_labels_to_indexes_for_reverse_matching_sets -- indexes for non-embedding
             reverse matching only.
         document_labels_to_indexes_for_embedding_reverse_matching_sets -- indexes for embedding
@@ -960,8 +958,6 @@ class StructuralMatcher:
             else:
                 return dictionary[document_label]
 
-        if self.embedding_based_matching_on_root_words:
-            compare_embeddings_on_root_words = True
         if self.overall_similarity_threshold == 1.0:
             compare_embeddings_on_root_words = False
             compare_embeddings_on_non_root_words = False

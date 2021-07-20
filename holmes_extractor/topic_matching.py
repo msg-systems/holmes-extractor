@@ -1,6 +1,4 @@
-
 from .parsing import Index
-from .errors import EmbeddingThresholdGreaterThanRelationThresholdError
 
 class TopicMatch:
     """A topic match between some text and part of a document. Note that the end indexes refer
@@ -121,27 +119,19 @@ class TopicMatcher:
     def __init__(
             self, *, structural_matcher, indexed_documents,
             text_to_match, phraselet_labels_to_phraselet_infos, phraselet_labels_to_search_phrases,
-            embedding_based_matching_on_root_words, maximum_activation_distance, relation_score,
+            maximum_activation_distance, relation_score,
             reverse_only_relation_score, single_word_score, single_word_any_tag_score,
             different_match_cutoff_score, overlapping_relation_multiplier, embedding_penalty,
-            ontology_penalty, maximum_number_of_single_word_matches_for_relation_matching,
-            maximum_number_of_single_word_matches_for_embedding_matching,
-            sideways_match_extent, only_one_result_per_document, number_of_results,
-            document_label_filter):
-        if maximum_number_of_single_word_matches_for_embedding_matching > \
-                maximum_number_of_single_word_matches_for_relation_matching:
-            raise EmbeddingThresholdGreaterThanRelationThresholdError(' '.join((
-                'embedding',
-                str(maximum_number_of_single_word_matches_for_embedding_matching),
-                'relation',
-                str(maximum_number_of_single_word_matches_for_relation_matching))))
+            ontology_penalty, relation_matching_frequency_threshold,
+            embedding_matching_frequency_threshold, sideways_match_extent,
+            only_one_result_per_document, number_of_results, document_label_filter,
+            use_frequency_factor):
         self.structural_matcher = structural_matcher
         self.semantic_matching_helper = structural_matcher.semantic_matching_helper
         self.indexed_documents = indexed_documents
         self.text_to_match = text_to_match
         self.phraselet_labels_to_phraselet_infos = phraselet_labels_to_phraselet_infos
         self.phraselet_labels_to_search_phrases = phraselet_labels_to_search_phrases
-        self.embedding_based_matching_on_root_words = embedding_based_matching_on_root_words
         self.maximum_activation_distance = maximum_activation_distance
         self.relation_score = relation_score
         self.reverse_only_relation_score = reverse_only_relation_score
@@ -151,14 +141,13 @@ class TopicMatcher:
         self.overlapping_relation_multiplier = overlapping_relation_multiplier
         self.embedding_penalty = embedding_penalty
         self.ontology_penalty = ontology_penalty
-        self.maximum_number_of_single_word_matches_for_relation_matching = \
-                maximum_number_of_single_word_matches_for_relation_matching
-        self.maximum_number_of_single_word_matches_for_embedding_matching = \
-                maximum_number_of_single_word_matches_for_embedding_matching
+        self.relation_matching_frequency_threshold = relation_matching_frequency_threshold
+        self.embedding_matching_frequency_threshold = embedding_matching_frequency_threshold
         self.sideways_match_extent = sideways_match_extent
         self.only_one_result_per_document = only_one_result_per_document
         self.number_of_results = number_of_results
         self.document_label_filter = document_label_filter
+        self.use_frequency_factor = use_frequency_factor
         self.words_to_phraselet_word_match_infos = {}
 
         # First get single-word matches
@@ -172,13 +161,6 @@ class TopicMatcher:
             document_labels_to_indexes_for_reverse_matching_sets=None,
             document_labels_to_indexes_for_embedding_reverse_matching_sets=None,
             document_label_filter=self.document_label_filter)
-        if not self.embedding_based_matching_on_root_words:
-            self.rebuild_document_info_dict(structural_matches, phraselet_labels_to_phraselet_infos)
-            for phraselet in (
-                    phraselet_labels_to_search_phrases[phraselet_info.label] for
-                    phraselet_info in phraselet_labels_to_phraselet_infos.values() if
-                    phraselet_info.child_lemma is not None):
-                self.set_phraselet_to_reverse_only_where_too_many_single_word_matches(phraselet)
 
         # Now get normally matched relations
         structural_matches.extend(self.structural_matcher.match(
@@ -202,6 +184,7 @@ class TopicMatcher:
                 phraselet_info.child_lemma is not None):
             self.get_indexes_for_reverse_matching(
                 phraselet=phraselet,
+                phraselet_info=phraselet_labels_to_phraselet_infos[phraselet.label],
                 parent_document_labels_to_indexes_for_direct_retry_sets=
                 parent_document_labels_to_indexes_for_direct_retry_sets,
                 parent_document_labels_to_indexes_for_embedding_retry_sets=
@@ -268,23 +251,8 @@ class TopicMatcher:
             self.words_to_phraselet_word_match_infos[word] = phraselet_word_match_info
             return phraselet_word_match_info
 
-    def set_phraselet_to_reverse_only_where_too_many_single_word_matches(self, phraselet):
-        """ Where the parent word of a phraselet matched too often in the corpus, the phraselet
-            is set to reverse matching only to improve performance.
-        """
-        parent_token = phraselet.root_token
-        parent_word = parent_token._.holmes.lemma_or_derived_lemma()
-        if parent_word in self.words_to_phraselet_word_match_infos:
-            parent_phraselet_word_match_info = self.words_to_phraselet_word_match_infos[
-                parent_word]
-            parent_single_word_match_corpus_words = \
-                parent_phraselet_word_match_info.single_word_match_corpus_words
-            if len(parent_single_word_match_corpus_words) > \
-                self.maximum_number_of_single_word_matches_for_relation_matching:
-                phraselet.treat_as_reverse_only_during_initial_relation_matching = True
-
     def get_indexes_for_reverse_matching(
-            self, *, phraselet,
+            self, *, phraselet, phraselet_info,
             parent_document_labels_to_indexes_for_direct_retry_sets,
             parent_document_labels_to_indexes_for_embedding_retry_sets,
             child_document_labels_to_indexes_for_embedding_retry_sets):
@@ -316,11 +284,8 @@ class TopicMatcher:
                     phraselet_labels_to_parent_match_corpus_words[phraselet.label]
             else:
                 parent_relation_match_corpus_words = []
-            if len(parent_single_word_match_corpus_words) <= \
-                    self.maximum_number_of_single_word_matches_for_embedding_matching:
-                # we deliberately use the number of single matches rather than the difference
-                # because the deciding factor should be whether or not enough match information
-                # has been returned without checking the embeddings
+            if phraselet_info.parent_frequency_factor >= \
+                    self.embedding_matching_frequency_threshold:
                 for corpus_word_position in parent_single_word_match_corpus_words.difference(
                         parent_relation_match_corpus_words):
                     self._add_to_dict_set(
@@ -342,13 +307,13 @@ class TopicMatcher:
                     phraselet_labels_to_child_match_corpus_words[phraselet.label]
             else:
                 child_relation_match_corpus_words = []
-            if len(child_single_word_match_corpus_words) <= \
-                    self.maximum_number_of_single_word_matches_for_embedding_matching:
+
+            if phraselet_info.child_frequency_factor >= self.embedding_matching_frequency_threshold:
                 set_to_add_to = parent_document_labels_to_indexes_for_embedding_retry_sets
-            elif len(child_single_word_match_corpus_words) <= \
-                    self.maximum_number_of_single_word_matches_for_relation_matching and (
-                        phraselet.reverse_only or
-                        phraselet.treat_as_reverse_only_during_initial_relation_matching):
+            elif phraselet_info.child_frequency_factor >= \
+                    self.relation_matching_frequency_threshold \
+                    and (phraselet.reverse_only or
+                    phraselet.treat_as_reverse_only_during_initial_relation_matching):
                 set_to_add_to = parent_document_labels_to_indexes_for_direct_retry_sets
             else:
                 return
@@ -660,7 +625,6 @@ class TopicMatcher:
             self._add_to_dict_set(
                 inner_dict, child_word_match.get_document_index(), match.search_phrase_label)
         current_document_label = None
-        print([m.search_phrase_label for m in position_sorted_structural_matches])
         for pssm_index, match in enumerate(position_sorted_structural_matches):
             match.original_index_within_list = pssm_index # store for later use after resorting
             if match.document_label != current_document_label or pssm_index == 0:
@@ -694,9 +658,9 @@ class TopicMatcher:
                     match.is_overlapping_relation = True
                     this_match_score *= self.overlapping_relation_multiplier
 
-            # multiply the score by the frequency factor, which is 1.0 if frequency factors are
-            # not being used
-            this_match_score *= phraselet_labels_to_frequency_factors[match.search_phrase_label]
+            if self.use_frequency_factor:
+                # multiply the score by the frequency factor
+                this_match_score *= phraselet_labels_to_frequency_factors[match.search_phrase_label]
 
             overall_similarity_measure = float(match.overall_similarity_measure)
             if overall_similarity_measure < 1.0:

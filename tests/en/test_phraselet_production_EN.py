@@ -565,13 +565,13 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                                         "The dog chased the cat",
                                         words_to_corpus_frequencies={'dog': 2, 'puppy': 4, 'chasing': 4, 'cat': 5}, maximum_corpus_frequency=5)
         dog_phraselet = dict['word: dog']
-        self.assertEqual(str(dog_phraselet.frequency_factor), '0.5693234419266069')
+        self.assertEqual(str(dog_phraselet.frequency_factor), '0.31739380551401464')
         cat_phraselet = dict['word: cat']
         self.assertEqual(str(cat_phraselet.frequency_factor), '0.1386468838532139')
         chase_phraselet = dict['word: chasing']
         self.assertEqual(str(chase_phraselet.frequency_factor), '0.31739380551401464')
         chase_dog_phraselet = dict['predicate-actor: chasing-dog']
-        self.assertEqual(str(chase_dog_phraselet.frequency_factor), '0.18069973380142287')
+        self.assertEqual(str(chase_dog_phraselet.frequency_factor), '0.10073882777866815')
         chase_cat_phraselet = dict['predicate-patient: chasing-cat']
         self.assertEqual(str(chase_cat_phraselet.frequency_factor), '0.044005662088831145')
 

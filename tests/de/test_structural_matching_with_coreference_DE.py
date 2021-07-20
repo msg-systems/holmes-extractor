@@ -350,7 +350,6 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         coref_holmes_manager.remove_all_documents()
         coref_holmes_manager.parse_and_register_document(
             "Wir besprachen Peters GmbH. Die große Firma hatte Schwierigkeiten. Sie hatte Probleme.")
-        coref_holmes_manager.debug_document()
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
         self._check_word_match(matches[0], 1, 6, 'Peters')

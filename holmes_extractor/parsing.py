@@ -419,14 +419,19 @@ class PhraseletInfo:
             for single-word phraselets.
         created_without_matching_tags -- 'True' if created without matching tags.
         reverse_only_parent_lemma -- 'True' if the parent lemma is in the reverse matching list.
-        frequency_factor -- a multiplication factor with which to multiply scores based on the
-            frequency of words in the corpus, or *1.0* if this functionality is not being used.
+        frequency_factor -- a multiplication factor between 0.0 and 1.0 which is lower the more
+            frequently words occur in the corpus, relating to the whole phraselet.
+        parent_frequency_factor -- a multiplication factor between 0.0 and 1.0 which is lower the
+            more frequently words occur in the corpus, relating to the parent token.
+        child_frequency_factor -- a multiplication factor between 0.0 and 1.0 which is lower the
+            more frequently words occur in the corpus, relating to the child token.
     """
 
     def __init__(
             self, label, template_label, parent_lemma, parent_derived_lemma, parent_pos,
             child_lemma, child_derived_lemma, child_pos, created_without_matching_tags,
-            reverse_only_parent_lemma, frequency_factor):
+            reverse_only_parent_lemma, frequency_factor, parent_frequency_factor,
+            child_frequency_factor):
         self.label = label
         self.template_label = template_label
 
@@ -439,6 +444,8 @@ class PhraseletInfo:
         self.created_without_matching_tags = created_without_matching_tags
         self.reverse_only_parent_lemma = reverse_only_parent_lemma
         self.frequency_factor = frequency_factor
+        self.parent_frequency_factor = parent_frequency_factor
+        self.child_frequency_factor = child_frequency_factor
 
     def __eq__(self, other):
         return isinstance(other, PhraseletInfo) and \
@@ -452,21 +459,25 @@ class PhraseletInfo:
             self.child_pos == other.child_pos and \
             self.created_without_matching_tags == other.created_without_matching_tags and \
             self.reverse_only_parent_lemma == other.reverse_only_parent_lemma and \
-            str(self.frequency_factor) == str(other.frequency_factor)
+            str(self.frequency_factor) == str(other.frequency_factor) and \
+            str(self.parent_frequency_factor) == str(other.parent_frequency_factor) and \
+            str(self.child_frequency_factor) == str(other.child_frequency_factor)
 
     def __hash__(self):
         return hash((
             self.label, self.template_label, self.parent_lemma, self.parent_derived_lemma,
             self.parent_pos, self.child_lemma, self.child_derived_lemma,
             self.child_pos, self.created_without_matching_tags, self.reverse_only_parent_lemma,
-            str(self.frequency_factor)))
+            str(self.frequency_factor), str(self.parent_frequency_factor),
+            str(self.child_frequency_factor)))
 
 class SearchPhrase:
 
     def __init__(self, doc, matchable_token_indexes, root_token_index,
             matchable_non_entity_tokens_to_vectors, single_token_similarity_threshold, label,
             topic_match_phraselet, topic_match_phraselet_created_without_matching_tags,
-            reverse_only, words_matching_root_token, root_word_to_match_info_dict):
+            reverse_only, treat_as_reverse_only_during_initial_relation_matching,
+            words_matching_root_token, root_word_to_match_info_dict):
         """Args:
 
         doc -- the Holmes document created for the search phrase
@@ -484,6 +495,11 @@ class SearchPhrase:
         topic_match_phraselet_created_without_matching_tags -- 'True' if a topic match
         phraselet created without matching tags (match_all_words), otherwise 'False'.
         reverse_only -- 'True' if a phraselet that should only be reverse-matched.
+        treat_as_reverse_only_during_initial_relation_matching -- phraselets are
+            set to *True* in the context of topic matching to prevent them from being taken into
+            account during initial relation matching because the parent relation occurs too
+            frequently during the corpus. *reverse_only* cannot be used instead because it
+            has an effect on scoring.
         words_matching_root_token -- a list of words that match the root token.
         root_word_to_match_info_dict -- a dictionary from words in *words_matching_root_token*
             to match information tuples.
@@ -499,11 +515,8 @@ class SearchPhrase:
         self.topic_match_phraselet_created_without_matching_tags = \
                 topic_match_phraselet_created_without_matching_tags
         self.reverse_only = reverse_only
-        self.treat_as_reverse_only_during_initial_relation_matching = False # phraselets are
-            # set to this value during topic matching to prevent them from being taken into
-            # account during initial relation matching because the parent relation occurs too
-            # frequently during the corpus. 'reverse_only' cannot be used instead because it
-            # has an effect on scoring.
+        self.treat_as_reverse_only_during_initial_relation_matching = \
+            treat_as_reverse_only_during_initial_relation_matching
         self.words_matching_root_token = words_matching_root_token
         self.root_word_to_match_info_dict = root_word_to_match_info_dict
         self.has_single_matchable_word = len(matchable_token_indexes) == 1
@@ -1087,10 +1100,8 @@ class LinguisticObjectFactory:
             the parent pole of a relation phraselet, should cause that phraselet to be
             reverse-matched.
         words_to_corpus_frequencies -- a dictionary from words to the number of times each
-            word occurs in the indexed documents, or *None* if corpus frequencies are not
-            being taken into account.
-        maximum_corpus_frequency -- the maximum value within *words_to_corpus_frequencies*,
-            or *None* if corpus frequencies are not being taken into account.
+            word occurs in the indexed documents.
+        maximum_corpus_frequency -- the maximum value within *words_to_corpus_frequencies*.
         """
 
         index_to_lemmas_cache = {}
@@ -1181,24 +1192,25 @@ class LinguisticObjectFactory:
                         frequencies.append(float(words_to_corpus_frequencies[word]))
                 if len(frequencies) == 0:
                     return 1.0
-                average_frequency = max(0, (sum(frequencies) / float(len(frequencies))) - 1)
-                if average_frequency <= 1:
+                adjusted_max_frequency = max(frequencies) - 1.0
+                if adjusted_max_frequency <= 0.0:
                     return 1.0
-                else:
-                    return 1 - (math.log(average_frequency) / math.log(maximum_corpus_frequency))
+                return 1 - (math.log(adjusted_max_frequency) / math.log(maximum_corpus_frequency))
 
+            frequency_factor = parent_frequency_factor = child_frequency_factor = None
             if words_to_corpus_frequencies is not None:
-                frequency_factor = get_frequency_factor_for_pole(True)
+                parent_frequency_factor = get_frequency_factor_for_pole(True)
+                frequency_factor = parent_frequency_factor
                 if child_lemma is not None:
-                    frequency_factor *= get_frequency_factor_for_pole(False)
-            else:
-                frequency_factor = 1.0
+                    child_frequency_factor = get_frequency_factor_for_pole(False)
+                    frequency_factor *= child_frequency_factor
             if phraselet_label not in phraselet_labels_to_phraselet_infos:
                 phraselet_labels_to_phraselet_infos[phraselet_label] = PhraseletInfo(
                     phraselet_label, phraselet_template.label, parent_lemma,
                     parent_derived_lemma, parent_pos, child_lemma, child_derived_lemma,
                     child_pos, created_without_matching_tags,
-                    is_reverse_only_parent_lemma, frequency_factor)
+                    is_reverse_only_parent_lemma, frequency_factor, parent_frequency_factor,
+                    child_frequency_factor)
             else:
                 existing_phraselet = phraselet_labels_to_phraselet_infos[phraselet_label]
                 if lemma_replacement_indicated(
@@ -1427,9 +1439,15 @@ class LinguisticObjectFactory:
                 process_single_word_phraselet_templates(
                     token, None, False, token_indexes_to_multiword_lemmas)
 
-    def create_search_phrases_from_phraselet_infos(self, phraselet_infos):
+    def create_search_phrases_from_phraselet_infos(self, phraselet_infos,
+            reverse_matching_frequency_threshold=None):
         """ Creates search phrases from phraselet info objects, returning a dictionary from
             phraselet labels to the created search phrases.
+
+            reverse_matching_frequency_threshold: an optional threshold between 0.0 and 1.0.
+                Where the parent word in a phraselet has a frequency factor below the threshold,
+                the search phrase will be set to
+                *treat_as_reverse_only_during_initial_relation_matching=True*.
         """
 
         def create_phraselet_label(phraselet_info):
@@ -1458,6 +1476,10 @@ class LinguisticObjectFactory:
                         'topic match phraselet', phraselet_doc,
                         create_phraselet_label(phraselet_info), phraselet_template,
                         phraselet_info.created_without_matching_tags,
+                        reverse_matching_frequency_threshold is not None and
+                        phraselet_info.parent_frequency_factor <
+                        reverse_matching_frequency_threshold and
+                        phraselet_info.child_lemma is not None,
                         phraselet_info.reverse_only_parent_lemma)
             raise RuntimeError(''.join((
                 'Phraselet template', phraselet_info.template_label, 'not found.')))
@@ -1538,7 +1560,7 @@ class LinguisticObjectFactory:
     def create_search_phrase(
             self, search_phrase_text, search_phrase_doc,
             label, phraselet_template, topic_match_phraselet_created_without_matching_tags,
-            is_reverse_only_parent_lemma=False):
+            treat_as_reverse_only_during_initial_relation_matching, is_reverse_only_parent_lemma=False):
         """phraselet_template -- 'None' if this search phrase is not a topic match phraselet"""
 
         def replace_grammatical_root_token_recursively(token):
@@ -1681,7 +1703,8 @@ class LinguisticObjectFactory:
             search_phrase_doc, [token.i for token in tokens_to_match], root_token.i,
             matchable_non_entity_tokens_to_vectors, single_token_similarity_threshold, label,
             phraselet_template is not None, topic_match_phraselet_created_without_matching_tags,
-            reverse_only, words_matching_root_token, root_word_to_match_info_dict)
+            reverse_only, treat_as_reverse_only_during_initial_relation_matching,
+            words_matching_root_token, root_word_to_match_info_dict)
 
     def get_ontology_reverse_derivational_dict(self):
         """During structural matching, a lemma or derived lemma matches any words in the ontology

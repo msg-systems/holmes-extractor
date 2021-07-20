@@ -317,55 +317,55 @@ class GermanTopicMatchingTest(unittest.TestCase):
         topic_matches = holmes_manager.topic_match_documents_against("Das Königabdanken",
                                                                      relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                      single_word_any_tag_score=5,
-                                                                     different_match_cutoff_score=10,
-                                                                     maximum_number_of_single_word_matches_for_relation_matching=1,
-                                                                     maximum_number_of_single_word_matches_for_embedding_matching=0
-                                                                     )
+                                                                     different_match_cutoff_score=10)
         self.assertEqual(int(topic_matches[0]['score']), 29)
 
     def test_reverse_matching_suppressed_with_embedding_reverse_matching_parent(self):
         holmes_manager_with_embeddings.remove_all_documents()
         holmes_manager_with_embeddings.parse_and_register_document(
-            "Der Prinz dankte ab")
+            "Der Prinz dankte ab. Jemand dankte ab. Jemand dankte ab.")
         topic_matches = holmes_manager_with_embeddings.topic_match_documents_against(
             "Das Königsabdanken",
             relation_score=20, reverse_only_relation_score=15, single_word_score=10,
             single_word_any_tag_score=5, different_match_cutoff_score=10,
-            maximum_number_of_single_word_matches_for_embedding_matching=0)
+            relation_matching_frequency_threshold=1.0, embedding_matching_frequency_threshold=1.0,
+            use_frequency_factor=False)
         self.assertEqual(int(topic_matches[0]['score']), 5)
 
     def test_reverse_matching_suppressed_with_embedding_reverse_matching_parent_control(self):
         holmes_manager_with_embeddings.remove_all_documents()
         holmes_manager_with_embeddings.parse_and_register_document(
-            "Der Prinz dankte ab")
+            "Der Prinz dankte ab. Jemand dankte ab. Jemand dankte ab.")
         topic_matches = holmes_manager_with_embeddings.topic_match_documents_against(
             "Das Königsabdanken",
             relation_score=20, reverse_only_relation_score=15, single_word_score=10,
             single_word_any_tag_score=5, different_match_cutoff_score=10,
-            maximum_number_of_single_word_matches_for_embedding_matching=1
-            )
+            relation_matching_frequency_threshold=0.0, embedding_matching_frequency_threshold=0.0,
+            use_frequency_factor=False)
         self.assertEqual(int(topic_matches[0]['score']), 15)
 
     def test_reverse_matching_suppressed_with_embedding_reverse_matching_child(self):
         holmes_manager_with_embeddings.remove_all_documents()
         holmes_manager_with_embeddings.parse_and_register_document(
-            "Der König vom Abdanken")
+            "Der König vom Abdanken. Das Abdanken. Das Abdanken.")
         topic_matches = holmes_manager_with_embeddings.topic_match_documents_against(
             "Die Abdankenprinzen",
             relation_score=20, reverse_only_relation_score=15, single_word_score=10,
             single_word_any_tag_score=5,different_match_cutoff_score=10,
-            maximum_number_of_single_word_matches_for_embedding_matching=0)
+            relation_matching_frequency_threshold=1.0, embedding_matching_frequency_threshold=1.0,
+            use_frequency_factor=False)
         self.assertEqual(int(topic_matches[0]['score']), 5)
 
     def test_reverse_matching_suppressed_with_embedding_reverse_matching_child_control(self):
         holmes_manager_with_embeddings.remove_all_documents()
         holmes_manager_with_embeddings.parse_and_register_document(
-            "Der König vom Abdanken")
+            "Der König vom Abdanken. Das Abdanken. Das Abdanken.")
         topic_matches = holmes_manager_with_embeddings.topic_match_documents_against(
             "Die Abdankenprinzen",
             relation_score=20, reverse_only_relation_score=15, single_word_score=10,
             single_word_any_tag_score=5,different_match_cutoff_score=10,
-            maximum_number_of_single_word_matches_for_embedding_matching=1)
+            relation_matching_frequency_threshold=0.0, embedding_matching_frequency_threshold=0.0,
+            use_frequency_factor=False)
         self.assertEqual(int(topic_matches[0]['score']), 14)
 
     def test_disjunct_relation_mapping_within_subword_dictionaries(self):

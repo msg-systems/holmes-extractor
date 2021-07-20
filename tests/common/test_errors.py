@@ -209,10 +209,37 @@ class ErrorsTest(unittest.TestCase):
             sttb.prepare()
             sttb.train()
 
-    def test_embedding_threshold_higher_than_relation_threshold(self):
-        with self.assertRaises(EmbeddingThresholdGreaterThanRelationThresholdError) as context:
-            m = holmes.Manager('en_core_web_sm')
+    def test_embedding_threshold_too_high(self):
+        with self.assertRaises(ValueError) as context:
+            m = holmes.Manager('en_core_web_sm', number_of_workers=1)
             m.parse_and_register_document("a")
             coref_holmes_manager.topic_match_documents_against("b",
-                                                                                      maximum_number_of_single_word_matches_for_relation_matching=1,
-                                                                                      maximum_number_of_single_word_matches_for_embedding_matching=2)
+                                                                                      relation_matching_frequency_threshold=0.75, embedding_matching_frequency_threshold=1.5)
+
+    def test_embedding_threshold_too_low(self):
+        with self.assertRaises(ValueError) as context:
+            m = holmes.Manager('en_core_web_sm', number_of_workers=1)
+            m.parse_and_register_document("a")
+            coref_holmes_manager.topic_match_documents_against("b",
+                                                                                      relation_matching_frequency_threshold=0.75, embedding_matching_frequency_threshold=-1.5)
+
+    def test_relation_threshold_too_high(self):
+        with self.assertRaises(ValueError) as context:
+            m = holmes.Manager('en_core_web_sm', number_of_workers=1)
+            m.parse_and_register_document("a")
+            coref_holmes_manager.topic_match_documents_against("b",
+                                                                                      relation_matching_frequency_threshold=1.75, embedding_matching_frequency_threshold=0.5)
+
+    def test_relation_threshold_too_low(self):
+        with self.assertRaises(ValueError) as context:
+            m = holmes.Manager('en_core_web_sm', number_of_workers=1)
+            m.parse_and_register_document("a")
+            coref_holmes_manager.topic_match_documents_against("b",
+                                                                                      relation_matching_frequency_threshold=-0.75, embedding_matching_frequency_threshold=-0.5)
+
+    def test_embedding_threshold_less_than_relation_threshold(self):
+        with self.assertRaises(EmbeddingThresholdLessThanRelationThresholdError) as context:
+            m = holmes.Manager('en_core_web_sm', number_of_workers=1)
+            m.parse_and_register_document("a")
+            coref_holmes_manager.topic_match_documents_against("b",
+                                                                                      relation_matching_frequency_threshold=0.75, embedding_matching_frequency_threshold=0.5)

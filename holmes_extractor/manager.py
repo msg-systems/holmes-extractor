@@ -106,7 +106,6 @@ class Manager:
             language=self.nlp.meta['lang'], ontology=ontology,
             analyze_derivational_morphology=analyze_derivational_morphology)
         self.overall_similarity_threshold = overall_similarity_threshold
-        self.embedding_based_matching_on_root_words = embedding_based_matching_on_root_words
         self.perform_coreference_resolution = perform_coreference_resolution
         self.use_reverse_dependency_matching = use_reverse_dependency_matching
         self.linguistic_object_factory = LinguisticObjectFactory(
@@ -292,7 +291,7 @@ class Manager:
             label = search_phrase_text
         search_phrase_doc = self.nlp(search_phrase_text)
         search_phrase = self.linguistic_object_factory.create_search_phrase(
-            search_phrase_text, search_phrase_doc, label, None, False)
+            search_phrase_text, search_phrase_doc, label, None, False, False)
         return search_phrase
 
     def register_search_phrase(self, search_phrase_text, label=None):
@@ -424,8 +423,7 @@ class Manager:
             single_word_score=50, single_word_any_tag_score=20, different_match_cutoff_score=15,
             overlapping_relation_multiplier=1.5, embedding_penalty=0.6,
             ontology_penalty=0.9,
-            maximum_number_of_single_word_matches_for_relation_matching=500,
-            maximum_number_of_single_word_matches_for_embedding_matching=100,
+            relation_matching_frequency_threshold=0.5, embedding_matching_frequency_threshold=0.75,
             sideways_match_extent=100, only_one_result_per_document=False, number_of_results=10,
             document_label_filter=None, tied_result_quotient=0.9):
 
@@ -435,8 +433,9 @@ class Manager:
 
         text_to_match -- the text to match against the loaded documents.
         use_frequency_factor -- *True* if scores should be multiplied by a factor between 0 and 1
-            expressing how rare the words matching each phraselet are in the corpus,
-            otherwise *False*
+            expressing how rare the words matching each phraselet are in the corpus. Note that,
+            even if set to *False*, the factors are still calculated as they are required for
+            determining which relation and embedding matches should be attempted.
         maximum_activation_distance -- the number of words it takes for a previous phraselet
             activation to reduce to zero when the library is reading through a document.
         relation_score -- the activation score added when a normal two-word
@@ -460,14 +459,11 @@ class Manager:
             the score is multiplied by the value (abs(depth) + 1) times, so that the penalty is
             higher for hyponyms and hypernyms than for synonyms and increases with the
             depth distance.
-        maximum_number_of_single_word_matches_for_relation_matching -- the maximum number
-                of single word matches that are used as the basis for matching relations. If more
-                document words than this value correspond to each of the two words within a
-                relation phraselet, matching on the phraselet is not attempted.
-        maximum_number_of_single_word_matches_for_embedding_matching = the maximum number
-          of single word matches that are used as the basis for matching with
-          embeddings at the other word. If more than this value exist, matching with
-          embeddings is not attempted because the performance hit would be too great.
+        relation_matching_frequency_threshold -- the frequency threshold above which single
+            word matches are used as the basis for attempting relation matches.
+        embedding_matching_frequency_threshold -- the frequency threshold above which single
+            word matches are used as the basis for attempting relation matches with
+            embedding-based matching on the second word.
         sideways_match_extent -- the maximum number of words that may be incorporated into a
             topic match either side of the word where the activation peaked.
         only_one_result_per_document -- if 'True', prevents multiple results from being returned
@@ -478,22 +474,25 @@ class Manager:
         tied_result_quotient -- the quotient between a result and following results above which
             the results are interpreted as tied.
         """
-        if maximum_number_of_single_word_matches_for_embedding_matching > \
-                maximum_number_of_single_word_matches_for_relation_matching:
-            raise EmbeddingThresholdGreaterThanRelationThresholdError(' '.join((
+        if embedding_matching_frequency_threshold < 0.0 or \
+                embedding_matching_frequency_threshold > 1.0:
+            raise ValueError(': '.join(('embedding_matching_frequency_threshold',
+                str(embedding_matching_frequency_threshold))))
+        if relation_matching_frequency_threshold < 0.0 or \
+                relation_matching_frequency_threshold > 1.0:
+            raise ValueError(': '.join(('relation_matching_frequency_threshold',
+                str(relation_matching_frequency_threshold))))
+        if embedding_matching_frequency_threshold < relation_matching_frequency_threshold:
+            raise EmbeddingThresholdLessThanRelationThresholdError(' '.join((
                 'embedding',
-                str(maximum_number_of_single_word_matches_for_embedding_matching),
+                str(embedding_matching_frequency_threshold),
                 'relation',
-                str(maximum_number_of_single_word_matches_for_relation_matching))))
+                str(relation_matching_frequency_threshold))))
         with self.lock:
             if len(self.document_labels_to_worker_queues) == 0:
                 raise NoDocumentError('At least one document is required for matching.')
-        if use_frequency_factor:
-            words_to_corpus_frequencies, maximum_corpus_frequency = \
-                self.get_corpus_frequency_information()
-        else:
-            words_to_corpus_frequencies = None
-            maximum_corpus_frequency = None
+        words_to_corpus_frequencies, maximum_corpus_frequency = \
+            self.get_corpus_frequency_information()
 
         reply_queue = self.multiprocessing_manager.Queue()
         text_to_match_doc = self.semantic_analyzer.parse(text_to_match)
@@ -506,7 +505,7 @@ class Manager:
             return []
         phraselet_labels_to_search_phrases = \
             self.linguistic_object_factory.create_search_phrases_from_phraselet_infos(
-                phraselet_labels_to_phraselet_infos.values())
+                phraselet_labels_to_phraselet_infos.values(), relation_matching_frequency_threshold)
         for search_phrase in phraselet_labels_to_search_phrases.values():
             search_phrase.pack()
 
@@ -514,15 +513,13 @@ class Manager:
             self.input_queues[worker_index].put((
                 self.worker.get_topic_matches,
                 (text_to_match, phraselet_labels_to_phraselet_infos,
-                phraselet_labels_to_search_phrases,
-                self.embedding_based_matching_on_root_words, maximum_activation_distance,
+                phraselet_labels_to_search_phrases, maximum_activation_distance,
                 relation_score, reverse_only_relation_score, single_word_score,
                 single_word_any_tag_score, different_match_cutoff_score,
                 overlapping_relation_multiplier, embedding_penalty, ontology_penalty,
-                maximum_number_of_single_word_matches_for_relation_matching,
-                maximum_number_of_single_word_matches_for_embedding_matching,
+                relation_matching_frequency_threshold, embedding_matching_frequency_threshold,
                 sideways_match_extent, only_one_result_per_document, number_of_results,
-                document_label_filter), reply_queue), TIMEOUT_SECONDS)
+                document_label_filter, use_frequency_factor), reply_queue), TIMEOUT_SECONDS)
         worker_topic_match_dictss = self.handle_response(reply_queue,
             self.number_of_workers, 'match')
         topic_match_dicts = []
@@ -724,7 +721,8 @@ class Worker:
                 search_phrases=search_phrases,
                 output_document_matching_message_to_console=False,
                 match_depending_on_single_words=None,
-                compare_embeddings_on_root_words=False,
+                compare_embeddings_on_root_words=state['structural_matcher'].\
+                embedding_based_matching_on_root_words,
                 compare_embeddings_on_non_root_words=True,
                 document_labels_to_indexes_for_reverse_matching_sets=None,
                 document_labels_to_indexes_for_embedding_reverse_matching_sets=None)
@@ -735,14 +733,13 @@ class Worker:
 
     def get_topic_matches(self, state, text_to_match,
             phraselet_labels_to_phraselet_infos, phraselet_labels_to_search_phrases,
-            embedding_based_matching_on_root_words, maximum_activation_distance,
-            relation_score, reverse_only_relation_score, single_word_score,
-            single_word_any_tag_score, different_match_cutoff_score,
+            maximum_activation_distance, relation_score, reverse_only_relation_score,
+            single_word_score, single_word_any_tag_score, different_match_cutoff_score,
             overlapping_relation_multiplier, embedding_penalty, ontology_penalty,
-            maximum_number_of_single_word_matches_for_relation_matching,
-            maximum_number_of_single_word_matches_for_embedding_matching,
+            relation_matching_frequency_threshold,
+            embedding_matching_frequency_threshold,
             sideways_match_extent, only_one_result_per_document, number_of_results,
-            document_label_filter):
+            document_label_filter, use_frequency_factor):
         if len(state['indexed_documents']) == 0:
             return [], 'No stored documents to match against'
         for search_phrase in phraselet_labels_to_search_phrases.values():
@@ -753,7 +750,6 @@ class Worker:
             text_to_match=text_to_match,
             phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
             phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
-            embedding_based_matching_on_root_words=embedding_based_matching_on_root_words,
             maximum_activation_distance=maximum_activation_distance,
             relation_score=relation_score,
             reverse_only_relation_score=reverse_only_relation_score,
@@ -763,14 +759,13 @@ class Worker:
             overlapping_relation_multiplier=overlapping_relation_multiplier,
             embedding_penalty=embedding_penalty,
             ontology_penalty=ontology_penalty,
-            maximum_number_of_single_word_matches_for_relation_matching=
-            maximum_number_of_single_word_matches_for_relation_matching,
-            maximum_number_of_single_word_matches_for_embedding_matching=
-            maximum_number_of_single_word_matches_for_embedding_matching,
+            relation_matching_frequency_threshold=relation_matching_frequency_threshold,
+            embedding_matching_frequency_threshold=embedding_matching_frequency_threshold,
             sideways_match_extent=sideways_match_extent,
             only_one_result_per_document=only_one_result_per_document,
             number_of_results=number_of_results,
-            document_label_filter=document_label_filter)
+            document_label_filter=document_label_filter,
+            use_frequency_factor=use_frequency_factor)
         return topic_matcher.get_topic_match_dictionaries(), \
             'Returned topic match dictionaries'
 
