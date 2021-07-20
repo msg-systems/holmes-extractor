@@ -693,7 +693,7 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "A waste horse was used")
         self.assertEqual(len(matches), 2)
-        self.assertEqual(matches[0]['word_matches'][1]['match_type'], 'derivation')
+        self.assertEqual(matches[1]['word_matches'][1]['match_type'], 'derivation')
 
     def test_derivation_in_document_with_multiword_single_word(self):
         matches = self._get_matches(nocoref_holmes_manager,
@@ -717,7 +717,7 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "A wastage horse was seen")
         self.assertEqual(len(matches), 2)
-        self.assertEqual(matches[0]['word_matches'][1]['match_type'], 'direct')
+        self.assertEqual(matches[1]['word_matches'][1]['match_type'], 'direct')
 
     def test_hyphenation_1(self):
         matches = self._get_matches(nocoref_holmes_manager,

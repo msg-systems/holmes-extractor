@@ -902,7 +902,6 @@ class StructuralMatcher:
         """Begin recursive matching where a search phrase root token has matched a document
             token.
         """
-
         matches_to_return = []
         # array of arrays where each entry corresponds to a search_phrase token and is itself an
         # array of WordMatch instances
@@ -930,13 +929,14 @@ class StructuralMatcher:
         return matches_to_return
 
     def match(
-            self, *, indexed_documents, search_phrases,
-            output_document_matching_message_to_console,
+            self, *, document_labels_to_documents,
+            corpus_index_dict,
+            search_phrases,
             match_depending_on_single_words,
             compare_embeddings_on_root_words,
             compare_embeddings_on_non_root_words,
-            document_labels_to_indexes_for_reverse_matching_sets,
-            document_labels_to_indexes_for_embedding_reverse_matching_sets,
+            reverse_matching_corpus_word_positions,
+            embedding_reverse_matching_corpus_word_positions,
             document_label_filter=None):
         """Finds and returns matches between search phrases and documents.
         match_depending_on_single_words -- 'True' to match only single word search phrases,
@@ -944,237 +944,235 @@ class StructuralMatcher:
         compare_embeddings_on_root_words -- if 'True', embeddings on root words are compared.
         compare_embeddings_on_non_root_words -- if 'True', embeddings on non-root words are
             compared.
-        document_labels_to_indexes_for_reverse_matching_sets -- indexes for non-embedding
+        reverse_matching_corpus_word_positions -- corpus word positions for non-embedding
             reverse matching only.
-        document_labels_to_indexes_for_embedding_reverse_matching_sets -- indexes for embedding
+        embedding_reverse_matching_corpus_word_positions -- corpus word positions for embedding
             and non-embedding reverse matching.
         document_label_filter -- a string with which the label of a document must begin for that
             document to be considered for matching, or 'None' if no filter is in use.
         """
 
-        def get_indexes_to_consider(dictionary, document_label):
-            if dictionary is None or document_label not in dictionary:
-                return set()
-            else:
-                return dictionary[document_label]
+        def filter_out(document_label):
+            return document_label_filter is not None and document_label is not None and \
+                not document_label.startswith(str(document_label_filter))
 
         if self.overall_similarity_threshold == 1.0:
             compare_embeddings_on_root_words = False
             compare_embeddings_on_non_root_words = False
-        match_specific_indexes = document_labels_to_indexes_for_reverse_matching_sets is not None \
-            or document_labels_to_indexes_for_embedding_reverse_matching_sets is not None
+        match_specific_indexes = reverse_matching_corpus_word_positions is not None \
+            or embedding_reverse_matching_corpus_word_positions is not None
+        if reverse_matching_corpus_word_positions is None:
+            reverse_matching_corpus_word_positions = set()
+        if embedding_reverse_matching_corpus_word_positions is None:
+            embedding_reverse_matching_corpus_word_positions = set()
 
         matches = []
-        for document_label, registered_document in indexed_documents.items():
-            if document_label_filter is not None and document_label is not None and not \
-                    document_label.startswith(str(document_label_filter)):
-                continue
-            if output_document_matching_message_to_console:
-                print('Processing document', document_label)
-            doc = registered_document.doc
-            # Dictionary used to improve performance when embedding-based matching for root tokens
-            # is active and there are multiple search phrases with the same root token word: the
-            # same indexes in the document will then match all the search phrase root tokens.
-            root_lexeme_to_indexes_to_match_dict = {}
-            if match_specific_indexes:
-                reverse_matching_indexes = get_indexes_to_consider(
-                    document_labels_to_indexes_for_reverse_matching_sets, document_label)
-                embedding_reverse_matching_indexes = get_indexes_to_consider(
-                    document_labels_to_indexes_for_embedding_reverse_matching_sets,
-                    document_label)
+        # Dictionary used to improve performance when embedding-based matching for root tokens
+        # is active and there are multiple search phrases with the same root token word: the
+        # same corpus word positions will then match all the search phrase root tokens.
+        root_lexeme_to_cwps_to_match_dict = {}
 
-            for search_phrase in search_phrases:
-                if not search_phrase.has_single_matchable_word and match_depending_on_single_words:
-                    continue
-                if search_phrase.has_single_matchable_word and \
-                        match_depending_on_single_words is False:
-                    continue
-                if not match_specific_indexes and (search_phrase.reverse_only or \
-                        search_phrase.treat_as_reverse_only_during_initial_relation_matching):
-                    continue
-                if search_phrase.has_single_matchable_word and \
-                        not compare_embeddings_on_root_words and \
-                        not self.semantic_matching_helper.is_entity_search_phrase_token(
-                            search_phrase.root_token, search_phrase.topic_match_phraselet):
-                    # We are only matching a single word without embedding, so to improve
-                    # performance we avoid entering the subgraph matching code.
-                    search_phrase_token = [
-                        token for token in search_phrase.doc if token._.holmes.is_matchable][0]
-                    existing_minimal_match_indexes = []
-                    for word_matching_root_token in search_phrase.words_matching_root_token:
-                        if word_matching_root_token in \
-                                registered_document.words_to_token_info_dict.keys():
-                            search_phrase_match_type, depth = \
-                                    search_phrase.root_word_to_match_info_dict[
-                                        word_matching_root_token]
-                            for index, document_word_representation, \
-                                    document_match_type_is_derivation in \
-                                    registered_document.words_to_token_info_dict[
-                                        word_matching_root_token]:
-                                if index in existing_minimal_match_indexes:
-                                    continue
-                                if document_match_type_is_derivation:
-                                    document_match_type = 'derivation'
-                                else:
-                                    document_match_type = 'direct'
-                                match_type = self.match_type(
-                                    False, search_phrase_match_type, document_match_type)
-                                minimal_match = Match(
-                                    search_phrase.label, search_phrase.doc_text, document_label,
-                                    True, search_phrase.
-                                    topic_match_phraselet_created_without_matching_tags,
-                                    search_phrase.reverse_only)
-                                minimal_match.index_within_document = index.token_index
-                                matched = False
-                                if len(word_matching_root_token.split()) > 1:
-                                    for multiword_span in \
+        for search_phrase in search_phrases:
+            if not search_phrase.has_single_matchable_word and match_depending_on_single_words:
+                continue
+            if search_phrase.has_single_matchable_word and \
+                    match_depending_on_single_words is False:
+                continue
+            if not match_specific_indexes and (search_phrase.reverse_only or \
+                    search_phrase.treat_as_reverse_only_during_initial_relation_matching):
+                continue
+            if search_phrase.has_single_matchable_word and \
+                    not compare_embeddings_on_root_words and \
+                    not self.semantic_matching_helper.is_entity_search_phrase_token(
+                        search_phrase.root_token, search_phrase.topic_match_phraselet):
+                # We are only matching a single word without embedding, so to improve
+                # performance we avoid entering the subgraph matching code.
+                search_phrase_token = [
+                    token for token in search_phrase.doc if token._.holmes.is_matchable][0]
+                existing_minimal_match_cwps = []
+                for word_matching_root_token in search_phrase.words_matching_root_token:
+                    if word_matching_root_token in corpus_index_dict:
+                        search_phrase_match_type, depth = \
+                                search_phrase.root_word_to_match_info_dict[
+                                    word_matching_root_token]
+                        for corpus_word_position, document_word_representation, \
+                                document_match_type_is_derivation in \
+                                corpus_index_dict[word_matching_root_token]:
+                            if filter_out(corpus_word_position.document_label):
+                                continue
+                            if corpus_word_position in existing_minimal_match_cwps:
+                                continue
+                            document_label = corpus_word_position.document_label
+                            index = corpus_word_position.index
+                            doc = document_labels_to_documents[document_label]
+                            if document_match_type_is_derivation:
+                                document_match_type = 'derivation'
+                            else:
+                                document_match_type = 'direct'
+                            match_type = self.match_type(
+                                False, search_phrase_match_type, document_match_type)
+                            minimal_match = Match(
+                                search_phrase.label, search_phrase.doc_text, document_label,
+                                True, search_phrase.
+                                topic_match_phraselet_created_without_matching_tags,
+                                search_phrase.reverse_only)
+                            minimal_match.index_within_document = index.token_index
+                            matched = False
+                            if len(word_matching_root_token.split()) > 1:
+                                for multiword_span in \
+                                        self.semantic_matching_helper.\
+                                        multiword_spans_with_head_token(
+                                        doc[index.token_index]):
+                                    for textual_representation, _ in \
                                             self.semantic_matching_helper.\
-                                            multiword_spans_with_head_token(
-                                            doc[index.token_index]):
-                                        for textual_representation, _ in \
-                                                self.semantic_matching_helper.\
-                                                loop_textual_representations(multiword_span):
-                                            if textual_representation == \
-                                                    word_matching_root_token:
-                                                matched = True
-                                                minimal_match.word_matches.append(WordMatch(
-                                                    search_phrase_token,
-                                                    search_phrase_token._.holmes.lemma,
-                                                    doc[index.token_index],
-                                                    multiword_span.tokens[0],
-                                                    multiword_span.tokens[-1],
-                                                    None,
-                                                    document_word_representation,
-                                                    match_type,
-                                                    1.0, False, False, doc[index.token_index],
-                                                    document_word_representation, depth))
-                                                break
-                                        if matched:
+                                            loop_textual_representations(multiword_span):
+                                        if textual_representation == \
+                                                word_matching_root_token:
+                                            matched = True
+                                            minimal_match.word_matches.append(WordMatch(
+                                                search_phrase_token,
+                                                search_phrase_token._.holmes.lemma,
+                                                doc[index.token_index],
+                                                multiword_span.tokens[0],
+                                                multiword_span.tokens[-1],
+                                                None,
+                                                document_word_representation,
+                                                match_type,
+                                                1.0, False, False, doc[index.token_index],
+                                                document_word_representation, depth))
                                             break
-                                if not matched:
-                                    token = doc[index.token_index]
-                                    if index.is_subword():
-                                        subword = token._.holmes.subwords[index.subword_index]
-                                    else:
-                                        subword = None
-                                    minimal_match.word_matches.append(WordMatch(
-                                        search_phrase_token,
-                                        search_phrase_token._.holmes.lemma,
-                                        token,
-                                        token,
-                                        token,
-                                        subword,
-                                        document_word_representation,
-                                        match_type,
-                                        1.0, token._.holmes.is_negated, False, token,
-                                        document_word_representation, depth))
-                                    if token._.holmes.is_negated:
-                                        minimal_match.is_negated = True
-                                existing_minimal_match_indexes.append(index)
-                                matches.append(minimal_match)
-                    continue
-                direct_matching_indexes = []
-                if self.semantic_matching_helper.is_entitynoun_search_phrase_token(
-                        search_phrase.root_token,
-                        search_phrase.topic_match_phraselet): # phraselets are not generated for
-                                                              # ENTITYNOUN roots
+                                    if matched:
+                                        break
+                            if not matched:
+                                token = doc[index.token_index]
+                                if index.is_subword():
+                                    subword = token._.holmes.subwords[index.subword_index]
+                                else:
+                                    subword = None
+                                minimal_match.word_matches.append(WordMatch(
+                                    search_phrase_token,
+                                    search_phrase_token._.holmes.lemma,
+                                    token,
+                                    token,
+                                    token,
+                                    subword,
+                                    document_word_representation,
+                                    match_type,
+                                    1.0, token._.holmes.is_negated, False, token,
+                                    document_word_representation, depth))
+                                if token._.holmes.is_negated:
+                                    minimal_match.is_negated = True
+                            existing_minimal_match_cwps.append(corpus_word_position)
+                            matches.append(minimal_match)
+                continue
+            direct_matching_corpus_word_positions = []
+            if self.semantic_matching_helper.is_entitynoun_search_phrase_token(
+                    search_phrase.root_token): # phraselets are not generated for
+                                               # ENTITYNOUN roots, so not relevant to topic matching
+                for document_label, doc in document_labels_to_documents.items():
                     for token in doc:
                         if token.pos_ in self.semantic_matching_helper.noun_pos:
                             matches.extend(
                                 self.get_matches_starting_at_root_word_match(
                                     search_phrase, doc, token, None, document_label,
                                     compare_embeddings_on_non_root_words))
-                    continue
+                continue
+            else:
+                matched_corpus_word_positions = set()
+                if self.semantic_matching_helper.is_entity_search_phrase_token(
+                        search_phrase.root_token, search_phrase.topic_match_phraselet):
+                    if search_phrase.topic_match_phraselet:
+                        entity_label = search_phrase.root_token._.holmes.lemma
+                    else:
+                        entity_label = search_phrase.root_token.text
+                    if entity_label in corpus_index_dict.keys():
+                        entity_matching_corpus_word_positions = [
+                            cwp for cwp, _, _ in corpus_index_dict[entity_label]]
+                        if match_specific_indexes:
+                            entity_matching_corpus_word_positions = [
+                                cwp for cwp in entity_matching_corpus_word_positions
+                                if cwp in reverse_matching_corpus_word_positions
+                                or cwp in embedding_reverse_matching_corpus_word_positions
+                                and not cwp.index.is_subword()]
+                        matched_corpus_word_positions.update(
+                            entity_matching_corpus_word_positions)
                 else:
-                    matched_indexes_set = set()
-                    if self.semantic_matching_helper.is_entity_search_phrase_token(
-                            search_phrase.root_token, search_phrase.topic_match_phraselet):
-                        if search_phrase.topic_match_phraselet:
-                            entity_label = search_phrase.root_token._.holmes.lemma
+                    for word_matching_root_token in search_phrase.words_matching_root_token:
+                        if word_matching_root_token in corpus_index_dict.keys():
+                            direct_matching_corpus_word_positions = [
+                                cwp for cwp, _, _ in corpus_index_dict[
+                                    word_matching_root_token]]
+                            if match_specific_indexes:
+                                direct_matching_corpus_word_positions = [
+                                    cwp for cwp in direct_matching_corpus_word_positions
+                                    if cwp in reverse_matching_corpus_word_positions
+                                    or cwp in embedding_reverse_matching_corpus_word_positions]
+                            matched_corpus_word_positions.update(
+                                direct_matching_corpus_word_positions)
+            if compare_embeddings_on_root_words and not \
+                    self.semantic_matching_helper.is_entity_search_phrase_token(
+                        search_phrase.root_token, search_phrase.topic_match_phraselet) \
+                    and not search_phrase.reverse_only and \
+                    self.embedding_matching_permitted(search_phrase.root_token):
+                if not search_phrase.topic_match_phraselet and \
+                        len(search_phrase.root_token._.holmes.lemma.split()) > 1:
+                    root_token_lemma_to_use = search_phrase.root_token.lemma_
+                else:
+                    root_token_lemma_to_use = search_phrase.root_token._.holmes.lemma
+                if root_token_lemma_to_use in root_lexeme_to_cwps_to_match_dict:
+                    matched_corpus_word_positions.update(
+                        root_lexeme_to_cwps_to_match_dict[root_token_lemma_to_use])
+                else:
+                    working_cwps_to_match_for_cache = set()
+                    for document_word in corpus_index_dict:
+                        corpus_word_positions_to_match = [
+                            cwp for cwp, _, _ in corpus_index_dict[document_word]]
+                        if match_specific_indexes:
+                            corpus_word_positions_to_match = [
+                                cwp for cwp in corpus_word_positions_to_match
+                                if cwp in embedding_reverse_matching_corpus_word_positions
+                                and cwp not in direct_matching_corpus_word_positions]
+                            if len(corpus_word_positions_to_match) == 0:
+                                continue
+                        search_phrase_vector = \
+                                search_phrase.matchable_non_entity_tokens_to_vectors[
+                                    search_phrase.root_token.i]
+                        example_cwp = corpus_word_positions_to_match[0]
+                        example_doc = document_labels_to_documents[example_cwp.document_label]
+                        example_index = example_cwp.index
+                        example_document_token = example_doc[example_index.token_index]
+                        if example_index.is_subword():
+                            if not self.embedding_matching_permitted(
+                                    example_document_token._.holmes.subwords[
+                                    example_index.subword_index]):
+                                continue
+                            document_vector = example_document_token._.holmes.subwords[
+                                example_index.subword_index].vector
                         else:
-                            entity_label = search_phrase.root_token.text
-                        if entity_label in registered_document.words_to_token_info_dict.keys():
-                            entity_matching_indexes = [
-                                index for index, _, _ in
-                                registered_document.words_to_token_info_dict[entity_label]]
-                            if match_specific_indexes:
-                                entity_matching_indexes = [
-                                    index for index in entity_matching_indexes
-                                    if index in reverse_matching_indexes
-                                    or index in embedding_reverse_matching_indexes
-                                    and not index.is_subword()]
-                            matched_indexes_set.update(entity_matching_indexes)
-                    else:
-                        for word_matching_root_token in search_phrase.words_matching_root_token:
-                            if word_matching_root_token in \
-                                    registered_document.words_to_token_info_dict.keys():
-                                direct_matching_indexes = [
-                                    index for index, _, _ in
-                                    registered_document.words_to_token_info_dict[
-                                        word_matching_root_token]]
-                                if match_specific_indexes:
-                                    direct_matching_indexes = [
-                                        index for index in direct_matching_indexes
-                                        if index in reverse_matching_indexes
-                                        or index in embedding_reverse_matching_indexes]
-                                matched_indexes_set.update(direct_matching_indexes)
-                if compare_embeddings_on_root_words and not \
-                        self.semantic_matching_helper.is_entity_search_phrase_token(
-                            search_phrase.root_token, search_phrase.topic_match_phraselet) \
-                        and not search_phrase.reverse_only and \
-                        self.embedding_matching_permitted(search_phrase.root_token):
-                    if not search_phrase.topic_match_phraselet and \
-                            len(search_phrase.root_token._.holmes.lemma.split()) > 1:
-                        root_token_lemma_to_use = search_phrase.root_token.lemma_
-                    else:
-                        root_token_lemma_to_use = search_phrase.root_token._.holmes.lemma
-                    if root_token_lemma_to_use in root_lexeme_to_indexes_to_match_dict:
-                        matched_indexes_set.update(
-                            root_lexeme_to_indexes_to_match_dict[root_token_lemma_to_use])
-                    else:
-                        working_indexes_to_match_for_cache_set = set()
-                        for document_word in registered_document.words_to_token_info_dict.keys():
-                            indexes_to_match = [
-                                index for index, _, _ in
-                                registered_document.words_to_token_info_dict[document_word]]
-                            if match_specific_indexes:
-                                indexes_to_match = [
-                                    index for index in indexes_to_match
-                                    if index in embedding_reverse_matching_indexes
-                                    and index not in direct_matching_indexes]
-                                if len(indexes_to_match) == 0:
-                                    continue
-                            search_phrase_vector = \
-                                    search_phrase.matchable_non_entity_tokens_to_vectors[
-                                        search_phrase.root_token.i]
-                            example_index = indexes_to_match[0]
-                            example_document_token = doc[example_index.token_index]
-                            if example_index.is_subword():
-                                if not self.embedding_matching_permitted(
-                                        example_document_token._.holmes.subwords[
-                                        example_index.subword_index]):
-                                    continue
-                                document_vector = example_document_token._.holmes.subwords[
-                                    example_index.subword_index].vector
-                            else:
-                                if not self.embedding_matching_permitted(example_document_token):
-                                    continue
-                                document_vector = example_document_token._.holmes.vector
-                            if search_phrase_vector is not None and document_vector is not None:
-                                similarity_measure = self.cosine_similarity(search_phrase_vector,
-                                    document_vector)
-                                if similarity_measure >= \
-                                        search_phrase.single_token_similarity_threshold:
-                                    matched_indexes_set.update(indexes_to_match)
-                                    working_indexes_to_match_for_cache_set.update(indexes_to_match)
-                        root_lexeme_to_indexes_to_match_dict[root_token_lemma_to_use] = \
-                            working_indexes_to_match_for_cache_set
-                for index_to_match in sorted(matched_indexes_set):
-                    matches.extend(self.get_matches_starting_at_root_word_match(
-                        search_phrase, doc, doc[index_to_match.token_index],
-                        index_to_match.subword_index, document_label,
-                        compare_embeddings_on_non_root_words))
-        return sorted(matches, key=lambda match: 1 - float(match.overall_similarity_measure))
+                            if not self.embedding_matching_permitted(example_document_token):
+                                continue
+                            document_vector = example_document_token._.holmes.vector
+                        if search_phrase_vector is not None and document_vector is not None:
+                            similarity_measure = self.cosine_similarity(search_phrase_vector,
+                                document_vector)
+                            if similarity_measure >= \
+                                    search_phrase.single_token_similarity_threshold:
+                                matched_corpus_word_positions.update(
+                                    corpus_word_positions_to_match)
+                                working_cwps_to_match_for_cache.update(
+                                    corpus_word_positions_to_match)
+                    root_lexeme_to_cwps_to_match_dict[root_token_lemma_to_use] = \
+                        working_cwps_to_match_for_cache
+            for corpus_word_position in matched_corpus_word_positions:
+                if filter_out(corpus_word_position.document_label):
+                    continue
+                doc = document_labels_to_documents[corpus_word_position.document_label]
+                matches.extend(self.get_matches_starting_at_root_word_match(
+                    search_phrase, doc, doc[corpus_word_position.index.token_index],
+                    corpus_word_position.index.subword_index, corpus_word_position.document_label,
+                    compare_embeddings_on_non_root_words))
+        return sorted(matches, key=lambda match: (1 - float(match.overall_similarity_measure),
+            match.document_label, match.index_within_document))
 
     def build_match_dictionaries(self, matches):
         """Builds and returns a sorted list of match dictionaries."""

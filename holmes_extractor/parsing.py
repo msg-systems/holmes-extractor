@@ -171,6 +171,23 @@ class Index:
     def __hash__(self):
         return hash((self.token_index, self.subword_index))
 
+class CorpusWordPosition:
+    def __init__(self, document_label, index):
+        if document_label is None:
+            raise RuntimeError('CorpusWordPosition.document_label must have a value.')
+        self.document_label = document_label
+        self.index = index
+
+    def __eq__(self, other):
+        return isinstance(other, CorpusWordPosition) and self.index == other.index and \
+                self.document_label == other.document_label
+
+    def __hash__(self):
+        return hash((self.document_label, self.index))
+
+    def __str__(self):
+        return ':'.join((self.document_label, str(self.index)))
+
 class MultiwordSpan:
 
     def __init__(self, text, lemma, derived_lemma, tokens):
@@ -536,20 +553,6 @@ class SearchPhrase:
     def unpack(self, vocab):
         self.doc = Doc(vocab).from_bytes(self.serialized_doc)
         self.serialized_doc = None
-
-class IndexedDocument:
-    """Args:
-
-    doc -- the Holmes document
-    words_to_token_info_dict -- a dictionary from words to tuples containing:
-        - the token index where the word occurs in the document
-        - the word representation
-        - a boolean value specifying whether the index is based on derivation
-    """
-
-    def __init__(self, doc, words_to_token_info_dict):
-        self.doc = doc
-        self.words_to_token_info_dict = words_to_token_info_dict
 
 class SemanticAnalyzerFactory():
     """Returns the correct *SemanticAnalyzer* for the model language.
@@ -1806,19 +1809,21 @@ class SemanticMatchingHelper(ABC):
     def normalize_hyphens(self, word):
         pass
 
-    def index_document(self, parsed_document):
+    def add_to_corpus_index(self, corpus_index_dict, parsed_document, document_label):
 
         def add_dict_entry(dictionary, word, token_index, subword_index, match_type):
             index = Index(token_index, subword_index)
+            corpus_word_position = CorpusWordPosition(document_label, index)
             if match_type == 'entity':
                 key_word = word
             else:
                 key_word = word.lower()
             if key_word in dictionary.keys():
                 if index not in dictionary[key_word]:
-                    dictionary[key_word].append((index, word, match_type == 'derivation'))
+                    dictionary[key_word].append((
+                        corpus_word_position, word, match_type == 'derivation'))
             else:
-                dictionary[key_word] = [(index, word, match_type == 'derivation')]
+                dictionary[key_word] = [(corpus_word_position, word, match_type == 'derivation')]
 
         def get_ontology_defined_multiword(token):
             for multiword_span in \
@@ -1838,7 +1843,6 @@ class SemanticMatchingHelper(ABC):
                         return reverse_lemma, 'derivation'
             return None, None
 
-        words_to_token_info_dict = {}
         for token in parsed_document:
 
             # parent check is necessary so we only find multiword entities once per
@@ -1849,28 +1853,36 @@ class SemanticMatchingHelper(ABC):
                     token.dep_ == 'ROOT' or token.dep_ in self.sibling_marker_deps
                     or token.ent_type_ != token.head.ent_type_):
                 entity_label = ''.join(('ENTITY', token.ent_type_))
-                add_dict_entry(words_to_token_info_dict, entity_label, token.i, None, 'entity')
+                add_dict_entry(corpus_index_dict, entity_label, token.i, None, 'entity')
             if self.ontology is not None:
                 ontology_defined_multiword, match_type = get_ontology_defined_multiword(token)
                 if ontology_defined_multiword is not None:
                     add_dict_entry(
-                        words_to_token_info_dict, ontology_defined_multiword, token.i, None,
+                        corpus_index_dict, ontology_defined_multiword, token.i, None,
                         match_type)
                     continue
             entity_defined_multiword, _ = \
                 self.get_entity_defined_multiword(token)
             if entity_defined_multiword is not None:
                 add_dict_entry(
-                    words_to_token_info_dict, entity_defined_multiword, token.i, None, 'direct')
+                    corpus_index_dict, entity_defined_multiword, token.i, None, 'direct')
             for representation, match_type in self.loop_textual_representations(token):
                 add_dict_entry(
-                    words_to_token_info_dict, representation, token.i, None, match_type)
+                    corpus_index_dict, representation, token.i, None, match_type)
             for subword in token._.holmes.subwords:
                 for representation, match_type in self.loop_textual_representations(subword):
                     add_dict_entry(
-                        words_to_token_info_dict, representation, token.i, subword.index,
+                        corpus_index_dict, representation, token.i, subword.index,
                         match_type)
-        return IndexedDocument(parsed_document, words_to_token_info_dict)
+
+    def get_corpus_index_removing_document(self, corpus_index_dict, document_label):
+        new_corpus_index_dict = {}
+        for entry in corpus_index_dict:
+            new_value = ([(c, w, m) for (c, w, m) in corpus_index_dict[entry] if c.document_label !=
+                document_label])
+            if len(new_value) > 0:
+                new_corpus_index_dict[entry] = new_value
+        return new_corpus_index_dict
 
     def dependency_labels_match(self, *, search_phrase_dependency_label, document_dependency_label,
             inverse_polarity:bool):
@@ -1957,12 +1969,8 @@ class SemanticMatchingHelper(ABC):
         return word_to_check[:6] == 'ENTITY' and len(word_to_check) > 6
 
     def is_entitynoun_search_phrase_token(
-            self, search_phrase_token, examine_lemma_rather_than_text):
-        if examine_lemma_rather_than_text:
-            word_to_check = search_phrase_token._.holmes.lemma
-        else:
-            word_to_check = search_phrase_token.text
-        return word_to_check == 'ENTITYNOUN'
+            self, search_phrase_token):
+        return search_phrase_token.text == 'ENTITYNOUN'
 
     def entity_search_phrase_token_matches(
             self, search_phrase_token, topic_match_phraselet, document_token):

@@ -13,7 +13,7 @@ class SupervisedTopicTrainingUtils:
         self.overlap_memory_size = overlap_memory_size
         self.oneshot = oneshot
 
-    def getlabels_to_classification_frequencies_dict(
+    def get_labels_to_classification_frequencies_dict(
             self, *, matches, labels_to_classifications_dict):
         """ Builds a dictionary from search phrase (phraselet) labels to classification
             frequencies. Depending on the training phase, which is signalled by the parameters, the
@@ -122,26 +122,27 @@ class SupervisedTopicTrainingUtils:
             structural_matcher -- the structural matcher to use for comparisons.
             sorted_label_dict -- a dictionary from search phrase (phraselet) labels to their own
                 alphabetic sorting indexes.
-            doc_label -- the document label, or 'None' if there is none.
+            doc_label -- the document label, or '' if there is none.
             doc -- the document to be matched.
             matrix -- the matrix within which to record the matches.
             row_index -- the row number within the matrix corresponding to the document.
             verbose -- if 'True', matching information is outputted to the console.
         """
-        indexed_document = semantic_matching_helper.index_document(doc)
-        indexed_documents = {doc_label:indexed_document}
+        document_labels_to_documents = {doc_label: doc}
+        corpus_index_dict = {}
+        semantic_matching_helper.add_to_corpus_index(corpus_index_dict, doc, doc_label)
         found = False
         for label, occurrences in \
-                self.getlabels_to_classification_frequencies_dict(
+                self.get_labels_to_classification_frequencies_dict(
                     matches=structural_matcher.match(
-                        indexed_documents=indexed_documents,
+                        document_labels_to_documents=document_labels_to_documents,
+                        corpus_index_dict=corpus_index_dict,
                         search_phrases=phraselet_labels_to_search_phrases.values(),
-                        output_document_matching_message_to_console=verbose,
                         match_depending_on_single_words=None,
                         compare_embeddings_on_root_words=False,
                         compare_embeddings_on_non_root_words=True,
-                        document_labels_to_indexes_for_reverse_matching_sets=None,
-                        document_labels_to_indexes_for_embedding_reverse_matching_sets=None),
+                        reverse_matching_corpus_word_positions=None,
+                        embedding_reverse_matching_corpus_word_positions=None),
                     labels_to_classifications_dict=None
                 ).items():
             if self.oneshot:
@@ -182,7 +183,8 @@ class SupervisedTopicTrainingBasis:
         self.match_all_words = match_all_words
         self.verbose = verbose
 
-        self.training_documents = {}
+        self.training_document_labels_to_documents = {}
+        self.corpus_index_dict = {}
         self.training_documents_labels_to_classifications_dict = {}
         self.additional_classification_labels = set()
         self.classification_implication_dict = {}
@@ -217,12 +219,12 @@ class SupervisedTopicTrainingBasis:
                 "register_training_document() may not be called once prepare() has been called")
         if label is None:
             label = str(uuid.uuid4())
-        if label in self.training_documents:
+        if label in self.training_document_labels_to_documents:
             raise DuplicateDocumentError(label)
         if self.verbose:
             print('Registering document', label)
-        indexed_document = self.semantic_matching_helper.index_document(doc)
-        self.training_documents[label] = indexed_document
+        self.training_document_labels_to_documents[label] = doc
+        self.semantic_matching_helper.add_to_corpus_index(self.corpus_index_dict, doc, label)
         self.linguistic_object_factory.add_phraselets_to_dict(
             doc,
             phraselet_labels_to_phraselet_infos=
@@ -269,16 +271,16 @@ class SupervisedTopicTrainingBasis:
         search_phrases = self.linguistic_object_factory.create_search_phrases_from_phraselet_infos(
             self.phraselet_labels_to_phraselet_infos.values()).values()
         self.labels_to_classification_frequencies = self.utils.\
-            getlabels_to_classification_frequencies_dict(
+            get_labels_to_classification_frequencies_dict(
                 matches=self.structural_matcher.match(
-                    indexed_documents=self.training_documents,
+                    document_labels_to_documents=self.training_document_labels_to_documents,
+                    corpus_index_dict=self.corpus_index_dict,
                     search_phrases=search_phrases,
-                    output_document_matching_message_to_console=self.verbose,
                     match_depending_on_single_words=None,
                     compare_embeddings_on_root_words=False,
                     compare_embeddings_on_non_root_words=True,
-                    document_labels_to_indexes_for_reverse_matching_sets=None,
-                    document_labels_to_indexes_for_embedding_reverse_matching_sets=None),
+                    reverse_matching_corpus_word_positions=None,
+                    embedding_reverse_matching_corpus_word_positions=None),
                 labels_to_classifications_dict=
                 self.training_documents_labels_to_classifications_dict)
         self.classifications = sorted(set(
@@ -370,22 +372,23 @@ class SupervisedTopicModelTrainer:
         for index, label in enumerate(sorted(self.labels_to_classification_frequencies.keys())):
             self.sorted_label_dict[label] = index
         self.input_matrix = dok_matrix((
-            len(self.training_basis.training_documents), len(self.sorted_label_dict)))
+            len(self.training_basis.training_document_labels_to_documents),
+            len(self.sorted_label_dict)))
         self.output_matrix = dok_matrix((
-            len(self.training_basis.training_documents),
+            len(self.training_basis.training_document_labels_to_documents),
             len(self.training_basis.classifications)))
 
         if self.training_basis.verbose:
             print('Matching documents against filtered phraselets')
         for index, document_label in enumerate(
-                sorted(self.training_basis.training_documents.keys())):
+                sorted(self.training_basis.training_document_labels_to_documents.keys())):
             self.utils.record_matches(
                 semantic_matching_helper=self.semantic_matching_helper,
                 structural_matcher=self.structural_matcher,
                 phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
                 sorted_label_dict=self.sorted_label_dict,
                 doc_label=document_label,
-                doc=self.training_basis.training_documents[document_label].doc,
+                doc=self.training_basis.training_document_labels_to_documents[document_label].doc,
                 matrix=self.input_matrix,
                 row_index=index,
                 verbose=self.training_basis.verbose)

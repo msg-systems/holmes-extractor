@@ -629,7 +629,8 @@ class Worker:
             'vocab': vocab,
             'model_name': model_name,
             'serialized_document_version': serialized_document_version,
-            'indexed_documents': {},
+            'document_labels_to_documents': {},
+            'corpus_index_dict': {},
             'search_phrases': [],
         }
         HolmesBroker.set_extensions()
@@ -651,7 +652,7 @@ class Worker:
                 err_identifier = str(sys.exc_info()[0])
                 reply_queue.put((worker_label, None, err_identifier), TIMEOUT_SECONDS)
 
-    def get_indexed_document(self, state, serialized_doc):
+    def load_document(self, state, serialized_doc, document_label, corpus_index_dict):
         doc = Doc(state['vocab']).from_bytes(serialized_doc)
         if doc._.holmes_document_info.model != state['model_name']:
             raise WrongModelDeserializationError('; '.join((
@@ -661,23 +662,30 @@ class Worker:
             raise WrongVersionDeserializationError('; '.join((
                 str(state['serialized_document_version']),
                 str(doc._.holmes_document_info.serialized_document_version))))
-        return state['structural_matcher'].semantic_matching_helper.index_document(doc)
+        state['document_labels_to_documents'][document_label] = doc
+        state['structural_matcher'].semantic_matching_helper.add_to_corpus_index(
+            corpus_index_dict, doc, document_label)
+        return doc
 
-    def register_serialized_document(self, state, serialized_doc, label):
-        state['indexed_documents'][label] = self.get_indexed_document(state, serialized_doc)
-        return None, ' '.join(('Registered document', label))
+    def register_serialized_document(self, state, serialized_doc, document_label):
+        self.load_document(state, serialized_doc, document_label, state['corpus_index_dict'])
+        return None, ' '.join(('Registered document', document_label))
 
-    def remove_document(self, state, label):
-        state['indexed_documents'].pop(label)
-        return None, ' '.join(('Removed document', label))
+    def remove_document(self, state, document_label):
+        state['document_labels_to_documents'].pop(document_label)
+        state['corpus_index_dict'] = \
+            state['structural_matcher'].semantic_matching_helper.get_corpus_index_removing_document(
+                state['corpus_index_dict'], document_label)
+        return None, ' '.join(('Removed document', document_label))
 
     def remove_all_documents(self, state):
-        state['indexed_documents'] = {}
+        state['document_labels_to_documents'] = {}
+        state['corpus_index_dict'] = {}
         return None, 'Removed all documents'
 
     def get_serialized_document(self, state, label):
-        if label in state['indexed_documents']:
-            return state['indexed_documents'][label].doc.to_bytes(), \
+        if label in state['document_labels_to_documents']:
+            return state['document_labels_to_documents'][label].to_bytes(), \
                 ' '.join(('Returned serialized document with label', label))
         else:
             return None, ' '.join(('No document found with label', label))
@@ -698,34 +706,37 @@ class Worker:
 
     def get_words_to_corpus_frequencies(self, state):
         words_to_corpus_frequencies = {}
-        for indexed_document in state['indexed_documents'].values():
-            words_to_token_info_dict = indexed_document.words_to_token_info_dict
-            for word, token_info_tuples in words_to_token_info_dict.items():
-                if word in punctuation:
-                    continue
-                indexes = [index for index, _, _ in token_info_tuples]
-                if word in words_to_corpus_frequencies:
-                    words_to_corpus_frequencies[word] += len(set(indexes))
-                else:
-                    words_to_corpus_frequencies[word] = len(set(indexes))
+        for word, token_info_tuples in state['corpus_index_dict'].items():
+            if word in punctuation:
+                continue
+            cwps = [corpus_word_position for corpus_word_position, _, _ in token_info_tuples]
+            if word in words_to_corpus_frequencies:
+                words_to_corpus_frequencies[word] += len(set(cwps))
+            else:
+                words_to_corpus_frequencies[word] = len(set(cwps))
         return words_to_corpus_frequencies, 'Retrieved words to corpus frequencies'
 
     def match(self, state, serialized_doc, search_phrase):
-        indexed_documents = {'': self.get_indexed_document(state, serialized_doc)} \
-            if serialized_doc is not None else state['indexed_documents']
+        if serialized_doc is not None:
+            corpus_index_dict = {}
+            doc = self.load_document(state, serialized_doc, '', corpus_index_dict)
+            document_labels_to_documents = {'': doc}
+        else:
+            corpus_index_dict = state['corpus_index_dict']
+            document_labels_to_documents = state['document_labels_to_documents']
         search_phrases = [search_phrase] if search_phrase is not None \
             else state['search_phrases']
-        if len(indexed_documents) > 0 and len(search_phrases) > 0:
+        if len(document_labels_to_documents) > 0 and len(search_phrases) > 0:
             matches = state['structural_matcher'].match(
-                indexed_documents=indexed_documents,
+                document_labels_to_documents=document_labels_to_documents,
+                corpus_index_dict=corpus_index_dict,
                 search_phrases=search_phrases,
-                output_document_matching_message_to_console=False,
                 match_depending_on_single_words=None,
                 compare_embeddings_on_root_words=state['structural_matcher'].\
                 embedding_based_matching_on_root_words,
                 compare_embeddings_on_non_root_words=True,
-                document_labels_to_indexes_for_reverse_matching_sets=None,
-                document_labels_to_indexes_for_embedding_reverse_matching_sets=None)
+                reverse_matching_corpus_word_positions=None,
+                embedding_reverse_matching_corpus_word_positions=None)
             return state['structural_matcher'].build_match_dictionaries(matches), \
                 'Returned matches'
         else:
@@ -740,13 +751,14 @@ class Worker:
             embedding_matching_frequency_threshold,
             sideways_match_extent, only_one_result_per_document, number_of_results,
             document_label_filter, use_frequency_factor):
-        if len(state['indexed_documents']) == 0:
+        if len(state['document_labels_to_documents']) == 0:
             return [], 'No stored documents to match against'
         for search_phrase in phraselet_labels_to_search_phrases.values():
             search_phrase.unpack(state['vocab'])
         topic_matcher = TopicMatcher(
             structural_matcher=state['structural_matcher'],
-            indexed_documents=state['indexed_documents'],
+            document_labels_to_documents=state['document_labels_to_documents'],
+            corpus_index_dict=state['corpus_index_dict'],
             text_to_match=text_to_match,
             phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
             phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,

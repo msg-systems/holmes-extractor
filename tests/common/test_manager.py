@@ -40,11 +40,14 @@ class ManagerTest(unittest.TestCase):
 
     def test_remove_document(self):
         self._register_multiple_documents_and_search_phrases()
+        holmes_manager.parse_and_register_document(
+            document_text="All the time I am testing here, dogs keep on chasing cats.", label='pets2')
+        self.assertEqual(len(holmes_manager.match()), 3)
         holmes_manager.remove_document(label='pets')
         holmes_manager.remove_document(label='safari')
-        holmes_manager.parse_and_register_document(
-            document_text="All the time I am testing here, dogs keep on chasing cats.", label='pets')
-        self.assertEqual(len(holmes_manager.match()), 1)
+        matches = holmes_manager.match()
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0]['document'], 'pets2')
 
     def test_match_search_phrases_against(self):
         self._register_multiple_documents_and_search_phrases()

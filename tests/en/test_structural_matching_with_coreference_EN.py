@@ -622,7 +622,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
             "I saw a cat. The dog that had been chasing it was tired")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 2)
-        self._check_word_match(matches[0], 2, 3, 'cat')
+        self._check_word_match(matches[1], 2, 3, 'cat')
 
     def test_dictionary_sentences_one_sentence(self):
         coref_holmes_manager.remove_all_documents()

@@ -1,4 +1,4 @@
-from .parsing import Index
+from .parsing import Index, CorpusWordPosition
 
 class TopicMatch:
     """A topic match between some text and part of a document. Note that the end indexes refer
@@ -53,21 +53,6 @@ class PhraseletActivationTracker:
         self.position = position
         self.score = score
 
-class CorpusWordPosition:
-    def __init__(self, document_label, index):
-        self.document_label = document_label
-        self.index = index
-
-    def __eq__(self, other):
-        return isinstance(other, CorpusWordPosition) and self.index == other.index and \
-                self.document_label == other.document_label
-
-    def __hash__(self):
-        return hash((self.document_label, self.index))
-
-    def __str__(self):
-        return ':'.join((self.document_label, str(self.index)))
-
 class PhraseletWordMatchInfo:
     def __init__(self):
         self.single_word_match_corpus_words = set()
@@ -117,7 +102,7 @@ class TopicMatcher:
     """A topic matcher object. See manager.py for details of the properties."""
 
     def __init__(
-            self, *, structural_matcher, indexed_documents,
+            self, *, structural_matcher, document_labels_to_documents, corpus_index_dict,
             text_to_match, phraselet_labels_to_phraselet_infos, phraselet_labels_to_search_phrases,
             maximum_activation_distance, relation_score,
             reverse_only_relation_score, single_word_score, single_word_any_tag_score,
@@ -128,7 +113,8 @@ class TopicMatcher:
             use_frequency_factor):
         self.structural_matcher = structural_matcher
         self.semantic_matching_helper = structural_matcher.semantic_matching_helper
-        self.indexed_documents = indexed_documents
+        self.document_labels_to_documents = document_labels_to_documents
+        self.corpus_index_dict = corpus_index_dict
         self.text_to_match = text_to_match
         self.phraselet_labels_to_phraselet_infos = phraselet_labels_to_phraselet_infos
         self.phraselet_labels_to_search_phrases = phraselet_labels_to_search_phrases
@@ -152,32 +138,32 @@ class TopicMatcher:
 
         # First get single-word matches
         structural_matches = self.structural_matcher.match(
-            indexed_documents=self.indexed_documents,
+            document_labels_to_documents=self.document_labels_to_documents,
+            corpus_index_dict=self.corpus_index_dict,
             search_phrases=phraselet_labels_to_search_phrases.values(),
-            output_document_matching_message_to_console=False,
             match_depending_on_single_words=True,
             compare_embeddings_on_root_words=False,
             compare_embeddings_on_non_root_words=False,
-            document_labels_to_indexes_for_reverse_matching_sets=None,
-            document_labels_to_indexes_for_embedding_reverse_matching_sets=None,
+            reverse_matching_corpus_word_positions=None,
+            embedding_reverse_matching_corpus_word_positions=None,
             document_label_filter=self.document_label_filter)
 
         # Now get normally matched relations
         structural_matches.extend(self.structural_matcher.match(
-            indexed_documents=self.indexed_documents,
+            document_labels_to_documents=self.document_labels_to_documents,
+            corpus_index_dict=self.corpus_index_dict,
             search_phrases=phraselet_labels_to_search_phrases.values(),
-            output_document_matching_message_to_console=False,
             match_depending_on_single_words=False,
             compare_embeddings_on_root_words=False,
             compare_embeddings_on_non_root_words=False,
-            document_labels_to_indexes_for_reverse_matching_sets=None,
-            document_labels_to_indexes_for_embedding_reverse_matching_sets=None,
+            reverse_matching_corpus_word_positions=None,
+            embedding_reverse_matching_corpus_word_positions=None,
             document_label_filter=self.document_label_filter))
 
         self.rebuild_document_info_dict(structural_matches, phraselet_labels_to_phraselet_infos)
-        parent_document_labels_to_indexes_for_direct_retry_sets = {}
-        parent_document_labels_to_indexes_for_embedding_retry_sets = {}
-        child_document_labels_to_indexes_for_embedding_retry_sets = {}
+        parent_direct_retry_corpus_word_positions = set()
+        parent_embedding_retry_corpus_word_positions = set()
+        child_embedding_retry_corpus_word_positions = set()
         for phraselet in (
                 phraselet_labels_to_search_phrases[phraselet_info.label] for
                 phraselet_info in phraselet_labels_to_phraselet_infos.values() if
@@ -185,46 +171,45 @@ class TopicMatcher:
             self.get_indexes_for_reverse_matching(
                 phraselet=phraselet,
                 phraselet_info=phraselet_labels_to_phraselet_infos[phraselet.label],
-                parent_document_labels_to_indexes_for_direct_retry_sets=
-                parent_document_labels_to_indexes_for_direct_retry_sets,
-                parent_document_labels_to_indexes_for_embedding_retry_sets=
-                parent_document_labels_to_indexes_for_embedding_retry_sets,
-                child_document_labels_to_indexes_for_embedding_retry_sets=
-                child_document_labels_to_indexes_for_embedding_retry_sets)
-        if len(parent_document_labels_to_indexes_for_embedding_retry_sets) > 0 or \
-                len(parent_document_labels_to_indexes_for_direct_retry_sets) > 0:
+                parent_direct_retry_corpus_word_positions=
+                parent_direct_retry_corpus_word_positions,
+                parent_embedding_retry_corpus_word_positions=
+                parent_embedding_retry_corpus_word_positions,
+                child_embedding_retry_corpus_word_positions=
+                child_embedding_retry_corpus_word_positions)
+        if len(parent_embedding_retry_corpus_word_positions) > 0 or \
+                len(parent_direct_retry_corpus_word_positions) > 0:
 
             # Perform reverse matching at selected indexes
             structural_matches.extend(self.structural_matcher.match(
-                indexed_documents=self.indexed_documents,
+                document_labels_to_documents=self.document_labels_to_documents,
+                corpus_index_dict=self.corpus_index_dict,
                 search_phrases=phraselet_labels_to_search_phrases.values(),
-                output_document_matching_message_to_console=False,
                 match_depending_on_single_words=False,
                 compare_embeddings_on_root_words=True,
                 compare_embeddings_on_non_root_words=False,
-                document_labels_to_indexes_for_reverse_matching_sets=
-                parent_document_labels_to_indexes_for_direct_retry_sets,
-                document_labels_to_indexes_for_embedding_reverse_matching_sets=
-                parent_document_labels_to_indexes_for_embedding_retry_sets,
+                reverse_matching_corpus_word_positions=
+                parent_direct_retry_corpus_word_positions,
+                embedding_reverse_matching_corpus_word_positions=
+                parent_embedding_retry_corpus_word_positions,
                 document_label_filter=self.document_label_filter))
 
-        if len(child_document_labels_to_indexes_for_embedding_retry_sets) > 0:
-
+        if len(child_embedding_retry_corpus_word_positions) > 0:
             # Retry normal matching at selected indexes with embedding-based matching on children
             structural_matches.extend(self.structural_matcher.match(
-                indexed_documents=self.indexed_documents,
+                document_labels_to_documents=self.document_labels_to_documents,
+                corpus_index_dict=self.corpus_index_dict,
                 search_phrases=phraselet_labels_to_search_phrases.values(),
-                output_document_matching_message_to_console=False,
                 match_depending_on_single_words=False,
                 compare_embeddings_on_root_words=False,
                 compare_embeddings_on_non_root_words=True,
-                document_labels_to_indexes_for_reverse_matching_sets=None,
-                document_labels_to_indexes_for_embedding_reverse_matching_sets=
-                child_document_labels_to_indexes_for_embedding_retry_sets,
+                reverse_matching_corpus_word_positions=None,
+                embedding_reverse_matching_corpus_word_positions=
+                child_embedding_retry_corpus_word_positions,
                 document_label_filter=self.document_label_filter))
-        if len(parent_document_labels_to_indexes_for_direct_retry_sets) > 0 or \
-                len(parent_document_labels_to_indexes_for_embedding_retry_sets) > 0 or \
-                len(child_document_labels_to_indexes_for_embedding_retry_sets) > 0:
+        if len(parent_direct_retry_corpus_word_positions) > 0 or \
+                len(parent_embedding_retry_corpus_word_positions) > 0 or \
+                len(child_embedding_retry_corpus_word_positions) > 0:
             self.rebuild_document_info_dict(structural_matches, phraselet_labels_to_phraselet_infos)
         structural_matches = list(filter(self.filter_superfluous_matches, structural_matches))
         phraselet_labels_to_frequency_factors = {info.label: info.frequency_factor for info
@@ -253,17 +238,17 @@ class TopicMatcher:
 
     def get_indexes_for_reverse_matching(
             self, *, phraselet, phraselet_info,
-            parent_document_labels_to_indexes_for_direct_retry_sets,
-            parent_document_labels_to_indexes_for_embedding_retry_sets,
-            child_document_labels_to_indexes_for_embedding_retry_sets):
+            parent_direct_retry_corpus_word_positions,
+            parent_embedding_retry_corpus_word_positions,
+            child_embedding_retry_corpus_word_positions):
         """
-        parent_document_labels_to_indexes_for_direct_retry_sets -- indexes where matching
-            against a reverse matching phraselet should be attempted. These are ascertained
-            by examining the child words.
-        parent_document_labels_to_indexes_for_embedding_retry_sets -- indexes where matching
+        parent_direct_retry_corpus_word_positions -- indexes where matching against a reverse
+            matching phraselet should be attempted. These are ascertained by examining the child
+            words.
+        parent_embedding_retry_corpus_word_positions -- indexes where matching
             against a phraselet should be attempted with embedding-based matching on the
             parent (root) word. These are ascertained by examining the child words.
-        child_document_labels_to_indexes_for_embedding_retry_sets -- indexes where matching
+        child_embedding_retry_corpus_word_positions -- indexes where matching
             against a phraselet should be attempted with embedding-based matching on the
             child (non-root) word. These are ascertained by examining the parent words.
         """
@@ -286,13 +271,9 @@ class TopicMatcher:
                 parent_relation_match_corpus_words = []
             if phraselet_info.parent_frequency_factor >= \
                     self.embedding_matching_frequency_threshold:
-                for corpus_word_position in parent_single_word_match_corpus_words.difference(
-                        parent_relation_match_corpus_words):
-                    self._add_to_dict_set(
-                        child_document_labels_to_indexes_for_embedding_retry_sets,
-                        corpus_word_position.document_label, Index(
-                            corpus_word_position.index.token_index,
-                            corpus_word_position.index.subword_index))
+                child_embedding_retry_corpus_word_positions.update(cwp for cwp in
+                    parent_single_word_match_corpus_words.difference(
+                    parent_relation_match_corpus_words))
         child_token = [token for token in phraselet.matchable_tokens if token.i !=
                        parent_token.i][0]
         child_word = child_token._.holmes.lemma_or_derived_lemma()
@@ -309,19 +290,19 @@ class TopicMatcher:
                 child_relation_match_corpus_words = []
 
             if phraselet_info.child_frequency_factor >= self.embedding_matching_frequency_threshold:
-                set_to_add_to = parent_document_labels_to_indexes_for_embedding_retry_sets
+                set_to_add_to = parent_embedding_retry_corpus_word_positions
             elif phraselet_info.child_frequency_factor >= \
                     self.relation_matching_frequency_threshold \
                     and (phraselet.reverse_only or
                     phraselet.treat_as_reverse_only_during_initial_relation_matching):
-                set_to_add_to = parent_document_labels_to_indexes_for_direct_retry_sets
+                set_to_add_to = parent_direct_retry_corpus_word_positions
             else:
                 return
             linking_dependency = parent_token._.holmes.get_label_of_dependency_with_child_index(
                 child_token.i)
             for corpus_word_position in child_single_word_match_corpus_words.difference(
                     child_relation_match_corpus_words):
-                doc = self.indexed_documents[corpus_word_position.document_label].doc
+                doc = self.document_labels_to_documents[corpus_word_position.document_label]
                 working_index = corpus_word_position.index
                 working_token = doc[working_index.token_index]
                 if not working_index.is_subword() or \
@@ -332,10 +313,10 @@ class TopicMatcher:
                                 search_phrase_dependency_label=linking_dependency,
                                 document_dependency_label=parent_dependency[1],
                                 inverse_polarity=False):
-                            self._add_to_dict_set(
-                                set_to_add_to,
-                                corpus_word_position.document_label,
-                                Index(parent_dependency[0], None))
+                            working_index = Index(parent_dependency[0], None)
+                            working_cwp = CorpusWordPosition(corpus_word_position.document_label,
+                                working_index)
+                            set_to_add_to.add(working_cwp)
                     for child_dependency in \
                             working_token._.holmes.coreference_linked_child_dependencies:
                         if self.structural_matcher.use_reverse_dependency_matching and \
@@ -343,10 +324,10 @@ class TopicMatcher:
                                 search_phrase_dependency_label=linking_dependency,
                                 document_dependency_label=child_dependency[1],
                                 inverse_polarity=True):
-                            self._add_to_dict_set(
-                                set_to_add_to,
-                                corpus_word_position.document_label,
-                                Index(child_dependency[0], None))
+                            working_index = Index(child_dependency[0], None)
+                            working_cwp = CorpusWordPosition(corpus_word_position.document_label,
+                                working_index)
+                            set_to_add_to.add(working_cwp)
                 else:
                     working_subword = \
                         working_token._.holmes.subwords[working_index.subword_index]
@@ -355,22 +336,22 @@ class TopicMatcher:
                             document_dependency_label=
                             working_subword.governing_dependency_label,
                             inverse_polarity=False):
-                        self._add_to_dict_set(
-                            set_to_add_to,
-                            corpus_word_position.document_label,
-                            Index(working_index.token_index,
-                                  working_subword.governor_index))
+                        working_index = Index(working_index.token_index,
+                            working_subword.governor_index)
+                        working_cwp = CorpusWordPosition(corpus_word_position.document_label,
+                            working_index)
+                        set_to_add_to.add(working_cwp)
                     if self.structural_matcher.use_reverse_dependency_matching and \
                             self.semantic_matching_helper.dependency_labels_match(
                             search_phrase_dependency_label=linking_dependency,
                             document_dependency_label=
                             working_subword.dependency_label,
                             inverse_polarity=True):
-                        self._add_to_dict_set(
-                            set_to_add_to,
-                            corpus_word_position.document_label,
-                            Index(working_index.token_index,
-                                  working_subword.dependent_index))
+                        working_index = Index(working_index.token_index,
+                            working_subword.dependent_index)
+                        working_cwp = CorpusWordPosition(corpus_word_position.document_label,
+                            working_index)
+                        set_to_add_to.add(working_cwp)
 
     def rebuild_document_info_dict(self, matches, phraselet_labels_to_phraselet_infos):
 
@@ -775,7 +756,7 @@ class TopicMatcher:
                 start_index, end_index = alter_start_and_end_indexes_for_match(
                     start_index, end_index,
                     position_sorted_structural_matches[next_index_within_list])
-            working_document = self.indexed_documents[score_sorted_match.document_label].doc
+            working_document = self.document_labels_to_documents[score_sorted_match.document_label]
             relevant_sentences = [
                 sentence for sentence in working_document.sents
                 if sentence.end > start_index and sentence.start <= end_index]
@@ -829,7 +810,7 @@ class TopicMatcher:
 
         topic_match_dicts = []
         for topic_match_counter, topic_match in enumerate(self.topic_matches):
-            doc = self.indexed_documents[topic_match.document_label].doc
+            doc = self.document_labels_to_documents[topic_match.document_label]
             sentences_character_start_index_in_document = doc[topic_match.sentences_start_index].idx
             sentences_character_end_index_in_document = doc[topic_match.sentences_end_index].idx + \
                 len(doc[topic_match.sentences_end_index].text)
