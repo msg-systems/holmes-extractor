@@ -919,27 +919,3 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "He saw his son, who was excited.")
         self.assertEqual(len(matches), 1)
-
-    def test_question_word_initial(self):
-        doc = nocoref_holmes_manager.nlp("Whom did you talk to?")
-        self.assertTrue(nocoref_holmes_manager.semantic_analyzer.is_question(doc))
-
-    def test_question_word_after_preposition(self):
-        doc = nocoref_holmes_manager.nlp("To whom did you talk?")
-        self.assertTrue(nocoref_holmes_manager.semantic_analyzer.is_question(doc))
-
-    def test_question_word_after_double_preposition(self):
-        doc = nocoref_holmes_manager.nlp("Because of whom did you come?")
-        self.assertTrue(nocoref_holmes_manager.semantic_analyzer.is_question(doc))
-
-    def test_question_word_in_complex_phrase(self):
-        doc = nocoref_holmes_manager.nlp("On the basis of what information did you come?")
-        self.assertTrue(nocoref_holmes_manager.semantic_analyzer.is_question(doc))
-
-    def test_question_word_control_1(self):
-        doc = nocoref_holmes_manager.nlp(". Whom did you talk to?")
-        self.assertFalse(nocoref_holmes_manager.semantic_analyzer.is_question(doc))
-
-    def test_question_word_control_2(self):
-        doc = nocoref_holmes_manager.nlp("You came because of whom?")
-        self.assertFalse(nocoref_holmes_manager.semantic_analyzer.is_question(doc))

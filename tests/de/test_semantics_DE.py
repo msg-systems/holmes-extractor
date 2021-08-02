@@ -2193,3 +2193,25 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'messer')
         self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'nahrung')
         self.assertEqual(doc[2]._.holmes.subwords[1].lemma, 'teller')
+
+    def test_question_word_initial(self):
+        doc = nlp("Wem hast Du geholfen?")
+        self.assertTrue(doc[0]._.holmes.is_initial_question_word)
+
+    def test_question_word_after_preposition(self):
+        doc = nlp("Mit wem hast Du gesprochen?")
+        self.assertTrue(doc[1]._.holmes.is_initial_question_word)
+
+    def test_question_word_in_complex_phrase(self):
+        doc = nlp("Auf der Basis welcher Information bist Du gekommen?")
+        self.assertTrue(doc[3]._.holmes.is_initial_question_word)
+
+    def test_question_word_control_1(self):
+        doc = nlp(". Wem hast Du geholfen?")
+        for token in doc:
+            self.assertFalse(token._.holmes.is_initial_question_word)
+
+    def test_question_word_control_2(self):
+        doc = nlp("Du bist gekommen wegen wem?")
+        for token in doc:
+            self.assertFalse(token._.holmes.is_initial_question_word)

@@ -291,6 +291,7 @@ class HolmesDictionary:
         self.is_involved_in_or_conjunction = False
         self.is_negated = None
         self.is_matchable = None
+        self.is_initial_question_word = False
         self.coreference_linked_child_dependencies = [] # list of [index, label] specifications of
         # dependencies where this token is the parent, taking any coreference resolution into
         # account. Used in topic matching.
@@ -657,7 +658,8 @@ class SemanticAnalyzer(ABC):
         for token in spacy_doc:
             self.set_negation(token)
         for token in spacy_doc:
-            self._initialize_semantic_dependencies(token)
+            self.initialize_semantic_dependencies(token)
+        self.set_initial_question_words(spacy_doc)
         for token in spacy_doc:
             self.mark_if_righthand_sibling(token)
             token._.holmes.token_or_lefthand_sibling_index = self._lefthand_sibling_recursively(
@@ -838,11 +840,27 @@ class SemanticAnalyzer(ABC):
     def language_specific_derived_holmes_lemma(self, token, lemma):
         pass
 
-    def _initialize_semantic_dependencies(self, token):
+    def initialize_semantic_dependencies(self, token):
         for child in (
                 child for child in token.children if child.dep_ != 'punct' and
                 child.tag_ not in self.semantic_dependency_excluded_tags):
             token._.holmes.children.append(SemanticDependency(token.i, child.i, child.dep_))
+
+    def set_initial_question_words(self, doc:Doc):
+        """ True on a token that represents an interrogative pronoun within an initial phrase. """
+        initial_sentence = next(doc.sents, None)
+        if initial_sentence is not None:
+            visited = set()
+            working_first_phrase_head = doc[0]
+            while working_first_phrase_head.head is not None and not \
+                    working_first_phrase_head.head.pos_ in ('VERB', 'AUX') \
+                    and not working_first_phrase_head.head in visited:
+                visited.add(working_first_phrase_head)
+                working_first_phrase_head = working_first_phrase_head.head
+            for token in initial_sentence:
+                if token.tag_ in self.interrogative_pronoun_tags and \
+                        token in working_first_phrase_head.subtree:
+                    token._.holmes.is_initial_question_word = True
 
     def mark_if_righthand_sibling(self, token):
         if token.dep_ in self.sibling_marker_deps:  # i.e. is righthand sibling
@@ -1069,20 +1087,6 @@ class SemanticAnalyzer(ABC):
                     linked_child._.holmes.coreference_linked_parent_dependencies.append([
                         token.i, child_dependency.label])
 
-    def is_question(self, doc):
-        """ Return *True* if *doc* begins with an interrogative phrase. """
-        visited = set()
-        working_first_phrase_head = doc[0]
-        while working_first_phrase_head.head is not None and not \
-                working_first_phrase_head.head.pos_ in ('VERB', 'AUX') \
-                and not working_first_phrase_head.head in visited:
-            visited.add(working_first_phrase_head)
-            working_first_phrase_head = working_first_phrase_head.head
-        for working_token in working_first_phrase_head.subtree:
-            if working_token.tag_ in self.interrogative_pronoun_tags:
-                return True
-        return False
-
 class LinguisticObjectFactory:
 
     def __init__(
@@ -1119,7 +1123,7 @@ class LinguisticObjectFactory:
             replace_with_hypernym_ancestors, match_all_words,
             ignore_relation_phraselets, include_reverse_only, stop_lemmas, stop_tags,
             reverse_only_parent_lemmas, words_to_corpus_frequencies, maximum_corpus_frequency,
-            process_question_words):
+            process_initial_question_words):
         """ Creates topic matching phraselets extracted from a matching text.
 
         Properties:
@@ -1145,7 +1149,7 @@ class LinguisticObjectFactory:
         words_to_corpus_frequencies -- a dictionary from words to the number of times each
             word occurs in the indexed documents.
         maximum_corpus_frequency -- the maximum value within *words_to_corpus_frequencies*.
-        process_question_words -- *True* if interrogative pronouns are permitted within phraselets.
+        process_initial_question_words -- *True* if interrogative pronouns are permitted within phraselets.
         """
 
         index_to_lemmas_cache = {}
@@ -1379,8 +1383,8 @@ class LinguisticObjectFactory:
                                     phraselet_template.child_tags and \
                                     doc[parent.token_index]._.holmes.is_matchable and \
                                     (doc[child.token_index]._.holmes.is_matchable or
-                                    (process_question_words and doc[child.token_index].tag_ in
-                                    self.semantic_analyzer.interrogative_pronoun_tags)):
+                                    (process_initial_question_words and
+                                    doc[child.token_index]._.holmes.is_initial_question_word)):
                                 phraselet_doc = self.semantic_analyzer.parse(
                                     phraselet_template.template_sentence)
                                 if parent.token_index in token_indexes_to_multiword_lemmas:
@@ -1571,7 +1575,7 @@ class LinguisticObjectFactory:
                         break
 
     def get_phraselet_labels_to_phraselet_infos(self, *, text_to_match_doc,
-            words_to_corpus_frequencies, maximum_corpus_frequency, process_question_words):
+            words_to_corpus_frequencies, maximum_corpus_frequency, process_initial_question_words):
         phraselet_labels_to_phraselet_infos = {}
         self.add_phraselets_to_dict(
             text_to_match_doc,
@@ -1586,7 +1590,7 @@ class LinguisticObjectFactory:
             self.semantic_matching_helper.topic_matching_reverse_only_parent_lemmas,
             words_to_corpus_frequencies=words_to_corpus_frequencies,
             maximum_corpus_frequency=maximum_corpus_frequency,
-            process_question_words=process_question_words)
+            process_initial_question_words=process_initial_question_words)
 
         # now add the single word phraselets whose tags did not match.
         self.add_phraselets_to_dict(
@@ -1603,14 +1607,14 @@ class LinguisticObjectFactory:
             self.semantic_matching_helper.topic_matching_reverse_only_parent_lemmas,
             words_to_corpus_frequencies=words_to_corpus_frequencies,
             maximum_corpus_frequency=maximum_corpus_frequency,
-            process_question_words=False)
+            process_initial_question_words=False)
         return phraselet_labels_to_phraselet_infos
 
     def create_search_phrase(
             self, search_phrase_text, search_phrase_doc,
             label, phraselet_template, topic_match_phraselet_created_without_matching_tags,
             treat_as_reverse_only_during_initial_relation_matching,
-            is_reverse_only_parent_lemma, process_question_words):
+            is_reverse_only_parent_lemma, process_initial_question_words):
         """phraselet_template -- 'None' if this search phrase is not a topic match phraselet"""
 
         def replace_grammatical_root_token_recursively(token):
@@ -1700,7 +1704,7 @@ class LinguisticObjectFactory:
                             working_lexeme.vector
                     else:
                         matchable_non_entity_tokens_to_vectors[token.i] = None
-            if process_question_words and token.tag_ in \
+            if process_initial_question_words and token.tag_ in \
                     self.semantic_analyzer.interrogative_pronoun_tags:
                 tokens_to_match.append(token)
                 matchable_non_entity_tokens_to_vectors[token.i] = None

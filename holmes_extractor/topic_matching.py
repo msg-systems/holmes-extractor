@@ -106,6 +106,7 @@ class TopicMatcher:
             text_to_match, phraselet_labels_to_phraselet_infos, phraselet_labels_to_search_phrases,
             maximum_activation_distance, relation_score,
             reverse_only_relation_score, single_word_score, single_word_any_tag_score,
+            question_word_answer_score, match_question_words,
             different_match_cutoff_score, overlapping_relation_multiplier, embedding_penalty,
             ontology_penalty, relation_matching_frequency_threshold,
             embedding_matching_frequency_threshold, sideways_match_extent,
@@ -123,6 +124,8 @@ class TopicMatcher:
         self.reverse_only_relation_score = reverse_only_relation_score
         self.single_word_score = single_word_score
         self.single_word_any_tag_score = single_word_any_tag_score
+        self.question_word_answer_score = question_word_answer_score
+        self.match_question_words = match_question_words
         self.different_match_cutoff_score = different_match_cutoff_score
         self.overlapping_relation_multiplier = overlapping_relation_multiplier
         self.embedding_penalty = embedding_penalty
@@ -146,6 +149,7 @@ class TopicMatcher:
             compare_embeddings_on_non_root_words=False,
             reverse_matching_corpus_word_positions=None,
             embedding_reverse_matching_corpus_word_positions=None,
+            match_question_words=None,
             document_label_filter=self.document_label_filter)
 
         # Now get normally matched relations
@@ -158,6 +162,7 @@ class TopicMatcher:
             compare_embeddings_on_non_root_words=False,
             reverse_matching_corpus_word_positions=None,
             embedding_reverse_matching_corpus_word_positions=None,
+            match_question_words=match_question_words,
             document_label_filter=self.document_label_filter))
 
         self.rebuild_document_info_dict(structural_matches, phraselet_labels_to_phraselet_infos)
@@ -192,6 +197,7 @@ class TopicMatcher:
                 parent_direct_retry_corpus_word_positions,
                 embedding_reverse_matching_corpus_word_positions=
                 parent_embedding_retry_corpus_word_positions,
+                match_question_words=match_question_words,
                 document_label_filter=self.document_label_filter))
 
         if len(child_embedding_retry_corpus_word_positions) > 0:
@@ -206,6 +212,7 @@ class TopicMatcher:
                 reverse_matching_corpus_word_positions=None,
                 embedding_reverse_matching_corpus_word_positions=
                 child_embedding_retry_corpus_word_positions,
+                match_question_words=match_question_words,
                 document_label_filter=self.document_label_filter))
         if len(parent_direct_retry_corpus_word_positions) > 0 or \
                 len(parent_embedding_retry_corpus_word_positions) > 0 or \
@@ -221,6 +228,7 @@ class TopicMatcher:
                 match.get_subword_index_for_sorting(), match.from_single_word_phraselet))
         position_sorted_structural_matches = self.remove_duplicates(
             position_sorted_structural_matches)
+
         # Read through the documents measuring the activation based on where
         # in the document structural matches were found
         score_sorted_structural_matches = self.perform_activation_scoring(

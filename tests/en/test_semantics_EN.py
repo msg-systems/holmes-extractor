@@ -947,3 +947,29 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
     def test_predicative_adjective_in_relative_clause(self):
         doc = nlp("He saw his son, who was sad.")
         self.assertEqual(doc[3]._.holmes.string_representation_of_children(), '2:poss; 6:relcl; 7:amod')
+
+    def test_question_word_initial(self):
+        doc = nlp("Whom did you talk to?")
+        self.assertTrue(doc[0]._.holmes.is_initial_question_word)
+
+    def test_question_word_after_preposition(self):
+        doc = nlp("To whom did you talk?")
+        self.assertTrue(doc[1]._.holmes.is_initial_question_word)
+
+    def test_question_word_after_double_preposition(self):
+        doc = nlp("Because of whom did you come?")
+        self.assertTrue(doc[2]._.holmes.is_initial_question_word)
+
+    def test_question_word_in_complex_phrase(self):
+        doc = nlp("On the basis of what information did you come?")
+        self.assertTrue(doc[4]._.holmes.is_initial_question_word)
+
+    def test_question_word_control_1(self):
+        doc = nlp(". Whom did you talk to?")
+        for token in doc:
+            self.assertFalse(token._.holmes.is_initial_question_word)
+
+    def test_question_word_control_2(self):
+        doc = nlp("You came because of whom?")
+        for token in doc:
+            self.assertFalse(token._.holmes.is_initial_question_word)

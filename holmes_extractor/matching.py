@@ -937,6 +937,7 @@ class StructuralMatcher:
             compare_embeddings_on_non_root_words,
             reverse_matching_corpus_word_positions,
             embedding_reverse_matching_corpus_word_positions,
+            match_question_words,
             document_label_filter=None):
         """Finds and returns matches between search phrases and documents.
         match_depending_on_single_words -- 'True' to match only single word search phrases,

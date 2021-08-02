@@ -421,7 +421,7 @@ class Manager:
             self, text_to_match, *, use_frequency_factor=True, maximum_activation_distance=75,
             relation_score=300, reverse_only_relation_score=200,
             single_word_score=50, single_word_any_tag_score=20, question_word_answer_score=None,
-            question_word_matching='answer', different_match_cutoff_score=15,
+            match_question_words=True, different_match_cutoff_score=15,
             overlapping_relation_multiplier=1.5, embedding_penalty=0.6,
             ontology_penalty=0.9,
             relation_matching_frequency_threshold=0.5, embedding_matching_frequency_threshold=0.75,
@@ -449,11 +449,8 @@ class Manager:
             whose tag did not correspond to the template specification.
         question_word_answer_score -- the activation score added when a question word is matched
             to an answering phrase. Set to the value of *relation_score* if not supplied.
-        question_word_matching -- 'answer' if a question word at the beginning of *text_to_match*
-            is to be matched to document phrases that answer it; *direct* if a question word at
-            the beginning of 'text_to_match' is to be matched to corresponding question words in
-            documents; None if a question word at the beginning of *text_to_match* is to be
-            ignored.
+        match_question_words -- *True* if a question word in the sentence constinuent at the
+            beginning of *text_to_match* is to be matched to document phrases that answer it.
         different_match_cutoff_score -- the activation threshold under which topic matches are
             separated from one another. Note that the default value will probably be too low if
             *use_frequency_factor* is set to *False*.
@@ -490,9 +487,9 @@ class Manager:
                 relation_matching_frequency_threshold > 1.0:
             raise ValueError(': '.join(('relation_matching_frequency_threshold',
                 str(relation_matching_frequency_threshold))))
-        if question_word_matching != 'answer' and question_word_answer_score is not None:
-            raise ValueError("question_word_answer_score may not be set if "
-                "question_word_matching is not set to 'answer'.")
+        if match_question_words and question_word_answer_score is not None:
+            raise ValueError('question_word_answer_score may not be set if '
+                'match_question_words is not set to True.')
         self.question_word_answer_score = question_word_answer_score \
             if question_word_answer_score is not None else relation_score
         if embedding_matching_frequency_threshold < relation_matching_frequency_threshold:
@@ -514,8 +511,7 @@ class Manager:
             text_to_match_doc=text_to_match_doc,
             words_to_corpus_frequencies=words_to_corpus_frequencies,
             maximum_corpus_frequency=maximum_corpus_frequency,
-            process_question_words=question_word_matching is not None and
-            self.semantic_analyzer.is_question(text_to_match_doc))
+            process_initial_question_words=match_question_words)
         if len(phraselet_labels_to_phraselet_infos) == 0:
             return []
         phraselet_labels_to_search_phrases = \
@@ -530,7 +526,7 @@ class Manager:
                 (text_to_match, phraselet_labels_to_phraselet_infos,
                 phraselet_labels_to_search_phrases, maximum_activation_distance,
                 relation_score, reverse_only_relation_score, single_word_score,
-                single_word_any_tag_score, question_word_answer_score, question_word_matching,
+                single_word_any_tag_score, question_word_answer_score, match_question_words,
                 different_match_cutoff_score, overlapping_relation_multiplier, embedding_penalty,
                 ontology_penalty, relation_matching_frequency_threshold,
                 embedding_matching_frequency_threshold, sideways_match_extent,
@@ -752,7 +748,8 @@ class Worker:
                 embedding_based_matching_on_root_words,
                 compare_embeddings_on_non_root_words=True,
                 reverse_matching_corpus_word_positions=None,
-                embedding_reverse_matching_corpus_word_positions=None)
+                embedding_reverse_matching_corpus_word_positions=None,
+                match_question_words=False)
             return state['structural_matcher'].build_match_dictionaries(matches), \
                 'Returned matches'
         else:
@@ -762,7 +759,7 @@ class Worker:
             phraselet_labels_to_phraselet_infos, phraselet_labels_to_search_phrases,
             maximum_activation_distance, relation_score, reverse_only_relation_score,
             single_word_score, single_word_any_tag_score, question_word_answer_score,
-            question_word_matching, different_match_cutoff_score,
+            match_question_words, different_match_cutoff_score,
             overlapping_relation_multiplier, embedding_penalty, ontology_penalty,
             relation_matching_frequency_threshold,
             embedding_matching_frequency_threshold,
@@ -784,6 +781,8 @@ class Worker:
             reverse_only_relation_score=reverse_only_relation_score,
             single_word_score=single_word_score,
             single_word_any_tag_score=single_word_any_tag_score,
+            question_word_answer_score=question_word_answer_score,
+            match_question_words=match_question_words,
             different_match_cutoff_score=different_match_cutoff_score,
             overlapping_relation_multiplier=overlapping_relation_multiplier,
             embedding_penalty=embedding_penalty,

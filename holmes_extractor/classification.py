@@ -142,7 +142,8 @@ class SupervisedTopicTrainingUtils:
                         compare_embeddings_on_root_words=False,
                         compare_embeddings_on_non_root_words=True,
                         reverse_matching_corpus_word_positions=None,
-                        embedding_reverse_matching_corpus_word_positions=None),
+                        embedding_reverse_matching_corpus_word_positions=None,
+                        match_question_words=False),
                     labels_to_classifications_dict=None
                 ).items():
             if self.oneshot:
@@ -239,7 +240,7 @@ class SupervisedTopicTrainingBasis:
             reverse_only_parent_lemmas=None,
             words_to_corpus_frequencies=None,
             maximum_corpus_frequency=None,
-            process_question_words=False)
+            process_initial_question_words=False)
         self.training_documents_labels_to_classifications_dict[label] = classification
 
     def register_additional_classification_label(self, label):
@@ -281,7 +282,8 @@ class SupervisedTopicTrainingBasis:
                     compare_embeddings_on_root_words=False,
                     compare_embeddings_on_non_root_words=True,
                     reverse_matching_corpus_word_positions=None,
-                    embedding_reverse_matching_corpus_word_positions=None),
+                    embedding_reverse_matching_corpus_word_positions=None,
+                    match_question_words=False),
                 labels_to_classifications_dict=
                 self.training_documents_labels_to_classifications_dict)
         self.classifications = sorted(set(

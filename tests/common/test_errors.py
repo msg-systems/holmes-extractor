@@ -249,4 +249,4 @@ class ErrorsTest(unittest.TestCase):
             m = holmes.Manager('en_core_web_sm', number_of_workers=1)
             m.parse_and_register_document("a")
             coref_holmes_manager.topic_match_documents_against("b",
-                                                                                      relation_matching_frequency_threshold=0.75, embedding_matching_frequency_threshold=0.5, question_word_answer_score=15, question_word_matching='direct')
+                                                                                      relation_matching_frequency_threshold=0.75, embedding_matching_frequency_threshold=0.5, question_word_answer_score=15, match_question_words='direct')
