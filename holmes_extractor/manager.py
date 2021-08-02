@@ -19,7 +19,7 @@ from .classification import SupervisedTopicTrainingBasis, SupervisedTopicClassif
 from .topic_matching import TopicMatcher, TopicMatchDictionaryOrderer
 from .consoles import HolmesConsoles
 
-TIMEOUT_SECONDS = 300
+TIMEOUT_SECONDS = 60
 
 absolute_config_filename = pkg_resources.resource_filename(__name__, 'config.cfg')
 config = Config().from_disk(absolute_config_filename)
@@ -128,7 +128,7 @@ class Manager:
         if number_of_workers is None:
             number_of_workers = cpu_count()
         elif not 0 < number_of_workers:
-            raise ValueError('number_of_workers must be a postitive integer.')
+            raise ValueError('number_of_workers must be a positive integer.')
         self.number_of_workers = number_of_workers
         self.next_worker_to_use = 0
         self.multiprocessing_manager = MultiprocessingManager()
@@ -291,7 +291,7 @@ class Manager:
             label = search_phrase_text
         search_phrase_doc = self.nlp(search_phrase_text)
         search_phrase = self.linguistic_object_factory.create_search_phrase(
-            search_phrase_text, search_phrase_doc, label, None, False, False)
+            search_phrase_text, search_phrase_doc, label, None, False, False, False, False)
         return search_phrase
 
     def register_search_phrase(self, search_phrase_text, label=None):
@@ -420,7 +420,8 @@ class Manager:
     def topic_match_documents_against(
             self, text_to_match, *, use_frequency_factor=True, maximum_activation_distance=75,
             relation_score=300, reverse_only_relation_score=200,
-            single_word_score=50, single_word_any_tag_score=20, different_match_cutoff_score=15,
+            single_word_score=50, single_word_any_tag_score=20, question_word_answer_score=None,
+            question_word_matching='answer', different_match_cutoff_score=15,
             overlapping_relation_multiplier=1.5, embedding_penalty=0.6,
             ontology_penalty=0.9,
             relation_matching_frequency_threshold=0.5, embedding_matching_frequency_threshold=0.75,
@@ -446,6 +447,13 @@ class Manager:
             word is matched.
         single_word_any_tag_score -- the activation score added when a single word is matched
             whose tag did not correspond to the template specification.
+        question_word_answer_score -- the activation score added when a question word is matched
+            to an answering phrase. Set to the value of *relation_score* if not supplied.
+        question_word_matching -- 'answer' if a question word at the beginning of *text_to_match*
+            is to be matched to document phrases that answer it; *direct* if a question word at
+            the beginning of 'text_to_match' is to be matched to corresponding question words in
+            documents; None if a question word at the beginning of *text_to_match* is to be
+            ignored.
         different_match_cutoff_score -- the activation threshold under which topic matches are
             separated from one another. Note that the default value will probably be too low if
             *use_frequency_factor* is set to *False*.
@@ -482,6 +490,11 @@ class Manager:
                 relation_matching_frequency_threshold > 1.0:
             raise ValueError(': '.join(('relation_matching_frequency_threshold',
                 str(relation_matching_frequency_threshold))))
+        if question_word_matching != 'answer' and question_word_answer_score is not None:
+            raise ValueError("question_word_answer_score may not be set if "
+                "question_word_matching is not set to 'answer'.")
+        self.question_word_answer_score = question_word_answer_score \
+            if question_word_answer_score is not None else relation_score
         if embedding_matching_frequency_threshold < relation_matching_frequency_threshold:
             raise EmbeddingThresholdLessThanRelationThresholdError(' '.join((
                 'embedding',
@@ -500,7 +513,9 @@ class Manager:
             self.linguistic_object_factory.get_phraselet_labels_to_phraselet_infos(
             text_to_match_doc=text_to_match_doc,
             words_to_corpus_frequencies=words_to_corpus_frequencies,
-            maximum_corpus_frequency=maximum_corpus_frequency)
+            maximum_corpus_frequency=maximum_corpus_frequency,
+            process_question_words=question_word_matching is not None and
+            self.semantic_analyzer.is_question(text_to_match_doc))
         if len(phraselet_labels_to_phraselet_infos) == 0:
             return []
         phraselet_labels_to_search_phrases = \
@@ -515,11 +530,12 @@ class Manager:
                 (text_to_match, phraselet_labels_to_phraselet_infos,
                 phraselet_labels_to_search_phrases, maximum_activation_distance,
                 relation_score, reverse_only_relation_score, single_word_score,
-                single_word_any_tag_score, different_match_cutoff_score,
-                overlapping_relation_multiplier, embedding_penalty, ontology_penalty,
-                relation_matching_frequency_threshold, embedding_matching_frequency_threshold,
-                sideways_match_extent, only_one_result_per_document, number_of_results,
-                document_label_filter, use_frequency_factor), reply_queue), TIMEOUT_SECONDS)
+                single_word_any_tag_score, question_word_answer_score, question_word_matching,
+                different_match_cutoff_score, overlapping_relation_multiplier, embedding_penalty,
+                ontology_penalty, relation_matching_frequency_threshold,
+                embedding_matching_frequency_threshold, sideways_match_extent,
+                only_one_result_per_document, number_of_results, document_label_filter,
+                use_frequency_factor), reply_queue), TIMEOUT_SECONDS)
         worker_topic_match_dictss = self.handle_response(reply_queue,
             self.number_of_workers, 'match')
         topic_match_dicts = []
@@ -745,7 +761,8 @@ class Worker:
     def get_topic_matches(self, state, text_to_match,
             phraselet_labels_to_phraselet_infos, phraselet_labels_to_search_phrases,
             maximum_activation_distance, relation_score, reverse_only_relation_score,
-            single_word_score, single_word_any_tag_score, different_match_cutoff_score,
+            single_word_score, single_word_any_tag_score, question_word_answer_score,
+            question_word_matching, different_match_cutoff_score,
             overlapping_relation_multiplier, embedding_penalty, ontology_penalty,
             relation_matching_frequency_threshold,
             embedding_matching_frequency_threshold,

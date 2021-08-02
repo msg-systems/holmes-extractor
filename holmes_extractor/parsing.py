@@ -3,6 +3,7 @@ import pickle
 import importlib
 from abc import ABC, abstractmethod
 from functools import total_ordering
+from typing import Callable
 import jsonpickle
 import srsly
 import pkg_resources
@@ -12,7 +13,7 @@ from .errors import WrongModelDeserializationError, WrongVersionDeserializationE
         SearchPhraseContainsConjunctionError, SearchPhraseWithoutMatchableWordsError,\
         SearchPhraseContainsMultipleClausesError, SearchPhraseContainsCoreferringPronounError
 
-SERIALIZED_DOCUMENT_VERSION = '3.0'
+SERIALIZED_DOCUMENT_VERSION = '3.1'
 
 class SemanticDependency:
     """A labelled semantic dependency between two tokens."""
@@ -221,6 +222,28 @@ class MatchImplication:
         self.search_phrase_dependency = search_phrase_dependency
         self.document_dependencies = document_dependencies
         self.reverse_document_dependencies = reverse_document_dependencies
+
+class QuestionWordStrategy:
+    """Instructions for recognising a specific question word and for matching it within documents.
+
+        Parameters:
+
+        name -- a human-readable name designed for output within a user interface.
+        lemma -- the Holmes lemma matching question words must have.
+        tag -- the tag matching question words must have.
+        deps -- a list of dependency labels matching question words may have.
+        matcher - a function to determine whether a document token heads a phrase that
+            matches the question word.
+    """
+
+    def __init__(
+        self, *, name:str, lemma:str, tag:str, deps:list[str],
+        matcher:Callable[[Token], bool]):
+        self.name = name
+        self.lemma = lemma
+        self.tag = tag
+        self.deps = deps
+        self.matcher = matcher
 
 class HolmesDocumentInfo:
     def __init__(self, semantic_analyzer):
@@ -735,6 +758,8 @@ class SemanticAnalyzer(ABC):
 
     noun_pos = NotImplemented
 
+    predicate_head_pos = NotImplemented
+
     matchable_pos = NotImplemented
 
     adjectival_predicate_head_pos = NotImplemented
@@ -759,7 +784,7 @@ class SemanticAnalyzer(ABC):
 
     conjunction_deps = NotImplemented
 
-    matchable_blacklist_tags = NotImplemented
+    interrogative_pronoun_tags = NotImplemented
 
     semantic_dependency_excluded_tags = NotImplemented
 
@@ -982,7 +1007,7 @@ class SemanticAnalyzer(ABC):
         token._.holmes.is_matchable = (
             token.pos_ in self.matchable_pos or token._.holmes.is_involved_in_coreference()
             or len(token._.holmes.subwords) > 0) \
-            and token.tag_ not in self.matchable_blacklist_tags and \
+            and token.tag_ not in self.interrogative_pronoun_tags and \
             token._.holmes.lemma not in self.generic_pronoun_lemmas
 
     def move_information_between_tokens(self, from_token, to_token):
@@ -1044,6 +1069,20 @@ class SemanticAnalyzer(ABC):
                     linked_child._.holmes.coreference_linked_parent_dependencies.append([
                         token.i, child_dependency.label])
 
+    def is_question(self, doc):
+        """ Return *True* if *doc* begins with an interrogative phrase. """
+        visited = set()
+        working_first_phrase_head = doc[0]
+        while working_first_phrase_head.head is not None and not \
+                working_first_phrase_head.head.pos_ in ('VERB', 'AUX') \
+                and not working_first_phrase_head.head in visited:
+            visited.add(working_first_phrase_head)
+            working_first_phrase_head = working_first_phrase_head.head
+        for working_token in working_first_phrase_head.subtree:
+            if working_token.tag_ in self.interrogative_pronoun_tags:
+                return True
+        return False
+
 class LinguisticObjectFactory:
 
     def __init__(
@@ -1079,7 +1118,8 @@ class LinguisticObjectFactory:
             self, doc, *, phraselet_labels_to_phraselet_infos,
             replace_with_hypernym_ancestors, match_all_words,
             ignore_relation_phraselets, include_reverse_only, stop_lemmas, stop_tags,
-            reverse_only_parent_lemmas, words_to_corpus_frequencies, maximum_corpus_frequency):
+            reverse_only_parent_lemmas, words_to_corpus_frequencies, maximum_corpus_frequency,
+            process_question_words):
         """ Creates topic matching phraselets extracted from a matching text.
 
         Properties:
@@ -1105,6 +1145,7 @@ class LinguisticObjectFactory:
         words_to_corpus_frequencies -- a dictionary from words to the number of times each
             word occurs in the indexed documents.
         maximum_corpus_frequency -- the maximum value within *words_to_corpus_frequencies*.
+        process_question_words -- *True* if interrogative pronouns are permitted within phraselets.
         """
 
         index_to_lemmas_cache = {}
@@ -1337,7 +1378,9 @@ class LinguisticObjectFactory:
                                     and doc[child.token_index].tag_ in \
                                     phraselet_template.child_tags and \
                                     doc[parent.token_index]._.holmes.is_matchable and \
-                                    doc[child.token_index]._.holmes.is_matchable:
+                                    (doc[child.token_index]._.holmes.is_matchable or
+                                    (process_question_words and doc[child.token_index].tag_ in
+                                    self.semantic_analyzer.interrogative_pronoun_tags)):
                                 phraselet_doc = self.semantic_analyzer.parse(
                                     phraselet_template.template_sentence)
                                 if parent.token_index in token_indexes_to_multiword_lemmas:
@@ -1483,7 +1526,8 @@ class LinguisticObjectFactory:
                         phraselet_info.parent_frequency_factor <
                         reverse_matching_frequency_threshold and
                         phraselet_info.child_lemma is not None,
-                        phraselet_info.reverse_only_parent_lemma)
+                        phraselet_info.reverse_only_parent_lemma,
+                        True)
             raise RuntimeError(''.join((
                 'Phraselet template', phraselet_info.template_label, 'not found.')))
 
@@ -1527,7 +1571,7 @@ class LinguisticObjectFactory:
                         break
 
     def get_phraselet_labels_to_phraselet_infos(self, *, text_to_match_doc,
-            words_to_corpus_frequencies, maximum_corpus_frequency):
+            words_to_corpus_frequencies, maximum_corpus_frequency, process_question_words):
         phraselet_labels_to_phraselet_infos = {}
         self.add_phraselets_to_dict(
             text_to_match_doc,
@@ -1541,7 +1585,8 @@ class LinguisticObjectFactory:
             reverse_only_parent_lemmas=
             self.semantic_matching_helper.topic_matching_reverse_only_parent_lemmas,
             words_to_corpus_frequencies=words_to_corpus_frequencies,
-            maximum_corpus_frequency=maximum_corpus_frequency)
+            maximum_corpus_frequency=maximum_corpus_frequency,
+            process_question_words=process_question_words)
 
         # now add the single word phraselets whose tags did not match.
         self.add_phraselets_to_dict(
@@ -1557,13 +1602,15 @@ class LinguisticObjectFactory:
             reverse_only_parent_lemmas=
             self.semantic_matching_helper.topic_matching_reverse_only_parent_lemmas,
             words_to_corpus_frequencies=words_to_corpus_frequencies,
-            maximum_corpus_frequency=maximum_corpus_frequency)
+            maximum_corpus_frequency=maximum_corpus_frequency,
+            process_question_words=False)
         return phraselet_labels_to_phraselet_infos
 
     def create_search_phrase(
             self, search_phrase_text, search_phrase_doc,
             label, phraselet_template, topic_match_phraselet_created_without_matching_tags,
-            treat_as_reverse_only_during_initial_relation_matching, is_reverse_only_parent_lemma=False):
+            treat_as_reverse_only_during_initial_relation_matching,
+            is_reverse_only_parent_lemma, process_question_words):
         """phraselet_template -- 'None' if this search phrase is not a topic match phraselet"""
 
         def replace_grammatical_root_token_recursively(token):
@@ -1653,6 +1700,10 @@ class LinguisticObjectFactory:
                             working_lexeme.vector
                     else:
                         matchable_non_entity_tokens_to_vectors[token.i] = None
+            if process_question_words and token.tag_ in \
+                    self.semantic_analyzer.interrogative_pronoun_tags:
+                tokens_to_match.append(token)
+                matchable_non_entity_tokens_to_vectors[token.i] = None
             if token.dep_ == 'ROOT': # syntactic root
                 root_tokens.append(replace_grammatical_root_token_recursively(token))
         if len(tokens_to_match) == 0:
@@ -1782,6 +1833,8 @@ class SemanticMatchingHelper(ABC):
     supervised_document_classification_phraselet_stop_lemmas = NotImplemented
 
     match_implication_dict = NotImplemented
+
+    question_word_strategies = NotImplemented
 
     phraselet_templates = NotImplemented
 

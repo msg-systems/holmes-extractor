@@ -238,7 +238,8 @@ class SupervisedTopicTrainingBasis:
             stop_tags=self.semantic_matching_helper.topic_matching_phraselet_stop_tags,
             reverse_only_parent_lemmas=None,
             words_to_corpus_frequencies=None,
-            maximum_corpus_frequency=None)
+            maximum_corpus_frequency=None,
+            process_question_words=False)
         self.training_documents_labels_to_classifications_dict[label] = classification
 
     def register_additional_classification_label(self, label):
@@ -420,7 +421,7 @@ class SupervisedTopicModelTrainer:
         accepted = 0
         underminimum_occurrences = 0
         under_minimum_cv = 0
-        newlabels_to_classification_frequencies = {}
+        new_labels_to_classification_frequencies = {}
         for label, classification_frequencies in labels_to_classification_frequencies.items():
             at_least_minimum = False
             working_classification_frequencies = classification_frequencies.copy()
@@ -442,7 +443,7 @@ class SupervisedTopicModelTrainer:
             if statistics.pstdev(frequency_list) / statistics.mean(frequency_list) >= \
                     self.cv_threshold:
                 accepted += 1
-                newlabels_to_classification_frequencies[label] = classification_frequencies
+                new_labels_to_classification_frequencies[label] = classification_frequencies
             else:
                 under_minimum_cv += 1
         if self.training_basis.verbose:
@@ -450,10 +451,10 @@ class SupervisedTopicModelTrainer:
                 'Filtered: accepted', accepted, '; removed minimum occurrences',
                 underminimum_occurrences, '; removed cv threshold',
                 under_minimum_cv)
-        newphraselet_infos = [
+        new_phraselet_infos = [
             phraselet_info for phraselet_info in phraselet_infos if
-            phraselet_info.label in newlabels_to_classification_frequencies.keys()]
-        return newlabels_to_classification_frequencies, newphraselet_infos
+            phraselet_info.label in new_labels_to_classification_frequencies.keys()]
+        return new_labels_to_classification_frequencies, new_phraselet_infos
 
     def record_classifications_for_training(self, document_label, index):
         classification = self.training_basis.training_documents_labels_to_classifications_dict[

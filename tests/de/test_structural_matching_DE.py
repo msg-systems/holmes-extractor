@@ -1120,3 +1120,23 @@ class GermanStructuralMatchingTest(unittest.TestCase):
         matches = self._get_matches(holmes_manager,
                                     "Ich wohne seit 2010 in München")
         self.assertEqual(len(matches), 1)
+
+    def test_question_word_initial(self):
+        doc = holmes_manager.nlp("Wem hast Du geholfen?")
+        self.assertTrue(holmes_manager.semantic_analyzer.is_question(doc))
+
+    def test_question_word_after_preposition(self):
+        doc = holmes_manager.nlp("Mit wem hast Du gesprochen?")
+        self.assertTrue(holmes_manager.semantic_analyzer.is_question(doc))
+
+    def test_question_word_in_complex_phrase(self):
+        doc = holmes_manager.nlp("Auf der Basis welcher Information bist Du gekommen?")
+        self.assertTrue(holmes_manager.semantic_analyzer.is_question(doc))
+
+    def test_question_word_control_1(self):
+        doc = holmes_manager.nlp(". Wem hast Du geholfen?")
+        self.assertFalse(holmes_manager.semantic_analyzer.is_question(doc))
+
+    def test_question_word_control_2(self):
+        doc = holmes_manager.nlp("Du bist gekommen wegen wem?")
+        self.assertFalse(holmes_manager.semantic_analyzer.is_question(doc))

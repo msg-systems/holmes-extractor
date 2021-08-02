@@ -1,7 +1,7 @@
 from string import punctuation
 from spacy.tokens import Token
 from ...parsing import SemanticAnalyzer, SemanticMatchingHelper, MatchImplication,\
-    PhraseletTemplate, SemanticDependency, Subword
+    QuestionWordStrategy, PhraseletTemplate, SemanticDependency, Subword
 
 class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
 
@@ -10,6 +10,8 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
     noun_pos = ('NOUN', 'PROPN', 'ADJ')
 
     matchable_pos = ('ADJ', 'ADP', 'ADV', 'NOUN', 'NUM', 'PROPN', 'VERB', 'AUX', 'X', 'INTJ')
+
+    predicate_head_pos = ('VERB', 'AUX')
 
     adjectival_predicate_head_pos = ('AUX')
 
@@ -33,7 +35,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
 
     conjunction_deps = ('cj', 'cd', 'punct', 'app')
 
-    matchable_blacklist_tags = ('PWAT', 'PWAV', 'PWS')
+    interrogative_pronoun_tags = ('PWAT', 'PWAV', 'PWS')
 
     semantic_dependency_excluded_tags = ('ART')
 
@@ -1030,10 +1032,29 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             ['NE', 'NNE', 'NN', 'TRUNC', 'ADJA', 'ADJD', 'TRUNC'], reverse_only=False,
             assigned_dependency_label='intcompound'),
         PhraseletTemplate(
+            "head-WH", "wer kam?", 1, 0,
+            ['sb'],
+            ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
+            'NE', 'NNE', 'NN', 'TRUNC', 'ADJA', 'ADJD', 'TRUNC'],
+            ['PWAT', 'PWAV', 'PWS'], reverse_only=False),
+        PhraseletTemplate(
             "word", "Sache", 0, None,
             None,
             ['FM', 'NE', 'NNE', 'NN'],
             None, reverse_only=False)]
+
+    question_word_strategies = [
+        QuestionWordStrategy(
+            name='wer as subject',
+            lemma = 'wer',
+            tag = 'WH',
+            deps = 'sb',
+            matcher = lambda token, question_head_token: \
+                token.pos_ in self.noun_pos and \
+                token.ent_label_ == 'PER' and \
+                self.dependency_labels_match('sb', token.dep_, False)
+        )
+    ]
 
     preferred_phraselet_pos = ('NOUN', 'PROPN')
 

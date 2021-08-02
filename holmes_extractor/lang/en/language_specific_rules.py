@@ -1,5 +1,5 @@
 from ...parsing import SemanticAnalyzer, SemanticMatchingHelper, MatchImplication,\
-    PhraseletTemplate, SemanticDependency
+    QuestionWordStrategy, PhraseletTemplate, SemanticDependency
 
 class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
 
@@ -10,6 +10,9 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
 
     # The part of speech tags that can refer to nouns
     noun_pos = ('NOUN', 'PROPN')
+
+    # The part of speech tags that can refer to predicate heads
+    predicate_head_pos = ('VERB', 'AUX')
 
     # The part of speech tags that require a match in the search sentence when they occur within a
     # search_phrase
@@ -51,7 +54,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
     conjunction_deps = ('conj', 'appos', 'cc')
 
     # Syntactic tags that can mark interrogative pronouns
-    matchable_blacklist_tags = ('WDT', 'WP', 'WRB')
+    interrogative_pronoun_tags = ('WDT', 'WP', 'WRB')
 
     # Syntactic tags that exclude a token from being the child token within a semantic dependency
     semantic_dependency_excluded_tags = ('DT')
@@ -684,12 +687,30 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             ['IN'],
             ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=True),
         PhraseletTemplate(
+            "head-WH", "who came?", 1, 0,
+            ['nsubj'],
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ', 'JJ',
+            'JJR', 'JJS', 'VBN', 'RB', 'RBR', 'RBS'],
+            ['WDT', 'WP', 'WRB'], reverse_only=False),
+        PhraseletTemplate(
             "word", "thing", 0, None,
             None,
             ['FW', 'NN', 'NNP', 'NNPS', 'NNS'],
             None, reverse_only=False)
         ]
 
+    question_word_strategies = [
+        QuestionWordStrategy(
+            name='who as subject',
+            lemma = 'who',
+            tag = 'WH',
+            deps = 'nsubj',
+            matcher = lambda token, question_head_token: \
+                token.pos_ in self.noun_pos and \
+                token.ent_label_ == 'PERSON' and \
+                self.dependency_labels_match('nsubj', token.dep_, False)
+        )
+    ]
     # Parts of speech that are preferred as lemmas within phraselets
     preferred_phraselet_pos = ('NOUN', 'PROPN')
 

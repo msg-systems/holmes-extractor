@@ -11,7 +11,8 @@ holmes_manager = holmes.Manager('de_core_news_lg', ontology=ontology, number_of_
 class GermanPhraseletProductionTest(unittest.TestCase):
 
     def _check_equals(self, text_to_match, phraselet_labels, match_all_words=False,
-                      include_reverse_only=False, replace_with_hypernym_ancestors=False):
+                      include_reverse_only=False, replace_with_hypernym_ancestors=False,
+                      process_question_words=False):
         doc = holmes_manager.semantic_analyzer.parse(text_to_match)
         phraselet_labels_to_phraselet_infos = {}
         holmes_manager.linguistic_object_factory.add_phraselets_to_dict(doc,
@@ -25,7 +26,8 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                                                                  reverse_only_parent_lemmas=holmes_manager.semantic_matching_helper.
                                                                  topic_matching_reverse_only_parent_lemmas,
                                                                  words_to_corpus_frequencies=None,
-                                                                 maximum_corpus_frequency=None)
+                                                                 maximum_corpus_frequency=None,
+                                                                 process_question_words=process_question_words)
         self.assertEqual(
             set(phraselet_labels_to_phraselet_infos.keys()),
             set(phraselet_labels))
@@ -46,7 +48,8 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                                                           stop_lemmas=manager.semantic_matching_helper.topic_matching_phraselet_stop_lemmas,
                                                           stop_tags=manager.semantic_matching_helper.topic_matching_phraselet_stop_tags,
                                                           reverse_only_parent_lemmas=manager.semantic_matching_helper.
-                                                          topic_matching_reverse_only_parent_lemmas,words_to_corpus_frequencies=words_to_corpus_frequencies,                            maximum_corpus_frequency=maximum_corpus_frequency)
+                                                          topic_matching_reverse_only_parent_lemmas,words_to_corpus_frequencies=words_to_corpus_frequencies,                            maximum_corpus_frequency=maximum_corpus_frequency,
+                                                          process_question_words=False)
         return phraselet_labels_to_phraselet_infos
 
     def test_verb_nom(self):
@@ -98,7 +101,8 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                                                                  reverse_only_parent_lemmas=holmes_manager.semantic_matching_helper.
                                                                  topic_matching_reverse_only_parent_lemmas,
                                                                  words_to_corpus_frequencies=None,
-                                                                 maximum_corpus_frequency=None)
+                                                                 maximum_corpus_frequency=None,
+                                                                 process_question_words=False)
         self.assertEqual(set(phraselet_labels_to_phraselet_infos.keys()),
                          set(['verb-nom: gabe-gärtner', 'verb-acc: gabe-mittagessen',
                               'verb-dat: gabe-frau', 'noun-dependent: frau-nett',
@@ -120,7 +124,8 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                                                                  reverse_only_parent_lemmas=holmes_manager.semantic_matching_helper.
                                                                  topic_matching_reverse_only_parent_lemmas,
                                                                 words_to_corpus_frequencies=None,
-                                                                maximum_corpus_frequency=None)
+                                                                maximum_corpus_frequency=None,
+                                                                process_question_words=False)
 
         self.assertEqual(set(phraselet_labels_to_phraselet_infos.keys()),
                          set(['verb-nom: gabe-landschaftsgärtner', 'verb-acc: gabe-mittagessen',
@@ -349,6 +354,18 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                             'word: maßnahm'
                             ],
                            match_all_words=True)
+
+    def test_question_word(self):
+        self._check_equals("Wer kam?",
+                           ['head-WH: kommen-wer'
+                            ],
+                           match_all_words=False, process_question_words=True)
+
+    def test_question_word_control(self):
+        self._check_equals("Wer kam?",
+                           ['word: kommen'
+                            ],
+                           match_all_words=True, process_question_words=False)
 
     def test_noun_lemmas_preferred_noun_lemma_first(self):
         dict = self._get_phraselet_dict(holmes_manager,
