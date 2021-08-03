@@ -756,6 +756,9 @@ class SemanticAnalyzer(ABC):
             working_set.update(mention.indexes)
         token._.holmes.token_and_coreference_chain_indexes.extend(sorted(working_set))
 
+    def model_supports_embeddings(self):
+        return self.vectors_nlp.meta['vectors']['vectors'] > 0
+
     language_name = NotImplemented
 
     noun_pos = NotImplemented
@@ -801,6 +804,8 @@ class SemanticAnalyzer(ABC):
     maximum_word_distance_in_coreference_chain = NotImplemented
 
     sibling_marker_deps = NotImplemented
+
+    entity_labels_to_corresponding_lexemes = NotImplemented
 
     @abstractmethod
     def add_subwords(self, token, subword_cache):
@@ -1090,6 +1095,11 @@ class SemanticAnalyzer(ABC):
                         linked_child.i, child_dependency.label])
                     linked_child._.holmes.coreference_linked_parent_dependencies.append([
                         token.i, child_dependency.label])
+
+    def get_entity_label_to_vector_dict(self):
+        return {label:
+            self.vectors_nlp.vocab[self.entity_labels_to_corresponding_lexemes[label]].vector
+            for label in self.entity_labels_to_corresponding_lexemes}
 
 class LinguisticObjectFactory:
 

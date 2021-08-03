@@ -876,7 +876,7 @@ class TopicMatcher:
                     if word_match.search_phrase_initial_question_word:
                         subtree_without_conjunction = \
                             self.semantic_matching_helper.get_subtree_list_without_conjunction(
-                            word_match.search_phrase_token)
+                            word_match.document_token)
                         answer_relative_start_index = subtree_without_conjunction[0].idx - \
                             sentences_character_start_index_in_document
                         answer_relative_end_index = subtree_without_conjunction[-1].idx + \
@@ -946,11 +946,10 @@ class TopicMatcher:
                             word_info.relative_start_index, word_info.relative_end_index,
                             word_info.word_match_type, word_info.is_highest_activation,
                             word_info.explanation]
-                        for word_info in word_infos]
+                        for word_info in word_infos],
                         # The word infos are labelled by array index alone to prevent the JSON from
-                        # becoming too bloated
+                        # becoming too bloated,
+                    'answers': [[answer[0], answer[1]] for answer in answers]
                 }
-                if len(answers) > 0:
-                    topic_match_dict['answers'] = [[answer[0], answer[1]] for answer in answers]
                 topic_match_dicts.append(topic_match_dict)
         return topic_match_dicts

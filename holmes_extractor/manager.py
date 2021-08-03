@@ -90,12 +90,14 @@ class Manager:
             if not self.nlp.has_pipe('holmes'):
                 self.nlp.add_pipe('holmes')
         self.semantic_analyzer = get_semantic_analyzer(self.nlp)
+        if not self.semantic_analyzer.model_supports_embeddings():
+            overall_similarity_threshold = 1.0
         if overall_similarity_threshold < 0.0 or overall_similarity_threshold > 1.0:
             raise ValueError(
-                'overall_similarity_threshold must be between 0 and 1')
+                'overall_similarity_threshold must be between 0.0 and 1.0')
         if overall_similarity_threshold == 1.0 and embedding_based_matching_on_root_words:
             raise ValueError(
-                'overall_similarity_threshold is 1; embedding_based_matching_on_root_words must '\
+                'overall_similarity_threshold is 1.0; embedding_based_matching_on_root_words must '\
                 'be False')
         self.ontology = ontology
         self.analyze_derivational_morphology = analyze_derivational_morphology
@@ -114,7 +116,9 @@ class Manager:
         self.structural_matcher = StructuralMatcher(
             self.semantic_matching_helper, ontology, embedding_based_matching_on_root_words,
             analyze_derivational_morphology, perform_coreference_resolution,
-            use_reverse_dependency_matching)
+            use_reverse_dependency_matching,
+            self.semantic_analyzer.get_entity_label_to_vector_dict() if
+            self.semantic_analyzer.model_supports_embeddings() else {})
         self.document_labels_to_worker_queues = {}
         self.search_phrases = []
         HolmesBroker.set_extensions()
@@ -489,6 +493,10 @@ class Manager:
                 initial_question_word_embedding_match_threshold > 1.0:
             raise ValueError(
                 'initial_question_word_embedding_match_threshold must be between 0 and 1')
+
+        if not self.semantic_analyzer.model_supports_embeddings():
+                word_embedding_match_threshold = initial_question_word_embedding_match_threshold = \
+                    1.0
 
         overall_similarity_threshold = sqrt(word_embedding_match_threshold)
         initial_question_word_overall_similarity_threshold = sqrt(

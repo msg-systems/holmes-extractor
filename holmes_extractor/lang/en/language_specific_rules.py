@@ -82,6 +82,28 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
     # Dependency labels that can mark righthand siblings
     sibling_marker_deps = ('conj', 'appos')
 
+    # Map from entity labels to words that correspond to their meaning
+    entity_labels_to_corresponding_lexemes = {
+        'PERSON': 'person',
+        'NORP': 'group',
+        'FAC': 'building',
+        'ORG': 'organization',
+        'GPE': 'place',
+        'LOC': 'place',
+        'PRODUCT': 'product',
+        'EVENT': 'event',
+        'WORK_OF_ART': 'artwork',
+        'LAW': 'law',
+        'LANGUAGE': 'language',
+        'DATE': 'date',
+        'TIME': 'time',
+        'PERCENT': 'percent',
+        'MONEY': 'money',
+        'QUANTITY': 'quantity',
+        'ORDINAL': 'number',
+        'CARDINAL': 'number'
+        }
+
     def add_subwords(self, token, subword_cache):
         """ Analyses the internal structure of the word to find atomic semantic elements. Is
             relevant for German and not currently implemented for English.
@@ -722,7 +744,7 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             None, reverse_only=False)
         ]
 
-    def question_word_matches(search_phrase_token:Token, document_token:Token):
+    def question_word_matches(self, search_phrase_token:Token, document_token:Token):
         if search_phrase_token._.holmes.lemma.startswith('who'):
             return document_token.ent_type_ in ('PERSON', 'NORP', 'ORG', 'GPE')
         if search_phrase_token._.holmes.lemma == 'what':
@@ -772,3 +794,4 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             if token.dep_ in ('conj', 'appos', 'cc'): # == semantic_analyzer.conjunction_deps
                 return list_to_return
             list_to_return.append(token)
+        return list_to_return

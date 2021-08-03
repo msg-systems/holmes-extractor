@@ -98,6 +98,11 @@ class WordMatch:
             return ''.join((
                 "Has a word embedding that is ", printable_similarity,
                 "% similar to ", search_phrase_display_word, "."))
+        elif self.word_match_type == 'embedding_entity':
+            printable_similarity = str(int(self.similarity_measure * 100))
+            return ''.join((
+                "Has a word embedding that is ", printable_similarity,
+                "% similar to the entity label of ", search_phrase_display_word, "."))
         elif self.word_match_type == 'ontology':
             working_depth = self.depth
             if working_depth > 4:
@@ -191,7 +196,8 @@ class StructuralMatcher:
     def __init__(
             self, semantic_matching_helper, ontology,
             embedding_based_matching_on_root_words, analyze_derivational_morphology,
-            perform_coreference_resolution, use_reverse_dependency_matching):
+            perform_coreference_resolution, use_reverse_dependency_matching,
+            entity_label_to_vector_dict):
         """Args:
 
         semantic_matching_helper -- the *SemanticMatchingHelper* object to use
@@ -201,13 +207,16 @@ class StructuralMatcher:
         perform_coreference_resolution -- *True* if coreference resolution should be performed.
         use_reverse_dependency_matching -- *True* if appropriate dependencies in documents can be
             matched to dependencies in search phrases where the two dependencies point in opposite
-            directions."""
+            directions.
+        entity_label_to_vector_dict -- a dictionary from entity labels to vectors generated from
+            words that mean roughly the same as the label. """
         self.semantic_matching_helper = semantic_matching_helper
         self.ontology = ontology
         self.embedding_based_matching_on_root_words = embedding_based_matching_on_root_words
         self.analyze_derivational_morphology = analyze_derivational_morphology
         self.perform_coreference_resolution = perform_coreference_resolution
         self.use_reverse_dependency_matching = use_reverse_dependency_matching
+        self.entity_label_to_vector_dict = entity_label_to_vector_dict
 
     def cosine_similarity(self, vector1, vector2):
         return dot (vector1,vector2) / (norm(vector1) * norm(vector2))
@@ -692,12 +701,23 @@ class StructuralMatcher:
                         similarity_measure=similarity_measure,
                         search_phrase_initial_question_word=search_phrase_initial_question_word)
                     return True
+                if search_phrase_initial_question_word and \
+                        search_phrase_token._.holmes.ent_type != '' and \
+                        search_phrase_token._.holmes.ent_type in \
+                        self.entity_label_to_vector_dict:
+                    similarity_measure = self.cosine_similarity(self.entity_label_to_vector_dict[
+                        search_phrase_token._.holmes.ent_type], document_vector)
+                    if similarity_measure > single_token_similarity_threshold:
+                        handle_match(
+                            search_phrase_word_to_use, document_token.lemma_, 'embedding_entity', 0,
+                            similarity_measure=similarity_measure,
+                            search_phrase_initial_question_word=search_phrase_initial_question_word)
 
         if process_initial_question_words and search_phrase_token._.holmes.is_initial_question_word\
                 and self.semantic_matching_helper.question_word_matches(
                 search_phrase_token, document_token):
             handle_match(search_phrase_token._.holmes.lemma, document_token.lemma_, 'question', 0,
-                True)
+                search_phrase_initial_question_word=True)
             return True
         return False
 

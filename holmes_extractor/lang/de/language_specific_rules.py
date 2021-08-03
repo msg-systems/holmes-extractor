@@ -51,6 +51,13 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
 
     sibling_marker_deps = ('cj', 'app')
 
+    entity_labels_to_corresponding_lexemes = {
+        'PER': 'Mensch',
+        'LOC': 'Ort',
+        'ORG': 'Organisation',
+        'MISC': 'Sache'
+        }
+
     # Only words at least this long are examined for possible subwords
     minimum_length_for_subword_search = 10
 
@@ -1065,7 +1072,7 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             ['FM', 'NE', 'NNE', 'NN'],
             None, reverse_only=False)]
 
-    def question_word_matches(search_phrase_token:Token, document_token:Token):
+    def question_word_matches(self, search_phrase_token:Token, document_token:Token):
         if search_phrase_token._.holmes.lemma in ('wer', 'wen'):
             return document_token.ent_type_ in ('PER', 'ORG')
         if search_phrase_token._.holmes.lemma in ('was', 'wem'):
@@ -1091,7 +1098,7 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             return document_token.tag_ == 'APPR' and document_token._.holmes.lemma in (
                 'aus', 'von', 'wegen') or (document_token.dep_ == ('mo', 'oc') and
                 document_token.pos_ in ('VERB', 'AUX'))
-        if search_phrase_token._.holmes.lemma == 'warum':
+        if search_phrase_token._.holmes.lemma in ('warum', 'wieso', 'weshalb'):
             return document_token.tag_ == 'APPR' and document_token._.holmes.lemma in (
                 'wegen') or (document_token.dep_ == ('mo', 'oc') and
                 document_token.pos_ in ('VERB', 'AUX'))
@@ -1134,3 +1141,4 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             if token.dep_ in ('cj', 'cd', 'punct', 'app'): # == semantic_analyzer.conjunction_deps
                 return list_to_return
             list_to_return.append(token)
+        return list_to_return
