@@ -292,6 +292,7 @@ class HolmesDictionary:
         self.is_negated = None
         self.is_matchable = None
         self.is_initial_question_word = False
+        self.has_initial_question_word_in_phrase = False
         self.coreference_linked_child_dependencies = [] # list of [index, label] specifications of
         # dependencies where this token is the parent, taking any coreference resolution into
         # account. Used in topic matching.
@@ -456,12 +457,16 @@ class PhraseletInfo:
         parent_pos -- the part of speech tag of the token that supplied the parent word.
         parent_ent_type -- the parent entity label, or the entity label for single-word
             phraselets. '' if there is none.
+        parent_is_initial_question_word -- 'True' or 'False'
+        parent_has_initial_question_word_in_phrase -- 'True' or 'False'
         child_lemma -- the child lemma, or 'None' for single-word phraselets.
         child_derived_lemma -- the child derived lemma, or 'None' for single-word phraselets.
         child_pos -- the part of speech tag of the token that supplied the child word, or 'None'
             for single-word phraselets.
         child_ent_type -- the child entity label. '' if there is none; 'None' for single-word
             phraselets.
+        child_is_initial_question_word -- 'True' or 'False'
+        child_has_initial_question_word_in_phrase -- 'True' or 'False'
         created_without_matching_tags -- 'True' if created without matching tags.
         reverse_only_parent_lemma -- 'True' if the parent lemma is in the reverse matching list.
         frequency_factor -- a multiplication factor between 0.0 and 1.0 which is lower the more
@@ -474,8 +479,10 @@ class PhraseletInfo:
 
     def __init__(
             self, label, template_label, parent_lemma, parent_derived_lemma,
-            parent_pos, parent_ent_type, child_lemma, child_derived_lemma,
-            child_pos, child_ent_type, created_without_matching_tags,
+            parent_pos, parent_ent_type, parent_is_initial_question_word,
+            parent_has_initial_question_word_in_phrase, child_lemma, child_derived_lemma,
+            child_pos, child_ent_type, child_is_initial_question_word,
+            child_has_initial_question_word_in_phrase, created_without_matching_tags,
             reverse_only_parent_lemma, frequency_factor, parent_frequency_factor,
             child_frequency_factor):
         self.label = label
@@ -485,10 +492,14 @@ class PhraseletInfo:
         self.parent_derived_lemma = parent_derived_lemma
         self.parent_pos = parent_pos
         self.parent_ent_type = parent_ent_type
+        self.parent_is_initial_question_word = parent_is_initial_question_word
+        self.parent_has_initial_question_word_in_phrase = parent_has_initial_question_word_in_phrase
         self.child_lemma = child_lemma
         self.child_derived_lemma = child_derived_lemma
         self.child_pos = child_pos
         self.child_ent_type = child_ent_type
+        self.child_is_initial_question_word = child_is_initial_question_word
+        self.child_has_initial_question_word_in_phrase = child_has_initial_question_word_in_phrase
         self.created_without_matching_tags = created_without_matching_tags
         self.reverse_only_parent_lemma = reverse_only_parent_lemma
         self.frequency_factor = frequency_factor
@@ -856,7 +867,11 @@ class SemanticAnalyzer(ABC):
             token._.holmes.children.append(SemanticDependency(token.i, child.i, child.dep_))
 
     def set_initial_question_words(self, doc:Doc):
-        """ True on a token that represents an interrogative pronoun within an initial phrase. """
+        """ is_initial_question_word -- True on a token that represents an interrogative pronoun
+                within an initial phrase.
+            has_initial_question_word_in_phrase -- True on a token within an initial phrase that
+                governs an interrogative pronoun.
+        """
         initial_sentence = next(doc.sents, None)
         if initial_sentence is not None:
             visited = set()
@@ -870,6 +885,10 @@ class SemanticAnalyzer(ABC):
                 if self.is_interrogative_pronoun(token) and \
                         token in working_first_phrase_head.subtree:
                     token._.holmes.is_initial_question_word = True
+            for token in initial_sentence:
+                if token.pos_ in self.noun_pos and len([1 for c in token._.holmes.children
+                        if c.child_token(token.doc)._.holmes.is_initial_question_word]) > 0:
+                    token._.holmes.has_initial_question_word_in_phrase = True
 
     def mark_if_righthand_sibling(self, token):
         if token.dep_ in self.sibling_marker_deps:  # i.e. is righthand sibling
@@ -1237,8 +1256,10 @@ class LinguisticObjectFactory:
         def add_new_phraselet_info(
                 phraselet_label, phraselet_template, created_without_matching_tags,
                 is_reverse_only_parent_lemma, parent_lemma, parent_derived_lemma,
-                parent_pos, parent_ent_type, child_lemma, child_derived_lemma, child_pos,
-                child_ent_type):
+                parent_pos, parent_ent_type, parent_is_initial_question_word,
+                parent_has_initial_question_word_in_phrase, child_lemma, child_derived_lemma,
+                child_pos, child_ent_type, child_is_initial_question_word,
+                child_has_initial_question_word_in_phrase):
 
             def get_frequency_factor_for_pole(parent): # pole is 'True' -> parent, 'False' -> child
                 original_word_set = {parent_lemma, parent_derived_lemma} if parent else \
@@ -1270,10 +1291,12 @@ class LinguisticObjectFactory:
             if phraselet_label not in phraselet_labels_to_phraselet_infos:
                 phraselet_labels_to_phraselet_infos[phraselet_label] = PhraseletInfo(
                     phraselet_label, phraselet_template.label, parent_lemma,
-                    parent_derived_lemma, parent_pos, parent_ent_type, child_lemma,
-                    child_derived_lemma, child_pos, child_ent_type, created_without_matching_tags,
-                    is_reverse_only_parent_lemma, frequency_factor, parent_frequency_factor,
-                    child_frequency_factor)
+                    parent_derived_lemma, parent_pos, parent_ent_type,
+                    parent_is_initial_question_word, parent_has_initial_question_word_in_phrase,
+                    child_lemma, child_derived_lemma, child_pos, child_ent_type,
+                    child_is_initial_question_word, child_has_initial_question_word_in_phrase,
+                    created_without_matching_tags, is_reverse_only_parent_lemma, frequency_factor,
+                    parent_frequency_factor, child_frequency_factor)
             else:
                 existing_phraselet = phraselet_labels_to_phraselet_infos[phraselet_label]
                 if lemma_replacement_indicated(
@@ -1311,7 +1334,9 @@ class LinguisticObjectFactory:
                         add_new_phraselet_info(
                             phraselet_label, phraselet_template, not checking_tags,
                             None, lemma, derived_lemma, token.pos_, token.ent_type_,
-                            None, None, None, None)
+                            token._.holmes.is_initial_question_word,
+                            token._.holmes.has_initial_question_word_in_phrase,
+                            None, None, None, None, None, None)
 
         def add_head_subwords_to_token_list_and_remove_words_with_subword_conjunction(index_list):
             # for each token in the list, find out whether it has subwords and if so add the
@@ -1435,9 +1460,15 @@ class LinguisticObjectFactory:
                                         parent_lemma, parent_derived_lemma,
                                         doc[parent.token_index].pos_,
                                         doc[parent.token_index].ent_type_,
+                                        doc[parent.token_index]._.holmes.is_initial_question_word,
+                                        doc[parent.token_index]._.holmes.
+                                        has_initial_question_word_in_phrase,
                                         child_lemma, child_derived_lemma,
                                         doc[child.token_index].pos_,
-                                        doc[child.token_index].ent_type_)
+                                        doc[child.token_index].ent_type_,
+                                        doc[child.token_index]._.holmes.is_initial_question_word,
+                                        doc[child.token_index]._.holmes.
+                                        has_initial_question_word_in_phrase)
 
             # We do not check for matchability in order to catch pos_='X', tag_='TRUNC'. This
             # is not a problem as only a limited range of parts of speech receive subwords in
@@ -1477,7 +1508,11 @@ class LinguisticObjectFactory:
                     add_new_phraselet_info(
                         phraselet_label, phraselet_template, match_all_words,
                         False, parent_lemma, parent_derived_lemma, token.pos_, token.ent_type_,
-                        child_lemma, child_derived_lemma, token.pos_, token.ent_type_)
+                        token._.holmes.is_initial_question_word,
+                        token._.holmes.has_initial_question_word_in_phrase,
+                        child_lemma, child_derived_lemma, token.pos_, token.ent_type_,
+                        token._.holmes.is_initial_question_word,
+                        token._.holmes.has_initial_question_word_in_phrase)
         if len(phraselet_labels_to_phraselet_infos) == 0 and not match_all_words:
             for token in doc:
                 process_single_word_phraselet_templates(
@@ -1513,6 +1548,12 @@ class LinguisticObjectFactory:
                         phraselet_info.parent_derived_lemma
                     phraselet_doc[phraselet_template.parent_index]._.holmes.ent_type = \
                         phraselet_info.parent_ent_type
+                    phraselet_doc[phraselet_template.parent_index]._.holmes.\
+                        is_initial_question_word = \
+                        phraselet_info.parent_is_initial_question_word
+                    phraselet_doc[phraselet_template.parent_index]._.holmes.\
+                        has_initial_question_word_in_phrase = \
+                        phraselet_info.parent_has_initial_question_word_in_phrase
                     if phraselet_info.child_lemma is not None:
                         phraselet_doc[phraselet_template.child_index]._.holmes.lemma = \
                             phraselet_info.child_lemma
@@ -1520,6 +1561,12 @@ class LinguisticObjectFactory:
                             phraselet_info.child_derived_lemma
                         phraselet_doc[phraselet_template.child_index]._.holmes.ent_type = \
                             phraselet_info.child_ent_type
+                        phraselet_doc[phraselet_template.child_index]._.holmes.\
+                            is_initial_question_word = \
+                            phraselet_info.child_is_initial_question_word
+                        phraselet_doc[phraselet_template.child_index]._.holmes.\
+                            has_initial_question_word_in_phrase = \
+                            phraselet_info.child_has_initial_question_word_in_phrase
                     return self.create_search_phrase(
                         'topic match phraselet', phraselet_doc,
                         create_phraselet_label(phraselet_info), phraselet_template,
@@ -1533,8 +1580,7 @@ class LinguisticObjectFactory:
             raise RuntimeError(''.join((
                 'Phraselet template', phraselet_info.template_label, 'not found.')))
 
-        return {
-            create_phraselet_label(phraselet_info) :
+        return { create_phraselet_label(phraselet_info) :
             create_search_phrase_from_phraselet(phraselet_info) for phraselet_info in
             phraselet_infos}
 
@@ -2123,9 +2169,3 @@ class SemanticMatchingHelper(ABC):
                 return_string = ' '.join((return_string, token.doc[pointer].text))
             if token.right_edge.i <= pointer:
                 return return_string
-
-    def has_question_word_in_phrase(self, token:Token):
-        if token.i > 20: # performance quick win
-            return False
-        return token.pos_ in self.noun_pos and len([1 for c in token._.holmes.children
-            if c.child_token(token.doc)._.holmes.is_initial_question_word]) > 0

@@ -562,7 +562,7 @@ class StructuralMatcher:
             is_uncertain = True
 
         search_phrase_initial_question_word = process_initial_question_words and \
-            self.semantic_matching_helper.has_question_word_in_phrase(search_phrase_token)
+            search_phrase_token._.holmes.has_initial_question_word_in_phrase
         if self.semantic_matching_helper.is_entity_search_phrase_token(
                 search_phrase_token, search_phrase.topic_match_phraselet) and \
                 document_subword_index is None:
@@ -1259,8 +1259,8 @@ class StructuralMatcher:
                             similarity_measure = self.cosine_similarity(search_phrase_vector,
                                 document_vector)
                             search_phrase_initial_question_word = process_initial_question_words \
-                                and self.semantic_matching_helper.has_question_word_in_phrase(
-                                search_phrase.root_token)
+                                and search_phrase.root_token._.holmes.\
+                                has_initial_question_word_in_phrase
                             single_token_similarity_threshold = \
                                 (initial_question_word_overall_similarity_threshold if
                                 search_phrase_initial_question_word else
