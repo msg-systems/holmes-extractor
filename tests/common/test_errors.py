@@ -252,3 +252,10 @@ class ErrorsTest(unittest.TestCase):
             m.parse_and_register_document("a")
             coref_holmes_manager.topic_match_documents_against("b",
                 initial_question_word_embedding_match_threshold=-1.2)
+
+    def test_unrecognized_initial_question_word_behaviour(self):
+        with self.assertRaises(ValueError) as context:
+            m = holmes.Manager('en_core_web_sm', number_of_workers=1)
+            m.parse_and_register_document("a")
+            coref_holmes_manager.topic_match_documents_against("b",
+                initial_question_word_behaviour='r')

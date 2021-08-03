@@ -765,3 +765,10 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             return word
         else:
             return word.replace('-', ' ')
+
+    def get_subtree_list_without_conjunction(self, token:Token):
+        list_to_return = []
+        for token in token.subtree:
+            if token.dep_ in ('conj', 'appos', 'cc'): # == semantic_analyzer.conjunction_deps
+                return list_to_return
+            list_to_return.append(token)

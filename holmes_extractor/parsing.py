@@ -1850,6 +1850,10 @@ class SemanticMatchingHelper(ABC):
     def question_word_matches(self, search_phrase_token:Token, document_token:Token):
         pass
 
+    @abstractmethod
+    def get_subtree_list_without_conjunction(self, token:Token):
+        pass
+
     def add_to_corpus_index(self, corpus_index_dict, parsed_document, document_label):
 
         def add_dict_entry(dictionary, word, token_index, subword_index, match_type):

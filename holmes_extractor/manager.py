@@ -418,8 +418,8 @@ class Manager:
             word_embedding_match_threshold=0.8,
             initial_question_word_embedding_match_threshold=0.5,
             relation_score=300, reverse_only_relation_score=200,
-            single_word_score=50, single_word_any_tag_score=20, question_word_answer_score=600,
-            process_initial_question_words=True, different_match_cutoff_score=15,
+            single_word_score=50, single_word_any_tag_score=20, initial_question_word_answer_score=600,
+            initial_question_word_behaviour='process', different_match_cutoff_score=15,
             overlapping_relation_multiplier=1.5, embedding_penalty=0.6,
             ontology_penalty=0.9,
             relation_matching_frequency_threshold=0.5, embedding_matching_frequency_threshold=0.75,
@@ -448,10 +448,12 @@ class Manager:
             word is matched.
         single_word_any_tag_score -- the activation score added when a single word is matched
             whose tag did not correspond to the template specification.
-        question_word_answer_score -- the activation score added when a question word is matched
+        initial_question_word_answer_score -- the activation score added when a question word is matched
             to an answering phrase. Set to the value of *relation_score* if not supplied.
-        process_initial_question_words -- *True* if a question word in the sentence constinuent at
-            the beginning of *text_to_match* is to be matched to document phrases that answer it.
+        initial_question_word_behaviour -- 'process' if a question word in the sentence
+            constinuent at the beginning of *text_to_match* is to be matched to document phrases
+            that answer it; 'exclusive' if only topic matches that involve such question words
+            are to be permitted; 'ignore' if question words are to be ignored.
         different_match_cutoff_score -- the activation threshold under which topic matches are
             separated from one another. Note that the default value will probably be too low if
             *use_frequency_factor* is set to *False*.
@@ -492,6 +494,9 @@ class Manager:
         initial_question_word_overall_similarity_threshold = sqrt(
             initial_question_word_embedding_match_threshold)
 
+        if initial_question_word_behaviour not in ('process', 'exclusive', 'ignore'):
+            raise ValueError(': '.join(('initial_question_word_behaviour',
+                initial_question_word_behaviour)))
         if embedding_matching_frequency_threshold < 0.0 or \
                 embedding_matching_frequency_threshold > 1.0:
             raise ValueError(': '.join(('embedding_matching_frequency_threshold',
@@ -519,7 +524,8 @@ class Manager:
             text_to_match_doc=text_to_match_doc,
             words_to_corpus_frequencies=words_to_corpus_frequencies,
             maximum_corpus_frequency=maximum_corpus_frequency,
-            process_initial_question_words=process_initial_question_words)
+            process_initial_question_words=initial_question_word_behaviour in ('process',
+                'exclusive'))
         if len(phraselet_labels_to_phraselet_infos) == 0:
             return []
         phraselet_labels_to_search_phrases = \
@@ -535,8 +541,9 @@ class Manager:
                 phraselet_labels_to_search_phrases, maximum_activation_distance,
                 overall_similarity_threshold, initial_question_word_overall_similarity_threshold,
                 relation_score, reverse_only_relation_score, single_word_score,
-                single_word_any_tag_score, question_word_answer_score, process_initial_question_words,
-                different_match_cutoff_score, overlapping_relation_multiplier, embedding_penalty,
+                single_word_any_tag_score, initial_question_word_answer_score,
+                initial_question_word_behaviour, different_match_cutoff_score,
+                overlapping_relation_multiplier, embedding_penalty,
                 ontology_penalty, relation_matching_frequency_threshold,
                 embedding_matching_frequency_threshold, sideways_match_extent,
                 only_one_result_per_document, number_of_results, document_label_filter,
@@ -773,7 +780,7 @@ class Worker:
             maximum_activation_distance, overall_similarity_threshold,
             initial_question_word_overall_similarity_threshold, relation_score,
             reverse_only_relation_score, single_word_score, single_word_any_tag_score,
-            question_word_answer_score, process_initial_question_words,
+            initial_question_word_answer_score, initial_question_word_behaviour,
             different_match_cutoff_score, overlapping_relation_multiplier, embedding_penalty,
             ontology_penalty, relation_matching_frequency_threshold,
             embedding_matching_frequency_threshold,
@@ -798,8 +805,8 @@ class Worker:
             reverse_only_relation_score=reverse_only_relation_score,
             single_word_score=single_word_score,
             single_word_any_tag_score=single_word_any_tag_score,
-            question_word_answer_score=question_word_answer_score,
-            process_initial_question_words=process_initial_question_words,
+            initial_question_word_answer_score=initial_question_word_answer_score,
+            initial_question_word_behaviour=initial_question_word_behaviour,
             different_match_cutoff_score=different_match_cutoff_score,
             overlapping_relation_multiplier=overlapping_relation_multiplier,
             embedding_penalty=embedding_penalty,

@@ -107,7 +107,7 @@ class TopicMatcher:
             maximum_activation_distance, overall_similarity_threshold,
             initial_question_word_overall_similarity_threshold, relation_score,
             reverse_only_relation_score, single_word_score, single_word_any_tag_score,
-            question_word_answer_score, process_initial_question_words,
+            initial_question_word_answer_score, initial_question_word_behaviour,
             different_match_cutoff_score, overlapping_relation_multiplier, embedding_penalty,
             ontology_penalty, relation_matching_frequency_threshold,
             embedding_matching_frequency_threshold, sideways_match_extent,
@@ -128,8 +128,8 @@ class TopicMatcher:
         self.reverse_only_relation_score = reverse_only_relation_score
         self.single_word_score = single_word_score
         self.single_word_any_tag_score = single_word_any_tag_score
-        self.question_word_answer_score = question_word_answer_score
-        self.process_initial_question_words = process_initial_question_words
+        self.initial_question_word_answer_score = initial_question_word_answer_score
+        self.initial_question_word_behaviour = initial_question_word_behaviour
         self.different_match_cutoff_score = different_match_cutoff_score
         self.overlapping_relation_multiplier = overlapping_relation_multiplier
         self.embedding_penalty = embedding_penalty
@@ -142,6 +142,8 @@ class TopicMatcher:
         self.document_label_filter = document_label_filter
         self.use_frequency_factor = use_frequency_factor
         self.words_to_phraselet_word_match_infos = {}
+
+        process_initial_question_words = initial_question_word_behaviour in ('process', 'exclusive')
 
         # First get single-word matches
         structural_matches = self.structural_matcher.match(
@@ -650,6 +652,9 @@ class TopicMatcher:
                     this_match_score = self.reverse_only_relation_score
                 else:
                     this_match_score = self.relation_score
+                for word_match in match.word_matches:
+                    if word_match.search_phrase_initial_question_word:
+                        this_match_score = self.initial_question_word_answer_score
                 this_match_parent_word_match = self.get_word_match_from_match(match, True)
                 this_match_parent_index = this_match_parent_word_match.get_document_index()
                 this_match_child_word_match = self.get_word_match_from_match(match, False)
@@ -839,6 +844,7 @@ class TopicMatcher:
             sentences_character_end_index_in_document = doc[topic_match.sentences_end_index].idx + \
                 len(doc[topic_match.sentences_end_index].text)
             word_infos_to_word_infos = {}
+            answers = []
             for match in topic_match.structural_matches:
                 for word_match in match.word_matches:
                     if word_match.document_subword is not None:
@@ -867,6 +873,16 @@ class TopicMatcher:
                         word_info = WordInfo(
                             relative_start_index, relative_end_index, 'relation',
                             word_match.explain())
+                    if word_match.search_phrase_initial_question_word:
+                        subtree_without_conjunction = \
+                            self.semantic_matching_helper.get_subtree_list_without_conjunction(
+                            word_match.search_phrase_token)
+                        answer_relative_start_index = subtree_without_conjunction[0].idx - \
+                            sentences_character_start_index_in_document
+                        answer_relative_end_index = subtree_without_conjunction[-1].idx + \
+                            len(subtree_without_conjunction[-1].text) - \
+                            sentences_character_start_index_in_document
+                        answers.append((answer_relative_start_index, answer_relative_end_index))
                     if word_info in word_infos_to_word_infos:
                         existing_word_info = word_infos_to_word_infos[word_info]
                         if not existing_word_info.word_match_type == 'overlapping_relation':
@@ -882,56 +898,59 @@ class TopicMatcher:
             for word_info in list(word_infos_to_word_infos.keys()):
                 if get_containing_word_info_key(word_infos_to_word_infos, word_info) is not None:
                     del word_infos_to_word_infos[word_info]
-            if topic_match.subword_index is not None:
-                subword = doc[topic_match.index_within_document]._.holmes.subwords\
-                    [topic_match.subword_index]
-                highest_activation_relative_start_index = \
-                    doc[subword.containing_token_index].idx + \
-                    subword.char_start_index - \
-                    sentences_character_start_index_in_document
-                highest_activation_relative_end_index = \
-                    highest_activation_relative_start_index + len(subword.text)
-            else:
-                highest_activation_relative_start_index = \
-                    doc[topic_match.index_within_document].idx - \
-                    sentences_character_start_index_in_document
-                highest_activation_relative_end_index = doc[topic_match.index_within_document].idx \
-                    + len(doc[topic_match.index_within_document].text) - \
-                    sentences_character_start_index_in_document
-            highest_activation_word_info = WordInfo(
-                highest_activation_relative_start_index, highest_activation_relative_end_index,
-                'temp', 'temp')
-            containing_word_info = get_containing_word_info_key(
-                word_infos_to_word_infos, highest_activation_word_info)
-            if containing_word_info is not None:
-                highest_activation_word_info = containing_word_info
-            word_infos_to_word_infos[highest_activation_word_info].is_highest_activation = True
-            word_infos = sorted(
-                word_infos_to_word_infos.values(), key=lambda word_info: (
-                    word_info.relative_start_index, word_info.relative_end_index))
-            topic_match_dict = {
-                'document_label': topic_match.document_label,
-                'text': topic_match.text,
-                'text_to_match': self.text_to_match,
-                'rank': str(topic_match_counter + 1),   # ties are corrected by
-                                                        # TopicMatchDictionaryOrderer
-                'index_within_document': topic_match.index_within_document,
-                'subword_index': topic_match.subword_index,
-                'start_index': topic_match.start_index,
-                'end_index': topic_match.end_index,
-                'sentences_start_index': topic_match.sentences_start_index,
-                'sentences_end_index': topic_match.sentences_end_index,
-                'sentences_character_start_index': sentences_character_start_index_in_document,
-                'sentences_character_end_index': sentences_character_end_index_in_document,
-                'score': topic_match.score,
-                'word_infos': [
-                    [
-                        word_info.relative_start_index, word_info.relative_end_index,
-                        word_info.word_match_type, word_info.is_highest_activation,
-                        word_info.explanation]
-                    for word_info in word_infos]
-                    # The word infos are labelled by array index alone to prevent the JSON from
-                    # becoming too bloated
-            }
-            topic_match_dicts.append(topic_match_dict)
+            if self.initial_question_word_behaviour != 'exclusive' or len(answers) > 0:
+                if topic_match.subword_index is not None:
+                    subword = doc[topic_match.index_within_document]._.holmes.subwords\
+                        [topic_match.subword_index]
+                    highest_activation_relative_start_index = \
+                        doc[subword.containing_token_index].idx + \
+                        subword.char_start_index - \
+                        sentences_character_start_index_in_document
+                    highest_activation_relative_end_index = \
+                        highest_activation_relative_start_index + len(subword.text)
+                else:
+                    highest_activation_relative_start_index = \
+                        doc[topic_match.index_within_document].idx - \
+                        sentences_character_start_index_in_document
+                    highest_activation_relative_end_index = doc[topic_match.index_within_document].idx \
+                        + len(doc[topic_match.index_within_document].text) - \
+                        sentences_character_start_index_in_document
+                highest_activation_word_info = WordInfo(
+                    highest_activation_relative_start_index, highest_activation_relative_end_index,
+                    'temp', 'temp')
+                containing_word_info = get_containing_word_info_key(
+                    word_infos_to_word_infos, highest_activation_word_info)
+                if containing_word_info is not None:
+                    highest_activation_word_info = containing_word_info
+                word_infos_to_word_infos[highest_activation_word_info].is_highest_activation = True
+                word_infos = sorted(
+                    word_infos_to_word_infos.values(), key=lambda word_info: (
+                        word_info.relative_start_index, word_info.relative_end_index))
+                topic_match_dict = {
+                    'document_label': topic_match.document_label,
+                    'text': topic_match.text,
+                    'text_to_match': self.text_to_match,
+                    'rank': str(topic_match_counter + 1),   # ties are corrected by
+                                                            # TopicMatchDictionaryOrderer
+                    'index_within_document': topic_match.index_within_document,
+                    'subword_index': topic_match.subword_index,
+                    'start_index': topic_match.start_index,
+                    'end_index': topic_match.end_index,
+                    'sentences_start_index': topic_match.sentences_start_index,
+                    'sentences_end_index': topic_match.sentences_end_index,
+                    'sentences_character_start_index': sentences_character_start_index_in_document,
+                    'sentences_character_end_index': sentences_character_end_index_in_document,
+                    'score': topic_match.score,
+                    'word_infos': [
+                        [
+                            word_info.relative_start_index, word_info.relative_end_index,
+                            word_info.word_match_type, word_info.is_highest_activation,
+                            word_info.explanation]
+                        for word_info in word_infos]
+                        # The word infos are labelled by array index alone to prevent the JSON from
+                        # becoming too bloated
+                }
+                if len(answers) > 0:
+                    topic_match_dict['answers'] = [[answer[0], answer[1]] for answer in answers]
+                topic_match_dicts.append(topic_match_dict)
         return topic_match_dicts

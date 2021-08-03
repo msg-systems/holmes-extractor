@@ -91,6 +91,8 @@ class WordMatch:
             return ''.join(("Has a common stem with ", search_phrase_display_word, "."))
         elif self.word_match_type == 'entity':
             return ''.join(("Has an entity label matching ", search_phrase_display_word, "."))
+        elif self.word_match_type == 'question':
+            return ''.join(("Matches the question word ", search_phrase_display_word, "."))
         elif self.word_match_type == 'embedding':
             printable_similarity = str(int(self.similarity_measure * 100))
             return ''.join((
