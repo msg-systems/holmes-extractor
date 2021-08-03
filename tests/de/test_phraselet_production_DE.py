@@ -357,7 +357,7 @@ class GermanPhraseletProductionTest(unittest.TestCase):
 
     def test_question_word(self):
         self._check_equals("Wer kam?",
-                           ['head-WH: kommen-wer'
+                           ['head-WHnom: kommen-wer'
                             ],
                            match_all_words=False, process_initial_question_words=True)
 

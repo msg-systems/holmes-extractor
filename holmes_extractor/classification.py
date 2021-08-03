@@ -110,7 +110,8 @@ class SupervisedTopicTrainingUtils:
 
     def record_matches(
             self, *, phraselet_labels_to_search_phrases, semantic_matching_helper,
-            structural_matcher, sorted_label_dict, doc_label, doc, matrix, row_index, verbose):
+            structural_matcher, sorted_label_dict, doc_label, doc, matrix, row_index,
+            overall_similarity_threshold, verbose):
         """ Matches a document against the currently stored phraselets and records the matches
             in a matrix.
 
@@ -126,6 +127,7 @@ class SupervisedTopicTrainingUtils:
             doc -- the document to be matched.
             matrix -- the matrix within which to record the matches.
             row_index -- the row number within the matrix corresponding to the document.
+            overall_similarity_threshold -- the threshold for embedding-based matching.
             verbose -- if 'True', matching information is outputted to the console.
         """
         document_labels_to_documents = {doc_label: doc}
@@ -143,7 +145,9 @@ class SupervisedTopicTrainingUtils:
                         compare_embeddings_on_non_root_words=True,
                         reverse_matching_corpus_word_positions=None,
                         embedding_reverse_matching_corpus_word_positions=None,
-                        match_question_words=False),
+                        process_initial_question_words=False,
+                        overall_similarity_threshold=overall_similarity_threshold,
+                        initial_question_word_overall_similarity_threshold=1.0),
                     labels_to_classifications_dict=None
                 ).items():
             if self.oneshot:
@@ -160,7 +164,7 @@ class SupervisedTopicTrainingBasis:
     """
     def __init__(
             self, *, linguistic_object_factory, structural_matcher, classification_ontology,
-            overlap_memory_size, oneshot, match_all_words, verbose):
+            overlap_memory_size, oneshot, match_all_words, overall_similarity_threshold, verbose):
         """ Parameters:
 
             linguistic_object_factory -- the linguistic object factory to use
@@ -173,12 +177,15 @@ class SupervisedTopicTrainingBasis:
                 counted once only (value 'True') or multiple times (value 'False')
             match_all_words -- whether all single words should be taken into account
                 (value 'True') or only single words with noun tags (value 'False')
+            overall_similarity_threshold -- the overall similarity threshold for embedding-based
+                matching. Defaults to *1.0*, which deactivates embedding-based matching.
             verbose -- if 'True', information about training progress is outputted to the console.
         """
         self.linguistic_object_factory = linguistic_object_factory
         self.structural_matcher = structural_matcher
         self.semantic_analyzer = linguistic_object_factory.semantic_analyzer
         self.semantic_matching_helper = linguistic_object_factory.semantic_matching_helper
+        self.overall_similarity_threshold = overall_similarity_threshold
         self.classification_ontology = classification_ontology
         self.utils = SupervisedTopicTrainingUtils(overlap_memory_size, oneshot)
         self.match_all_words = match_all_words
@@ -283,7 +290,9 @@ class SupervisedTopicTrainingBasis:
                     compare_embeddings_on_non_root_words=True,
                     reverse_matching_corpus_word_positions=None,
                     embedding_reverse_matching_corpus_word_positions=None,
-                    match_question_words=False),
+                    process_initial_question_words=False,
+                    overall_similarity_threshold=self.overall_similarity_threshold,
+                    initial_question_word_overall_similarity_threshold=1.0),
                 labels_to_classifications_dict=
                 self.training_documents_labels_to_classifications_dict)
         self.classifications = sorted(set(
@@ -394,6 +403,7 @@ class SupervisedTopicModelTrainer:
                 doc=self.training_basis.training_document_labels_to_documents[document_label].doc,
                 matrix=self.input_matrix,
                 row_index=index,
+                overall_similarity_threshold=self.training_basis.overall_similarity_threshold,
                 verbose=self.training_basis.verbose)
             self.record_classifications_for_training(document_label, index)
         self._hidden_layer_sizes = hidden_layer_sizes
@@ -489,7 +499,8 @@ class SupervisedTopicModelTrainer:
             self.structural_matcher.analyze_derivational_morphology)
         return SupervisedTopicClassifier(
             self.semantic_analyzer, self.linguistic_object_factory,
-            self.structural_matcher, model, self.training_basis.verbose)
+            self.structural_matcher, model, self.training_basis.overall_similarity_threshold,
+            self.training_basis.verbose)
 
 class SupervisedTopicClassifierModel:
     """ A serializable classifier model.
@@ -533,12 +544,13 @@ class SupervisedTopicClassifier:
     """Classifies new documents based on a pre-trained model."""
 
     def __init__(self, semantic_analyzer, linguistic_object_factory, structural_matcher, model,
-            verbose):
+            overall_similarity_threshold, verbose):
         self.semantic_analyzer = semantic_analyzer
         self.linguistic_object_factory = linguistic_object_factory
         self.semantic_matching_helper = linguistic_object_factory.semantic_matching_helper
         self.structural_matcher = structural_matcher
         self.model = model
+        self.overall_similarity_threshold = overall_similarity_threshold
         self.verbose = verbose
         self.utils = SupervisedTopicTrainingUtils(model.overlap_memory_size, model.oneshot)
         if self.semantic_analyzer.model != model.semantic_analyzer_model:
@@ -600,6 +612,7 @@ class SupervisedTopicClassifier:
                 doc_label='',
                 matrix=new_document_matrix,
                 row_index=0,
+                overall_similarity_threshold=self.overall_similarity_threshold,
                 verbose=self.verbose):
             return []
         else:

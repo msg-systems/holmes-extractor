@@ -22,11 +22,6 @@ class ErrorsTest(unittest.TestCase):
             holmes.Manager(model='en_core_web_lg', overall_similarity_threshold=1.0,
                            embedding_based_matching_on_root_words=True)
 
-    def test_model_does_not_support_embeddings(self):
-        with self.assertRaises(ValueError) as context:
-            holmes.Manager(model='en_core_web_sm',
-                           overall_similarity_threshold=0.85)
-
     def test_number_of_workers_out_of_range(self):
         with self.assertRaises(ValueError) as context:
             holmes.Manager(model='en_core_web_sm',
@@ -244,9 +239,16 @@ class ErrorsTest(unittest.TestCase):
             coref_holmes_manager.topic_match_documents_against("b",
                                                                                       relation_matching_frequency_threshold=0.75, embedding_matching_frequency_threshold=0.5)
 
-    def test_question_word_answer_score_incorrect(self):
+    def test_word_embedding_match_threshold_out_of_range(self):
         with self.assertRaises(ValueError) as context:
             m = holmes.Manager('en_core_web_sm', number_of_workers=1)
             m.parse_and_register_document("a")
             coref_holmes_manager.topic_match_documents_against("b",
-                                                                                      relation_matching_frequency_threshold=0.75, embedding_matching_frequency_threshold=0.5, question_word_answer_score=15, match_question_words='direct')
+                word_embedding_match_threshold=1.2)
+
+    def test_initial_question_word_embedding_match_threshold_out_of_range(self):
+        with self.assertRaises(ValueError) as context:
+            m = holmes.Manager('en_core_web_sm', number_of_workers=1)
+            m.parse_and_register_document("a")
+            coref_holmes_manager.topic_match_documents_against("b",
+                initial_question_word_embedding_match_threshold=-1.2)

@@ -907,6 +907,9 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                             dependency.child_index in real_subject_indexes):
                         dependency.label = 'sb'
 
+    def is_interrogative_pronoun(self, token:Token):
+        return token.tag_ in self.interrogative_pronoun_tags or token._.holmes.lemma == 'wessen'
+
 class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
 
     noun_pos = ('NOUN', 'PROPN', 'ADJ')
@@ -1032,29 +1035,80 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             ['NE', 'NNE', 'NN', 'TRUNC', 'ADJA', 'ADJD', 'TRUNC'], reverse_only=False,
             assigned_dependency_label='intcompound'),
         PhraseletTemplate(
-            "head-WH", "wer kam?", 1, 0,
+            "head-WHnom", "wer kam?", 1, 0,
             ['sb'],
-            ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
-            'NE', 'NNE', 'NN', 'TRUNC', 'ADJA', 'ADJD', 'TRUNC'],
-            ['PWAT', 'PWAV', 'PWS'], reverse_only=False),
+            ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP'],
+            ['PWS'], reverse_only=False),
+        PhraseletTemplate(
+            "head-WHacc", "wen sahst du?", 1, 0,
+            ['oa'],
+            ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP'],
+            ['PWS'], reverse_only=False),
+        PhraseletTemplate(
+            "head-WHdat", "wem hast du geholfen?", 1, 0,
+            ['da'],
+            ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP'],
+            ['PWS'], reverse_only=False),
+        PhraseletTemplate(
+            "head-WHadv", "womit hast du es gemacht?", 1, 0,
+            ['mo'],
+            ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP'],
+            ['PWAV'], reverse_only=False),
+        PhraseletTemplate(
+            "head-whose", "Wessen Haus betrachtest du?", 1, 0,
+            ['ag'],
+            ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP'],
+            ['PROPN'], reverse_only=False),
         PhraseletTemplate(
             "word", "Sache", 0, None,
             None,
             ['FM', 'NE', 'NNE', 'NN'],
             None, reverse_only=False)]
 
-    question_word_strategies = [
-        QuestionWordStrategy(
-            name='wer as subject',
-            lemma = 'wer',
-            tag = 'WH',
-            deps = 'sb',
-            matcher = lambda token, question_head_token: \
-                token.pos_ in self.noun_pos and \
-                token.ent_label_ == 'PER' and \
-                self.dependency_labels_match('sb', token.dep_, False)
-        )
-    ]
+    def question_word_matches(search_phrase_token:Token, document_token:Token):
+        if search_phrase_token._.holmes.lemma in ('wer', 'wen'):
+            return document_token.ent_type_ in ('PER', 'ORG')
+        if search_phrase_token._.holmes.lemma in ('was', 'wem'):
+            return document_token.pos_ in self.noun_pos
+        if search_phrase_token._.holmes.lemma == 'wo':
+            # spaCy model does not handle postpositions
+            return document_token.tag_ == 'APPR' and document_token.lemma_ in (
+                'an', 'auf', 'aus', 'bei', 'gegenüber', 'hinter', 'in', 'neben', 'über',
+                'unter', 'vor', 'zu', 'zwischen') and \
+                len([1 for c in document_token.children
+                if 'Case=Dat' in c.child_token(document_token.doc).morph]) > 0
+        if search_phrase_token._.holmes.lemma == 'wohin':
+            return document_token.tag_ == 'APPR' and document_token.lemma_ in (
+                'an', 'auf', 'hinter', 'in', 'neben', 'über',
+                'unter', 'vor', 'zwischen') and \
+                len([1 for c in document_token.children
+                if 'Case=Acc' in c.child_token(document_token.doc).morph]) > 0
+        if search_phrase_token._.holmes.lemma == 'wann':
+            return document_token.dep_ == 'mo' and document_token.pos_ in ('NOUN', 'PROPN', 'ADP')
+        if search_phrase_token._.holmes.lemma == 'wie':
+            return document_token.dep_ == ('mo', 'oc') and document_token.pos_ in ('VERB', 'AUX')
+        if search_phrase_token._.holmes.lemma == 'woher':
+            return document_token.tag_ == 'APPR' and document_token._.holmes.lemma in (
+                'aus', 'von', 'wegen') or (document_token.dep_ == ('mo', 'oc') and
+                document_token.pos_ in ('VERB', 'AUX'))
+        if search_phrase_token._.holmes.lemma == 'warum':
+            return document_token.tag_ == 'APPR' and document_token._.holmes.lemma in (
+                'wegen') or (document_token.dep_ == ('mo', 'oc') and
+                document_token.pos_ in ('VERB', 'AUX'))
+        if search_phrase_token._.holmes.lemma == 'wann':
+            return document_token.dep_ == 'mo' and document_token.pos_ in ('NOUN', 'PROPN', 'ADP')
+        if search_phrase_token._.holmes.lemma == 'wie':
+            return document_token.dep_ == ('mo', 'oc') and document_token.pos_ in ('VERB', 'AUX')
+        if search_phrase_token._.holmes.lemma == 'woher':
+            return document_token.tag_ == 'APPR' and document_token.lemma_ in (
+                'aus', 'von', 'wegen') or (document_token.dep_ == ('mo', 'oc') and
+                document_token.pos_ in ('VERB', 'AUX'))
+        if search_phrase_token._.holmes.lemma.startswith('wo') and document_token.tag_ == 'APPR' \
+                and search_phrase_token._.holmes.lemma.endswith(document_token._.holmes.lemma):
+            return True
+        if search_phrase_token._.holmes.lemma == 'wessen':
+            return True
+        return False
 
     preferred_phraselet_pos = ('NOUN', 'PROPN')
 

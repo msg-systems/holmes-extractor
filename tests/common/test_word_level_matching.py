@@ -49,7 +49,7 @@ class WordMatchingTest(unittest.TestCase):
         self.assertEqual(len(text_matches), 1)
         self.assertEqual(text_matches[0]['word_matches'][0]['match_type'], 'entity')
         self.assertEqual(text_matches[0]['word_matches'][0]['explanation'],
-                "Matches the ENTITYPERSON placeholder.")
+                "Has an entity label matching ENTITYPERSON.")
 
     def test_ontology_matching(self):
         text_matches = holmes_manager_coref.match(document_text='The dog chased the kitten')

@@ -1,6 +1,7 @@
 from multiprocessing import Process, Queue, Manager as MultiprocessingManager, cpu_count
 from threading import Lock
 from string import punctuation
+from math import sqrt
 import traceback
 import sys
 import os
@@ -92,10 +93,6 @@ class Manager:
         if overall_similarity_threshold < 0.0 or overall_similarity_threshold > 1.0:
             raise ValueError(
                 'overall_similarity_threshold must be between 0 and 1')
-        if overall_similarity_threshold != 1.0 and not \
-                self.semantic_analyzer.model_supports_embeddings():
-            raise ValueError(
-                'Model has no embeddings: overall_similarity_threshold must be 1.')
         if overall_similarity_threshold == 1.0 and embedding_based_matching_on_root_words:
             raise ValueError(
                 'overall_similarity_threshold is 1; embedding_based_matching_on_root_words must '\
@@ -115,8 +112,7 @@ class Manager:
         self.semantic_matching_helper.ontology_reverse_derivational_dict = \
             self.linguistic_object_factory.get_ontology_reverse_derivational_dict()
         self.structural_matcher = StructuralMatcher(
-            self.semantic_matching_helper, ontology, overall_similarity_threshold,
-            embedding_based_matching_on_root_words,
+            self.semantic_matching_helper, ontology, embedding_based_matching_on_root_words,
             analyze_derivational_morphology, perform_coreference_resolution,
             use_reverse_dependency_matching)
         self.document_labels_to_worker_queues = {}
@@ -146,7 +142,7 @@ class Manager:
             worker_label = ' '.join(('Worker', str(counter)))
             this_worker = Process(
                 target=self.worker.listen, args=(
-                self.structural_matcher, self.nlp.vocab, model,
+                self.structural_matcher, self.overall_similarity_threshold, self.nlp.vocab, model,
                 SERIALIZED_DOCUMENT_VERSION, input_queue, worker_label),
                 daemon=True)
             self.workers.append(this_worker)
@@ -419,9 +415,11 @@ class Manager:
 
     def topic_match_documents_against(
             self, text_to_match, *, use_frequency_factor=True, maximum_activation_distance=75,
+            word_embedding_match_threshold=0.8,
+            initial_question_word_embedding_match_threshold=0.5,
             relation_score=300, reverse_only_relation_score=200,
-            single_word_score=50, single_word_any_tag_score=20, question_word_answer_score=None,
-            match_question_words=True, different_match_cutoff_score=15,
+            single_word_score=50, single_word_any_tag_score=20, question_word_answer_score=600,
+            process_initial_question_words=True, different_match_cutoff_score=15,
             overlapping_relation_multiplier=1.5, embedding_penalty=0.6,
             ontology_penalty=0.9,
             relation_matching_frequency_threshold=0.5, embedding_matching_frequency_threshold=0.75,
@@ -439,6 +437,9 @@ class Manager:
             determining which relation and embedding matches should be attempted.
         maximum_activation_distance -- the number of words it takes for a previous phraselet
             activation to reduce to zero when the library is reading through a document.
+        word_embedding_match_threshold -- the cosine similarity above which two words match.
+        initial_question_word_embedding_match_threshold -- the cosine similarity above which two
+            words match where the search phrase word governs an interrogative pronoun.
         relation_score -- the activation score added when a normal two-word
             relation is matched.
         reverse_only_relation_score -- the activation score added when a two-word relation
@@ -449,8 +450,8 @@ class Manager:
             whose tag did not correspond to the template specification.
         question_word_answer_score -- the activation score added when a question word is matched
             to an answering phrase. Set to the value of *relation_score* if not supplied.
-        match_question_words -- *True* if a question word in the sentence constinuent at the
-            beginning of *text_to_match* is to be matched to document phrases that answer it.
+        process_initial_question_words -- *True* if a question word in the sentence constinuent at
+            the beginning of *text_to_match* is to be matched to document phrases that answer it.
         different_match_cutoff_score -- the activation threshold under which topic matches are
             separated from one another. Note that the default value will probably be too low if
             *use_frequency_factor* is set to *False*.
@@ -479,6 +480,18 @@ class Manager:
         tied_result_quotient -- the quotient between a result and following results above which
             the results are interpreted as tied.
         """
+        if word_embedding_match_threshold < 0.0 or word_embedding_match_threshold > 1.0:
+            raise ValueError(
+                'word_embedding_match_threshold must be between 0 and 1')
+        if initial_question_word_embedding_match_threshold < 0.0 or \
+                initial_question_word_embedding_match_threshold > 1.0:
+            raise ValueError(
+                'initial_question_word_embedding_match_threshold must be between 0 and 1')
+
+        overall_similarity_threshold = sqrt(word_embedding_match_threshold)
+        initial_question_word_overall_similarity_threshold = sqrt(
+            initial_question_word_embedding_match_threshold)
+
         if embedding_matching_frequency_threshold < 0.0 or \
                 embedding_matching_frequency_threshold > 1.0:
             raise ValueError(': '.join(('embedding_matching_frequency_threshold',
@@ -487,11 +500,6 @@ class Manager:
                 relation_matching_frequency_threshold > 1.0:
             raise ValueError(': '.join(('relation_matching_frequency_threshold',
                 str(relation_matching_frequency_threshold))))
-        if match_question_words and question_word_answer_score is not None:
-            raise ValueError('question_word_answer_score may not be set if '
-                'match_question_words is not set to True.')
-        self.question_word_answer_score = question_word_answer_score \
-            if question_word_answer_score is not None else relation_score
         if embedding_matching_frequency_threshold < relation_matching_frequency_threshold:
             raise EmbeddingThresholdLessThanRelationThresholdError(' '.join((
                 'embedding',
@@ -511,7 +519,7 @@ class Manager:
             text_to_match_doc=text_to_match_doc,
             words_to_corpus_frequencies=words_to_corpus_frequencies,
             maximum_corpus_frequency=maximum_corpus_frequency,
-            process_initial_question_words=match_question_words)
+            process_initial_question_words=process_initial_question_words)
         if len(phraselet_labels_to_phraselet_infos) == 0:
             return []
         phraselet_labels_to_search_phrases = \
@@ -525,8 +533,9 @@ class Manager:
                 self.worker.get_topic_matches,
                 (text_to_match, phraselet_labels_to_phraselet_infos,
                 phraselet_labels_to_search_phrases, maximum_activation_distance,
+                overall_similarity_threshold, initial_question_word_overall_similarity_threshold,
                 relation_score, reverse_only_relation_score, single_word_score,
-                single_word_any_tag_score, question_word_answer_score, match_question_words,
+                single_word_any_tag_score, question_word_answer_score, process_initial_question_words,
                 different_match_cutoff_score, overlapping_relation_multiplier, embedding_penalty,
                 ontology_penalty, relation_matching_frequency_threshold,
                 embedding_matching_frequency_threshold, sideways_match_extent,
@@ -563,7 +572,8 @@ class Manager:
             structural_matcher=self.structural_matcher,
             classification_ontology=classification_ontology,
             overlap_memory_size=overlap_memory_size, oneshot=oneshot,
-            match_all_words=match_all_words, verbose=verbose)
+            match_all_words=match_all_words,
+            overall_similarity_threshold=self.overall_similarity_threshold, verbose=verbose)
 
     def deserialize_supervised_topic_classifier(self, serialized_model, verbose=False):
         """ Returns a document classifier that will use a pre-trained model.
@@ -577,7 +587,7 @@ class Manager:
         model = jsonpickle.decode(serialized_model)
         return SupervisedTopicClassifier(
             self.semantic_analyzer, self.linguistic_object_factory, self.structural_matcher,
-            model, verbose)
+            model, self.overall_similarity_threshold, verbose)
 
     def start_chatbot_mode_console(self):
         """Starts a chatbot mode console enabling the matching of pre-registered search phrases
@@ -634,10 +644,11 @@ class Worker:
             worker_label,
             ' - error:'))
 
-    def listen(self, structural_matcher, vocab, model_name, serialized_document_version,
-            input_queue, worker_label):
+    def listen(self, structural_matcher, overall_similarity_threshold, vocab, model_name,
+            serialized_document_version, input_queue, worker_label):
         state = {
             'structural_matcher': structural_matcher,
+            'overall_similarity_threshold': overall_similarity_threshold,
             'vocab': vocab,
             'model_name': model_name,
             'serialized_document_version': serialized_document_version,
@@ -749,7 +760,9 @@ class Worker:
                 compare_embeddings_on_non_root_words=True,
                 reverse_matching_corpus_word_positions=None,
                 embedding_reverse_matching_corpus_word_positions=None,
-                match_question_words=False)
+                process_initial_question_words=False,
+                overall_similarity_threshold=state['overall_similarity_threshold'],
+                initial_question_word_overall_similarity_threshold=1.0)
             return state['structural_matcher'].build_match_dictionaries(matches), \
                 'Returned matches'
         else:
@@ -757,11 +770,12 @@ class Worker:
 
     def get_topic_matches(self, state, text_to_match,
             phraselet_labels_to_phraselet_infos, phraselet_labels_to_search_phrases,
-            maximum_activation_distance, relation_score, reverse_only_relation_score,
-            single_word_score, single_word_any_tag_score, question_word_answer_score,
-            match_question_words, different_match_cutoff_score,
-            overlapping_relation_multiplier, embedding_penalty, ontology_penalty,
-            relation_matching_frequency_threshold,
+            maximum_activation_distance, overall_similarity_threshold,
+            initial_question_word_overall_similarity_threshold, relation_score,
+            reverse_only_relation_score, single_word_score, single_word_any_tag_score,
+            question_word_answer_score, process_initial_question_words,
+            different_match_cutoff_score, overlapping_relation_multiplier, embedding_penalty,
+            ontology_penalty, relation_matching_frequency_threshold,
             embedding_matching_frequency_threshold,
             sideways_match_extent, only_one_result_per_document, number_of_results,
             document_label_filter, use_frequency_factor):
@@ -777,12 +791,15 @@ class Worker:
             phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
             phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
             maximum_activation_distance=maximum_activation_distance,
+            overall_similarity_threshold=overall_similarity_threshold,
+            initial_question_word_overall_similarity_threshold=
+            initial_question_word_overall_similarity_threshold,
             relation_score=relation_score,
             reverse_only_relation_score=reverse_only_relation_score,
             single_word_score=single_word_score,
             single_word_any_tag_score=single_word_any_tag_score,
             question_word_answer_score=question_word_answer_score,
-            match_question_words=match_question_words,
+            process_initial_question_words=process_initial_question_words,
             different_match_cutoff_score=different_match_cutoff_score,
             overlapping_relation_multiplier=overlapping_relation_multiplier,
             embedding_penalty=embedding_penalty,

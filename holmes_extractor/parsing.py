@@ -454,10 +454,14 @@ class PhraseletInfo:
         parent_derived_lemma -- the parent derived lemma, or the derived lemma for single-word
             phraselets.
         parent_pos -- the part of speech tag of the token that supplied the parent word.
+        parent_ent_type -- the parent entity label, or the entity label for single-word
+            phraselets. '' if there is none.
         child_lemma -- the child lemma, or 'None' for single-word phraselets.
         child_derived_lemma -- the child derived lemma, or 'None' for single-word phraselets.
         child_pos -- the part of speech tag of the token that supplied the child word, or 'None'
             for single-word phraselets.
+        child_ent_type -- the child entity label. '' if there is none; 'None' for single-word
+            phraselets.
         created_without_matching_tags -- 'True' if created without matching tags.
         reverse_only_parent_lemma -- 'True' if the parent lemma is in the reverse matching list.
         frequency_factor -- a multiplication factor between 0.0 and 1.0 which is lower the more
@@ -469,8 +473,9 @@ class PhraseletInfo:
     """
 
     def __init__(
-            self, label, template_label, parent_lemma, parent_derived_lemma, parent_pos,
-            child_lemma, child_derived_lemma, child_pos, created_without_matching_tags,
+            self, label, template_label, parent_lemma, parent_derived_lemma,
+            parent_pos, parent_ent_type, child_lemma, child_derived_lemma,
+            child_pos, child_ent_type, created_without_matching_tags,
             reverse_only_parent_lemma, frequency_factor, parent_frequency_factor,
             child_frequency_factor):
         self.label = label
@@ -479,9 +484,11 @@ class PhraseletInfo:
         self.parent_lemma = parent_lemma
         self.parent_derived_lemma = parent_derived_lemma
         self.parent_pos = parent_pos
+        self.parent_ent_type = parent_ent_type
         self.child_lemma = child_lemma
         self.child_derived_lemma = child_derived_lemma
         self.child_pos = child_pos
+        self.child_ent_type = child_ent_type
         self.created_without_matching_tags = created_without_matching_tags
         self.reverse_only_parent_lemma = reverse_only_parent_lemma
         self.frequency_factor = frequency_factor
@@ -515,10 +522,10 @@ class PhraseletInfo:
 class SearchPhrase:
 
     def __init__(self, doc, matchable_token_indexes, root_token_index,
-            matchable_non_entity_tokens_to_vectors, single_token_similarity_threshold, label,
-            topic_match_phraselet, topic_match_phraselet_created_without_matching_tags,
-            reverse_only, treat_as_reverse_only_during_initial_relation_matching,
-            words_matching_root_token, root_word_to_match_info_dict):
+            matchable_non_entity_tokens_to_vectors, label, topic_match_phraselet,
+            topic_match_phraselet_created_without_matching_tags, reverse_only,
+            treat_as_reverse_only_during_initial_relation_matching, words_matching_root_token,
+            root_word_to_match_info_dict):
         """Args:
 
         doc -- the Holmes document created for the search phrase
@@ -527,9 +534,6 @@ class SearchPhrase:
         root_token_index -- the index of the token at which recursive matching starts
         matchable_non_entity_tokens_to_vectors -- dictionary from token indexes to vectors.
             Only used when embedding matching is active.
-        single_token_similarity_threshold -- the lowest similarity value that a single token
-            within this search phrase could have with a matching document token to achieve
-            the overall matching threshold for a match.
         label -- a label for the search phrase.
         ontology -- a reference to the ontology held by the outer *StructuralMatcher* object.
         topic_match_phraselet -- 'True' if a topic match phraselet, otherwise 'False'.
@@ -550,7 +554,6 @@ class SearchPhrase:
         self.matchable_token_indexes = matchable_token_indexes
         self.root_token_index = root_token_index
         self.matchable_non_entity_tokens_to_vectors = matchable_non_entity_tokens_to_vectors
-        self.single_token_similarity_threshold = single_token_similarity_threshold
         self.label = label
         self.topic_match_phraselet = topic_match_phraselet
         self.topic_match_phraselet_created_without_matching_tags = \
@@ -689,9 +692,6 @@ class SemanticAnalyzer(ABC):
             self.create_convenience_dependencies(token)
         return spacy_doc
 
-    def model_supports_embeddings(self):
-        return self.vectors_nlp.meta['vectors']['vectors'] > 0
-
     def _lefthand_sibling_recursively(self, token):
         """If *token* is a righthand sibling, return the index of the token that has a sibling
             reference to it, otherwise return the index of *token* itself.
@@ -826,6 +826,10 @@ class SemanticAnalyzer(ABC):
     def holmes_lemma(self, token):
         pass
 
+    @abstractmethod
+    def is_interrogative_pronoun(self, token):
+        pass
+
     def derived_holmes_lemma(self, token, lemma):
         if lemma in self.derivational_dictionary:
             derived_lemma = self.derivational_dictionary[lemma]
@@ -858,7 +862,7 @@ class SemanticAnalyzer(ABC):
                 visited.add(working_first_phrase_head)
                 working_first_phrase_head = working_first_phrase_head.head
             for token in initial_sentence:
-                if token.tag_ in self.interrogative_pronoun_tags and \
+                if self.is_interrogative_pronoun(token) and \
                         token in working_first_phrase_head.subtree:
                     token._.holmes.is_initial_question_word = True
 
@@ -1222,8 +1226,9 @@ class LinguisticObjectFactory:
 
         def add_new_phraselet_info(
                 phraselet_label, phraselet_template, created_without_matching_tags,
-                is_reverse_only_parent_lemma, parent_lemma, parent_derived_lemma, parent_pos,
-                child_lemma, child_derived_lemma, child_pos):
+                is_reverse_only_parent_lemma, parent_lemma, parent_derived_lemma,
+                parent_pos, parent_ent_type, child_lemma, child_derived_lemma, child_pos,
+                child_ent_type):
 
             def get_frequency_factor_for_pole(parent): # pole is 'True' -> parent, 'False' -> child
                 original_word_set = {parent_lemma, parent_derived_lemma} if parent else \
@@ -1255,8 +1260,8 @@ class LinguisticObjectFactory:
             if phraselet_label not in phraselet_labels_to_phraselet_infos:
                 phraselet_labels_to_phraselet_infos[phraselet_label] = PhraseletInfo(
                     phraselet_label, phraselet_template.label, parent_lemma,
-                    parent_derived_lemma, parent_pos, child_lemma, child_derived_lemma,
-                    child_pos, created_without_matching_tags,
+                    parent_derived_lemma, parent_pos, parent_ent_type, child_lemma,
+                    child_derived_lemma, child_pos, child_ent_type, created_without_matching_tags,
                     is_reverse_only_parent_lemma, frequency_factor, parent_frequency_factor,
                     child_frequency_factor)
             else:
@@ -1282,7 +1287,6 @@ class LinguisticObjectFactory:
                         # see note below for explanation
                 if (not checking_tags or token.tag_ in phraselet_template.parent_tags) and \
                         token.tag_ not in stop_tags:
-                    phraselet_doc = phraselet_template.template_doc.copy()
                     if token.i in token_indexes_to_multiword_lemmas and not match_all_words:
                         lemma = derived_lemma = token_indexes_to_multiword_lemmas[token.i]
                     else:
@@ -1290,16 +1294,14 @@ class LinguisticObjectFactory:
                     if self.ontology is not None and replace_with_hypernym_ancestors:
                         lemma, derived_lemma = replace_lemmas_with_most_general_ancestor(
                             lemma, derived_lemma)
-                    phraselet_doc[phraselet_template.parent_index]._.holmes.lemma = lemma
-                    phraselet_doc[phraselet_template.parent_index]._.holmes.derived_lemma = \
-                        derived_lemma
                     phraselet_label = ''.join((phraselet_template.label, ': ', derived_lemma))
                     if derived_lemma not in stop_lemmas and derived_lemma != 'ENTITYNOUN':
                         # ENTITYNOUN has to be excluded as single word although it is still
                         # permitted as the child of a relation phraselet template
                         add_new_phraselet_info(
                             phraselet_label, phraselet_template, not checking_tags,
-                            None, lemma, derived_lemma, token.pos_, None, None, None)
+                            None, lemma, derived_lemma, token.pos_, token.ent_type_,
+                            None, None, None, None)
 
         def add_head_subwords_to_token_list_and_remove_words_with_subword_conjunction(index_list):
             # for each token in the list, find out whether it has subwords and if so add the
@@ -1385,8 +1387,6 @@ class LinguisticObjectFactory:
                                     (doc[child.token_index]._.holmes.is_matchable or
                                     (process_initial_question_words and
                                     doc[child.token_index]._.holmes.is_initial_question_word)):
-                                phraselet_doc = self.semantic_analyzer.parse(
-                                    phraselet_template.template_sentence)
                                 if parent.token_index in token_indexes_to_multiword_lemmas:
                                     parent_lemma = parent_derived_lemma = \
                                         token_indexes_to_multiword_lemmas[parent.token_index]
@@ -1406,14 +1406,6 @@ class LinguisticObjectFactory:
                                     child_lemma, child_derived_lemma = \
                                         replace_lemmas_with_most_general_ancestor(
                                             child_lemma, child_derived_lemma)
-                                phraselet_doc[phraselet_template.parent_index]._.holmes.lemma = \
-                                    parent_lemma
-                                phraselet_doc[phraselet_template.parent_index]._.holmes.\
-                                    derived_lemma = parent_derived_lemma
-                                phraselet_doc[phraselet_template.child_index]._.holmes.lemma = \
-                                    child_lemma
-                                phraselet_doc[phraselet_template.child_index]._.holmes.\
-                                    derived_lemma = child_derived_lemma
                                 phraselet_label = ''.join((
                                     phraselet_template.label, ': ', parent_derived_lemma,
                                     '-', child_derived_lemma))
@@ -1432,8 +1424,10 @@ class LinguisticObjectFactory:
                                         is_reverse_only_parent_lemma,
                                         parent_lemma, parent_derived_lemma,
                                         doc[parent.token_index].pos_,
+                                        doc[parent.token_index].ent_type_,
                                         child_lemma, child_derived_lemma,
-                                        doc[child.token_index].pos_)
+                                        doc[child.token_index].pos_,
+                                        doc[child.token_index].ent_type_)
 
             # We do not check for matchability in order to catch pos_='X', tag_='TRUNC'. This
             # is not a problem as only a limited range of parts of speech receive subwords in
@@ -1455,8 +1449,6 @@ class LinguisticObjectFactory:
                             not phraselet_template.reverse_only or include_reverse_only)
                         and subword.dependency_label in phraselet_template.dependency_labels and
                         token.tag_ in phraselet_template.parent_tags):
-                    phraselet_doc = self.semantic_analyzer.parse(
-                        phraselet_template.template_sentence)
                     parent_lemma, parent_derived_lemma = get_lemmas_from_index(Index(
                         token.i, parent_subword_index))
                     if self.ontology is not None and replace_with_hypernym_ancestors:
@@ -1469,21 +1461,13 @@ class LinguisticObjectFactory:
                         child_lemma, child_derived_lemma = \
                                 replace_lemmas_with_most_general_ancestor(
                                     child_lemma, child_derived_lemma)
-                    phraselet_doc[phraselet_template.parent_index]._.holmes.lemma = \
-                        parent_lemma
-                    phraselet_doc[phraselet_template.parent_index]._.holmes.derived_lemma = \
-                        parent_derived_lemma
-                    phraselet_doc[phraselet_template.child_index]._.holmes.lemma = \
-                        child_lemma
-                    phraselet_doc[phraselet_template.child_index]._.holmes.derived_lemma = \
-                        child_derived_lemma
                     phraselet_label = ''.join((
                         phraselet_template.label, ': ', parent_derived_lemma, '-',
                         child_derived_lemma))
                     add_new_phraselet_info(
                         phraselet_label, phraselet_template, match_all_words,
-                        False, parent_lemma, parent_derived_lemma, token.pos_, child_lemma,
-                        child_derived_lemma, token.pos_)
+                        False, parent_lemma, parent_derived_lemma, token.pos_, token.ent_type_,
+                        child_lemma, child_derived_lemma, token.pos_, token.ent_type_)
         if len(phraselet_labels_to_phraselet_infos) == 0 and not match_all_words:
             for token in doc:
                 process_single_word_phraselet_templates(
@@ -1517,11 +1501,15 @@ class LinguisticObjectFactory:
                         phraselet_info.parent_lemma
                     phraselet_doc[phraselet_template.parent_index]._.holmes.derived_lemma = \
                         phraselet_info.parent_derived_lemma
+                    phraselet_doc[phraselet_template.parent_index]._.holmes.ent_type = \
+                        phraselet_info.parent_ent_type
                     if phraselet_info.child_lemma is not None:
                         phraselet_doc[phraselet_template.child_index]._.holmes.lemma = \
                             phraselet_info.child_lemma
                         phraselet_doc[phraselet_template.child_index]._.holmes.derived_lemma = \
                             phraselet_info.child_derived_lemma
+                        phraselet_doc[phraselet_template.child_index]._.holmes.ent_type = \
+                            phraselet_info.child_ent_type
                     return self.create_search_phrase(
                         'topic match phraselet', phraselet_doc,
                         create_phraselet_label(phraselet_info), phraselet_template,
@@ -1691,8 +1679,7 @@ class LinguisticObjectFactory:
                     len(token._.holmes.children) > 0 and
                     token._.holmes.children[0].child_index < 0):
                 tokens_to_match.append(token)
-                if self.overall_similarity_threshold < 1.0 and not \
-                        self.semantic_matching_helper.is_entity_search_phrase_token(
+                if not self.semantic_matching_helper.is_entity_search_phrase_token(
                         token, phraselet_template is not None):
                     if phraselet_template is None and len(token._.holmes.lemma.split()) > 1:
                         working_lexeme = self.semantic_analyzer.vectors_nlp.vocab[token.lemma_]
@@ -1715,11 +1702,6 @@ class LinguisticObjectFactory:
         if len(root_tokens) > 1:
             raise SearchPhraseContainsMultipleClausesError(search_phrase_text)
         root_token = root_tokens[0]
-        single_token_similarity_threshold = 1.0
-        if self.overall_similarity_threshold < 1.0 and \
-                len(matchable_non_entity_tokens_to_vectors) > 0:
-            single_token_similarity_threshold = \
-                    self.overall_similarity_threshold ** len(matchable_non_entity_tokens_to_vectors)
         if phraselet_template is None:
             reverse_only = False
         else:
@@ -1759,8 +1741,8 @@ class LinguisticObjectFactory:
 
         return SearchPhrase(
             search_phrase_doc, [token.i for token in tokens_to_match], root_token.i,
-            matchable_non_entity_tokens_to_vectors, single_token_similarity_threshold, label,
-            phraselet_template is not None, topic_match_phraselet_created_without_matching_tags,
+            matchable_non_entity_tokens_to_vectors, label, phraselet_template is not None,
+            topic_match_phraselet_created_without_matching_tags,
             reverse_only, treat_as_reverse_only_during_initial_relation_matching,
             words_matching_root_token, root_word_to_match_info_dict)
 
@@ -1838,8 +1820,6 @@ class SemanticMatchingHelper(ABC):
 
     match_implication_dict = NotImplemented
 
-    question_word_strategies = NotImplemented
-
     phraselet_templates = NotImplemented
 
     preferred_phraselet_pos = NotImplemented
@@ -1864,6 +1844,10 @@ class SemanticMatchingHelper(ABC):
 
     @abstractmethod
     def normalize_hyphens(self, word):
+        pass
+
+    @abstractmethod
+    def question_word_matches(self, search_phrase_token:Token, document_token:Token):
         pass
 
     def add_to_corpus_index(self, corpus_index_dict, parsed_document, document_label):
@@ -2125,3 +2109,9 @@ class SemanticMatchingHelper(ABC):
                 return_string = ' '.join((return_string, token.doc[pointer].text))
             if token.right_edge.i <= pointer:
                 return return_string
+
+    def has_question_word_in_phrase(self, token:Token):
+        if token.i > 20: # performance quick win
+            return False
+        return token.pos_ in self.noun_pos and len([1 for c in token._.holmes.children
+            if c.child_token(token.doc)._.holmes.is_initial_question_word]) > 0

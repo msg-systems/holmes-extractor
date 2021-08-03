@@ -1,3 +1,4 @@
+from spacy.tokens import Token
 from ...parsing import SemanticAnalyzer, SemanticMatchingHelper, MatchImplication,\
     QuestionWordStrategy, PhraseletTemplate, SemanticDependency
 
@@ -523,6 +524,9 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                     verb_token._.holmes.children.append(SemanticDependency(
                         verb_token.i, token.i, 'arg', True))
 
+    def is_interrogative_pronoun(self, token:Token):
+        return token.tag_ in self.interrogative_pronoun_tags
+
 class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
 
     # The part of speech tags that can refer to nouns
@@ -687,11 +691,30 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             ['IN'],
             ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=True),
         PhraseletTemplate(
-            "head-WH", "who came?", 1, 0,
-            ['nsubj'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ', 'JJ',
-            'JJR', 'JJS', 'VBN', 'RB', 'RBR', 'RBS'],
-            ['WDT', 'WP', 'WRB'], reverse_only=False),
+            "head-WHsubj", "who came?", 1, 0,
+            ['nsubj', 'nsubjpass', 'pobjb'],
+            ['VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
+            ['WP'], reverse_only=False),
+        PhraseletTemplate(
+            "head-WHobj", "who did you see?", 1, 0,
+            ['dobj'],
+            ['VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
+            ['WP'], reverse_only=False),
+        PhraseletTemplate(
+            "head-WHadv", "where did you go?", 1, 0,
+            ['advmod'],
+            ['VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
+            ['WRB'], reverse_only=False),
+        PhraseletTemplate(
+            "prep-WH", "what did you put it in?", 5, 0,
+            ['pobj'],
+            ['IN', 'RB'],
+            ['WP'], reverse_only=False),
+        PhraseletTemplate(
+            "head-whose", "whose thing", 1, 0,
+            ['poss'],
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'],
+            ['WP'], reverse_only=False),
         PhraseletTemplate(
             "word", "thing", 0, None,
             None,
@@ -699,18 +722,28 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             None, reverse_only=False)
         ]
 
-    question_word_strategies = [
-        QuestionWordStrategy(
-            name='who as subject',
-            lemma = 'who',
-            tag = 'WH',
-            deps = 'nsubj',
-            matcher = lambda token, question_head_token: \
-                token.pos_ in self.noun_pos and \
-                token.ent_label_ == 'PERSON' and \
-                self.dependency_labels_match('nsubj', token.dep_, False)
-        )
-    ]
+    def question_word_matches(search_phrase_token:Token, document_token:Token):
+        if search_phrase_token._.holmes.lemma.startswith('who'):
+            return document_token.ent_type_ in ('PERSON', 'NORP', 'ORG', 'GPE')
+        if search_phrase_token._.holmes.lemma == 'what':
+            return document_token.pos_ in self.noun_pos
+        if search_phrase_token._.holmes.lemma == 'where':
+            return document_token.tag_ == 'IN' and document_token.lemma_ in (
+                'above', 'across', 'against', 'along', 'among', 'amongst', 'around', 'at',
+                'behind', 'below', 'beneath', 'beside', 'between', 'beyond', 'by', 'close', 'down',
+                'in', 'into', 'near', 'next', 'off', 'on', 'onto', 'opposite', 'out',
+                'outside', 'round', 'through', 'under', 'underneath', 'up')
+        if search_phrase_token._.holmes.lemma == 'when':
+            return document_token.dep_ == 'advmod' or document_token.ent_type_ in ('DATE', 'TIME')
+        if search_phrase_token._.holmes.lemma == 'how':
+            return document_token.tag_ == 'VBG' or len([1 for c in document_token.children if
+                c.child_token(document_token.doc).tag_ == 'VBG']) > 0
+        if search_phrase_token._.holmes.lemma == 'why':
+            return document_token.dep_ == 'advcl' or document_token.lemma_ == 'because'
+        if search_phrase_token._.holmes.lemma == 'whose':
+            return True
+        return False
+
     # Parts of speech that are preferred as lemmas within phraselets
     preferred_phraselet_pos = ('NOUN', 'PROPN')
 

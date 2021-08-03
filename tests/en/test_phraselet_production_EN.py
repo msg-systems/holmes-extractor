@@ -267,7 +267,7 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
     def test_question_word(self):
         self._check_equals(no_ontology_coref_holmes_manager,
                            "Who opened the door?",
-                           ['head-WH: open-who', 'predicate-patient: open-door', 'word: door'],
+                           ['head-WHsubj: open-who', 'predicate-patient: open-door', 'word: door'],
                            process_initial_question_words=True)
 
     def test_question_word_control(self):
@@ -605,3 +605,12 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
         self.assertEqual(str(chase_dog_phraselet.frequency_factor), '5.863021012110299e-05')
         chase_cat_phraselet = dict['predicate-patient: chasing-cat']
         self.assertEqual(str(chase_cat_phraselet.frequency_factor), '2.9015950566883042e-05')
+
+    def test_ent_types(self):
+        dict = self._get_phraselet_dict(ontology_holmes_manager,
+                                        "The big Richard came home.")
+        self.assertEqual(dict['word: richard'].parent_ent_type, 'PERSON')
+        self.assertEqual(dict['predicate-actor: come-richard'].parent_ent_type, '')
+        self.assertEqual(dict['predicate-actor: come-richard'].child_ent_type, 'PERSON')
+        self.assertEqual(dict['governor-adjective: richard-big'].parent_ent_type, 'PERSON')
+        self.assertEqual(dict['governor-adjective: richard-big'].child_ent_type, '')

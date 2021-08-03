@@ -43,13 +43,16 @@ class WordMatch:
         coreference chain.
     depth -- the number of hyponym relationships linking *search_phrase_word* and
         *document_word*, or *0* if ontology-based matching is not active.
+    search_phrase_initial_question_word -- *True* if *search_phrase_token* is an initial question
+        word or governs an initial question word.
     """
 
     def __init__(
             self, search_phrase_token, search_phrase_word, document_token,
             first_document_token, last_document_token, document_subword, document_word,
             word_match_type, similarity_measure, is_negated, is_uncertain,
-            structurally_matched_document_token, extracted_word, depth):
+            structurally_matched_document_token, extracted_word, depth,
+            search_phrase_initial_question_word):
 
         self.search_phrase_token = search_phrase_token
         self.search_phrase_word = search_phrase_word
@@ -65,6 +68,7 @@ class WordMatch:
         self.structurally_matched_document_token = structurally_matched_document_token
         self.extracted_word = extracted_word
         self.depth = depth
+        self.search_phrase_initial_question_word = search_phrase_initial_question_word
 
     @property
     def involves_coreference(self):
@@ -86,7 +90,7 @@ class WordMatch:
         elif self.word_match_type == 'derivation':
             return ''.join(("Has a common stem with ", search_phrase_display_word, "."))
         elif self.word_match_type == 'entity':
-            return ''.join(("Matches the ", search_phrase_display_word, " placeholder."))
+            return ''.join(("Has an entity label matching ", search_phrase_display_word, "."))
         elif self.word_match_type == 'embedding':
             printable_similarity = str(int(self.similarity_measure * 100))
             return ''.join((
@@ -183,18 +187,13 @@ class StructuralMatcher:
     """The class responsible for matching search phrases with documents."""
 
     def __init__(
-            self, semantic_matching_helper, ontology, overall_similarity_threshold,
+            self, semantic_matching_helper, ontology,
             embedding_based_matching_on_root_words, analyze_derivational_morphology,
             perform_coreference_resolution, use_reverse_dependency_matching):
         """Args:
 
         semantic_matching_helper -- the *SemanticMatchingHelper* object to use
         ontology -- optionally, an *Ontology* object to use in matching
-        overall_similarity_threshold -- if embedding-based matching is to be activated, a float
-            value between 0 and 1. A match between a search phrase and a document is then valid
-            if the geometric mean of all the similarities between search phrase tokens and
-            document tokens is this value or greater. If this value is set to 1.0,
-            embedding-based matching is deactivated.
         analyze_derivational_morphology -- *True* if matching should be attempted between different
             words from the same word family. Defaults to *True*.
         perform_coreference_resolution -- *True* if coreference resolution should be performed.
@@ -203,7 +202,6 @@ class StructuralMatcher:
             directions."""
         self.semantic_matching_helper = semantic_matching_helper
         self.ontology = ontology
-        self.overall_similarity_threshold = overall_similarity_threshold
         self.embedding_based_matching_on_root_words = embedding_based_matching_on_root_words
         self.analyze_derivational_morphology = analyze_derivational_morphology
         self.perform_coreference_resolution = perform_coreference_resolution
@@ -228,27 +226,34 @@ class StructuralMatcher:
             self, *, search_phrase, search_phrase_token, document, document_token,
             document_subword_index, search_phrase_tokens_to_word_matches,
             search_phrase_and_document_visited_table, is_uncertain,
-            structurally_matched_document_token, compare_embeddings_on_non_root_words):
+            structurally_matched_document_token, compare_embeddings_on_non_root_words,
+            process_initial_question_words, overall_similarity_threshold,
+            initial_question_word_overall_similarity_threshold):
         """Called whenever matching is attempted between a search phrase token and a document
             token."""
 
         def handle_match(
                 search_phrase_word, document_word, match_type, depth,
                 *, similarity_measure=1.0, first_document_token=document_token,
-                last_document_token=document_token):
+                last_document_token=document_token, search_phrase_initial_question_word=False):
             """Most of the variables are set from the outer call.
 
             Args:
 
             search_phrase_word -- the textual representation of the search phrase word that matched.
             document_word -- the textual representation of the document word that matched.
-            match_type -- *direct*, *entity*, *embedding*, *ontology* or *derivation*
+            match_type -- *direct*, *entity*, *embedding*, *ontology*, *derivation* or *question*
             similarity_measure -- the similarity between the two tokens. Defaults to 1.0 if the
                 match did not involve embeddings.
+            search_phrase_initial_question_word -- *True* if *search_phrase_word* is an initial
+                question word or governs an initial question word.
             """
             for dependency in (
                     dependency for dependency in search_phrase_token._.holmes.children
-                    if dependency.child_token(search_phrase_token.doc)._.holmes.is_matchable):
+                    if dependency.child_token(search_phrase_token.doc)._.holmes.is_matchable or
+                    (process_initial_question_words and
+                    dependency.child_token(
+                    search_phrase_token.doc)._.holmes.is_initial_question_word)):
                 at_least_one_document_dependency_tried = False
                 at_least_one_document_dependency_matched = False
                 # Loop through this token and any tokens linked to it by coreference
@@ -349,7 +354,13 @@ class StructuralMatcher:
                                             dependency.is_uncertain) or inverse_polarity),
                                         structurally_matched_document_token=document_child,
                                         compare_embeddings_on_non_root_words=
-                                        compare_embeddings_on_non_root_words):
+                                        compare_embeddings_on_non_root_words,
+                                        process_initial_question_words=
+                                        process_initial_question_words,
+                                        overall_similarity_threshold=
+                                        overall_similarity_threshold,
+                                        initial_question_word_overall_similarity_threshold=
+                                        initial_question_word_overall_similarity_threshold):
                                     at_least_one_document_dependency_matched = True
                     if working_document_parent_index.is_subword():
                         # examine relationship to dependent subword in the same word
@@ -378,7 +389,13 @@ class StructuralMatcher:
                                     is_uncertain=False,
                                     structurally_matched_document_token=document_token,
                                     compare_embeddings_on_non_root_words=
-                                    compare_embeddings_on_non_root_words):
+                                    compare_embeddings_on_non_root_words,
+                                    process_initial_question_words=
+                                    process_initial_question_words,
+                                    overall_similarity_threshold=
+                                    overall_similarity_threshold,
+                                    initial_question_word_overall_similarity_threshold=
+                                    initial_question_word_overall_similarity_threshold):
                                 at_least_one_document_dependency_matched = True
                         # examine relationship to governing subword in the same word
                         document_child_subword = document_token.doc[
@@ -407,7 +424,13 @@ class StructuralMatcher:
                                     is_uncertain=False,
                                     structurally_matched_document_token=document_token,
                                     compare_embeddings_on_non_root_words=
-                                    compare_embeddings_on_non_root_words):
+                                    compare_embeddings_on_non_root_words,
+                                    process_initial_question_words=
+                                    process_initial_question_words,
+                                    overall_similarity_threshold=
+                                    overall_similarity_threshold,
+                                    initial_question_word_overall_similarity_threshold=
+                                    initial_question_word_overall_similarity_threshold):
                                 at_least_one_document_dependency_matched = True
                 if at_least_one_document_dependency_tried and not \
                         at_least_one_document_dependency_matched:
@@ -423,7 +446,8 @@ class StructuralMatcher:
                 search_phrase_token, search_phrase_word, document_token,
                 first_document_token, last_document_token, document_subword,
                 document_word, match_type, similarity_measure, is_negated, is_uncertain,
-                structurally_matched_document_token, document_word, depth))
+                structurally_matched_document_token, document_word, depth,
+                search_phrase_initial_question_word))
 
         def loop_search_phrase_word_representations():
             yield search_phrase_token._.holmes.lemma, 'direct', \
@@ -526,6 +550,8 @@ class StructuralMatcher:
         if document_token._.holmes.is_uncertain:
             is_uncertain = True
 
+        search_phrase_initial_question_word = process_initial_question_words and \
+            self.semantic_matching_helper.has_question_word_in_phrase(search_phrase_token)
         if self.semantic_matching_helper.is_entity_search_phrase_token(
                 search_phrase_token, search_phrase.topic_match_phraselet) and \
                 document_subword_index is None:
@@ -545,13 +571,22 @@ class StructuralMatcher:
                     handle_match(
                         search_phrase_token.text, multiword_span.text, 'entity', 0,
                         first_document_token=multiword_span.tokens[0],
-                        last_document_token=multiword_span.tokens[-1])
+                        last_document_token=multiword_span.tokens[-1],
+                        search_phrase_initial_question_word=search_phrase_initial_question_word)
                     return True
                 search_phrase_and_document_visited_table[search_phrase_token.i].add(
                     document_token.i)
-                handle_match(search_phrase_token.text, document_token.text, 'entity', 0)
+                handle_match(search_phrase_token.text, document_token.text, 'entity', 0,
+                    search_phrase_initial_question_word=
+                    search_phrase_initial_question_word)
                 return True
             return False
+
+        if search_phrase_initial_question_word and \
+                search_phrase_token._.holmes.ent_type != '' and \
+                search_phrase_token._.holmes.ent_type == document_token.ent_type_:
+            handle_match(search_phrase_token.text, document_token.text, 'entity', 0, True)
+            return True
 
         document_word_representations = document_word_representations()
         for search_phrase_word_representation, search_phrase_match_type, \
@@ -576,7 +611,9 @@ class StructuralMatcher:
                                     search_phrase_derived_lemma == multispan_derived_lemma,
                                     search_phrase_match_type, document_match_type),
                                 0, first_document_token=multiword_span.tokens[0],
-                                last_document_token=multiword_span.tokens[-1])
+                                last_document_token=multiword_span.tokens[-1],
+                                search_phrase_initial_question_word=
+                                search_phrase_initial_question_word)
                             return True
                         if self.ontology is not None:
                             entry = self.ontology.matches(
@@ -590,7 +627,9 @@ class StructuralMatcher:
                                     search_phrase_word_representation, entry.word,
                                     'ontology', entry.depth,
                                     first_document_token=multiword_span.tokens[0],
-                                    last_document_token=multiword_span.tokens[-1])
+                                    last_document_token=multiword_span.tokens[-1],
+                                    search_phrase_initial_question_word=
+                                    search_phrase_initial_question_word)
                                 return True
             for document_word_representation, document_match_type, document_derived_lemma in \
                     document_word_representations:
@@ -601,7 +640,8 @@ class StructuralMatcher:
                         self.match_type(
                             search_phrase_derived_lemma == document_derived_lemma,
                             search_phrase_match_type, document_match_type)
-                        , 0)
+                        , 0,
+                        search_phrase_initial_question_word=search_phrase_initial_question_word)
                     return True
                 if self.ontology is not None:
                     entry = self.ontology.matches(
@@ -609,10 +649,14 @@ class StructuralMatcher:
                         document_word_representation.lower())
                     if entry is not None:
                         handle_match(
-                            search_phrase_word_representation, entry.word, 'ontology', entry.depth)
+                            search_phrase_word_representation, entry.word, 'ontology',
+                            entry.depth,
+                            search_phrase_initial_question_word=
+                            search_phrase_initial_question_word)
                         return True
 
-        if self.overall_similarity_threshold < 1.0 and (
+        if (overall_similarity_threshold < 1.0 or (search_phrase_initial_question_word and
+                initial_question_word_overall_similarity_threshold < 1.0)) and (
                 compare_embeddings_on_non_root_words or search_phrase.root_token.i ==
                 search_phrase_token.i) and search_phrase_token.i in \
                 search_phrase.matchable_non_entity_tokens_to_vectors.keys() and \
@@ -631,7 +675,11 @@ class StructuralMatcher:
 
             if search_phrase_vector is not None and document_vector is not None:
                 similarity_measure = self.cosine_similarity(search_phrase_vector, document_vector)
-                if similarity_measure > search_phrase.single_token_similarity_threshold:
+                single_token_similarity_threshold = \
+                    (initial_question_word_overall_similarity_threshold if
+                    search_phrase_initial_question_word else overall_similarity_threshold) ** len(
+                    search_phrase.matchable_non_entity_tokens_to_vectors)
+                if similarity_measure > single_token_similarity_threshold:
                     if not search_phrase.topic_match_phraselet and \
                             len(search_phrase_token._.holmes.lemma.split()) > 1:
                         search_phrase_word_to_use = search_phrase_token.lemma_
@@ -639,8 +687,16 @@ class StructuralMatcher:
                         search_phrase_word_to_use = search_phrase_token._.holmes.lemma
                     handle_match(
                         search_phrase_word_to_use, document_token.lemma_, 'embedding', 0,
-                        similarity_measure=similarity_measure)
+                        similarity_measure=similarity_measure,
+                        search_phrase_initial_question_word=search_phrase_initial_question_word)
                     return True
+
+        if process_initial_question_words and search_phrase_token._.holmes.is_initial_question_word\
+                and self.semantic_matching_helper.question_word_matches(
+                search_phrase_token, document_token):
+            handle_match(search_phrase_token._.holmes.lemma, document_token.lemma_, 'question', 0,
+                True)
+            return True
         return False
 
     def embedding_matching_permitted(self, obj):
@@ -659,7 +715,8 @@ class StructuralMatcher:
             raise RuntimeError("'obj' must be either a Token or a Subword")
 
     def build_matches(
-            self, *, search_phrase, search_phrase_tokens_to_word_matches, document_label):
+            self, *, search_phrase, search_phrase_tokens_to_word_matches, document_label,
+            overall_similarity_threshold, initial_question_word_overall_similarity_threshold):
         """Investigate possible matches when recursion is complete."""
 
         def mention_root_or_token_index(token):
@@ -890,7 +947,9 @@ class StructuralMatcher:
             else:
                 overall_similarity_measure = 1.0
             if overall_similarity_measure == 1.0 or \
-                    overall_similarity_measure >= self.overall_similarity_threshold:
+                    overall_similarity_measure >= overall_similarity_threshold or \
+                    overall_similarity_measure >= \
+                    initial_question_word_overall_similarity_threshold:
                 match.overall_similarity_measure = str(
                     overall_similarity_measure)
                 matches_to_return.append(match)
@@ -898,7 +957,9 @@ class StructuralMatcher:
 
     def get_matches_starting_at_root_word_match(
             self, search_phrase, document, document_token, document_subword_index, document_label,
-            compare_embeddings_on_non_root_words):
+            compare_embeddings_on_non_root_words, process_initial_question_words,
+            overall_similarity_threshold,
+            initial_question_word_overall_similarity_threshold):
         """Begin recursive matching where a search phrase root token has matched a document
             token.
         """
@@ -920,11 +981,18 @@ class StructuralMatcher:
             search_phrase_and_document_visited_table=search_phrase_and_document_visited_table,
             is_uncertain=document_token._.holmes.is_uncertain,
             structurally_matched_document_token=document_token,
-            compare_embeddings_on_non_root_words=compare_embeddings_on_non_root_words)
+            compare_embeddings_on_non_root_words=compare_embeddings_on_non_root_words,
+            process_initial_question_words=process_initial_question_words,
+            overall_similarity_threshold=overall_similarity_threshold,
+            initial_question_word_overall_similarity_threshold=
+            initial_question_word_overall_similarity_threshold)
         working_matches = self.build_matches(
             search_phrase=search_phrase,
             search_phrase_tokens_to_word_matches=search_phrase_tokens_to_word_matches,
-            document_label=document_label)
+            document_label=document_label,
+            overall_similarity_threshold=overall_similarity_threshold,
+            initial_question_word_overall_similarity_threshold=
+            initial_question_word_overall_similarity_threshold)
         matches_to_return.extend(working_matches)
         return matches_to_return
 
@@ -937,7 +1005,9 @@ class StructuralMatcher:
             compare_embeddings_on_non_root_words,
             reverse_matching_corpus_word_positions,
             embedding_reverse_matching_corpus_word_positions,
-            match_question_words,
+            process_initial_question_words,
+            overall_similarity_threshold,
+            initial_question_word_overall_similarity_threshold,
             document_label_filter=None):
         """Finds and returns matches between search phrases and documents.
         match_depending_on_single_words -- 'True' to match only single word search phrases,
@@ -949,6 +1019,13 @@ class StructuralMatcher:
             reverse matching only.
         embedding_reverse_matching_corpus_word_positions -- corpus word positions for embedding
             and non-embedding reverse matching.
+        process_initial_question_words -- 'True' if interrogative pronouns in search phrases should
+            be matched to answering phrases in documents. Only used with topic matching.
+        overall_similarity_threshold -- the overall similarity threshold for embedding-based
+            matching.
+        initial_question_word_overall_similarity_threshold -- the overall similarity threshold for
+            embedding-based matching where the search phrase word has a dependent initial question
+            word.
         document_label_filter -- a string with which the label of a document must begin for that
             document to be considered for matching, or 'None' if no filter is in use.
         """
@@ -957,7 +1034,7 @@ class StructuralMatcher:
             return document_label_filter is not None and document_label is not None and \
                 not document_label.startswith(str(document_label_filter))
 
-        if self.overall_similarity_threshold == 1.0:
+        if overall_similarity_threshold == 1.0:
             compare_embeddings_on_root_words = False
             compare_embeddings_on_non_root_words = False
         match_specific_indexes = reverse_matching_corpus_word_positions is not None \
@@ -1040,7 +1117,7 @@ class StructuralMatcher:
                                                 document_word_representation,
                                                 match_type,
                                                 1.0, False, False, doc[index.token_index],
-                                                document_word_representation, depth))
+                                                document_word_representation, depth, False))
                                             break
                                     if matched:
                                         break
@@ -1060,7 +1137,7 @@ class StructuralMatcher:
                                     document_word_representation,
                                     match_type,
                                     1.0, token._.holmes.is_negated, False, token,
-                                    document_word_representation, depth))
+                                    document_word_representation, depth, False))
                                 if token._.holmes.is_negated:
                                     minimal_match.is_negated = True
                             existing_minimal_match_cwps.append(corpus_word_position)
@@ -1076,7 +1153,10 @@ class StructuralMatcher:
                             matches.extend(
                                 self.get_matches_starting_at_root_word_match(
                                     search_phrase, doc, token, None, document_label,
-                                    compare_embeddings_on_non_root_words))
+                                    compare_embeddings_on_non_root_words,
+                                    process_initial_question_words,
+                                    overall_similarity_threshold,
+                                    initial_question_word_overall_similarity_threshold))
                 continue
             else:
                 matched_corpus_word_positions = set()
@@ -1156,8 +1236,15 @@ class StructuralMatcher:
                         if search_phrase_vector is not None and document_vector is not None:
                             similarity_measure = self.cosine_similarity(search_phrase_vector,
                                 document_vector)
-                            if similarity_measure >= \
-                                    search_phrase.single_token_similarity_threshold:
+                            search_phrase_initial_question_word = process_initial_question_words \
+                                and self.semantic_matching_helper.has_question_word_in_phrase(
+                                search_phrase.root_token)
+                            single_token_similarity_threshold = \
+                                (initial_question_word_overall_similarity_threshold if
+                                search_phrase_initial_question_word else
+                                overall_similarity_threshold) ** len(
+                                search_phrase.matchable_non_entity_tokens_to_vectors)
+                            if similarity_measure >= single_token_similarity_threshold:
                                 matched_corpus_word_positions.update(
                                     corpus_word_positions_to_match)
                                 working_cwps_to_match_for_cache.update(
@@ -1171,7 +1258,9 @@ class StructuralMatcher:
                 matches.extend(self.get_matches_starting_at_root_word_match(
                     search_phrase, doc, doc[corpus_word_position.index.token_index],
                     corpus_word_position.index.subword_index, corpus_word_position.document_label,
-                    compare_embeddings_on_non_root_words))
+                    compare_embeddings_on_non_root_words, process_initial_question_words,
+                    overall_similarity_threshold,
+                    initial_question_word_overall_similarity_threshold))
         return sorted(matches, key=lambda match: (1 - float(match.overall_similarity_measure),
             match.document_label, match.index_within_document))
 

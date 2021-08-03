@@ -7,17 +7,16 @@ ontology = holmes.Ontology(os.sep.join(
     (script_directory, 'test_ontology.owl')))
 holmes_manager = holmes.Manager('de_core_news_lg', ontology=ontology,
                                  number_of_workers=1)
-holmes_manager_with_embeddings = holmes.Manager('de_core_news_lg',
-                                                overall_similarity_threshold=0.65,
-                                                number_of_workers=2)
-
 
 class GermanTopicMatchingTest(unittest.TestCase):
 
-    def _check_equals(self, text_to_match, document_text, highest_score, manager=holmes_manager):
+    def _check_equals(self, text_to_match, document_text, highest_score, manager=holmes_manager,
+        word_embedding_match_threshold=1.0):
         manager.remove_all_documents()
         manager.parse_and_register_document(document_text)
         topic_matches = manager.topic_match_documents_against(text_to_match,
+                                                              word_embedding_match_threshold=
+                                                              word_embedding_match_threshold,
                                                               relation_score=20, reverse_only_relation_score=15,
                                                               single_word_score=10, single_word_any_tag_score=5,
                                                               different_match_cutoff_score=10)
@@ -47,67 +46,67 @@ class GermanTopicMatchingTest(unittest.TestCase):
 
     def test_reverse_only_parent_lemma_aux_threeway(self):
         self._check_equals("Der Esel hat ein Dach", "Der Esel hat ein Dach", 68,
-                           holmes_manager_with_embeddings)
+                           holmes_manager, word_embedding_match_threshold=0.42)
 
     def test_reverse_only_parent_lemma_aux_twoway(self):
         self._check_equals("Der Esel hat ein Dach", "Der Esel hat ein Haus", 29,
-                           holmes_manager_with_embeddings)
+                           holmes_manager, word_embedding_match_threshold=0.42)
 
     def test_reverse_only_parent_lemma_aux_auxiliary_threeway(self):
         self._check_equals("Der Esel hat ein Dach", "Der Esel wird ein Dach haben", 69,
-                           holmes_manager_with_embeddings)
+                           holmes_manager, word_embedding_match_threshold=0.42)
 
     def test_reverse_only_parent_lemma_aux_auxiliary_twoway(self):
         self._check_equals("Der Esel hat ein Dach", "Der Esel wird ein Haus haben", 29,
-                           holmes_manager_with_embeddings)
+                           holmes_manager, word_embedding_match_threshold=0.42)
 
     def test_reverse_only_parent_lemma_aux_modal_threeway(self):
         self._check_equals("Der Esel hat ein Dach", "Der Esel soll ein Dach haben", 69,
-                           holmes_manager_with_embeddings)
+                           holmes_manager, word_embedding_match_threshold=0.42)
 
     def test_reverse_only_parent_lemma_aux_modal_twoway(self):
         self._check_equals("Der Esel hat ein Dach", "Der Esel soll ein Haus haben", 29,
-                           holmes_manager_with_embeddings)
+                           holmes_manager, word_embedding_match_threshold=0.42)
 
     def test_reverse_only_parent_lemma_verb_threeway(self):
         self._check_equals("Der Esel macht ein Dach", "Der Esel macht ein Dach", 68,
-                           holmes_manager_with_embeddings)
+                           holmes_manager, word_embedding_match_threshold=0.42)
 
     def test_reverse_only_parent_lemma_verb_twoway(self):
         self._check_equals("Der Esel macht ein Dach", "Der Esel macht ein Haus", 29,
-                           holmes_manager_with_embeddings)
+                           holmes_manager, word_embedding_match_threshold=0.42)
 
     def test_reverse_only_parent_lemma_threeway_control(self):
         self._check_equals("Der Esel malt ein Dach an", "Der Esel malt ein Dach an", 82,
-                           holmes_manager_with_embeddings)
+                           holmes_manager, word_embedding_match_threshold=0.42)
 
     def test_reverse_only_parent_lemma_twoway_control_no_embedding_based_match(self):
         self._check_equals("Der Esel malt ein Dach an", "Der Esel malt eine Maus an", 34,
-                           holmes_manager_with_embeddings)
+                           holmes_manager, word_embedding_match_threshold=0.42)
 
     def test_reverse_only_parent_lemma_be(self):
         self._check_equals("Ein Präsident ist ein Politiker", "Ein Präsident ist ein Politiker", 68,
-                           holmes_manager_with_embeddings)
+                           holmes_manager, word_embedding_match_threshold=0.42)
 
     def test_reverse_only_parent_lemma_be_reversed(self):
         self._check_equals("Ein Präsident ist ein Politiker", "Ein Politiker ist ein Präsident", 24,
-                           holmes_manager_with_embeddings)
+                           holmes_manager, word_embedding_match_threshold=0.42)
 
     def test_reverse_only_parent_lemma_become(self):
         self._check_equals("Ein Präsident wird ein Politiker", "Ein Präsident wird ein Politiker", 68,
-                           holmes_manager_with_embeddings)
+                           holmes_manager, word_embedding_match_threshold=0.42)
 
     def test_reverse_only_parent_lemma_become_reversed(self):
         self._check_equals("Ein Präsident wird ein Politiker", "Ein Politiker wird ein Präsident", 39,
-                           holmes_manager_with_embeddings)
+                           holmes_manager, word_embedding_match_threshold=0.42)
 
     def test_reverse_only_parent_lemma_aux_in_document(self):
         self._check_equals("Ein Esel hat ein Dach", "Ein Esel hat ein Dach gesehen", 24,
-                           holmes_manager_with_embeddings)
+                           holmes_manager, word_embedding_match_threshold=0.42)
 
     def test_reverse_matching_noun(self):
         self._check_equals("Ein König mit einem Land", "Ein Präsident mit einem Land", 48,
-                           holmes_manager_with_embeddings)
+                           holmes_manager, word_embedding_match_threshold=0.42)
 
     def test_reverse_matching_noun_control_no_embeddings(self):
         self._check_equals("Ein König mit einem Land", "Ein Präsident mit einem Land", 29,
@@ -160,7 +159,7 @@ class GermanTopicMatchingTest(unittest.TestCase):
     def test_double_match(self):
         self._check_equals("vier Ochsen und sechs Ochsen",
                            "vier Ochsen", 34,
-                           holmes_manager_with_embeddings)
+                           holmes_manager, word_embedding_match_threshold=0.42)
 
     def test_separate_words_in_text_to_match_subwords_in_document_text_with_fugen_s(self):
         self._check_equals("Die Extraktion der Information",
@@ -248,7 +247,7 @@ class GermanTopicMatchingTest(unittest.TestCase):
     def test_embedding_matching_with_subwords(self):
         self._check_equals("Eine Königsabdanken",
                            "Der Prinz dankte ab", 15,
-                           holmes_manager_with_embeddings)
+                           holmes_manager, word_embedding_match_threshold=0.42)
 
     def test_embedding_matching_with_subwords_control(self):
         self._check_equals("Eine Königsabdanken",
@@ -321,11 +320,11 @@ class GermanTopicMatchingTest(unittest.TestCase):
         self.assertEqual(int(topic_matches[0]['score']), 29)
 
     def test_reverse_matching_suppressed_with_embedding_reverse_matching_parent(self):
-        holmes_manager_with_embeddings.remove_all_documents()
-        holmes_manager_with_embeddings.parse_and_register_document(
+        holmes_manager.remove_all_documents()
+        holmes_manager.parse_and_register_document(
             "Der Prinz dankte ab. Jemand dankte ab. Jemand dankte ab.")
-        topic_matches = holmes_manager_with_embeddings.topic_match_documents_against(
-            "Das Königsabdanken",
+        topic_matches = holmes_manager.topic_match_documents_against(
+            "Das Königsabdanken", word_embedding_match_threshold=0.42,
             relation_score=20, reverse_only_relation_score=15, single_word_score=10,
             single_word_any_tag_score=5, different_match_cutoff_score=10,
             relation_matching_frequency_threshold=1.0, embedding_matching_frequency_threshold=1.0,
@@ -333,11 +332,11 @@ class GermanTopicMatchingTest(unittest.TestCase):
         self.assertEqual(int(topic_matches[0]['score']), 5)
 
     def test_reverse_matching_suppressed_with_embedding_reverse_matching_parent_control(self):
-        holmes_manager_with_embeddings.remove_all_documents()
-        holmes_manager_with_embeddings.parse_and_register_document(
+        holmes_manager.remove_all_documents()
+        holmes_manager.parse_and_register_document(
             "Der Prinz dankte ab. Jemand dankte ab. Jemand dankte ab.")
-        topic_matches = holmes_manager_with_embeddings.topic_match_documents_against(
-            "Das Königsabdanken",
+        topic_matches = holmes_manager.topic_match_documents_against(
+            "Das Königsabdanken", word_embedding_match_threshold=0.42,
             relation_score=20, reverse_only_relation_score=15, single_word_score=10,
             single_word_any_tag_score=5, different_match_cutoff_score=10,
             relation_matching_frequency_threshold=0.0, embedding_matching_frequency_threshold=0.0,
@@ -345,11 +344,11 @@ class GermanTopicMatchingTest(unittest.TestCase):
         self.assertEqual(int(topic_matches[0]['score']), 15)
 
     def test_reverse_matching_suppressed_with_embedding_reverse_matching_child(self):
-        holmes_manager_with_embeddings.remove_all_documents()
-        holmes_manager_with_embeddings.parse_and_register_document(
+        holmes_manager.remove_all_documents()
+        holmes_manager.parse_and_register_document(
             "Der König vom Abdanken. Das Abdanken. Das Abdanken.")
-        topic_matches = holmes_manager_with_embeddings.topic_match_documents_against(
-            "Die Abdankenprinzen",
+        topic_matches = holmes_manager.topic_match_documents_against(
+            "Die Abdankenprinzen", word_embedding_match_threshold=0.42,
             relation_score=20, reverse_only_relation_score=15, single_word_score=10,
             single_word_any_tag_score=5,different_match_cutoff_score=10,
             relation_matching_frequency_threshold=1.0, embedding_matching_frequency_threshold=1.0,
@@ -357,11 +356,11 @@ class GermanTopicMatchingTest(unittest.TestCase):
         self.assertEqual(int(topic_matches[0]['score']), 5)
 
     def test_reverse_matching_suppressed_with_embedding_reverse_matching_child_control(self):
-        holmes_manager_with_embeddings.remove_all_documents()
-        holmes_manager_with_embeddings.parse_and_register_document(
+        holmes_manager.remove_all_documents()
+        holmes_manager.parse_and_register_document(
             "Der König vom Abdanken. Das Abdanken. Das Abdanken.")
-        topic_matches = holmes_manager_with_embeddings.topic_match_documents_against(
-            "Die Abdankenprinzen",
+        topic_matches = holmes_manager.topic_match_documents_against(
+            "Die Abdankenprinzen", word_embedding_match_threshold=0.42,
             relation_score=20, reverse_only_relation_score=15, single_word_score=10,
             single_word_any_tag_score=5,different_match_cutoff_score=10,
             relation_matching_frequency_threshold=0.0, embedding_matching_frequency_threshold=0.0,
@@ -446,10 +445,10 @@ class GermanTopicMatchingTest(unittest.TestCase):
                          [{'document_label': '', 'text': 'Ein Königsabdanken und -prinz', 'text_to_match': 'Das Prinz eines Königs', 'rank': '1', 'index_within_document': 3, 'subword_index': 1, 'start_index': 1, 'end_index': 3, 'sentences_start_index': 0, 'sentences_end_index': 3, 'sentences_character_start_index': 0, 'sentences_character_end_index': 29, 'score': 150.0, 'word_infos': [[4, 9, 'single', False, 'Matches KÖNIG directly.'], [24, 29, 'single', True, 'Matches PRINZ directly.']]}])
 
     def test_no_error(self):
-        holmes_manager_with_embeddings.remove_all_documents()
-        holmes_manager_with_embeddings.remove_all_search_phrases()
-        holmes_manager_with_embeddings.parse_and_register_document(
+        holmes_manager.remove_all_documents()
+        holmes_manager.remove_all_search_phrases()
+        holmes_manager.parse_and_register_document(
             "Ein Krankenhaus für demenzkranke Menschen")
         topic_match_dictionaries = \
-            holmes_manager_with_embeddings.topic_match_documents_against(
+            holmes_manager.topic_match_documents_against(
                 "Mein Kind ist krank")

@@ -104,9 +104,10 @@ class TopicMatcher:
     def __init__(
             self, *, structural_matcher, document_labels_to_documents, corpus_index_dict,
             text_to_match, phraselet_labels_to_phraselet_infos, phraselet_labels_to_search_phrases,
-            maximum_activation_distance, relation_score,
+            maximum_activation_distance, overall_similarity_threshold,
+            initial_question_word_overall_similarity_threshold, relation_score,
             reverse_only_relation_score, single_word_score, single_word_any_tag_score,
-            question_word_answer_score, match_question_words,
+            question_word_answer_score, process_initial_question_words,
             different_match_cutoff_score, overlapping_relation_multiplier, embedding_penalty,
             ontology_penalty, relation_matching_frequency_threshold,
             embedding_matching_frequency_threshold, sideways_match_extent,
@@ -120,12 +121,15 @@ class TopicMatcher:
         self.phraselet_labels_to_phraselet_infos = phraselet_labels_to_phraselet_infos
         self.phraselet_labels_to_search_phrases = phraselet_labels_to_search_phrases
         self.maximum_activation_distance = maximum_activation_distance
+        self.overall_similarity_threshold = overall_similarity_threshold
+        self.initial_question_word_overall_similarity_threshold = \
+            initial_question_word_overall_similarity_threshold
         self.relation_score = relation_score
         self.reverse_only_relation_score = reverse_only_relation_score
         self.single_word_score = single_word_score
         self.single_word_any_tag_score = single_word_any_tag_score
         self.question_word_answer_score = question_word_answer_score
-        self.match_question_words = match_question_words
+        self.process_initial_question_words = process_initial_question_words
         self.different_match_cutoff_score = different_match_cutoff_score
         self.overlapping_relation_multiplier = overlapping_relation_multiplier
         self.embedding_penalty = embedding_penalty
@@ -149,7 +153,10 @@ class TopicMatcher:
             compare_embeddings_on_non_root_words=False,
             reverse_matching_corpus_word_positions=None,
             embedding_reverse_matching_corpus_word_positions=None,
-            match_question_words=None,
+            process_initial_question_words=process_initial_question_words,
+            overall_similarity_threshold=overall_similarity_threshold,
+            initial_question_word_overall_similarity_threshold=
+            initial_question_word_overall_similarity_threshold,
             document_label_filter=self.document_label_filter)
 
         # Now get normally matched relations
@@ -162,7 +169,10 @@ class TopicMatcher:
             compare_embeddings_on_non_root_words=False,
             reverse_matching_corpus_word_positions=None,
             embedding_reverse_matching_corpus_word_positions=None,
-            match_question_words=match_question_words,
+            process_initial_question_words=process_initial_question_words,
+            overall_similarity_threshold=overall_similarity_threshold,
+            initial_question_word_overall_similarity_threshold=
+            initial_question_word_overall_similarity_threshold,
             document_label_filter=self.document_label_filter))
 
         self.rebuild_document_info_dict(structural_matches, phraselet_labels_to_phraselet_infos)
@@ -197,7 +207,10 @@ class TopicMatcher:
                 parent_direct_retry_corpus_word_positions,
                 embedding_reverse_matching_corpus_word_positions=
                 parent_embedding_retry_corpus_word_positions,
-                match_question_words=match_question_words,
+                process_initial_question_words=process_initial_question_words,
+                overall_similarity_threshold=overall_similarity_threshold,
+                initial_question_word_overall_similarity_threshold=
+                initial_question_word_overall_similarity_threshold,
                 document_label_filter=self.document_label_filter))
 
         if len(child_embedding_retry_corpus_word_positions) > 0:
@@ -212,7 +225,10 @@ class TopicMatcher:
                 reverse_matching_corpus_word_positions=None,
                 embedding_reverse_matching_corpus_word_positions=
                 child_embedding_retry_corpus_word_positions,
-                match_question_words=match_question_words,
+                process_initial_question_words=process_initial_question_words,
+                overall_similarity_threshold=overall_similarity_threshold,
+                initial_question_word_overall_similarity_threshold=
+                initial_question_word_overall_similarity_threshold,
                 document_label_filter=self.document_label_filter))
         if len(parent_direct_retry_corpus_word_positions) > 0 or \
                 len(parent_embedding_retry_corpus_word_positions) > 0 or \
@@ -415,7 +431,7 @@ class TopicMatcher:
                 match, other_match, word_match, other_word_match):
                 # We do not want the same phraselet to match multiple siblings, so choose
                 # the sibling that is most similar to the search phrase token.
-            if self.structural_matcher.overall_similarity_threshold == 1.0:
+            if self.overall_similarity_threshold == 1.0:
                 return True
             if word_match.document_token.i == other_word_match.document_token.i:
                 return True

@@ -7,11 +7,8 @@ script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join((script_directory, 'test_ontology.owl')),
                            symmetric_matching=True)
 holmes_manager_coref = holmes.Manager(model='en_core_web_trf', ontology=ontology,
-                                      overall_similarity_threshold=0.65, perform_coreference_resolution=True,
+                                      perform_coreference_resolution=True,
                                       number_of_workers=2)
-holmes_manager_coref_no_embeddings = holmes.Manager(model='en_core_web_trf', ontology=ontology,
-                                                    overall_similarity_threshold=1, perform_coreference_resolution=True,
-                                                    number_of_workers=1)
 ontology_for_sm_tests = holmes.Ontology(os.sep.join((script_directory, 'test_ontology.owl')))
 
 
@@ -19,10 +16,13 @@ ontology_for_sm_tests = holmes.Ontology(os.sep.join((script_directory, 'test_ont
 class EnglishTopicMatchingTest(unittest.TestCase):
 
     def _check_equals(self, text_to_match, document_text, highest_score, manager,
-        use_frequency_factor=True):
+        word_embedding_match_threshold=0.42, use_frequency_factor=True):
         manager.remove_all_documents()
         manager.parse_and_register_document(document_text)
-        topic_matches = manager.topic_match_documents_against(text_to_match, relation_score=20,
+        topic_matches = manager.topic_match_documents_against(text_to_match,
+                                                              word_embedding_match_threshold=
+                                                              word_embedding_match_threshold,
+                                                              relation_score=20,
                                                               reverse_only_relation_score=15, single_word_score=10, single_word_any_tag_score=5,
                                                               different_match_cutoff_score=10,
                                                               relation_matching_frequency_threshold=0.0,
@@ -255,11 +255,11 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     def test_reverse_matching_noun_no_coreference_control_no_embeddings(self):
         self._check_equals("A car with an engine", "An automobile with an engine", 29,
-                           holmes_manager_coref_no_embeddings)
+                           holmes_manager_coref, word_embedding_match_threshold=1.0)
 
     def test_reverse_matching_noun_no_coreference_control_same_word(self):
         self._check_equals("A car with an engine", "A car with an engine", 75,
-                           holmes_manager_coref_no_embeddings)
+                           holmes_manager_coref, word_embedding_match_threshold=1.0)
 
     def test_forward_matching_noun_entity_governor_match(self):
         self._check_equals("An ENTITYPERSON with a car", "Richard Hudson with a vehicle", 23,
@@ -368,6 +368,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         holmes_manager_coref.parse_and_register_document(
             "An automobile with an engine. An engine. An engine.")
         topic_matches = holmes_manager_coref.topic_match_documents_against("A car with an engine",
+                                                                           word_embedding_match_threshold=0.42,
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                            single_word_any_tag_score=5,
                                                                            relation_matching_frequency_threshold=0.0, embedding_matching_frequency_threshold=1.0,
@@ -379,6 +380,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         holmes_manager_coref.parse_and_register_document(
             "An automobile with an engine. An engine. An engine.")
         topic_matches = holmes_manager_coref.topic_match_documents_against("A car with an engine",
+                                                                           word_embedding_match_threshold=0.42,
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                            single_word_any_tag_score=5,
                                                                            relation_matching_frequency_threshold=0.0, embedding_matching_frequency_threshold=0.0,
@@ -390,6 +392,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         holmes_manager_coref.parse_and_register_document(
             "An engine with an automobile. An engine. An engine.")
         topic_matches = holmes_manager_coref.topic_match_documents_against("An engine with a car",
+                                                                           word_embedding_match_threshold=0.42,
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                            single_word_any_tag_score=5,
                                                                            relation_matching_frequency_threshold=1.0, embedding_matching_frequency_threshold=1.0,
@@ -401,6 +404,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         holmes_manager_coref.parse_and_register_document(
             "An engine with an automobile. An engine. An engine.")
         topic_matches = holmes_manager_coref.topic_match_documents_against("An engine with a car",
+                                                                           word_embedding_match_threshold=0.42,
                                                                            relation_score=20, reverse_only_relation_score=15, single_word_score=10,
                                                                            single_word_any_tag_score=5,
                                                                            relation_matching_frequency_threshold=0.0, embedding_matching_frequency_threshold=0.0,
@@ -463,12 +467,12 @@ class EnglishTopicMatchingTest(unittest.TestCase):
     def test_reverse_matching_noun_coreference_on_governor_control_no_embeddings(self):
         self._check_equals("A car with an engine", "I saw an automobile. I saw it with an engine",
                            29,
-                           holmes_manager_coref_no_embeddings)
+                           holmes_manager_coref, word_embedding_match_threshold=1.0)
 
     def test_reverse_matching_noun_coreference_on_governor_control_same_word(self):
         self._check_equals("A car with an engine", "I saw a car. I saw it with an engine",
                            73,
-                           holmes_manager_coref_no_embeddings)
+                           holmes_manager_coref, word_embedding_match_threshold=1.0)
 
     def test_reverse_matching_noun_coreference_on_governed(self):
         self._check_equals(
@@ -478,12 +482,12 @@ class EnglishTopicMatchingTest(unittest.TestCase):
     def test_reverse_matching_noun_coreference_on_governed_control_no_embeddings(self):
         self._check_equals(
             "An engine with a car", "I saw an automobile. I saw the engine with it", 14,
-            holmes_manager_coref_no_embeddings)
+            holmes_manager_coref, word_embedding_match_threshold=1.0)
 
     def test_reverse_matching_noun_coreference_on_governed_control_same_word(self):
         self._check_equals(
             "An engine with a car", "I saw a car. I saw the engine with it", 76,
-            holmes_manager_coref_no_embeddings)
+            holmes_manager_coref, word_embedding_match_threshold=1.0)
 
     def test_reverse_matching_verb_with_coreference_and_conjunction(self):
         self._check_equals("A company is bought", "A company is bought and purchased", 34,
@@ -901,15 +905,15 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             holmes_manager_coref.topic_match_documents_against(
                 "ENTITYPERSON")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'Richard Paul Hudson', 'text_to_match': 'ENTITYPERSON', 'rank': '1', 'index_within_document': 2, 'subword_index': None, 'start_index': 0, 'end_index': 2, 'sentences_start_index': 0, 'sentences_end_index': 2, 'sentences_character_start_index': 0, 'sentences_character_end_index': 19, 'score': 50.0, 'word_infos': [[0, 19, 'single', True, 'Matches the ENTITYPERSON placeholder.']]}])
+                         [{'document_label': '', 'text': 'Richard Paul Hudson', 'text_to_match': 'ENTITYPERSON', 'rank': '1', 'index_within_document': 2, 'subword_index': None, 'start_index': 0, 'end_index': 2, 'sentences_start_index': 0, 'sentences_end_index': 2, 'sentences_character_start_index': 0, 'sentences_character_end_index': 19, 'score': 50.0, 'word_infos': [[0, 19, 'single', True, 'Has an entity label matching ENTITYPERSON.']]}])
 
     def test_dictionaries_with_multiword_as_single_word_and_relation(self):
-        holmes_manager_coref_no_embeddings.remove_all_documents()
-        holmes_manager_coref_no_embeddings.remove_all_search_phrases()
-        holmes_manager_coref_no_embeddings.parse_and_register_document(
+        holmes_manager_coref.remove_all_documents()
+        holmes_manager_coref.remove_all_search_phrases()
+        holmes_manager_coref.parse_and_register_document(
             "Can somebody give Harry Potter his present")
         topic_match_dictionaries = \
-            holmes_manager_coref_no_embeddings.topic_match_documents_against(
+            holmes_manager_coref.topic_match_documents_against(
                 "Somebody gives a present to Harry")
         self.assertEqual(topic_match_dictionaries,
                          [{'document_label': '', 'text': 'Can somebody give Harry Potter his present', 'text_to_match': 'Somebody gives a present to Harry', 'rank': '1', 'index_within_document': 6, 'subword_index': None, 'start_index': 2, 'end_index': 6, 'sentences_start_index': 0, 'sentences_end_index': 6, 'sentences_character_start_index': 0, 'sentences_character_end_index': 42, 'score': 926.3511111111111, 'word_infos': [[13, 17, 'overlapping_relation', False, 'Matches GIVE directly.'], [18, 30, 'overlapping_relation', False, 'Is a synonym of HARRY in the ontology.'], [35, 42, 'overlapping_relation', True, 'Matches PRESENT directly.']]}])
@@ -1084,7 +1088,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self.assertEqual(len(topic_matches), 1)
 
 
-    def test_different_match_cutoff_score_control(self):
+    def test_different_match_cutoff_score_control_1(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.remove_all_search_phrases()
         holmes_manager_coref.parse_and_register_document(
@@ -1198,7 +1202,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self.assertEqual(len(topic_match_dictionaries), 2)
         m.close()
 
-    def test_different_match_cutoff_score_control(self):
+    def test_different_match_cutoff_score_control_2(self):
         m = holmes.Manager('en_core_web_sm', number_of_workers=2,
                                           ontology=ontology_for_sm_tests)
         m.parse_and_register_document("A dog then and then and then and then and then a dog")
