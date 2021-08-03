@@ -144,9 +144,12 @@ class MultithreadingTest(unittest.TestCase):
     def test_parsed_document_and_search_phrase_registration(self):
 
         def add_document_and_search_phrase(counter):
-            manager.parse_and_register_document("People discuss irrelevancies",
-                                                ' '.join(('Irrelevant', str(counter))))
-            manager.register_search_phrase("People discuss irrelevancies")
+            manager.parse_and_register_document("People discuss relevancies",
+                                                ' '.join(('Relevant', str(counter))))
+            manager.register_search_phrase("People discuss relevancies")
+
+        manager.remove_all_documents()
+        manager.parse_and_register_document('something')
 
         for i in range(NUMBER_OF_THREADS):
             t = Thread(target=add_document_and_search_phrase, args=(i,))
@@ -155,9 +158,9 @@ class MultithreadingTest(unittest.TestCase):
         last_number_of_matches = 0
         for counter in range(500):
             matches = [match for match in manager.match() if
-                       match['search_phrase_label'] == "People discuss irrelevancies"]
+                       match['search_phrase_label'] == "People discuss relevancies"]
             for match in matches:
-                self.assertTrue(match['document'].startswith('Irrelevant'))
+                self.assertTrue(match['document'].startswith('Relevant'))
                 self.assertFalse(match['negated'])
                 self.assertFalse(match['uncertain'])
                 self.assertFalse(match['involves_coreference'])
@@ -179,9 +182,9 @@ class MultithreadingTest(unittest.TestCase):
                 self.assertEqual(
                     match['word_matches'][1]['search_phrase_token_index'], 1)
                 self.assertEqual(
-                    match['word_matches'][2]['document_word'], 'irrelevancy')
+                    match['word_matches'][2]['document_word'], 'relevancy')
                 self.assertEqual(
-                    match['word_matches'][2]['search_phrase_word'], 'irrelevancy')
+                    match['word_matches'][2]['search_phrase_word'], 'relevancy')
                 self.assertEqual(match['word_matches'][2]['match_type'], 'direct')
                 self.assertEqual(match['word_matches'][2]['document_token_index'], 2)
                 self.assertEqual(
@@ -196,7 +199,7 @@ class MultithreadingTest(unittest.TestCase):
         dictionary, maximum = manager.get_corpus_frequency_information()
         self.assertEqual(dictionary['people'], NUMBER_OF_THREADS)
         self.assertEqual(dictionary['discuss'], NUMBER_OF_THREADS)
-        self.assertEqual(dictionary['irrelevancy'], NUMBER_OF_THREADS)
+        self.assertEqual(dictionary['relevancy'], NUMBER_OF_THREADS)
         self.assertEqual(maximum, NUMBER_OF_THREADS)
 
     def test_serialized_document_and_search_phrase_registration(self):
@@ -208,6 +211,8 @@ class MultithreadingTest(unittest.TestCase):
 
         serialized_document = manager.nlp('People discuss irrelevancies').to_bytes()
 
+        manager.remove_all_documents()
+        manager.parse_and_register_document('something')
         for i in range(NUMBER_OF_THREADS):
             t = Thread(target=add_document_and_search_phrase, args=(i,))
             t.start()
@@ -254,7 +259,5 @@ class MultithreadingTest(unittest.TestCase):
                 break
             self.assertFalse(counter == 499)
         dictionary, maximum = manager.get_corpus_frequency_information()
-        self.assertEqual(dictionary['people'], NUMBER_OF_THREADS)
-        self.assertEqual(dictionary['discuss'], NUMBER_OF_THREADS)
         self.assertEqual(dictionary['irrelevancy'], NUMBER_OF_THREADS)
         self.assertEqual(maximum, NUMBER_OF_THREADS)
