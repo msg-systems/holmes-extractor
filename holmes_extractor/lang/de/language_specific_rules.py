@@ -52,10 +52,10 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
     sibling_marker_deps = ('cj', 'app')
 
     entity_labels_to_corresponding_lexemes = {
-        'PER': 'Mensch',
-        'LOC': 'Ort',
-        'ORG': 'Organisation',
-        'MISC': 'Sache'
+        'PER': 'person',
+        'LOC': 'ort',
+        'ORG': 'organisation',
+        'MISC': 'sache'
         }
 
     # Only words at least this long are examined for possible subwords
@@ -982,99 +982,104 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             [
                 'VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
                 'VAFIN', 'VAIMP', 'VAINF', 'VAPP', 'FM', 'NE', 'NNE', 'NN'],
-            ['FM', 'NE', 'NNE', 'NN'], reverse_only=False),
+            ['FM', 'NE', 'NNE', 'NN'], reverse_only=False, question=False),
         PhraseletTemplate(
             "verb-acc", "Jemand tut eine Sache", 1, 3,
             ['oa', 'pobjo', 'ag', 'og', 'oc'],
             [
                 'VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
                 'VAFIN', 'VAIMP', 'VAINF', 'VAPP', 'FM', 'NE', 'NNE', 'NN'],
-            ['FM', 'NE', 'NNE', 'NN'], reverse_only=False),
+            ['FM', 'NE', 'NNE', 'NN'], reverse_only=False, question=False),
         PhraseletTemplate(
             "verb-dat", "Jemand gibt einer Sache etwas", 1, 3,
             ['da'],
             [
                 'VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
                 'VAFIN', 'VAIMP', 'VAINF', 'VAPP'],
-            ['FM', 'NE', 'NNE', 'NN'], reverse_only=False),
+            ['FM', 'NE', 'NNE', 'NN'], reverse_only=False, question=False),
         PhraseletTemplate(
             "verb-pd", "Jemand ist eine Sache", 1, 3,
             ['pd'],
             [
                 'VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
                 'VAFIN', 'VAIMP', 'VAINF', 'VAPP'],
-            ['FM', 'NE', 'NNE', 'NN'], reverse_only=True),
+            ['FM', 'NE', 'NNE', 'NN'], reverse_only=True, question=False),
         PhraseletTemplate(
             "noun-dependent", "Eine beschriebene Sache", 2, 1,
             ['nk'],
             ['FM', 'NE', 'NNE', 'NN'],
-            ['FM', 'NE', 'NNE', 'NN', 'ADJA', 'ADJD', 'ADV', 'CARD'], reverse_only=False),
+            ['FM', 'NE', 'NNE', 'NN', 'ADJA', 'ADJD', 'ADV', 'CARD'], reverse_only=False,
+            question=False),
         PhraseletTemplate(
             "verb-adverb", "schnell machen", 1, 0,
             ['mo', 'moposs', 'oc'],
             [
                 'VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
                 'VAFIN', 'VAIMP', 'VAINF', 'VAPP'],
-            ['ADJA', 'ADJD', 'ADV'], reverse_only=False),
+            ['ADJA', 'ADJD', 'ADV'], reverse_only=False, question=False),
         PhraseletTemplate(
             "prepgovernor-noun", "Eine Sache in einer Sache", 1, 4,
             ['pobjp'],
             [
                 'VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
                 'VAFIN', 'VAIMP', 'VAINF', 'VAPP', 'FM', 'NE', 'NNE', 'NN'],
-            ['FM', 'NE', 'NNE', 'NN'], reverse_only=False),
+            ['FM', 'NE', 'NNE', 'NN'], reverse_only=False, question=False),
         PhraseletTemplate(
             "prep-noun", "in einer Sache", 0, 2,
             ['nk'],
             ['APPO', 'APPR', 'APPRART', 'APZR'],
-            ['FM', 'NE', 'NNE', 'NN'], reverse_only=True),
+            ['FM', 'NE', 'NNE', 'NN'], reverse_only=True, question=False),
         PhraseletTemplate(
             "verb-toughmovedargument", "Eine Sache ist schwer zu tun", 5, 1,
             ['arg'],
             [
                 'VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP',
                 'VAFIN', 'VAIMP', 'VAINF', 'VAPP'],
-            ['FM', 'NE', 'NNE', 'NN'], reverse_only=False),
+            ['FM', 'NE', 'NNE', 'NN'], reverse_only=False, question=False),
         PhraseletTemplate(
             "intcompound", "Eine Sache in einer Sache", 1, 4,
             ['intcompound'],
             ['NE', 'NNE', 'NN', 'TRUNC', 'ADJA', 'ADJD', 'TRUNC'],
             ['NE', 'NNE', 'NN', 'TRUNC', 'ADJA', 'ADJD', 'TRUNC'], reverse_only=False,
-            assigned_dependency_label='intcompound'),
+            question=False, assigned_dependency_label='intcompound'),
         PhraseletTemplate(
             "head-WHnom", "wer kam?", 1, 0,
             ['sb'],
             ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP'],
-            ['PWS'], reverse_only=False),
+            ['PWS'], reverse_only=False, question=True),
         PhraseletTemplate(
             "head-WHacc", "wen sahst du?", 1, 0,
             ['oa'],
             ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP'],
-            ['PWS'], reverse_only=False),
+            ['PWS'], reverse_only=False, question=True),
         PhraseletTemplate(
             "head-WHdat", "wem hast du geholfen?", 1, 0,
             ['da'],
             ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP'],
-            ['PWS'], reverse_only=False),
+            ['PWS'], reverse_only=False, question=True),
         PhraseletTemplate(
             "head-WHadv", "womit hast du es gemacht?", 1, 0,
             ['mo'],
             ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP'],
-            ['PWAV'], reverse_only=False),
+            ['PWAV'], reverse_only=False, question=True),
         PhraseletTemplate(
             "head-whose", "Wessen Haus betrachtest du?", 1, 0,
             ['ag'],
             ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP'],
-            ['PROPN'], reverse_only=False),
+            ['PROPN'], reverse_only=False, question=True),
         PhraseletTemplate(
             "word", "Sache", 0, None,
             None,
             ['FM', 'NE', 'NNE', 'NN'],
-            None, reverse_only=False)]
+            None, reverse_only=False, question=False)]
 
-    def question_word_matches(self, search_phrase_token:Token, document_token:Token):
+    def question_word_matches(self, search_phrase_token:Token, document_token:Token,
+            document_vector, entity_label_to_vector_dict:dict,
+            initial_question_word_embedding_match_threshold:float) -> str:
         if search_phrase_token._.holmes.lemma in ('wer', 'wen'):
-            return document_token.ent_type_ in ('PER', 'ORG')
+            return self.document_token_matches_ent_type(document_token, document_vector,
+                entity_label_to_vector_dict, ('PER', 'ORG'),
+                initial_question_word_embedding_match_threshold)
         if search_phrase_token._.holmes.lemma in ('was', 'wem'):
             return document_token.pos_ in self.noun_pos
         if search_phrase_token._.holmes.lemma == 'wo':

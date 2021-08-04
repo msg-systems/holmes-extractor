@@ -654,99 +654,103 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             "predicate-actor", "A thing does", 2, 1,
             ['nsubj', 'csubj', 'pobjb', 'advmodsubj'],
             ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=False),
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=False, question=False),
         PhraseletTemplate(
             "predicate-patient", "Somebody does a thing", 1, 3,
             ['dobj', 'relant', 'advmodobj', 'xcomp'],
             ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
             ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-            reverse_only=False),
+            reverse_only=False, question=False),
         PhraseletTemplate(
             "word-ofword", "A thing of a thing", 1, 4,
             ['pobjo', 'poss'],
             ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
             ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-            reverse_only=False),
+            reverse_only=False, question=False),
         PhraseletTemplate(
             "predicate-toughmovedargument", "A thing is easy to do", 5, 1,
             ['arg'],
             ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=False),
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=False, question=False),
         PhraseletTemplate(
             "predicate-passivesubject", "A thing is done", 3, 1,
             ['nsubjpass', 'csubjpass'],
             ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=False),
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=False, question=False),
         PhraseletTemplate(
             "be-attribute", "Something is a thing", 1, 3,
             ['attr'],
             ['VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=True),
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=True, question=False),
         PhraseletTemplate(
             "predicate-recipient", "Somebody gives a thing something", 1, 3,
             ['dative', 'pobjt'],
             ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=False),
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=False, question=False),
         PhraseletTemplate(
             "governor-adjective", "A described thing", 2, 1,
             ['acomp', 'amod', 'advmod', 'npmod', 'advcl', 'dobj'],
             ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-            ['JJ', 'JJR', 'JJS', 'VBN', 'RB', 'RBR', 'RBS'], reverse_only=False),
+            ['JJ', 'JJR', 'JJS', 'VBN', 'RB', 'RBR', 'RBS'], reverse_only=False, question=False),
         PhraseletTemplate(
             "noun-noun", "A thing thing", 2, 1,
             ['nmod', 'appos', 'compound', 'nounmod'],
             ['FW', 'NN', 'NNP', 'NNPS', 'NNS'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=False),
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=False, question=False),
         PhraseletTemplate(
             "number-noun", "Seven things", 1, 0,
             ['nummod'],
             ['FW', 'NN', 'NNP', 'NNPS', 'NNS'],
-            ['CD'], reverse_only=False),
+            ['CD'], reverse_only=False, question=False),
         PhraseletTemplate(
             "prepgovernor-noun", "A thing in a thing", 1, 4,
             ['pobjp'],
             ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=False),
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=False, question=False),
         PhraseletTemplate(
             "prep-noun", "in a thing", 0, 2,
             ['pobj'],
             ['IN'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=True),
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=True, question=False),
         PhraseletTemplate(
             "head-WHsubj", "who came?", 1, 0,
             ['nsubj', 'nsubjpass', 'pobjb'],
             ['VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-            ['WP'], reverse_only=False),
+            ['WP'], reverse_only=False, question=True),
         PhraseletTemplate(
             "head-WHobj", "who did you see?", 1, 0,
             ['dobj'],
             ['VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-            ['WP'], reverse_only=False),
+            ['WP'], reverse_only=False, question=True),
         PhraseletTemplate(
             "head-WHadv", "where did you go?", 1, 0,
             ['advmod'],
             ['VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-            ['WRB'], reverse_only=False),
+            ['WRB'], reverse_only=False, question=True),
         PhraseletTemplate(
             "prep-WH", "what did you put it in?", 5, 0,
             ['pobj'],
             ['IN', 'RB'],
-            ['WP'], reverse_only=False),
+            ['WP'], reverse_only=False, question=True),
         PhraseletTemplate(
             "head-whose", "whose thing", 1, 0,
             ['poss'],
             ['FW', 'NN', 'NNP', 'NNPS', 'NNS'],
-            ['WP'], reverse_only=False),
+            ['WP'], reverse_only=False, question=True),
         PhraseletTemplate(
             "word", "thing", 0, None,
             None,
             ['FW', 'NN', 'NNP', 'NNPS', 'NNS'],
-            None, reverse_only=False)
+            None, reverse_only=False, question=False)
         ]
 
-    def question_word_matches(self, search_phrase_token:Token, document_token:Token):
+    def question_word_matches(self, search_phrase_token:Token, document_token:Token,
+            document_vector, entity_label_to_vector_dict:dict,
+            initial_question_word_embedding_match_threshold:float) -> str:
         if search_phrase_token._.holmes.lemma.startswith('who'):
-            return document_token.ent_type_ in ('PERSON', 'NORP', 'ORG', 'GPE')
+            return self.document_token_matches_ent_type(document_token, document_vector,
+                entity_label_to_vector_dict, ('PERSON', 'NORP', 'ORG', 'GPE'),
+                initial_question_word_embedding_match_threshold)
         if search_phrase_token._.holmes.lemma == 'what':
             return document_token.pos_ in self.noun_pos
         if search_phrase_token._.holmes.lemma == 'where':

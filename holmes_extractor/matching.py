@@ -2,8 +2,6 @@ import copy
 import sys
 from string import punctuation
 from threading import Lock
-from numpy import dot
-from numpy.linalg import norm
 from spacy.tokens import Token
 from .errors import DuplicateDocumentError, NoSearchPhraseError, NoDocumentError
 from .parsing import Subword, Index
@@ -217,9 +215,6 @@ class StructuralMatcher:
         self.perform_coreference_resolution = perform_coreference_resolution
         self.use_reverse_dependency_matching = use_reverse_dependency_matching
         self.entity_label_to_vector_dict = entity_label_to_vector_dict
-
-    def cosine_similarity(self, vector1, vector2):
-        return dot (vector1,vector2) / (norm(vector1) * norm(vector2))
 
     def match_type(self, search_phrase_and_document_derived_lemmas_identical, *match_types):
         if 'ontology' in match_types and search_phrase_and_document_derived_lemmas_identical:
@@ -666,6 +661,16 @@ class StructuralMatcher:
                             search_phrase_initial_question_word)
                         return True
 
+        if document_subword_index is not None:
+            document_word_to_use = document_token._.holmes.subwords[document_subword_index].lemma
+            document_vector = document_token._.holmes.subwords[document_subword_index].vector if \
+                self.embedding_matching_permitted(
+                document_token._.holmes.subwords[document_subword_index]) else None
+        else:
+            document_word_to_use = document_token.lemma_
+            document_vector = document_vector = document_token._.holmes.vector if \
+                self.embedding_matching_permitted(document_token) else None
+
         if (overall_similarity_threshold < 1.0 or (search_phrase_initial_question_word and
                 initial_question_word_overall_similarity_threshold < 1.0)) and (
                 compare_embeddings_on_non_root_words or search_phrase.root_token.i ==
@@ -678,17 +683,13 @@ class StructuralMatcher:
                 if not self.embedding_matching_permitted(
                         document_token._.holmes.subwords[document_subword_index]):
                     return False
-                document_vector = document_token._.holmes.subwords[document_subword_index].vector
-                document_word_to_use = \
-                    document_token._.holmes.subwords[document_subword_index].lemma
             else:
                 if not self.embedding_matching_permitted(document_token):
                     return False
-                document_vector = document_token._.holmes.vector
-                document_word_to_use = document_token.lemma_
-
             if search_phrase_vector is not None and document_vector is not None:
-                similarity_measure = self.cosine_similarity(search_phrase_vector, document_vector)
+                similarity_measure = \
+                    self.semantic_matching_helper.cosine_similarity(search_phrase_vector,
+                    document_vector)
                 single_token_similarity_threshold = \
                     (initial_question_word_overall_similarity_threshold if
                     search_phrase_initial_question_word else overall_similarity_threshold) ** len(
@@ -708,7 +709,9 @@ class StructuralMatcher:
                     search_phrase_token._.holmes.ent_type != '' and \
                     search_phrase_token._.holmes.ent_type in \
                     self.entity_label_to_vector_dict:
-                similarity_measure = self.cosine_similarity(self.entity_label_to_vector_dict[
+                similarity_measure = \
+                    self.semantic_matching_helper.cosine_similarity(
+                    self.entity_label_to_vector_dict[
                     search_phrase_token._.holmes.ent_type], document_vector)
                 if similarity_measure > single_token_similarity_threshold:
                     handle_match(
@@ -716,11 +719,18 @@ class StructuralMatcher:
                         similarity_measure=similarity_measure,
                         search_phrase_initial_question_word=search_phrase_initial_question_word)
 
-        if process_initial_question_words and search_phrase_token._.holmes.is_initial_question_word\
-                and self.semantic_matching_helper.question_word_matches(
-                search_phrase_token, document_token):
-            handle_match(search_phrase_token._.holmes.lemma, document_token.lemma_, 'question', 0,
-                search_phrase_initial_question_word=True)
+        if process_initial_question_words and search_phrase_token._.holmes.is_initial_question_word:
+            if document_vector is not None:
+                question_word_matches = self.semantic_matching_helper.question_word_matches(
+                    search_phrase_token, document_token, document_vector,
+                    self.entity_label_to_vector_dict,
+                    initial_question_word_overall_similarity_threshold ** 2)
+            else:
+                question_word_matches = self.semantic_matching_helper.question_word_matches(
+                    search_phrase_token, document_token, None, None, None)
+            if question_word_matches:
+                handle_match(search_phrase_token._.holmes.lemma, document_word_to_use, 'question',
+                    0, search_phrase_initial_question_word=True)
             return True
         return False
 
@@ -1259,7 +1269,9 @@ class StructuralMatcher:
                                 continue
                             document_vector = example_document_token._.holmes.vector
                         if search_phrase_vector is not None and document_vector is not None:
-                            similarity_measure = self.cosine_similarity(search_phrase_vector,
+                            similarity_measure = \
+                                self.semantic_matching_helper.cosine_similarity(
+                                search_phrase_vector,
                                 document_vector)
                             search_phrase_initial_question_word = process_initial_question_words \
                                 and search_phrase.root_token._.holmes.\

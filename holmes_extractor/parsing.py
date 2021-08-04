@@ -7,6 +7,8 @@ from typing import Callable
 import jsonpickle
 import srsly
 import pkg_resources
+from numpy import dot
+from numpy.linalg import norm
 from spacy.tokens import Token, Doc
 from .errors import WrongModelDeserializationError, WrongVersionDeserializationError,\
         DocumentTooBigError, SearchPhraseContainsNegationError,\
@@ -421,6 +423,8 @@ class PhraseletTemplate:
         possible child token has already been matched to a single-word phraselet. This
         is used for performance reasons when the parent tag belongs to a closed word class like
         prepositions. Reverse-only phraselets are ignored in supervised document classification.
+    question -- a question template involves an interrogative pronoun in the child position and is
+        always matched regardless of corpus frequencies.
     assigned_dependency_label -- if a value other than 'None', specifies a dependency label that
         should be used to relabel the relationship between the parent and child participants.
         Has no effect if child_index is None.
@@ -429,7 +433,7 @@ class PhraseletTemplate:
     def __init__(
             self, label, template_sentence, parent_index, child_index,
             dependency_labels, parent_tags, child_tags, *, reverse_only,
-            assigned_dependency_label=None):
+            question, assigned_dependency_label=None):
         self.label = label
         self.template_sentence = template_sentence
         self.parent_index = parent_index
@@ -438,6 +442,7 @@ class PhraseletTemplate:
         self.parent_tags = parent_tags
         self.child_tags = child_tags
         self.reverse_only = reverse_only
+        self.question = question
         self.assigned_dependency_label = assigned_dependency_label
 
     def single_word(self):
@@ -1574,7 +1579,8 @@ class LinguisticObjectFactory:
                         reverse_matching_frequency_threshold is not None and
                         phraselet_info.parent_frequency_factor <
                         reverse_matching_frequency_threshold and
-                        phraselet_info.child_lemma is not None,
+                        phraselet_info.child_lemma is not None and not
+                        phraselet_template.question,
                         phraselet_info.reverse_only_parent_lemma,
                         True)
             raise RuntimeError(''.join((
@@ -1903,12 +1909,29 @@ class SemanticMatchingHelper(ABC):
         pass
 
     @abstractmethod
-    def question_word_matches(self, search_phrase_token:Token, document_token:Token):
+    def question_word_matches(self, search_phrase_token:Token, document_token:Token,
+        document_vector, entity_label_to_vector_dict:dict,
+        initial_question_word_embedding_match_threshold:float) ->  bool:
         pass
 
     @abstractmethod
     def get_subtree_list_without_conjunction(self, token:Token):
         pass
+
+    def cosine_similarity(self, vector1, vector2):
+        return dot (vector1,vector2) / (norm(vector1) * norm(vector2))
+
+    def document_token_matches_ent_type(self, document_token:Token, document_vector,
+            entity_label_to_vector_dict:dict, entity_labels:tuple,
+            initial_question_word_embedding_match_threshold:float) -> bool:
+        if document_token.ent_type_ in entity_labels:
+            return True
+        if document_vector is not None:
+            for ent_type in entity_labels:
+                if self.cosine_similarity(entity_label_to_vector_dict[ent_type],
+                        document_vector) > initial_question_word_embedding_match_threshold:
+                    return True
+        return False
 
     def add_to_corpus_index(self, corpus_index_dict, parsed_document, document_label):
 
