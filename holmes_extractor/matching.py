@@ -721,7 +721,7 @@ class StructuralMatcher:
             if question_word_matches:
                 handle_match(search_phrase_token._.holmes.lemma, document_word_to_use, 'question',
                     0, search_phrase_initial_question_word=True)
-            return True
+                return True
         return False
 
     def embedding_matching_permitted(self, obj):

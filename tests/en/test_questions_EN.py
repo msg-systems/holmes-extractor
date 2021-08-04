@@ -20,6 +20,7 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
                                                               word_embedding_match_threshold=
                                                               word_embedding_match_threshold,
                                                               initial_question_word_embedding_match_threshold=initial_question_word_embedding_match_threshold,
+                                                              initial_question_word_answer_score=40,
                                                               relation_score=20,
                                                               reverse_only_relation_score=15, single_word_score=10, single_word_any_tag_score=5,
                                                               different_match_cutoff_score=10,
@@ -60,15 +61,52 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
         manager.parse_and_register_document("The man sang a duet.", 'q')
         topic_matches = manager.topic_match_documents_against("Which person sings?")
         self.assertEqual([{'document_label': 'q', 'text': 'The man sang a duet.', 'text_to_match': 'Which person sings?', 'rank': '1', 'index_within_document': 2, 'subword_index': None, 'start_index': 1, 'end_index': 2, 'sentences_start_index': 0, 'sentences_end_index': 5, 'sentences_character_start_index': 0, 'sentences_character_end_index': 20, 'score': 288.3671696, 'word_infos': [[4, 7, 'relation', False, 'Has a word embedding that is 55% similar to PERSON.'], [8, 12, 'relation', True, 'Matches SING directly.']], 'answers': [[0, 7]]}], topic_matches)
+        topic_matches = manager.topic_match_documents_against("A person sings", word_embedding_match_threshold=0.42)
+        self.assertEqual([{'document_label': 'q', 'text': 'The man sang a duet.', 'text_to_match': 'A person sings', 'rank': '1', 'index_within_document': 2, 'subword_index': None, 'start_index': 1, 'end_index': 2, 'sentences_start_index': 0, 'sentences_end_index': 5, 'sentences_character_start_index': 0, 'sentences_character_end_index': 20, 'score': 154.1835848, 'word_infos': [[4, 7, 'relation', False, 'Has a word embedding that is 55% similar to PERSON.'], [8, 12, 'relation', True, 'Matches SING directly.']], 'answers': []}], topic_matches)
 
     def test_governed_interrogative_pronoun_matching_proper_noun(self):
         manager.remove_all_documents()
         manager.parse_and_register_document("Richard Hudson sang a duet.", 'q')
         topic_matches = manager.topic_match_documents_against("Which person sings?")
-        self.assertEqual([{'document_label': 'q', 'text': 'Richard Hudson sang a duet.', 'text_to_match': 'Which person sings?', 'rank': '1', 'index_within_document': 2, 'subword_index': None, 'start_index': 1, 'end_index': 2, 'sentences_start_index': 0, 'sentences_end_index': 5, 'sentences_character_start_index': 0, 'sentences_character_end_index': 27, 'score': 620.0, 'word_infos': [[8, 14, 'relation', False, 'Has an entity label that is 100% similar to the word embedding of PERSON.'], [15, 19, 'relation', True, 'Matches SING directly.']], 'answers': [[0, 14]]}], topic_matches)
+        self.assertEqual([{'document_label': 'q', 'text': 'Richard Hudson sang a duet.', 'text_to_match': 'Which person sings?', 'rank': '1', 'index_within_document': 2, 'subword_index': None, 'start_index': 1, 'end_index': 2, 'sentences_start_index': 0, 'sentences_end_index': 5, 'sentences_character_start_index': 0, 'sentences_character_end_index': 27, 'score': 620.0, 'word_infos': [[8, 14, 'relation', False, 'Has an entity label that is 100% similar to the word embedding corresponding to PERSON.'], [15, 19, 'relation', True, 'Matches SING directly.']], 'answers': [[0, 14]]}], topic_matches)
+        topic_matches = manager.topic_match_documents_against("A person sings")
+        self.assertEqual([{'document_label': 'q', 'text': 'Richard Hudson sang a duet.', 'text_to_match': 'A person sings', 'rank': '1', 'index_within_document': 2, 'subword_index': None, 'start_index': 1, 'end_index': 2, 'sentences_start_index': 0, 'sentences_end_index': 5, 'sentences_character_start_index': 0, 'sentences_character_end_index': 27, 'score': 320.0, 'word_infos': [[8, 14, 'relation', False, 'Has an entity label that is 100% similar to the word embedding corresponding to PERSON.'], [15, 19, 'relation', True, 'Matches SING directly.']], 'answers': []}], topic_matches)
+
+    def test_basic_matching_with_coreference(self):
+        self._check_equals("Who came home?", 'I spoke to Richard. He came home', 98, 11, 18)
+
+    def test_basic_matching_with_coreference_and_coordination(self):
+        self._check_equals("Who came home?", 'I spoke to Richard Hudson and Peter Hudson. They came home', 98, 11, 25)
+
+    def test_governed_interrogative_pronoun_matching_direct(self):
+        self._check_equals('Which politician lied?', 'The politician lied', 54, 0, 14)
+
+    def test_governed_interrogative_pronoun_matching_direct_control(self):
+        self._check_equals('A politician lies', 'The politician lied', 34, None, None)
+
+    def test_governed_interrogative_pronoun_matching_derivation(self):
+        self._check_equals('Which performance by the boys was important?', 'The boys performed', 59, 0, 18)
+
+    def test_governed_interrogative_pronoun_matching_derivation_control(self):
+        self._check_equals('A performance by the boys is important', 'The boys performed', 39, None, None)
+
+    def test_governed_interrogative_pronoun_matching_ontology(self):
+        self._check_equals('Which animal woke up?', 'The cat woke up', 45, 0, 7)
+
+    def test_governed_interrogative_pronoun_matching_ontology_control(self):
+        self._check_equals('An animal woke up', 'The cat woke up', 29, None, None)
+
+    def test_governed_interrogative_pronoun_reverse_dependency(self):
+        self._check_equals('Which child did its parents adopt?', 'The adopted child', 54, 0, 17)
+
+    def test_governed_interrogative_pronoun_reverse_dependency_control(self):
+        self._check_equals('A child is adopted by its parents', 'The adopted child', 34, None, None)
+
+    def test_governed_interrogative_pronoun_with_coreference(self):
+        self._check_equals("Which person came home?", 'I spoke to Richard. He came home', 98, 11, 18)
 
     def test_check_who_positive_case(self):
-        self._check_equals('Who looked into the sun?', 'the man looked into the sun', 950, 0, 7)
+        self._check_equals('Who looked into the sun?', 'the man looked into the sun', 127, 0, 7)
 
     def test_check_who_wrong_syntax(self):
         self._check_equals('Who looked into the sun?', 'the sun looked into the man', 19, None, None)

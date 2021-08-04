@@ -314,4 +314,4 @@ class WordMatchingTest(unittest.TestCase):
         self.assertEqual(len(text_matches), 1)
         self.assertEqual(text_matches[0]['word_matches'][0]['match_type'], 'entity_embedding')
         self.assertEqual(text_matches[0]['word_matches'][0]['explanation'],
-                "Has an entity label that is 55% similar to the word embedding of MAN.")
+                "Has an entity label that is 55% similar to the word embedding corresponding to MAN.")

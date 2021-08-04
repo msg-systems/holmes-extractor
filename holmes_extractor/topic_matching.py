@@ -519,20 +519,13 @@ class TopicMatcher:
                     return False
             return True
 
-        def is_intcompound_match_within_same_document_word(match):
-            # Where a relationship match involves subwords of the same word both on the
-            # searched text and on the document side, it should be ignored to prevent the
-            # activation becoming too high compared to normal single-word matches.
-            return (match.search_phrase_label.startswith('intcompound') and
-                len(set([wm.document_token.i for wm in match.word_matches])) == 1)
-
         if match.from_single_word_phraselet:
             return True
         if not perform_checks_at_pole(match, True):
             return False
         if not perform_checks_at_pole(match, False):
             return False
-        return not is_intcompound_match_within_same_document_word(match)
+        return True
 
     def remove_duplicates(self, matches):
         # Situations where the same document tokens have been matched by multiple phraselets
@@ -607,6 +600,13 @@ class TopicMatcher:
             else:
                 return set()
 
+        def is_intcompound_match_within_same_document_word(match):
+            # Where a relationship match involves subwords of the same word both on the
+            # searched text and on the document side, it should receive the same activation as a
+            # single-word match.
+            return (match.search_phrase_label.startswith('intcompound') and
+                len(set([wm.document_token.i for wm in match.word_matches])) == 1)
+
         def get_current_activation_for_phraselet(phraselet_activation_tracker, current_index):
             distance_to_last_match = current_index - phraselet_activation_tracker.position
             tailoff_quotient = distance_to_last_match / self.maximum_activation_distance
@@ -618,8 +618,7 @@ class TopicMatcher:
         for match in (
                 match for match in position_sorted_structural_matches if not
                 match.from_single_word_phraselet and
-                        match.word_matches[0].document_token.i !=
-                        match.word_matches[1].document_token.i): # two subwords within word):
+                not is_intcompound_match_within_same_document_word(match)):
             if match.document_label in document_labels_to_indexes_to_phraselet_labels:
                 inner_dict = document_labels_to_indexes_to_phraselet_labels[match.document_label]
             else:
@@ -641,8 +640,7 @@ class TopicMatcher:
                     current_document_label, {})
             match.is_overlapping_relation = False
             if match.from_single_word_phraselet or \
-                    match.word_matches[0].document_token.i == \
-                    match.word_matches[1].document_token.i: # two subwords within word
+                    is_intcompound_match_within_same_document_word(match):
                 if match.from_topic_match_phraselet_created_without_matching_tags:
                     this_match_score = self.single_word_any_tag_score
                 else:
@@ -863,9 +861,7 @@ class TopicMatcher:
                         word_info = WordInfo(
                             relative_start_index, relative_end_index, 'overlapping_relation',
                             word_match.explain())
-                    elif match.from_single_word_phraselet or \
-                            match.word_matches[0].document_token.i == \
-                            match.word_matches[1].document_token.i: # two subwords within word:
+                    elif match.from_single_word_phraselet: # two subwords within word:
                         word_info = WordInfo(
                             relative_start_index, relative_end_index, 'single',
                             word_match.explain())
@@ -874,14 +870,19 @@ class TopicMatcher:
                             relative_start_index, relative_end_index, 'relation',
                             word_match.explain())
                     if word_match.search_phrase_initial_question_word:
-                        subtree_without_conjunction = \
-                            self.semantic_matching_helper.get_subtree_list_without_conjunction(
-                            word_match.document_token)
-                        answer_relative_start_index = subtree_without_conjunction[0].idx - \
-                            sentences_character_start_index_in_document
-                        answer_relative_end_index = subtree_without_conjunction[-1].idx + \
-                            len(subtree_without_conjunction[-1].text) - \
-                            sentences_character_start_index_in_document
+                        if word_match.document_subword is not None:
+                            answer_relative_start_index = word_match.document_token.idx - \
+                                sentences_character_start_index_in_document
+                            answer_relative_end_index = relative_end_index
+                        else:
+                            subtree_without_conjunction = \
+                                self.semantic_matching_helper.get_subtree_list_without_conjunction(
+                                word_match.document_token)
+                            answer_relative_start_index = subtree_without_conjunction[0].idx - \
+                                sentences_character_start_index_in_document
+                            answer_relative_end_index = subtree_without_conjunction[-1].idx + \
+                                len(subtree_without_conjunction[-1].text) - \
+                                sentences_character_start_index_in_document
                         answers.append((answer_relative_start_index, answer_relative_end_index))
                     if word_info in word_infos_to_word_infos:
                         existing_word_info = word_infos_to_word_infos[word_info]
