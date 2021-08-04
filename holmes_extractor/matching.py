@@ -679,10 +679,13 @@ class StructuralMatcher:
                         document_token._.holmes.subwords[document_subword_index]):
                     return False
                 document_vector = document_token._.holmes.subwords[document_subword_index].vector
+                document_word_to_use = \
+                    document_token._.holmes.subwords[document_subword_index].lemma
             else:
                 if not self.embedding_matching_permitted(document_token):
                     return False
                 document_vector = document_token._.holmes.vector
+                document_word_to_use = document_token.lemma_
 
             if search_phrase_vector is not None and document_vector is not None:
                 similarity_measure = self.cosine_similarity(search_phrase_vector, document_vector)
@@ -697,21 +700,21 @@ class StructuralMatcher:
                     else:
                         search_phrase_word_to_use = search_phrase_token._.holmes.lemma
                     handle_match(
-                        search_phrase_word_to_use, document_token.lemma_, 'embedding', 0,
+                        search_phrase_word_to_use, document_word_to_use, 'embedding', 0,
                         similarity_measure=similarity_measure,
                         search_phrase_initial_question_word=search_phrase_initial_question_word)
                     return True
-                if search_phrase_initial_question_word and \
-                        search_phrase_token._.holmes.ent_type != '' and \
-                        search_phrase_token._.holmes.ent_type in \
-                        self.entity_label_to_vector_dict:
-                    similarity_measure = self.cosine_similarity(self.entity_label_to_vector_dict[
-                        search_phrase_token._.holmes.ent_type], document_vector)
-                    if similarity_measure > single_token_similarity_threshold:
-                        handle_match(
-                            search_phrase_word_to_use, document_token.lemma_, 'embedding_entity', 0,
-                            similarity_measure=similarity_measure,
-                            search_phrase_initial_question_word=search_phrase_initial_question_word)
+            if search_phrase_initial_question_word and \
+                    search_phrase_token._.holmes.ent_type != '' and \
+                    search_phrase_token._.holmes.ent_type in \
+                    self.entity_label_to_vector_dict:
+                similarity_measure = self.cosine_similarity(self.entity_label_to_vector_dict[
+                    search_phrase_token._.holmes.ent_type], document_vector)
+                if similarity_measure > single_token_similarity_threshold:
+                    handle_match(
+                        search_phrase_word_to_use, document_token.lemma_, 'embedding_entity', 0,
+                        similarity_measure=similarity_measure,
+                        search_phrase_initial_question_word=search_phrase_initial_question_word)
 
         if process_initial_question_words and search_phrase_token._.holmes.is_initial_question_word\
                 and self.semantic_matching_helper.question_word_matches(

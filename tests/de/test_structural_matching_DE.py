@@ -62,11 +62,12 @@ holmes_manager_with_embeddings.register_search_phrase("Der Himmel ist grün")
 holmes_manager_with_embeddings.register_search_phrase("Ein König tritt zurück")
 holmes_manager_with_embeddings.register_search_phrase(
     "Die Abdankung eines Königs")
-holmes_manager_with_embeddings.register_search_phrase("Informationskönig")
 holmes_manager_with_embeddings.register_search_phrase("Erholung")
 holmes_manager_with_embeddings.register_search_phrase("herabfallen")
 holmes_manager_with_embeddings.register_search_phrase(
     "Jemand geht auf eine Kur")
+holmes_manager_with_embeddings.register_search_phrase(
+    "Der König einer Stadt")
 
 
 class GermanStructuralMatchingTest(unittest.TestCase):
@@ -982,13 +983,17 @@ class GermanStructuralMatchingTest(unittest.TestCase):
 
     def test_embedding_match_on_root_subword(self):
         matches = self._get_matches(holmes_manager_with_embeddings,
-                                    "Ein Informationskönig")
+                                    "Stadtprinz")
         self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0]['word_matches'][0]['document_word'], 'prinz')
+        self.assertEqual(matches[0]['word_matches'][1]['document_word'], 'Stadt')
 
     def test_embedding_match_on_non_root_subword(self):
         matches = self._get_matches(holmes_manager_with_embeddings,
                                     "Die Prinzenabdankung")
         self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0]['word_matches'][0]['document_word'], 'abdankung')
+        self.assertEqual(matches[0]['word_matches'][1]['document_word'], 'prinz')
 
     def test_ontology_matching_with_subwords(self):
         matches = self._get_matches(holmes_manager,
