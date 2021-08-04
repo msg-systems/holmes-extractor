@@ -29,6 +29,7 @@ second_holmes_manager_coref.register_search_phrase('A king wakes up')
 second_holmes_manager_coref.register_search_phrase('A kitten goes to bed')
 second_holmes_manager_coref.register_search_phrase('Mimi Momo goes to bed')
 second_holmes_manager_coref.register_search_phrase('A dog goes to bed')
+second_holmes_manager_coref.register_search_phrase('A man makes an announcement')
 second_holmes_manager_coref.register_search_phrase('unouno')
 second_holmes_manager_coref.register_search_phrase('sześć')
 
@@ -306,3 +307,11 @@ class WordMatchingTest(unittest.TestCase):
         self.assertEqual(text_matches[0]['word_matches'][0]['match_type'], 'ontology')
         self.assertEqual(text_matches[0]['word_matches'][0]['explanation'],
                 "Is an ancestor of SZEŚĆ in the ontology.")
+
+    def test_entity_embedding_matching(self):
+        text_matches = second_holmes_manager_coref.match(
+                document_text='Richard Hudson made an announcement')
+        self.assertEqual(len(text_matches), 1)
+        self.assertEqual(text_matches[0]['word_matches'][0]['match_type'], 'entity_embedding')
+        self.assertEqual(text_matches[0]['word_matches'][0]['explanation'],
+                "Has an entity label that is 55% similar to the word embedding of MAN.")

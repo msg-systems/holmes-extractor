@@ -1921,17 +1921,15 @@ class SemanticMatchingHelper(ABC):
     def cosine_similarity(self, vector1, vector2):
         return dot (vector1,vector2) / (norm(vector1) * norm(vector2))
 
-    def document_token_matches_ent_type(self, document_token:Token, document_vector,
-            entity_label_to_vector_dict:dict, entity_labels:tuple,
-            initial_question_word_embedding_match_threshold:float) -> bool:
-        if document_token.ent_type_ in entity_labels:
-            return True
-        if document_vector is not None:
+    def token_matches_ent_type(self, token_vector, entity_label_to_vector_dict:dict,
+            entity_labels:tuple, initial_question_word_embedding_match_threshold:float) -> float:
+        if token_vector is not None:
             for ent_type in entity_labels:
-                if self.cosine_similarity(entity_label_to_vector_dict[ent_type],
-                        document_vector) > initial_question_word_embedding_match_threshold:
-                    return True
-        return False
+                cosine_similarity = self.cosine_similarity(entity_label_to_vector_dict[ent_type],
+                        token_vector)
+                if cosine_similarity > initial_question_word_embedding_match_threshold:
+                    return cosine_similarity
+        return 0.0
 
     def add_to_corpus_index(self, corpus_index_dict, parsed_document, document_label):
 

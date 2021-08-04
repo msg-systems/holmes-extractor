@@ -748,9 +748,11 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             document_vector, entity_label_to_vector_dict:dict,
             initial_question_word_embedding_match_threshold:float) -> str:
         if search_phrase_token._.holmes.lemma.startswith('who'):
-            return self.document_token_matches_ent_type(document_token, document_vector,
-                entity_label_to_vector_dict, ('PERSON', 'NORP', 'ORG', 'GPE'),
-                initial_question_word_embedding_match_threshold)
+            ent_types = ('PERSON', 'NORP', 'ORG', 'GPE')
+            return document_token.ent_type_ in ent_types or \
+                self.token_matches_ent_type(document_vector,
+                entity_label_to_vector_dict, ent_types,
+                initial_question_word_embedding_match_threshold) > 0
         if search_phrase_token._.holmes.lemma == 'what':
             return document_token.pos_ in self.noun_pos
         if search_phrase_token._.holmes.lemma == 'where':
@@ -794,8 +796,10 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
 
     def get_subtree_list_without_conjunction(self, token:Token):
         list_to_return = []
-        for token in token.subtree:
-            if token.dep_ in ('conj', 'appos', 'cc'): # == semantic_analyzer.conjunction_deps
+        for working_token in token.subtree:
+            if token == working_token or working_token.dep_ not in ('conj', 'appos', 'cc'):
+            # == semantic_analyzer.conjunction_deps
+                list_to_return.append(working_token)
+            else:
                 return list_to_return
-            list_to_return.append(token)
         return list_to_return

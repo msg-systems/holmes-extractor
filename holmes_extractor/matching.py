@@ -96,11 +96,11 @@ class WordMatch:
             return ''.join((
                 "Has a word embedding that is ", printable_similarity,
                 "% similar to ", search_phrase_display_word, "."))
-        elif self.word_match_type == 'embedding_entity':
+        elif self.word_match_type == 'entity_embedding':
             printable_similarity = str(int(self.similarity_measure * 100))
             return ''.join((
-                "Has a word embedding that is ", printable_similarity,
-                "% similar to the entity label of ", search_phrase_display_word, "."))
+                "Has an entity label that is ", printable_similarity,
+                "% similar to the word embedding corresponding to ", search_phrase_display_word, "."))
         elif self.word_match_type == 'ontology':
             working_depth = self.depth
             if working_depth > 4:
@@ -588,12 +588,6 @@ class StructuralMatcher:
                 return True
             return False
 
-        if search_phrase_initial_question_word and \
-                search_phrase_token._.holmes.ent_type != '' and \
-                search_phrase_token._.holmes.ent_type == document_token.ent_type_:
-            handle_match(search_phrase_token.text, document_token.text, 'entity', 0, True)
-            return True
-
         document_word_representations = document_word_representations()
         for search_phrase_word_representation, search_phrase_match_type, \
                 search_phrase_derived_lemma in loop_search_phrase_word_representations():
@@ -686,14 +680,14 @@ class StructuralMatcher:
             else:
                 if not self.embedding_matching_permitted(document_token):
                     return False
+            single_token_similarity_threshold = \
+                (initial_question_word_overall_similarity_threshold if
+                search_phrase_initial_question_word else overall_similarity_threshold) ** len(
+                search_phrase.matchable_non_entity_tokens_to_vectors)
             if search_phrase_vector is not None and document_vector is not None:
                 similarity_measure = \
                     self.semantic_matching_helper.cosine_similarity(search_phrase_vector,
                     document_vector)
-                single_token_similarity_threshold = \
-                    (initial_question_word_overall_similarity_threshold if
-                    search_phrase_initial_question_word else overall_similarity_threshold) ** len(
-                    search_phrase.matchable_non_entity_tokens_to_vectors)
                 if similarity_measure > single_token_similarity_threshold:
                     if not search_phrase.topic_match_phraselet and \
                             len(search_phrase_token._.holmes.lemma.split()) > 1:
@@ -705,19 +699,15 @@ class StructuralMatcher:
                         similarity_measure=similarity_measure,
                         search_phrase_initial_question_word=search_phrase_initial_question_word)
                     return True
-            if search_phrase_initial_question_word and \
-                    search_phrase_token._.holmes.ent_type != '' and \
-                    search_phrase_token._.holmes.ent_type in \
-                    self.entity_label_to_vector_dict:
-                similarity_measure = \
-                    self.semantic_matching_helper.cosine_similarity(
-                    self.entity_label_to_vector_dict[
-                    search_phrase_token._.holmes.ent_type], document_vector)
-                if similarity_measure > single_token_similarity_threshold:
-                    handle_match(
-                        search_phrase_word_to_use, document_token.lemma_, 'embedding_entity', 0,
-                        similarity_measure=similarity_measure,
-                        search_phrase_initial_question_word=search_phrase_initial_question_word)
+            if document_token.ent_type_ != '':
+                cosine_similarity = self.semantic_matching_helper.token_matches_ent_type(
+                    search_phrase_vector, self.entity_label_to_vector_dict,
+                    (document_token.ent_type_,), single_token_similarity_threshold)
+                if cosine_similarity > 0:
+                    handle_match(search_phrase_token.text, document_token.text, 'entity_embedding',
+                    0, similarity_measure=cosine_similarity,
+                    search_phrase_initial_question_word=search_phrase_initial_question_word)
+                return True
 
         if process_initial_question_words and search_phrase_token._.holmes.is_initial_question_word:
             if document_vector is not None:

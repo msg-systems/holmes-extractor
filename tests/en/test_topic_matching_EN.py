@@ -91,11 +91,19 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                            holmes_manager_coref)
 
     def test_entity_matching(self):
-        self._check_equals("My friend visited ENTITYGPE", "Peter visited London", 34,
+        self._check_equals("My house visited ENTITYGPE", "Peter visited London", 34,
                            holmes_manager_coref)
 
     def test_entity_matching_frequency_factor(self):
-        self._check_equals("My friend visited ENTITYGPE", "Peter visited Paris. London. Berlin.", 15,
+        self._check_equals("My house visited ENTITYGPE", "Peter visited Paris. London. Berlin.", 15,
+                           holmes_manager_coref)
+
+    def test_entity_embedding_matching(self):
+        self._check_equals("My friend visited ENTITYGPE", "Peter visited London", 57,
+                           holmes_manager_coref)
+
+    def test_entity_embedding_matching_frequency_factor(self):
+        self._check_equals("My friend visited ENTITYGPE", "Peter visited Paris. London. Berlin.", 32,
                            holmes_manager_coref)
 
     def test_entitynoun_matching(self):
