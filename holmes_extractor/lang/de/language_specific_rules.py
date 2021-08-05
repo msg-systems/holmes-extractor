@@ -972,6 +972,8 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             reverse_document_dependencies=['nk']),
         'pobjp': MatchImplication(search_phrase_dependency='pobjp',
             document_dependencies=['intcompound']),
+        'wh_wildcard': MatchImplication(search_phrase_dependency='wh_wildcard',
+            document_dependencies=['mo', 'oc', 'mnr', 'mnrposs', 'prep']),
         # intcompound is only used within extensive matching because it is not assigned
         # in the context of registering search phrases.
         'intcompound': MatchImplication(search_phrase_dependency='intcompound',
@@ -1057,15 +1059,16 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP'],
             ['PWS'], reverse_only=False, question=True),
         PhraseletTemplate(
-            "head-WHdat", "wem hast du geholfen?", 1, 0,
+            "head-WHdat", "wem hilfst du?", 1, 0,
             ['da'],
             ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP'],
             ['PWS'], reverse_only=False, question=True),
         PhraseletTemplate(
-            "head-WHadv", "womit hast du es gemacht?", 1, 0,
+            "head-WHadv", "womit machst du es?", 1, 0,
             ['mo'],
             ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP'],
-            ['PWAV'], reverse_only=False, question=True),
+            ['PWAV'], reverse_only=False, question=True,
+            assigned_dependency_label='wh_wildcard'),
         PhraseletTemplate(
             "head-whose", "Wessen Haus betrachtest du?", 1, 0,
             ['ag'],
@@ -1093,16 +1096,17 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             return document_token.tag_ == 'APPR' and document_token.lemma_ in (
                 'an', 'auf', 'aus', 'bei', 'gegenüber', 'hinter', 'in', 'neben', 'über',
                 'unter', 'vor', 'zu', 'zwischen') and \
-                len([1 for c in document_token.children
+                len([1 for c in document_token._.holmes.children
                 if 'Case=Dat' in c.child_token(document_token.doc).morph]) > 0
         if search_phrase_token._.holmes.lemma == 'wohin':
             return document_token.tag_ == 'APPR' and document_token.lemma_ in (
                 'an', 'auf', 'hinter', 'in', 'neben', 'über',
                 'unter', 'vor', 'zwischen') and \
-                len([1 for c in document_token.children
+                len([1 for c in document_token._.holmes.children
                 if 'Case=Acc' in c.child_token(document_token.doc).morph]) > 0
         if search_phrase_token._.holmes.lemma == 'wann':
-            return document_token.dep_ == 'mo' and document_token.pos_ in ('NOUN', 'PROPN', 'ADP')
+            return document_token.dep_ == 'mo' and document_token.pos_ in (
+                'NOUN', 'PROPN', 'ADP', 'ADV', 'VERB', 'AUX')
         if search_phrase_token._.holmes.lemma == 'wie':
             return document_token.dep_ == ('mo', 'oc') and document_token.pos_ in ('VERB', 'AUX')
         if search_phrase_token._.holmes.lemma == 'woher':
@@ -1112,14 +1116,6 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
         if search_phrase_token._.holmes.lemma in ('warum', 'wieso', 'weshalb'):
             return document_token.tag_ == 'APPR' and document_token._.holmes.lemma in (
                 'wegen') or (document_token.dep_ == ('mo', 'oc') and
-                document_token.pos_ in ('VERB', 'AUX'))
-        if search_phrase_token._.holmes.lemma == 'wann':
-            return document_token.dep_ == 'mo' and document_token.pos_ in ('NOUN', 'PROPN', 'ADP')
-        if search_phrase_token._.holmes.lemma == 'wie':
-            return document_token.dep_ == ('mo', 'oc') and document_token.pos_ in ('VERB', 'AUX')
-        if search_phrase_token._.holmes.lemma == 'woher':
-            return document_token.tag_ == 'APPR' and document_token.lemma_ in (
-                'aus', 'von', 'wegen') or (document_token.dep_ == ('mo', 'oc') and
                 document_token.pos_ in ('VERB', 'AUX'))
         if search_phrase_token._.holmes.lemma.startswith('wo') and document_token.tag_ == 'APPR' \
                 and search_phrase_token._.holmes.lemma.endswith(document_token._.holmes.lemma):
