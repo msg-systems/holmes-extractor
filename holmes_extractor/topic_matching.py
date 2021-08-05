@@ -241,7 +241,6 @@ class TopicMatcher:
         structural_matches = list(filter(self.filter_superfluous_matches, structural_matches))
         phraselet_labels_to_frequency_factors = {info.label: info.frequency_factor for info
             in phraselet_labels_to_phraselet_infos.values()}
-        print(phraselet_labels_to_frequency_factors)
         position_sorted_structural_matches = sorted(
             structural_matches, key=lambda match:
             (
