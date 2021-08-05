@@ -220,6 +220,9 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
     def test_check_who_prep_positive_case(self):
         self._check_equals('who did the dog talk with', 'the dog talked with his man', 108, 20, 27)
 
+    def test_check_who_prep_at_beginning_positive_case(self):
+        self._check_equals('with whom did the dog talk', 'the dog talked with his man', 108, 20, 27)
+
     def test_check_who_prep_control_no_question_word(self):
         self._check_equals('a dog talks with a man', 'the dog talked with his man', 108, None, None)
 
