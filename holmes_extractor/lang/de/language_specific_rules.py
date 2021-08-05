@@ -1083,7 +1083,7 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
                 entity_label_to_vector_dict, ent_types,
                 initial_question_word_embedding_match_threshold) > 0
         if search_phrase_token._.holmes.lemma in ('was', 'wem'):
-            return document_token.pos_ in self.noun_pos
+            return True
         if search_phrase_token._.holmes.lemma == 'wo':
             # spaCy model does not handle postpositions
             return document_token.tag_ == 'APPR' and document_token.lemma_ in (

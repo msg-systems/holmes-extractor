@@ -642,6 +642,10 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             reverse_document_dependencies=['acomp', 'amod']),
         'pobjp': MatchImplication(search_phrase_dependency='pobjp',
             document_dependencies=['compound']),
+        'pobj': MatchImplication(search_phrase_dependency='pobj',
+            document_dependencies=['pcomp']),
+        'pcomp': MatchImplication(search_phrase_dependency='pcomp',
+            document_dependencies=['pobj']),
         'prep': MatchImplication(search_phrase_dependency='prep',
             document_dependencies=['prepposs']),
         'xcomp': MatchImplication(search_phrase_dependency='xcomp',
@@ -709,7 +713,7 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=False, question=False),
         PhraseletTemplate(
             "prep-noun", "in a thing", 0, 2,
-            ['pobj'],
+            ['pobj', 'pcomp'],
             ['IN'],
             ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=True, question=False),
         PhraseletTemplate(
@@ -754,13 +758,13 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
                 entity_label_to_vector_dict, ent_types,
                 initial_question_word_embedding_match_threshold) > 0
         if search_phrase_token._.holmes.lemma == 'what':
-            return document_token.pos_ in self.noun_pos
+            return True
         if search_phrase_token._.holmes.lemma == 'where':
             return document_token.tag_ == 'IN' and document_token.lemma_ in (
                 'above', 'across', 'against', 'along', 'among', 'amongst', 'around', 'at',
                 'behind', 'below', 'beneath', 'beside', 'between', 'beyond', 'by', 'close', 'down',
                 'in', 'into', 'near', 'next', 'off', 'on', 'onto', 'opposite', 'out',
-                'outside', 'round', 'through', 'under', 'underneath', 'up')
+                'outside', 'round', 'through', 'to', 'under', 'underneath', 'up')
         if search_phrase_token._.holmes.lemma == 'when':
             return document_token.dep_ == 'advmod' or document_token.ent_type_ in ('DATE', 'TIME')
         if search_phrase_token._.holmes.lemma == 'how':

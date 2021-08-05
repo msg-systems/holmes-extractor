@@ -1059,7 +1059,8 @@ class StructuralMatcher:
             return document_label_filter is not None and document_label is not None and \
                 not document_label.startswith(str(document_label_filter))
 
-        if overall_similarity_threshold == 1.0:
+        if overall_similarity_threshold == 1.0 and \
+                initial_question_word_overall_similarity_threshold == 1.0:
             compare_embeddings_on_root_words = False
             compare_embeddings_on_non_root_words = False
         match_specific_indexes = reverse_matching_corpus_word_positions is not None \

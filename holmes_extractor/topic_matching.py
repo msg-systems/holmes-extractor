@@ -135,6 +135,8 @@ class TopicMatcher:
         self.embedding_penalty = embedding_penalty
         self.ontology_penalty = ontology_penalty
         self.relation_matching_frequency_threshold = relation_matching_frequency_threshold
+        self.relation_matching_frequency_threshold = \
+            relation_matching_frequency_threshold
         self.embedding_matching_frequency_threshold = embedding_matching_frequency_threshold
         self.sideways_match_extent = sideways_match_extent
         self.only_one_result_per_document = only_one_result_per_document
@@ -243,7 +245,10 @@ class TopicMatcher:
             structural_matches, key=lambda match:
             (
                 match.document_label, match.index_within_document,
-                match.get_subword_index_for_sorting(), match.from_single_word_phraselet))
+                match.get_subword_index_for_sorting(),
+                len([1 for wm in match.word_matches if
+                wm.search_phrase_token._.holmes.is_initial_question_word]) == 0,
+                match.from_single_word_phraselet))
         position_sorted_structural_matches = self.remove_duplicates(
             position_sorted_structural_matches)
 
@@ -281,9 +286,13 @@ class TopicMatcher:
 
         parent_token = phraselet.root_token
         parent_word = parent_token._.holmes.lemma_or_derived_lemma()
-        if parent_word in self.words_to_phraselet_word_match_infos and not \
+        child_token = [token for token in phraselet.matchable_tokens if token.i !=
+                       parent_token.i][0]
+        child_word = child_token._.holmes.lemma_or_derived_lemma()
+        if parent_word in self.words_to_phraselet_word_match_infos and ((not \
                 phraselet.reverse_only and not \
-                phraselet.treat_as_reverse_only_during_initial_relation_matching:
+                phraselet.treat_as_reverse_only_during_initial_relation_matching)
+                or child_token._.holmes.has_initial_question_word_in_phrase):
             parent_phraselet_word_match_info = self.words_to_phraselet_word_match_infos[
                 parent_word]
             parent_single_word_match_corpus_words = \
@@ -296,13 +305,11 @@ class TopicMatcher:
             else:
                 parent_relation_match_corpus_words = []
             if phraselet_info.parent_frequency_factor >= \
-                    self.embedding_matching_frequency_threshold:
+                    self.embedding_matching_frequency_threshold or \
+                    child_token._.holmes.has_initial_question_word_in_phrase:
                 child_embedding_retry_corpus_word_positions.update(cwp for cwp in
                     parent_single_word_match_corpus_words.difference(
                     parent_relation_match_corpus_words))
-        child_token = [token for token in phraselet.matchable_tokens if token.i !=
-                       parent_token.i][0]
-        child_word = child_token._.holmes.lemma_or_derived_lemma()
         if child_word in self.words_to_phraselet_word_match_infos:
             child_phraselet_word_match_info = \
                     self.words_to_phraselet_word_match_infos[child_word]
@@ -315,7 +322,8 @@ class TopicMatcher:
             else:
                 child_relation_match_corpus_words = []
 
-            if phraselet_info.child_frequency_factor >= self.embedding_matching_frequency_threshold:
+            if phraselet_info.child_frequency_factor >= self.embedding_matching_frequency_threshold\
+                    or parent_token._.holmes.has_initial_question_word_in_phrase:
                 set_to_add_to = parent_embedding_retry_corpus_word_positions
             elif phraselet_info.child_frequency_factor >= \
                     self.relation_matching_frequency_threshold \
@@ -749,7 +757,7 @@ class TopicMatcher:
             while previous_index_within_list > 0 and position_sorted_structural_matches[
                     previous_index_within_list-1].document_label == \
                     score_sorted_match.document_label and position_sorted_structural_matches[
-                        previous_index_within_list].topic_score > self.different_match_cutoff_score:
+                    previous_index_within_list].topic_score > self.different_match_cutoff_score:
                     # previous_index_within_list rather than previous_index_within_list -1 :
                     # when a complex structure is matched, it will often begin with a single noun
                     # that should be included within the topic match indexes
@@ -889,10 +897,7 @@ class TopicMatcher:
                         if not existing_word_info.word_match_type == 'overlapping_relation':
                             if match.is_overlapping_relation:
                                 existing_word_info.word_match_type = 'overlapping_relation'
-                            elif not match.from_single_word_phraselet and not \
-                                    match.word_matches[0].document_token.i == \
-                                    match.word_matches[1].document_token.i:
-                                    # two subwords within word::
+                            elif not match.from_single_word_phraselet:
                                 existing_word_info.word_match_type = 'relation'
                     else:
                         word_infos_to_word_infos[word_info] = word_info

@@ -13,19 +13,19 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
 
     def _check_equals(self, text_to_match, document_text, highest_score, answer_start, answer_end,
         word_embedding_match_threshold=0.42, initial_question_word_embedding_match_threshold=0.42,
-        use_frequency_factor=True):
+        use_frequency_factor=True, initial_question_word_answer_score=40, relation_matching_frequency_threshold=0.0, embedding_matching_frequency_threshold=0.0):
         manager.remove_all_documents()
         manager.parse_and_register_document(document_text)
         topic_matches = manager.topic_match_documents_against(text_to_match,
                                                               word_embedding_match_threshold=
                                                               word_embedding_match_threshold,
                                                               initial_question_word_embedding_match_threshold=initial_question_word_embedding_match_threshold,
-                                                              initial_question_word_answer_score=40,
+                                                              initial_question_word_answer_score=initial_question_word_answer_score,
                                                               relation_score=20,
                                                               reverse_only_relation_score=15, single_word_score=10, single_word_any_tag_score=5,
                                                               different_match_cutoff_score=10,
-                                                              relation_matching_frequency_threshold=0.0,
-                                                              embedding_matching_frequency_threshold=0.0,
+                                                              relation_matching_frequency_threshold=relation_matching_frequency_threshold,
+                                                              embedding_matching_frequency_threshold=embedding_matching_frequency_threshold,
                                                               use_frequency_factor=use_frequency_factor)
         self.assertEqual(int(topic_matches[0]['score']), highest_score)
         if answer_start is not None:
@@ -105,6 +105,22 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
     def test_governed_interrogative_pronoun_with_coreference(self):
         self._check_equals("Which person came home?", 'I spoke to Richard. He came home', 98, 11, 18)
 
+    def test_separate_embedding_threshold_for_question_words_normal_threshold_1(self):
+         self._check_equals("Which man came home?", 'The person came home', 52, 0, 10,
+            word_embedding_match_threshold=1.0, initial_question_word_answer_score=20)
+
+    def test_separate_embedding_threshold_for_question_words_normal_threshold_1_control(self):
+         self._check_equals("A man comes home", 'The person came home', 29, None, None,
+            word_embedding_match_threshold=1.0, initial_question_word_answer_score=20)
+
+    def test_separate_embedding_threshold_for_question_words_normal_threshold_below_1(self):
+         self._check_equals("Which man came home?", 'The person came home', 52, 0, 10,
+            word_embedding_match_threshold=0.9, initial_question_word_answer_score=20)
+
+    def test_separate_embedding_threshold_for_question_words_normal_threshold_below_1_control(self):
+         self._check_equals("A man comes home", 'The person came home', 29, None, None,
+            word_embedding_match_threshold=0.9, initial_question_word_answer_score=20)
+
     def test_check_who_positive_case(self):
         self._check_equals('Who looked into the sun?', 'the man looked into the sun', 127, 0, 7)
 
@@ -113,3 +129,75 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
 
     def test_check_who_wrong_noun(self):
         self._check_equals('Who looked into the sun?', 'the dog looked into the sun', 70, None, None)
+
+    def test_no_relation_frequency_threshold_for_direct_question_words(self):
+        manager.remove_all_documents()
+        manager.parse_and_register_document("Richard came. Come. Come.", 'q')
+        topic_matches = manager.topic_match_documents_against("What came?", relation_matching_frequency_threshold=1.0, embedding_matching_frequency_threshold=1.0)
+        self.assertEqual(topic_matches, [{'document_label': 'q', 'text': 'Richard came. Come. Come.', 'text_to_match': 'What came?', 'rank': '1', 'index_within_document': 1, 'subword_index': None, 'start_index': 0, 'end_index': 5, 'sentences_start_index': 0, 'sentences_end_index': 6, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 228.8235527856964, 'word_infos': [[0, 7, 'relation', False, 'Matches the question word WHAT.'], [8, 12, 'relation', True, 'Matches COME directly.'], [14, 18, 'single', False, 'Matches COME directly.'], [20, 24, 'single', False, 'Matches COME directly.']], 'answers': [[0, 7]]}])
+
+    def test_no_relation_frequency_threshold_for_direct_question_words_control(self):
+        manager.remove_all_documents()
+        manager.parse_and_register_document("Richard came. Come. Come.", 'd')
+        topic_matches = manager.topic_match_documents_against("Richard came?", relation_matching_frequency_threshold=1.0, embedding_matching_frequency_threshold=1.0)
+        self.assertEqual(topic_matches, [{'document_label': 'd', 'text': 'Richard came. Come. Come.', 'text_to_match': 'Richard came?', 'rank': '1', 'index_within_document': 1, 'subword_index': None, 'start_index': 0, 'end_index': 5, 'sentences_start_index': 0, 'sentences_end_index': 6, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 167.43581219046695, 'word_infos': [[0, 7, 'relation', False, 'Matches RICHARD directly.'], [8, 12, 'relation', True, 'Matches COME directly.'], [14, 18, 'single', False, 'Matches COME directly.'], [20, 24, 'single', False, 'Matches COME directly.']], 'answers': []}])
+
+    def test_no_relation_frequency_threshold_for_governed_question_words(self):
+        manager.remove_all_documents()
+        manager.parse_and_register_document("The dog barked. The dog barked. The dog barked.", 'q')
+        topic_matches = manager.topic_match_documents_against("Which dog barked?",
+        relation_matching_frequency_threshold=1.0, embedding_matching_frequency_threshold=1.0)
+        self.assertEqual(topic_matches, [{'document_label': 'q', 'text': 'The dog barked. The dog barked. The dog barked.', 'text_to_match': 'Which dog barked?', 'rank': '1', 'index_within_document': 2, 'subword_index': None, 'start_index': 1, 'end_index': 10, 'sentences_start_index': 0, 'sentences_end_index': 11, 'sentences_character_start_index': 0, 'sentences_character_end_index': 47, 'score': 107.3165784983407, 'word_infos': [[4, 7, 'relation', False, 'Matches DOG directly.'], [8, 14, 'relation', True, 'Matches BARK directly.'], [20, 23, 'relation', False, 'Matches DOG directly.'], [24, 30, 'relation', False, 'Matches BARK directly.'], [36, 39, 'relation', False, 'Matches DOG directly.'], [40, 46, 'relation', False, 'Matches BARK directly.']], 'answers': [[0, 7], [16, 23], [32, 39]]}])
+
+    def test_no_relation_frequency_threshold_for_governed_question_words_control(self):
+        manager.remove_all_documents()
+        manager.parse_and_register_document("The dog barked. The dog barked. The dog barked.", 'q')
+        topic_matches = manager.topic_match_documents_against("The dog barked?",
+        relation_matching_frequency_threshold=1.0, embedding_matching_frequency_threshold=1.0)
+        self.assertEqual(topic_matches, [{'document_label': 'q', 'text': 'The dog barked. The dog barked. The dog barked.', 'text_to_match': 'The dog barked?', 'rank': '1', 'index_within_document': 2, 'subword_index': None, 'start_index': 1, 'end_index': 10, 'sentences_start_index': 0, 'sentences_end_index': 11, 'sentences_character_start_index': 0, 'sentences_character_end_index': 47, 'score': 25.58887041904562, 'word_infos': [[4, 7, 'single', False, 'Matches DOG directly.'], [8, 14, 'single', True, 'Matches BARK directly.'], [20, 23, 'single', False, 'Matches DOG directly.'], [24, 30, 'single', False, 'Matches BARK directly.'], [36, 39, 'single', False, 'Matches DOG directly.'], [40, 46, 'single', False, 'Matches BARK directly.']], 'answers': []}])
+
+    def test_no_reverse_relation_frequency_threshold_for_governed_question_words(self):
+        manager.remove_all_documents()
+        manager.parse_and_register_document("in a house. in a house. in a house.", 'q')
+        topic_matches = manager.topic_match_documents_against("In which house?",
+        relation_matching_frequency_threshold=1.0, embedding_matching_frequency_threshold=1.0)
+        self.assertEqual(topic_matches, [{'document_label': 'q', 'text': 'in a house. in a house. in a house.', 'text_to_match': 'In which house?', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 0, 'end_index': 10, 'sentences_start_index': 0, 'sentences_end_index': 11, 'sentences_character_start_index': 0, 'sentences_character_end_index': 35, 'score': 107.07053166738835, 'word_infos': [[0, 2, 'relation', False, 'Matches IN directly.'], [5, 10, 'relation', False, 'Matches HOUSE directly.'], [12, 14, 'relation', True, 'Matches IN directly.'], [17, 22, 'relation', False, 'Matches HOUSE directly.'], [24, 26, 'relation', False, 'Matches IN directly.'], [29, 34, 'relation', False, 'Matches HOUSE directly.']], 'answers': [[3, 10], [15, 22], [27, 34]]}])
+
+    def test_no_reverse_relation_frequency_threshold_for_governed_question_words_control(self):
+        manager.remove_all_documents()
+        manager.parse_and_register_document("in a house. in a house. in a house.", 'q')
+        topic_matches = manager.topic_match_documents_against("In a house",
+        relation_matching_frequency_threshold=1.0, embedding_matching_frequency_threshold=1.0)
+        self.assertEqual(topic_matches, [{'document_label': 'q', 'text': 'in a house. in a house. in a house.', 'text_to_match': 'In a house', 'rank': '1', 'index_within_document': 2, 'subword_index': None, 'start_index': 0, 'end_index': 10, 'sentences_start_index': 0, 'sentences_end_index': 11, 'sentences_character_start_index': 0, 'sentences_character_end_index': 35, 'score': 25.638079785236094, 'word_infos': [[0, 2, 'single', False, 'Matches IN directly.'], [5, 10, 'single', True, 'Matches HOUSE directly.'], [12, 14, 'single', False, 'Matches IN directly.'], [17, 22, 'single', False, 'Matches HOUSE directly.'], [24, 26, 'single', False, 'Matches IN directly.'], [29, 34, 'single', False, 'Matches HOUSE directly.']], 'answers': []}])
+
+    def test_no_embedding_frequency_threshold_for_governed_question_words_on_child(self):
+        manager.remove_all_documents()
+        manager.parse_and_register_document("The dog barked. The dog barked. The dog barked.", 'q')
+        topic_matches = manager.topic_match_documents_against("Which cat barked?",
+        relation_matching_frequency_threshold=1.0, embedding_matching_frequency_threshold=1.0,
+        initial_question_word_embedding_match_threshold=0.2, word_embedding_match_threshold=0.2)
+        self.assertEqual(topic_matches, [{'document_label': 'q', 'text': 'The dog barked. The dog barked. The dog barked.', 'text_to_match': 'Which cat barked?', 'rank': '1', 'index_within_document': 2, 'subword_index': None, 'start_index': 1, 'end_index': 10, 'sentences_start_index': 0, 'sentences_end_index': 11, 'sentences_character_start_index': 0, 'sentences_character_end_index': 47, 'score': 126.34484701824243, 'word_infos': [[4, 7, 'relation', False, 'Has a word embedding that is 80% similar to CAT.'], [8, 14, 'relation', True, 'Matches BARK directly.'], [20, 23, 'relation', False, 'Has a word embedding that is 80% similar to CAT.'], [24, 30, 'relation', False, 'Matches BARK directly.'], [36, 39, 'relation', False, 'Has a word embedding that is 80% similar to CAT.'], [40, 46, 'relation', False, 'Matches BARK directly.']], 'answers': [[0, 7], [16, 23], [32, 39]]}])
+
+    def test_no_embedding_frequency_threshold_for_governed_question_words_on_child_control(self):
+        manager.remove_all_documents()
+        manager.parse_and_register_document("The dog barked. The dog barked. The dog barked.", 'q')
+        topic_matches = manager.topic_match_documents_against("The cat barked?",
+        relation_matching_frequency_threshold=1.0, embedding_matching_frequency_threshold=1.0,
+        initial_question_word_embedding_match_threshold=0.2, word_embedding_match_threshold=0.2)
+        self.assertEqual(topic_matches, [{'document_label': 'q', 'text': 'The dog barked.', 'text_to_match': 'The cat barked?', 'rank': '1=', 'index_within_document': 2, 'subword_index': None, 'start_index': 2, 'end_index': 2, 'sentences_start_index': 0, 'sentences_end_index': 3, 'sentences_character_start_index': 0, 'sentences_character_end_index': 15, 'score': 7.381404928570852, 'word_infos': [[8, 14, 'single', True, 'Matches BARK directly.']], 'answers': []}, {'document_label': 'q', 'text': 'The dog barked.', 'text_to_match': 'The cat barked?', 'rank': '1=', 'index_within_document': 6, 'subword_index': None, 'start_index': 6, 'end_index': 6, 'sentences_start_index': 4, 'sentences_end_index': 7, 'sentences_character_start_index': 16, 'sentences_character_end_index': 31, 'score': 7.381404928570852, 'word_infos': [[8, 14, 'single', True, 'Matches BARK directly.']], 'answers': []}, {'document_label': 'q', 'text': 'The dog barked.', 'text_to_match': 'The cat barked?', 'rank': '1=', 'index_within_document': 10, 'subword_index': None, 'start_index': 10, 'end_index': 10, 'sentences_start_index': 8, 'sentences_end_index': 11, 'sentences_character_start_index': 32, 'sentences_character_end_index': 47, 'score': 7.381404928570852, 'word_infos': [[8, 14, 'single', True, 'Matches BARK directly.']], 'answers': []}])
+
+    def test_no_embedding_frequency_threshold_for_governed_question_words_on_parent(self):
+        manager.remove_all_documents()
+        manager.parse_and_register_document("A big dog. A big dog. A big dog.", 'q')
+        topic_matches = manager.topic_match_documents_against("Which big cat?",
+        relation_matching_frequency_threshold=1.0, embedding_matching_frequency_threshold=1.0,
+        initial_question_word_embedding_match_threshold=0.2, word_embedding_match_threshold=0.2)
+        self.assertEqual(topic_matches, [{'document_label': 'q', 'text': 'A big dog. A big dog. A big dog.', 'text_to_match': 'Which big cat?', 'rank': '1', 'index_within_document': 2, 'subword_index': None, 'start_index': 1, 'end_index': 10, 'sentences_start_index': 0, 'sentences_end_index': 11, 'sentences_character_start_index': 0, 'sentences_character_end_index': 32, 'score': 126.24642828586148, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [6, 9, 'relation', True, 'Has a word embedding that is 80% similar to CAT.'], [13, 16, 'relation', False, 'Matches BIG directly.'], [17, 20, 'relation', False, 'Has a word embedding that is 80% similar to CAT.'], [24, 27, 'relation', False, 'Matches BIG directly.'], [28, 31, 'relation', False, 'Has a word embedding that is 80% similar to CAT.']], 'answers': [[0, 10], [11, 21], [22, 32]]}])
+
+    def test_no_embedding_frequency_threshold_for_governed_question_words_on_parent_control(self):
+        manager.remove_all_documents()
+        manager.parse_and_register_document("A big dog. A big dog. A big dog.", 'q')
+        topic_matches = manager.topic_match_documents_against("The big cat?",
+        relation_matching_frequency_threshold=1.0, embedding_matching_frequency_threshold=1.0,
+        initial_question_word_embedding_match_threshold=0.2, word_embedding_match_threshold=0.2)
+        self.assertEqual(topic_matches, [{'document_label': 'q', 'text': 'A big dog.', 'text_to_match': 'The big cat?', 'rank': '1=', 'index_within_document': 1, 'subword_index': None, 'start_index': 1, 'end_index': 1, 'sentences_start_index': 0, 'sentences_end_index': 3, 'sentences_character_start_index': 0, 'sentences_character_end_index': 10, 'score': 7.381404928570852, 'word_infos': [[2, 5, 'single', True, 'Matches BIG directly.']], 'answers': []}, {'document_label': 'q', 'text': 'A big dog.', 'text_to_match': 'The big cat?', 'rank': '1=', 'index_within_document': 5, 'subword_index': None, 'start_index': 5, 'end_index': 5, 'sentences_start_index': 4, 'sentences_end_index': 7, 'sentences_character_start_index': 11, 'sentences_character_end_index': 21, 'score': 7.381404928570852, 'word_infos': [[2, 5, 'single', True, 'Matches BIG directly.']], 'answers': []}, {'document_label': 'q', 'text': 'A big dog.', 'text_to_match': 'The big cat?', 'rank': '1=', 'index_within_document': 9, 'subword_index': None, 'start_index': 9, 'end_index': 9, 'sentences_start_index': 8, 'sentences_end_index': 11, 'sentences_character_start_index': 22, 'sentences_character_end_index': 32, 'score': 7.381404928570852, 'word_infos': [[2, 5, 'single', True, 'Matches BIG directly.']], 'answers': []}])
