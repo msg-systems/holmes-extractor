@@ -519,7 +519,7 @@ class SearchPhrase:
             matchable_non_entity_tokens_to_vectors, label, topic_match_phraselet,
             topic_match_phraselet_created_without_matching_tags, reverse_only,
             treat_as_reverse_only_during_initial_relation_matching, words_matching_root_token,
-            root_word_to_match_info_dict):
+            root_word_to_match_info_dict, has_single_matchable_word):
         """Args:
 
         doc -- the Holmes document created for the search phrase
@@ -542,6 +542,7 @@ class SearchPhrase:
         words_matching_root_token -- a list of words that match the root token.
         root_word_to_match_info_dict -- a dictionary from words in *words_matching_root_token*
             to match information tuples.
+        has_single_matchable_word -- **True** or **False**.
         """
         self.doc = doc
         self.doc_text = doc.text
@@ -557,7 +558,7 @@ class SearchPhrase:
             treat_as_reverse_only_during_initial_relation_matching
         self.words_matching_root_token = words_matching_root_token
         self.root_word_to_match_info_dict = root_word_to_match_info_dict
-        self.has_single_matchable_word = len(matchable_token_indexes) == 1
+        self.has_single_matchable_word = has_single_matchable_word#len(matchable_token_indexes) == 1
 
     @property
     def matchable_tokens(self):
@@ -801,6 +802,8 @@ class SemanticAnalyzer(ABC):
 
     entity_labels_to_corresponding_lexemes = NotImplemented
 
+    whose_lemma = NotImplemented
+
     @abstractmethod
     def add_subwords(self, token, subword_cache):
         pass
@@ -870,7 +873,8 @@ class SemanticAnalyzer(ABC):
                     token._.holmes.is_initial_question_word = True
             for token in initial_sentence:
                 if token.pos_ in self.noun_pos and len([1 for c in token._.holmes.children
-                        if c.child_token(token.doc)._.holmes.is_initial_question_word]) > 0:
+                        if self.is_interrogative_pronoun(c.child_token(token.doc)) and
+                        c.child_token(token.doc)._.holmes.lemma != self.whose_lemma]) > 0:
                     token._.holmes.has_initial_question_word_in_phrase = True
 
     def mark_if_righthand_sibling(self, token):
@@ -1036,7 +1040,7 @@ class SemanticAnalyzer(ABC):
         token._.holmes.is_matchable = (
             token.pos_ in self.matchable_pos or token._.holmes.is_involved_in_coreference()
             or len(token._.holmes.subwords) > 0) \
-            and token.tag_ not in self.interrogative_pronoun_tags and \
+            and not self.is_interrogative_pronoun(token) and \
             token._.holmes.lemma not in self.generic_pronoun_lemmas
 
     def move_information_between_tokens(self, from_token, to_token):
@@ -1731,8 +1735,8 @@ class LinguisticObjectFactory:
                             working_lexeme.vector
                     else:
                         matchable_non_entity_tokens_to_vectors[token.i] = None
-            if process_initial_question_words and token.tag_ in \
-                    self.semantic_analyzer.interrogative_pronoun_tags:
+            if process_initial_question_words and \
+                    self.semantic_analyzer.is_interrogative_pronoun(token):
                 tokens_to_match.append(token)
                 matchable_non_entity_tokens_to_vectors[token.i] = None
             if token.dep_ == 'ROOT': # syntactic root
@@ -1784,7 +1788,8 @@ class LinguisticObjectFactory:
             matchable_non_entity_tokens_to_vectors, label, phraselet_template is not None,
             topic_match_phraselet_created_without_matching_tags,
             reverse_only, treat_as_reverse_only_during_initial_relation_matching,
-            words_matching_root_token, root_word_to_match_info_dict)
+            words_matching_root_token, root_word_to_match_info_dict, len(tokens_to_match) == 1 and
+            not (phraselet_template is not None and phraselet_template.question))
 
     def get_ontology_reverse_derivational_dict(self):
         """During structural matching, a lemma or derived lemma matches any words in the ontology
@@ -1869,6 +1874,8 @@ class SemanticMatchingHelper(ABC):
     entity_defined_multiword_entity_types = NotImplemented
 
     sibling_marker_deps = NotImplemented
+
+    preposition_deps = NotImplemented
 
     def __init__(self, ontology, analyze_derivational_morphology):
         self.ontology = ontology
@@ -2002,6 +2009,16 @@ class SemanticMatchingHelper(ABC):
             return search_phrase_dependency_label in self.match_implication_dict.keys() and \
                 document_dependency_label in self.match_implication_dict[
                 search_phrase_dependency_label].reverse_document_dependencies
+
+    def check_for_common_preposition(search_phrase_token, document_token):
+        for search_phrase_parent in (s_p.parent_token(search_phrase_token.doc) for p in
+                search_phrase_token.parents if s_p.label in self.preposition_deps):
+            for document_parent in (d_p.parent_token(document_token.doc) for d_p in
+                    document_token.parents if d_p.label in self.preposition_deps):
+                if search_phrase_parent._.holmes.lemma == document_parent._.holmes.lemma:
+                    return True
+        return False
+
 
     def multiword_spans_with_head_token(self, token):
         """Generator over *MultiwordSpan* objects with *token* at their head. Dependent phrases

@@ -127,15 +127,6 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
     def test_single_word_match_with_dependent_question_word_control(self):
          self._check_equals("The man?", 'The man', 10, None, None)
 
-    def test_check_who_positive_case(self):
-        self._check_equals('Who looked into the sun?', 'the man looked into the sun', 127, 0, 7)
-
-    def test_check_who_wrong_syntax(self):
-        self._check_equals('Who looked into the sun?', 'the sun looked into the man', 19, None, None)
-
-    def test_check_who_wrong_noun(self):
-        self._check_equals('Who looked into the sun?', 'the dog looked into the sun', 70, None, None)
-
     def test_no_relation_frequency_threshold_for_direct_question_words(self):
         manager.remove_all_documents()
         manager.parse_and_register_document("Richard came. Come. Come.", 'q')
@@ -207,3 +198,98 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
         relation_matching_frequency_threshold=1.0, embedding_matching_frequency_threshold=1.0,
         initial_question_word_embedding_match_threshold=0.2, word_embedding_match_threshold=0.2)
         self.assertEqual(topic_matches, [{'document_label': 'q', 'text': 'A big dog.', 'text_to_match': 'The big cat?', 'rank': '1=', 'index_within_document': 1, 'subword_index': None, 'start_index': 1, 'end_index': 1, 'sentences_start_index': 0, 'sentences_end_index': 3, 'sentences_character_start_index': 0, 'sentences_character_end_index': 10, 'score': 7.381404928570852, 'word_infos': [[2, 5, 'single', True, 'Matches BIG directly.']], 'answers': []}, {'document_label': 'q', 'text': 'A big dog.', 'text_to_match': 'The big cat?', 'rank': '1=', 'index_within_document': 5, 'subword_index': None, 'start_index': 5, 'end_index': 5, 'sentences_start_index': 4, 'sentences_end_index': 7, 'sentences_character_start_index': 11, 'sentences_character_end_index': 21, 'score': 7.381404928570852, 'word_infos': [[2, 5, 'single', True, 'Matches BIG directly.']], 'answers': []}, {'document_label': 'q', 'text': 'A big dog.', 'text_to_match': 'The big cat?', 'rank': '1=', 'index_within_document': 9, 'subword_index': None, 'start_index': 9, 'end_index': 9, 'sentences_start_index': 8, 'sentences_end_index': 11, 'sentences_character_start_index': 22, 'sentences_character_end_index': 32, 'score': 7.381404928570852, 'word_infos': [[2, 5, 'single', True, 'Matches BIG directly.']], 'answers': []}])
+
+    def test_check_who_subj_positive_case(self):
+        self._check_equals('Who looked into the sun?', 'the man looked into the sun', 127, 0, 7)
+
+    def test_check_who_subj_question_in_second_sentence(self):
+        self._check_equals('Hello. Who looked into the sun?', 'the man looked into the sun', 70, None, None)
+
+    def test_check_who_subj_wrong_syntax(self):
+        self._check_equals('Who looked into the sun?', 'the sun looked into the man', 19, None, None)
+
+    def test_check_who_subj_wrong_noun(self):
+        self._check_equals('Who looked into the sun?', 'the dog looked into the sun', 70, None, None)
+
+    def test_check_who_obj_positive_case(self):
+        self._check_equals('Who did the building see?', 'the building saw his man', 104, 17, 24)
+
+    def test_check_who_obj_wrong_syntax(self):
+        self._check_equals('Who did the building see?', 'the building saw his dog', 34, None, None)
+
+    def test_check_who_prep_positive_case(self):
+        self._check_equals('who did the dog talk with', 'the dog talked with his man', 108, 20, 27)
+
+    def test_check_who_prep_control_no_question_word(self):
+        self._check_equals('a dog talks with a man', 'the dog talked with his man', 108, None, None)
+
+    def test_check_who_prep_control_wrong_prep(self):
+        self._check_equals('a dog talks about a man', 'the dog talked with his man', 81, None, None)
+
+    def test_check_who_prep_to_positive_case(self):
+        self._check_equals('who did the dog talk to', 'the dog talked to his man', 104, 18, 25)
+
+    def test_check_who_prep_to_control_no_question_word(self):
+        self._check_equals('a dog talks to a man', 'the dog talked to his man', 81, None, None)
+
+    def test_check_who_prep_by_positive_case(self):
+        self._check_equals('who did the dog swear by', 'the dog swore by his man', 104, 17, 24)
+
+    def test_check_who_prep_by_control_no_question_word(self):
+        self._check_equals('a dog swears by a man', 'the dog swore by his man', 81, None, None)
+
+    def test_check_who_prep_of_positive_case(self):
+        self._check_equals('who did the dog speak of', 'the dog spoke of his man', 104, 17, 24)
+
+    def test_check_who_prep_of_control_no_question_word(self):
+        self._check_equals('a dog speaks of a man', 'the dog spoke of his man', 81, None, None)
+
+    def test_check_whom_positive_case(self):
+        self._check_equals('Whom did you talk about?', 'the dog talked about his man', 49, 21, 28)
+
+    def test_check_whom_wrong_syntax(self):
+        self._check_equals('Whom did you talk about?', 'the man talked about his dog', 9, None, None)
+
+    def test_check_where_positive_case(self):
+        self._check_equals('Where did the meeting take place?', 'the meeting took place in the office', 143, 23, 36)
+
+    def test_check_where_wrong_prep(self):
+        self._check_equals('Where did the meeting take place?', 'the meeting took place about the office', 83, None, None)
+
+    def test_check_when_positive_case(self):
+        self._check_equals('When did the meeting take place?', 'the meeting took place yesterday', 143, 23, 32)
+
+    def test_check_when_entity(self):
+        self._check_equals('When did the meeting take place?', 'the meeting took place at 3pm', 143, 26, 29)
+
+    def test_check_when_wrong_entity(self):
+        self._check_equals('When did the meeting take place?', 'the meeting took place with Richard', 83, None, None)
+
+    def test_check_when_wrong_syntax(self):
+        self._check_equals('When did the meeting take place?', 'the meeting took place', 83, None, None)
+
+    def test_check_how_positive_case(self):
+        self._check_equals('How did the team manage it?', 'the team managed it by working hard', 104, 20, 35)
+
+    def test_check_how_negative_case(self):
+        self._check_equals('How did the team manage it?', 'the team managed it because of the weather', 34, None, None)
+
+    def test_check_why_positive_case(self):
+        self._check_equals('Why did the team manage it?', 'the team managed it because they were ambitious', 104, 20, 47)
+
+    def test_check_why_because_of(self):
+        self._check_equals('Why did the team manage it?', 'the team managed it because of the weather', 104, 20, 42)
+
+    def test_check_whose_positive_case(self):
+        manager.remove_all_documents()
+        manager.parse_and_register_document("This is Richard's dog.", 'q')
+        topic_matches = manager.topic_match_documents_against("Whose dog is this?",
+        relation_matching_frequency_threshold=1.0, embedding_matching_frequency_threshold=1.0,
+        initial_question_word_embedding_match_threshold=0.2, word_embedding_match_threshold=0.2)
+        self.assertEqual(topic_matches, [{'document_label': 'q', 'text': "This is Richard's dog.", 'text_to_match': 'Whose dog is this?', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 5, 'sentences_character_start_index': 0, 'sentences_character_end_index': 22, 'score': 1257.2, 'word_infos': [[5, 7, 'overlapping_relation', False, 'Matches BE directly.'], [8, 15, 'overlapping_relation', False, 'Matches the question word WHOSE.'], [18, 21, 'overlapping_relation', True, 'Matches DOG directly.']], 'answers': [[8, 17]]}])
+
+    def test_check_whose_coreference(self):
+        self._check_equals('Whose dog is this?', "This is Richard and his dog", 96, 8, 15)
+
+    def test_check_whose_negative_case(self):
+        self._check_equals('Whose dog is this?', "This is Richard and a dog", 28, None, None)

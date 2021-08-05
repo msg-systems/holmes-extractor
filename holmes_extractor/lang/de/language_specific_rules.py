@@ -58,6 +58,8 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
         'MISC': 'sache'
         }
 
+    whose_lemma = 'wessen'
+
     # Only words at least this long are examined for possible subwords
     minimum_length_for_subword_search = 10
 
@@ -921,6 +923,8 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
 
     noun_pos = ('NOUN', 'PROPN', 'ADJ')
 
+    preposition_deps = ('prep')
+
     permissible_embedding_pos = ('NOUN', 'PROPN', 'ADJ', 'ADV')
 
     noun_kernel_dep = ('nk', 'pnc')
@@ -1073,8 +1077,8 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             ['FM', 'NE', 'NNE', 'NN'],
             None, reverse_only=False, question=False)]
 
-    def question_word_matches(self, search_phrase_token:Token, document_token:Token,
-            document_vector, entity_label_to_vector_dict:dict,
+    def question_word_matches(self, search_phrase_label:str, search_phrase_token:Token,
+            document_token:Token, document_vector, entity_label_to_vector_dict:dict,
             initial_question_word_embedding_match_threshold:float) -> str:
         if search_phrase_token._.holmes.lemma in ('wer', 'wen'):
             ent_types = ('PER', 'ORG')

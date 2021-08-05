@@ -55,7 +55,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
     conjunction_deps = ('conj', 'appos', 'cc')
 
     # Syntactic tags that can mark interrogative pronouns
-    interrogative_pronoun_tags = ('WDT', 'WP', 'WRB')
+    interrogative_pronoun_tags = ('WDT', 'WP', 'WRB', 'WP$')
 
     # Syntactic tags that exclude a token from being the child token within a semantic dependency
     semantic_dependency_excluded_tags = ('DT')
@@ -103,6 +103,8 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
         'ORDINAL': 'number',
         'CARDINAL': 'number'
         }
+
+    whose_lemma = 'whose'
 
     def add_subwords(self, token, subword_cache):
         """ Analyses the internal structure of the word to find atomic semantic elements. Is
@@ -554,6 +556,9 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
     # The part of speech tags that can refer to nouns
     noun_pos = ('NOUN', 'PROPN')
 
+    # Dependency labels between a head and a preposition
+    preposition_deps = ('prep')
+
     # Parts of speech for which embedding matching is attempted
     permissible_embedding_pos = ('NOUN', 'PROPN', 'ADJ', 'ADV')
 
@@ -631,7 +636,7 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             document_dependencies=['appos', 'compound', 'nummod']),
         'poss': MatchImplication(search_phrase_dependency='poss',
             document_dependencies=['pobjo', 'nsubj', 'csubj', 'pobjb', 'advmodsubj', 'arg',
-            'relant', 'nsubjpass', 'csubjpass', 'compound', 'advmodobj'],
+            'relant', 'nsubjpass', 'csubjpass', 'compound', 'advmodobj', 'det'],
             reverse_document_dependencies=['acomp', 'amod']),
         'pobjo': MatchImplication(search_phrase_dependency='pobjo',
             document_dependencies=['poss', 'dobj', 'relant', 'nsubjpass', 'csubjpass',
@@ -648,6 +653,8 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             document_dependencies=['pobj']),
         'prep': MatchImplication(search_phrase_dependency='prep',
             document_dependencies=['prepposs']),
+        'wh_wildcard': MatchImplication(search_phrase_dependency='wh_wildcard',
+            document_dependencies=['advmod', 'advcl', 'npadvmod', 'prep', 'pobjp']),
         'xcomp': MatchImplication(search_phrase_dependency='xcomp',
             document_dependencies=['pobjo', 'poss', 'relant', 'nsubjpass', 'csubjpass',
             'compound', 'advmodobj', 'arg', 'dobj', 'advcl'])}
@@ -722,25 +729,31 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             ['VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
             ['WP'], reverse_only=False, question=True),
         PhraseletTemplate(
-            "head-WHobj", "who did you see?", 1, 0,
-            ['dobj'],
+            "head-WHobj", "who did you see?", 3, 0,
+            ['dobj', 'pobjo'],
             ['VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
             ['WP'], reverse_only=False, question=True),
         PhraseletTemplate(
-            "head-WHadv", "where did you go?", 1, 0,
+            "head-WHadv", "where did you go?", 3, 0,
             ['advmod'],
             ['VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
-            ['WRB'], reverse_only=False, question=True),
+            ['WRB'], reverse_only=False, question=True,
+            assigned_dependency_label='wh_wildcard'),
         PhraseletTemplate(
-            "prep-WH", "what did you put it in?", 5, 0,
-            ['pobj'],
-            ['IN', 'RB'],
+            "headprep-WH", "what did you put it in?", 3, 0,
+            ['pobjp'],
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
+            ['WP'], reverse_only=False, question=True),
+        PhraseletTemplate(
+            "headprepto-WH", "who did you say it to?", 3, 0,
+            ['pobjt'],
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
             ['WP'], reverse_only=False, question=True),
         PhraseletTemplate(
             "head-whose", "whose thing", 1, 0,
-            ['poss'],
+            ['poss', 'det'],
             ['FW', 'NN', 'NNP', 'NNPS', 'NNS'],
-            ['WP'], reverse_only=False, question=True),
+            ['WP$'], reverse_only=False, question=True),
         PhraseletTemplate(
             "word", "thing", 0, None,
             None,
@@ -748,9 +761,15 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             None, reverse_only=False, question=False)
         ]
 
-    def question_word_matches(self, search_phrase_token:Token, document_token:Token,
+    def question_word_matches(self, search_phrase_label:str,
+            search_phrase_token:Token, document_token:Token,
             document_vector, entity_label_to_vector_dict:dict,
             initial_question_word_embedding_match_threshold:float) -> str:
+
+        if search_phrase_label == 'headprep-WH' and not \
+                self.check_for_common_preposition(search_phrase_token, document_token):
+            return False
+
         if search_phrase_token._.holmes.lemma.startswith('who'):
             ent_types = ('PERSON', 'NORP', 'ORG', 'GPE')
             return document_token.ent_type_ in ent_types or \
@@ -768,8 +787,8 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
         if search_phrase_token._.holmes.lemma == 'when':
             return document_token.dep_ == 'advmod' or document_token.ent_type_ in ('DATE', 'TIME')
         if search_phrase_token._.holmes.lemma == 'how':
-            return document_token.tag_ == 'VBG' or len([1 for c in document_token.children if
-                c.child_token(document_token.doc).tag_ == 'VBG']) > 0
+            return document_token.tag_ == 'VBG' or len([1 for c in document_token._.holmes.children
+                if c.child_token(document_token.doc).tag_ == 'VBG']) > 0
         if search_phrase_token._.holmes.lemma == 'why':
             return document_token.dep_ == 'advcl' or document_token.lemma_ == 'because'
         if search_phrase_token._.holmes.lemma == 'whose':

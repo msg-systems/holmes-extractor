@@ -713,12 +713,12 @@ class StructuralMatcher:
         if process_initial_question_words and search_phrase_token._.holmes.is_initial_question_word:
             if document_vector is not None:
                 question_word_matches = self.semantic_matching_helper.question_word_matches(
-                    search_phrase_token, document_token, document_vector,
+                    search_phrase.label, search_phrase_token, document_token, document_vector,
                     self.entity_label_to_vector_dict,
                     initial_question_word_overall_similarity_threshold ** 2)
             else:
                 question_word_matches = self.semantic_matching_helper.question_word_matches(
-                    search_phrase_token, document_token, None, None, None)
+                    search_phrase.label, search_phrase_token, document_token, None, None, None)
             if question_word_matches:
                 handle_match(search_phrase_token._.holmes.lemma, document_word_to_use, 'question',
                     0, search_phrase_initial_question_word=True)
