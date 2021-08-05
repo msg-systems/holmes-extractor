@@ -225,28 +225,6 @@ class MatchImplication:
         self.document_dependencies = document_dependencies
         self.reverse_document_dependencies = reverse_document_dependencies
 
-class QuestionWordStrategy:
-    """Instructions for recognising a specific question word and for matching it within documents.
-
-        Parameters:
-
-        name -- a human-readable name designed for output within a user interface.
-        lemma -- the Holmes lemma matching question words must have.
-        tag -- the tag matching question words must have.
-        deps -- a list of dependency labels matching question words may have.
-        matcher - a function to determine whether a document token heads a phrase that
-            matches the question word.
-    """
-
-    def __init__(
-        self, *, name:str, lemma:str, tag:str, deps:list[str],
-        matcher:Callable[[Token], bool]):
-        self.name = name
-        self.lemma = lemma
-        self.tag = tag
-        self.deps = deps
-        self.matcher = matcher
-
 class HolmesDocumentInfo:
     def __init__(self, semantic_analyzer):
         self.model = semantic_analyzer.model

@@ -1,6 +1,6 @@
 from spacy.tokens import Token
 from ...parsing import SemanticAnalyzer, SemanticMatchingHelper, MatchImplication,\
-    QuestionWordStrategy, PhraseletTemplate, SemanticDependency
+    PhraseletTemplate, SemanticDependency
 
 class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
 

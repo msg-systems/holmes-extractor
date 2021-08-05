@@ -121,6 +121,12 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
          self._check_equals("A man comes home", 'The person came home', 29, None, None,
             word_embedding_match_threshold=0.9, initial_question_word_answer_score=20)
 
+    def test_single_word_match_does_not_recognize_dependent_question_word(self):
+         self._check_equals("Which man?", 'The man', 10, None, None)
+
+    def test_single_word_match_with_dependent_question_word_control(self):
+         self._check_equals("The man?", 'The man', 10, None, None)
+
     def test_check_who_positive_case(self):
         self._check_equals('Who looked into the sun?', 'the man looked into the sun', 127, 0, 7)
 

@@ -248,7 +248,8 @@ class StructuralMatcher:
 
             search_phrase_word -- the textual representation of the search phrase word that matched.
             document_word -- the textual representation of the document word that matched.
-            match_type -- *direct*, *entity*, *embedding*, *ontology*, *derivation* or *question*
+            match_type -- *direct*, *derivation*, *entity*, *embedding*, *entity_embedding*,
+            *ontology* or *question*
             similarity_measure -- the similarity between the two tokens. Defaults to 1.0 if the
                 match did not involve embeddings.
             search_phrase_initial_question_word -- *True* if *search_phrase_word* is an initial

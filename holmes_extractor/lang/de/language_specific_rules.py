@@ -1,7 +1,7 @@
 from string import punctuation
 from spacy.tokens import Token
 from ...parsing import SemanticAnalyzer, SemanticMatchingHelper, MatchImplication,\
-    QuestionWordStrategy, PhraseletTemplate, SemanticDependency, Subword
+    PhraseletTemplate, SemanticDependency, Subword
 
 class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
 
