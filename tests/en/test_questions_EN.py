@@ -199,6 +199,9 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
         initial_question_word_embedding_match_threshold=0.2, word_embedding_match_threshold=0.2)
         self.assertEqual(topic_matches, [{'document_label': 'q', 'text': 'A big dog.', 'text_to_match': 'The big cat?', 'rank': '1=', 'index_within_document': 1, 'subword_index': None, 'start_index': 1, 'end_index': 1, 'sentences_start_index': 0, 'sentences_end_index': 3, 'sentences_character_start_index': 0, 'sentences_character_end_index': 10, 'score': 7.381404928570852, 'word_infos': [[2, 5, 'single', True, 'Matches BIG directly.']], 'answers': []}, {'document_label': 'q', 'text': 'A big dog.', 'text_to_match': 'The big cat?', 'rank': '1=', 'index_within_document': 5, 'subword_index': None, 'start_index': 5, 'end_index': 5, 'sentences_start_index': 4, 'sentences_end_index': 7, 'sentences_character_start_index': 11, 'sentences_character_end_index': 21, 'score': 7.381404928570852, 'word_infos': [[2, 5, 'single', True, 'Matches BIG directly.']], 'answers': []}, {'document_label': 'q', 'text': 'A big dog.', 'text_to_match': 'The big cat?', 'rank': '1=', 'index_within_document': 9, 'subword_index': None, 'start_index': 9, 'end_index': 9, 'sentences_start_index': 8, 'sentences_end_index': 11, 'sentences_character_start_index': 22, 'sentences_character_end_index': 32, 'score': 7.381404928570852, 'word_infos': [[2, 5, 'single', True, 'Matches BIG directly.']], 'answers': []}])
 
+    def test_check_what_be_positive_case(self):
+        self._check_equals('What is this?', 'this is a house', 45, 8, 15)
+
     def test_check_who_subj_positive_case(self):
         self._check_equals('Who looked into the sun?', 'the man looked into the sun', 127, 0, 7)
 
@@ -262,8 +265,11 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
     def test_check_when_positive_case(self):
         self._check_equals('When did the meeting take place?', 'the meeting took place yesterday', 143, 23, 32)
 
-    def test_check_when_entity(self):
-        self._check_equals('When did the meeting take place?', 'the meeting took place at 3pm', 143, 26, 29)
+    def test_check_when_right_prep(self):
+        self._check_equals('When did the meeting take place?', 'the meeting took place at dawn', 143, 23, 30)
+
+    def test_check_when_wrong_prep(self):
+        self._check_equals('When did the meeting take place?', 'the meeting took place about dawn', 83, None, None)
 
     def test_check_when_wrong_entity(self):
         self._check_equals('When did the meeting take place?', 'the meeting took place with Richard', 83, None, None)
@@ -296,3 +302,21 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
 
     def test_check_whose_negative_case(self):
         self._check_equals('Whose dog is this?', "This is Richard and a dog", 28, None, None)
+
+    def test_in_answers_split_1(self):
+        manager.remove_all_documents()
+        manager.parse_and_register_document("I lived in a house and a flat.")
+        topic_matches = manager.topic_match_documents_against("What did you live in?")
+        self.assertEqual(topic_matches[0]['answers'], [[11, 18], [23, 29]])
+
+    def test_in_answers_split_2(self):
+        manager.remove_all_documents()
+        manager.parse_and_register_document("I am going in two weeks and in three weeks")
+        topic_matches = manager.topic_match_documents_against("When are you going?")
+        self.assertEqual(topic_matches[0]['answers'], [[11, 23], [28, 42]])
+
+    def test_in_answers_split_3(self):
+        manager.remove_all_documents()
+        manager.parse_and_register_document("I am going in two weeks and three weeks")
+        topic_matches = manager.topic_match_documents_against("When are you going?")
+        self.assertEqual(topic_matches[0]['answers'], [[11, 23], [28, 39]])

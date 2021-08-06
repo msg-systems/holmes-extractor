@@ -932,6 +932,14 @@ class TopicMatcher:
                 word_infos = sorted(
                     word_infos_to_word_infos.values(), key=lambda word_info: (
                         word_info.relative_start_index, word_info.relative_end_index))
+                answers.sort(key=lambda answer:(answer[0], answer[1]))
+                for answer in answers.copy():
+                    if len([1 for other_answer in answers if other_answer[0] < answer[0] and
+                            other_answer[1] >= answer[1]]):
+                        answers.remove(answer)
+                    elif len([1 for other_answer in answers if other_answer[0] == answer[0] and
+                            other_answer[1] > answer[1]]):
+                        answers.remove(answer)
                 topic_match_dict = {
                     'document_label': topic_match.document_label,
                     'text': topic_match.text,

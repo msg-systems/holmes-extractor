@@ -1749,7 +1749,8 @@ class LinguisticObjectFactory:
         if phraselet_template is None:
             reverse_only = False
         else:
-            reverse_only = is_reverse_only_parent_lemma or phraselet_template.reverse_only
+            reverse_only = not phraselet_template.question and (is_reverse_only_parent_lemma or
+                phraselet_template.reverse_only)
 
         words_matching_root_token = []
         root_word_to_match_info_dict = {}

@@ -724,6 +724,11 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             ['IN'],
             ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=True, question=False),
         PhraseletTemplate(
+            "head-WHattr", "what is this?", 1, 0,
+            ['attr'],
+            ['VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
+            ['WP'], reverse_only=False, question=True),
+        PhraseletTemplate(
             "head-WHsubj", "who came?", 1, 0,
             ['nsubj', 'nsubjpass', 'pobjb'],
             ['VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
@@ -736,7 +741,7 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
         PhraseletTemplate(
             "head-WHadv", "where did you go?", 3, 0,
             ['advmod'],
-            ['VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
+            ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
             ['WRB'], reverse_only=False, question=True,
             assigned_dependency_label='wh_wildcard'),
         PhraseletTemplate(
@@ -766,6 +771,7 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             document_vector, entity_label_to_vector_dict:dict,
             initial_question_word_embedding_match_threshold:float) -> str:
 
+        print('qwm', search_phrase_token, document_token)
         if search_phrase_label == 'headprep-WH' and not \
                 self.check_for_common_preposition(search_phrase_token, document_token):
             return False
@@ -779,12 +785,15 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
         if search_phrase_token._.holmes.lemma == 'what':
             return True
         if search_phrase_token._.holmes.lemma == 'where':
-            return document_token.tag_ == 'IN' and document_token.lemma_ in (
+            return document_token.tag_ == 'IN' and document_token._.holmes.lemma in (
                 'above', 'across', 'against', 'along', 'among', 'amongst', 'around', 'at',
                 'behind', 'below', 'beneath', 'beside', 'between', 'beyond', 'by', 'close', 'down',
                 'in', 'into', 'near', 'next', 'off', 'on', 'onto', 'opposite', 'out',
                 'outside', 'round', 'through', 'to', 'under', 'underneath', 'up')
         if search_phrase_token._.holmes.lemma == 'when':
+            if document_token.tag_ == 'IN':
+                return document_token._.holmes.lemma in ('at', 'before', 'by', 'for', 'from', 'in',
+                    'on', 'since', 'till', 'until')
             return document_token.dep_ == 'advmod' or document_token.ent_type_ in ('DATE', 'TIME')
         if search_phrase_token._.holmes.lemma == 'how':
             return document_token.tag_ == 'VBG' or len([1 for c in document_token._.holmes.children
