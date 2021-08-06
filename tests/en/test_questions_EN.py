@@ -277,14 +277,38 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
     def test_check_when_wrong_syntax(self):
         self._check_equals('When did the meeting take place?', 'the meeting took place', 83, None, None)
 
-    def test_check_how_positive_case(self):
+    def test_check_how_positive_case_phrase(self):
         self._check_equals('How did the team manage it?', 'the team managed it by working hard', 104, 20, 35)
+
+    def test_check_how_positive_case_preposition(self):
+        self._check_equals('How did the team manage it?', 'the team managed it with hard work', 104, 20, 34)
+
+    def test_check_how_wrong_preposition(self):
+        self._check_equals('How did the team manage it?', 'the team managed it without hard work', 34, None, None)
 
     def test_check_how_negative_case(self):
         self._check_equals('How did the team manage it?', 'the team managed it because of the weather', 34, None, None)
 
-    def test_check_why_positive_case(self):
-        self._check_equals('Why did the team manage it?', 'the team managed it because they were ambitious', 104, 20, 47)
+    def test_check_how_adverb(self):
+        self._check_equals('How did the team manage it?', 'the team managed it quickly', 104, 20, 27)
+
+    def test_check_why_positive_because(self):
+        self._check_equals('Why did the team manage it?', 'the team managed it because they had ambition', 104, 20, 45)
+
+    def test_check_why_positive_as(self):
+        self._check_equals('Why did the team manage it?', 'the team managed it as they had ambition', 104, 20, 40)
+
+    def test_check_why_positive_so_that(self):
+        self._check_equals('Why did the team manage it?', 'the team managed it so that they won', 104, 20, 36)
+
+    def test_check_why_positive_to(self):
+        self._check_equals('Why did the team manage it?', 'the team managed it to show everyone', 104, 20, 36)
+
+    def test_check_why_positive_in_order_to(self):
+        self._check_equals('Why did the team manage it?', 'the team managed it in order to show everyone', 104, 20, 45)
+
+    def test_check_why_positive_in_order_to_control(self):
+        self._check_equals('Why did the team manage it?', 'the team managed it in place', 34, None, None)
 
     def test_check_why_because_of(self):
         self._check_equals('Why did the team manage it?', 'the team managed it because of the weather', 104, 20, 42)
@@ -292,9 +316,7 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
     def test_check_whose_positive_case(self):
         manager.remove_all_documents()
         manager.parse_and_register_document("This is Richard's dog.", 'q')
-        topic_matches = manager.topic_match_documents_against("Whose dog is this?",
-        relation_matching_frequency_threshold=1.0, embedding_matching_frequency_threshold=1.0,
-        initial_question_word_embedding_match_threshold=0.2, word_embedding_match_threshold=0.2)
+        topic_matches = manager.topic_match_documents_against("Whose dog is this?")
         self.assertEqual(topic_matches, [{'document_label': 'q', 'text': "This is Richard's dog.", 'text_to_match': 'Whose dog is this?', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 5, 'sentences_character_start_index': 0, 'sentences_character_end_index': 22, 'score': 1257.2, 'word_infos': [[5, 7, 'overlapping_relation', False, 'Matches BE directly.'], [8, 15, 'overlapping_relation', False, 'Matches the question word WHOSE.'], [18, 21, 'overlapping_relation', True, 'Matches DOG directly.']], 'answers': [[8, 17]]}])
 
     def test_check_whose_coreference(self):

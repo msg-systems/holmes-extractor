@@ -58,6 +58,12 @@ class GermanInitialQuestionsTest(unittest.TestCase):
     def test_governed_interrogative_pronoun_with_subword_and_embedding_matching_control(self):
         self._check_equals("Den Hund betrachten wir.", 'Leute betrachteten den Informationskatze', 15, None, None)
 
+    def test_check_was_predicate_positive_case(self):
+        manager.remove_all_documents()
+        manager.parse_and_register_document("Das ist ein Haus.", 'q')
+        topic_matches = manager.topic_match_documents_against("Was ist das?")
+        self.assertEqual(topic_matches, [{'document_label': 'q', 'text': 'Das ist ein Haus.', 'text_to_match': 'Was ist das?', 'rank': '1', 'index_within_document': 1, 'subword_index': None, 'start_index': 0, 'end_index': 3, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 17, 'score': 620.0, 'word_infos': [[0, 3, 'relation', False, 'Matches the question word WAS.'], [4, 7, 'relation', True, 'Matches SEIN directly.'], [12, 16, 'relation', False, 'Matches the question word WAS.']], 'answers': [[0, 3], [8, 16]]}])
+
     def test_check_wer_positive_case(self):
         self._check_equals('Wer schaute in die Sonne?', 'Die Person schaute in die Sonne', 127, 0, 10)
 
@@ -85,11 +91,23 @@ class GermanInitialQuestionsTest(unittest.TestCase):
     def test_check_wo_positive_case(self):
         self._check_equals('Wo wohnst du?', 'Ich wohne in einem Haus', 45, 10, 23)
 
+    def test_check_wo_positive_case_definite_preposition(self):
+        self._check_equals('Wo wohnst du?', 'Ich wohne im Haus', 45, 10, 17)
+
+    def test_check_wo_wrong_case_definite_preposition(self):
+        self._check_equals('Wo wohnst du?', 'Ich wohne ins Haus', 5, None, None)
+
     def test_check_wo_wrong_case(self):
         self._check_equals('Wo wohnst du?', 'Ich wohne in ein Haus', 5, None, None)
 
     def test_check_wohin_positive_case(self):
         self._check_equals('Wohin fährst du?', 'Ich fahre in ein Haus', 45, 10, 21)
+
+    def test_check_wohin_positive_case_definite_preposition(self):
+        self._check_equals('Wohin fährst du?', 'Ich fahre ins Haus', 45, 10, 18)
+
+    def test_check_wohin_wrong_case_definite_preposition(self):
+        self._check_equals('Wohin fährst du?', 'Ich fahre im Haus', 5, None, None)
 
     def test_check_womit_positive_case(self):
         self._check_equals('Womit fährst du?', 'Ich fahre mit meinem Auto', 45, 10, 25)
@@ -103,8 +121,53 @@ class GermanInitialQuestionsTest(unittest.TestCase):
     def test_check_wann_preposition(self):
         self._check_equals('Wann fährst du?', 'Ich fahre in zwei Wochen', 45, 10, 24)
 
+    def test_check_wann_wrong_preposition(self):
+        self._check_equals('Wann fährst du?', 'Ich fahre wegen des Problems', 5, None, None)
+
     def test_check_wann_adverb(self):
         self._check_equals('Wann fährst du?', 'Ich fahre morgen', 45, 10, 16)
 
     def test_check_wann_verb_phrase(self):
         self._check_equals('Wann fährst du?', 'Ich fahre, wenn du mitkommst.', 45, 11, 28)
+
+    def test_check_wie_preposition(self):
+        self._check_equals('Wie fährst du?', 'Ich fahre mit dem Auto', 45, 10, 22)
+
+    def test_check_wie_wrong_preposition(self):
+        self._check_equals('Wie fährst du?', 'Ich fahre wegen des Problems', 5, None, None)
+
+    def test_check_wie_adverb(self):
+        self._check_equals('Wie fährst du?', 'Ich fahre langsam', 45, 10, 17)
+
+    def test_check_wie_indem_phrase(self):
+        self._check_equals('Wie fährst du?', 'Ich fahre, indem ich per Anhalter fahre', 45, 11, 39)
+
+    def test_check_wie_other_phrase(self):
+        self._check_equals('Wie fährst du?', 'Ich fahre, weil ich per Anhalter fahre', 5, None, None)
+
+    def test_check_woher_preposition(self):
+        self._check_equals('Woher denkst Du es?', 'Ich denke es wegen der Evidenz', 45, 13, 30)
+
+    def test_check_woher_wrong_preposition(self):
+        self._check_equals('Woher denkst Du es?', 'Ich denke es trotz der Evidenz', 5, None, None)
+
+    def test_check_woher_weil(self):
+        self._check_equals('Woher denkst Du es?', 'Ich denke es, weil es stimmt', 45, 14, 28)
+
+    def test_check_woher_wrong_conjunction(self):
+        self._check_equals('Woher denkst Du es?', 'Ich denke es, obwohl es nicht stimmt', 5, None, None)
+
+    def test_check_warum_preposition(self):
+        self._check_equals('Warum machst Du es?', 'Ich mache es wegen der Evidenz', 45, 13, 30)
+
+    def test_check_warum_wrong_preposition(self):
+        self._check_equals('Warum machst Du es?', 'Ich mache es trotz der Evidenz', 5, None, None)
+
+    def test_check_warum_weil(self):
+        self._check_equals('Warum machst Du es?', 'Ich mache es, weil es stimmt', 45, 14, 28)
+
+    def test_check_warum_damit(self):
+        self._check_equals('Wieso machst Du es?', 'Ich mache es, damit Du kommst', 45, 14, 29)
+
+    def test_check_warum_wrong_conjunction(self):
+        self._check_equals('Woher machst Du es?', 'Ich mache es, obwohl es nicht stimmt', 5, None, None)

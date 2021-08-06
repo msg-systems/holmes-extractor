@@ -572,15 +572,15 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                         child_lemma = 'ein'
                     return ''.join([child_lemma, token.lemma_.lower()])
         if token.tag_ == 'APPRART':
-            if token.lemma_.lower() == 'im':
+            if token.lemma_.lower() in ('im', 'ins'):
                 return 'in'
-            if token.lemma_.lower() == 'am':
+            if token.lemma_.lower() in ('am', 'ans'):
                 return 'an'
             if token.lemma_.lower() == 'beim':
                 return 'bei'
-            if token.lemma_.lower() == 'zum':
-                return 'zu'
-            if token.lemma_.lower() == 'zur':
+            if token.lemma_.lower() == 'vom':
+                return 'von'
+            if token.lemma_.lower() in ('zum', 'zur'):
                 return 'zu'
         # sometimes adjectives retain their inflectional endings
         if token.tag_ in ('ADJA', 'ADJD') and len(token.lemma_) > 5:
@@ -972,6 +972,9 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             reverse_document_dependencies=['nk']),
         'pobjp': MatchImplication(search_phrase_dependency='pobjp',
             document_dependencies=['intcompound']),
+        'wh_sb': MatchImplication(search_phrase_dependency='wh_sb',
+            document_dependencies=['pobjb', 'ag', 'arg', 'intcompound', 'sb', 'pd'],
+            reverse_document_dependencies=['nk']),
         'wh_wildcard': MatchImplication(search_phrase_dependency='wh_wildcard',
             document_dependencies=['mo', 'oc', 'mnr', 'mnrposs', 'prep']),
         # intcompound is only used within extensive matching because it is not assigned
@@ -1051,8 +1054,10 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
         PhraseletTemplate(
             "head-WHnom", "wer kam?", 1, 0,
             ['sb'],
-            ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP'],
-            ['PWS'], reverse_only=False, question=True),
+            ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP', 'VAFIN',
+                'VAINF'],
+            ['PWS'], reverse_only=False, question=True,
+            assigned_dependency_label='wh_sb'),
         PhraseletTemplate(
             "head-WHacc", "wen sahst du?", 1, 0,
             ['oa'],
@@ -1069,11 +1074,6 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP'],
             ['PWAV'], reverse_only=False, question=True,
             assigned_dependency_label='wh_wildcard'),
-        PhraseletTemplate(
-            "head-whose", "Wessen Haus betrachtest du?", 1, 0,
-            ['ag'],
-            ['VMFIN', 'VMINF', 'VMPP', 'VVFIN', 'VVIMP', 'VVINF', 'VVIZU', 'VVPP'],
-            ['PROPN'], reverse_only=False, question=True),
         PhraseletTemplate(
             "word", "Sache", 0, None,
             None,
@@ -1093,35 +1093,51 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             return True
         if search_phrase_token._.holmes.lemma == 'wo':
             # spaCy model does not handle postpositions
-            return document_token.tag_ == 'APPR' and document_token.lemma_ in (
+            return document_token.tag_ in ('APPR', 'APPRART') and document_token._.holmes.lemma in (
                 'an', 'auf', 'aus', 'bei', 'gegenüber', 'hinter', 'in', 'neben', 'über',
                 'unter', 'vor', 'zu', 'zwischen') and \
                 len([1 for c in document_token._.holmes.children
                 if 'Case=Dat' in c.child_token(document_token.doc).morph]) > 0
         if search_phrase_token._.holmes.lemma == 'wohin':
-            return document_token.tag_ == 'APPR' and document_token.lemma_ in (
+            return document_token.tag_ in ('APPR', 'APPRART') and document_token._.holmes.lemma in (
                 'an', 'auf', 'hinter', 'in', 'neben', 'über',
                 'unter', 'vor', 'zwischen') and \
                 len([1 for c in document_token._.holmes.children
                 if 'Case=Acc' in c.child_token(document_token.doc).morph]) > 0
         if search_phrase_token._.holmes.lemma == 'wann':
+            if document_token.tag_ in ('APPR', 'APPRART'):
+                return document_token._.holmes.lemma in (
+                    'ab', 'an', 'bis', 'für', 'in', 'nach', 'seit', 'vor', 'um')
             return document_token.dep_ == 'mo' and document_token.pos_ in (
-                'NOUN', 'PROPN', 'ADP', 'ADV', 'VERB', 'AUX')
+                'NOUN', 'PROPN', 'ADV', 'VERB', 'AUX')
         if search_phrase_token._.holmes.lemma == 'wie':
-            return document_token.dep_ == ('mo', 'oc') and document_token.pos_ in ('VERB', 'AUX')
+            if document_token.tag_ in ('APPR', 'APPRART'):
+                return document_token._.holmes.lemma in (
+                    'mit', 'mittels')
+            if document_token.dep_ == ('mo') and document_token.tag_ in ('ADJD'):
+                return True
+            return document_token.dep_ in ('mo', 'oc') and len([1 for c in
+                document_token._.holmes.children if
+                c.child_token(document_token.doc)._.holmes.lemma == 'indem']) > 0
         if search_phrase_token._.holmes.lemma == 'woher':
-            return document_token.tag_ == 'APPR' and document_token._.holmes.lemma in (
-                'aus', 'von', 'wegen') or (document_token.dep_ == ('mo', 'oc') and
-                document_token.pos_ in ('VERB', 'AUX'))
+            if document_token.tag_ in ('APPR', 'APPRART'):
+                return document_token._.holmes.lemma in ('aus', 'von', 'wegen')
+            return document_token.dep_ in ('mo', 'oc') and len([1 for c in
+                document_token._.holmes.children if
+                c.child_token(document_token.doc)._.holmes.lemma == 'weil']) > 0
         if search_phrase_token._.holmes.lemma in ('warum', 'wieso', 'weshalb'):
-            return document_token.tag_ == 'APPR' and document_token._.holmes.lemma in (
-                'wegen') or (document_token.dep_ == ('mo', 'oc') and
-                document_token.pos_ in ('VERB', 'AUX'))
+            if document_token._.holmes.lemma == 'be':
+                return True
+            if document_token.tag_ in ('APPR', 'APPRART'):
+                return document_token._.holmes.lemma in ('aus', 'auf', 'wegen')
+            return document_token.dep_ in ('mo', 'oc', 'cd') and len([1 for c in
+                document_token._.holmes.children if
+                c.child_token(document_token.doc)._.holmes.lemma in (
+                'weil', 'damit')]) > 0
         if search_phrase_token._.holmes.lemma.startswith('wo') and document_token.tag_ == 'APPR' \
                 and search_phrase_token._.holmes.lemma.endswith(document_token._.holmes.lemma):
             return True
-        if search_phrase_token._.holmes.lemma == 'wessen':
-            return True
+        # 'wessen' is not correctly recognized by the current _lg model
         return False
 
     preferred_phraselet_pos = ('NOUN', 'PROPN')

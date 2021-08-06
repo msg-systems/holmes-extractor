@@ -771,7 +771,6 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             document_vector, entity_label_to_vector_dict:dict,
             initial_question_word_embedding_match_threshold:float) -> str:
 
-        print('qwm', search_phrase_token, document_token)
         if search_phrase_label == 'headprep-WH' and not \
                 self.check_for_common_preposition(search_phrase_token, document_token):
             return False
@@ -792,14 +791,23 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
                 'outside', 'round', 'through', 'to', 'under', 'underneath', 'up')
         if search_phrase_token._.holmes.lemma == 'when':
             if document_token.tag_ == 'IN':
-                return document_token._.holmes.lemma in ('at', 'before', 'by', 'for', 'from', 'in',
-                    'on', 'since', 'till', 'until')
+                return document_token._.holmes.lemma in ('at', 'after', 'before', 'by', 'for',
+                    'from', 'in', 'on', 'since', 'till', 'until')
             return document_token.dep_ == 'advmod' or document_token.ent_type_ in ('DATE', 'TIME')
         if search_phrase_token._.holmes.lemma == 'how':
-            return document_token.tag_ == 'VBG' or len([1 for c in document_token._.holmes.children
-                if c.child_token(document_token.doc).tag_ == 'VBG']) > 0
+            if document_token.tag_ == 'IN':
+                return document_token._.holmes.lemma in ('by', 'with')
+            return document_token.tag_ == 'RB'
         if search_phrase_token._.holmes.lemma == 'why':
-            return document_token.dep_ == 'advcl' or document_token.lemma_ == 'because'
+            if document_token.tag_ == 'IN':
+                if document_token._.holmes.lemma == 'in':
+                    return len([1 for c in document_token._.holmes.children if
+                        c.child_token(document_token.doc)._.holmes.lemma == 'order']) > 0    
+                return document_token._.holmes.lemma == 'because'
+            return document_token.dep_ in ('advmod', 'advcl', 'acomp') and len([1 for c in
+                document_token._.holmes.children if
+                c.child_token(document_token.doc)._.holmes.lemma in (
+                'so', 'to', 'because', 'as')]) > 0
         if search_phrase_token._.holmes.lemma == 'whose':
             return True
         return False
