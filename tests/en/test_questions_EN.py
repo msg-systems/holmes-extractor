@@ -215,43 +215,71 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
         self._check_equals('Who looked into the sun?', 'the dog looked into the sun', 70, None, None)
 
     def test_check_who_obj_positive_case(self):
-        self._check_equals('Who did the building see?', 'the building saw his man', 104, 17, 24)
+        self._check_equals('Who did the building see?', 'the building saw its man', 104, 17, 24)
 
     def test_check_who_obj_wrong_syntax(self):
         self._check_equals('Who did the building see?', 'the building saw his dog', 34, None, None)
 
     def test_check_who_prep_positive_case(self):
-        self._check_equals('who did the dog talk with', 'the dog talked with his man', 108, 20, 27)
+        self._check_equals('who did the dog talk with', 'the dog talked with its man', 108, 20, 27)
 
     def test_check_who_prep_at_beginning_positive_case(self):
-        self._check_equals('with whom did the dog talk', 'the dog talked with his man', 108, 20, 27)
+        self._check_equals('with whom did the dog talk', 'the dog talked with its man', 108, 20, 27)
 
     def test_check_who_prep_control_no_question_word(self):
-        self._check_equals('a dog talks with a man', 'the dog talked with his man', 108, None, None)
+        self._check_equals('a dog talks with a man', 'the dog talked with its man', 108, None, None)
 
     def test_check_who_prep_control_wrong_prep(self):
-        self._check_equals('a dog talks about a man', 'the dog talked with his man', 81, None, None)
+        self._check_equals('a dog talks about a man', 'the dog talked with its man', 81, None, None)
 
     def test_check_who_prep_to_positive_case(self):
-        self._check_equals('who did the dog talk to', 'the dog talked to his man', 104, 18, 25)
+        self._check_equals('who did the dog talk to', 'the dog talked to its man', 104, 18, 25)
 
     def test_check_who_prep_to_control_no_question_word(self):
-        self._check_equals('a dog talks to a man', 'the dog talked to his man', 81, None, None)
+        self._check_equals('a dog talks to a man', 'the dog talked to its man', 81, None, None)
 
     def test_check_who_prep_by_positive_case(self):
-        self._check_equals('who did the dog swear by', 'the dog swore by his man', 104, 17, 24)
+        self._check_equals('who did the dog swear by', 'the dog swore by its man', 104, 17, 24)
 
     def test_check_who_prep_by_control_no_question_word(self):
-        self._check_equals('a dog swears by a man', 'the dog swore by his man', 81, None, None)
+        self._check_equals('a dog swears by a man', 'the dog swore by its man', 81, None, None)
 
     def test_check_who_prep_of_positive_case(self):
-        self._check_equals('who did the dog speak of', 'the dog spoke of his man', 104, 17, 24)
+        self._check_equals('who did the dog speak of', 'the dog spoke of its man', 104, 17, 24)
 
     def test_check_who_prep_of_control_no_question_word(self):
-        self._check_equals('a dog speaks of a man', 'the dog spoke of his man', 81, None, None)
+        self._check_equals('a dog speaks of a man', 'the dog spoke of its man', 81, None, None)
+
+    def test_check_who_masc_personal_pronoun(self):
+        self._check_equals('who spoke', 'There came a doctor. He spoke.', 45, 11, 19,
+            initial_question_word_embedding_match_threshold=1.0)
+
+    def test_check_who_fem_personal_pronoun(self):
+        self._check_equals('who spoke', 'There came a doctor. She spoke.', 45, 11, 19,
+            initial_question_word_embedding_match_threshold=1.0)
+
+    def test_check_who_masc_personal_pronoun_elsewhere_in_chain(self):
+        self._check_equals('who spoke', 'A doctor spoke. He was angry.', 45, 0, 8,
+            initial_question_word_embedding_match_threshold=1.0)
+
+    def test_check_who_fem_personal_pronoun_elsewhere_in_chain(self):
+        self._check_equals('who spoke', 'A doctor spoke. She was angry.', 45, 0, 8,
+            initial_question_word_embedding_match_threshold=1.0)
+
+    def test_check_who_personal_pronoun_control_1(self):
+        self._check_equals('who spoke', 'A doctor spoke.', 5, None, None,
+            initial_question_word_embedding_match_threshold=1.0)
+
+    def test_check_who_personal_pronoun_control_2(self):
+        self._check_equals('who spoke', 'A doctor spoke. It was angry.', 5, None, None,
+            initial_question_word_embedding_match_threshold=1.0)
+
+    def test_check_who_personal_pronoun_control_3(self):
+        self._check_equals('who spoke', 'There came a doctor. It spoke.', 5, None, None,
+            initial_question_word_embedding_match_threshold=1.0)
 
     def test_check_whom_positive_case(self):
-        self._check_equals('Whom did you talk about?', 'the dog talked about his man', 49, 21, 28)
+        self._check_equals('Whom did you talk about?', 'the dog talked about its man', 49, 21, 28)
 
     def test_check_whom_wrong_syntax(self):
         self._check_equals('Whom did you talk about?', 'the man talked about his dog', 9, None, None)
@@ -298,6 +326,12 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
     def test_check_why_positive_as(self):
         self._check_equals('Why did the team manage it?', 'the team managed it as they had ambition', 104, 20, 40)
 
+    def test_check_why_positive_owing_to(self):
+        self._check_equals('Why did the team manage it?', 'the team managed it owing to their ambition', 104, 20, 43)
+
+    def test_check_why_positive_thanks_to(self):
+        self._check_equals('Why did the team manage it?', 'the team managed it thanks to their ambition', 104, 20, 44)
+
     def test_check_why_positive_so_that(self):
         self._check_equals('Why did the team manage it?', 'the team managed it so that they won', 104, 20, 36)
 
@@ -312,6 +346,9 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
 
     def test_check_why_because_of(self):
         self._check_equals('Why did the team manage it?', 'the team managed it because of the weather', 104, 20, 42)
+
+    def test_check_why_because_of_be(self):
+        self._check_equals('Why did the team manage it?', 'the team managed it because it was efficient', 104, 20, 44)
 
     def test_check_whose_positive_case(self):
         manager.remove_all_documents()

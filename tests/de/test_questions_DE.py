@@ -166,6 +166,9 @@ class GermanInitialQuestionsTest(unittest.TestCase):
     def test_check_warum_weil(self):
         self._check_equals('Warum machst Du es?', 'Ich mache es, weil es stimmt', 45, 14, 28)
 
+    def test_check_warum_weil_sein(self):
+        self._check_equals('Warum machst Du es?', 'Ich mache es, weil es gut ist', 45, 14, 29)
+
     def test_check_warum_damit(self):
         self._check_equals('Wieso machst Du es?', 'Ich mache es, damit Du kommst', 45, 14, 29)
 
