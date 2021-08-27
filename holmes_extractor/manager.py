@@ -185,9 +185,7 @@ class Manager:
     def register_serialized_documents(self, document_dictionary):
         """Parameters:
 
-        document -- a preparsed Holmes document.
-        label -- a label for the document which must be unique. Defaults to the empty string,
-            which is intended for use cases involving single documents (typically user entries).
+        document_dictionary -- a dictionary from labels to serialized documents.
         """
         reply_queue = self.multiprocessing_manager.Queue()
         with self.lock:

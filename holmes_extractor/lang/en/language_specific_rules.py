@@ -832,6 +832,9 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
     # Dependency labels that can mark righthand siblings
     sibling_marker_deps = ('conj', 'appos')
 
+    # Dependency labels that occur in a conjunction phrase (righthand siblings and conjunctions)
+    conjunction_deps = ('conj', 'appos', 'cc')
+
     def normalize_hyphens(self, word):
         """ Normalizes hyphens for ontology matching. Depending on the language,
             this may involve replacing them with spaces (English) or deleting them entirely
@@ -841,13 +844,3 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             return word
         else:
             return word.replace('-', ' ')
-
-    def get_subtree_list_without_conjunction(self, token:Token):
-        list_to_return = []
-        for working_token in token.subtree:
-            if token == working_token or working_token.dep_ not in ('conj', 'appos', 'cc'):
-            # == semantic_analyzer.conjunction_deps
-                list_to_return.append(working_token)
-            else:
-                return list_to_return
-        return list_to_return

@@ -95,14 +95,6 @@ class HolmesConsoles:
         # Display search phrases
         for search_phrase in self.holmes.search_phrases:
             print(''.join(("Search phrase '", search_phrase.doc_text, "'")))
-            if self.structural_matcher.ontology is not None:
-                for token in search_phrase.matchable_tokens:
-                    lemma = token._.holmes.lemma
-                    matching_terms = self.structural_matcher.ontology.get_words_matching(
-                        lemma)
-                    if len(matching_terms) > 0:
-                        print(lemma, 'also matches', matching_terms)
-            print()
 
         print()
         print('Ready for input')

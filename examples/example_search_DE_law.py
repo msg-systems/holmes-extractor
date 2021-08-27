@@ -13,10 +13,11 @@ def download_and_register(url, label):
     holmes_manager.parse_and_register_document(soup.get_text(), label)
 
 # Start the Holmes Manager with the German model
-holmes_manager = holmes.Manager(model='de_core_news_lg')
-download_and_register('https://www.gesetze-im-internet.de/vvg_2008/BJNR263110007.html', 'VVG_2008')
-download_and_register('https://www.gesetze-im-internet.de/vag_2016/BJNR043410015.html', 'VAG')
-holmes_manager.start_topic_matching_search_mode_console()
+if __name__ in ('__main__', 'example_search_DE_law'):
+    holmes_manager = holmes.Manager(model='de_core_news_lg', number_of_workers=2)
+    download_and_register('https://www.gesetze-im-internet.de/vvg_2008/BJNR263110007.html', 'VVG_2008')
+    download_and_register('https://www.gesetze-im-internet.de/vag_2016/BJNR043410015.html', 'VAG')
+    holmes_manager.start_topic_matching_search_mode_console(initial_question_word_embedding_match_threshold=0.7)
 
 # Example queries:
 #

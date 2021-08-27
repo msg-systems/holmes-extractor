@@ -904,7 +904,7 @@ class TopicMatcher:
             for word_info in list(word_infos_to_word_infos.keys()):
                 if get_containing_word_info_key(word_infos_to_word_infos, word_info) is not None:
                     del word_infos_to_word_infos[word_info]
-            if self.initial_question_word_behaviour != 'exclusive' or len(answers) > 0:
+            if self.initial_question_word_behaviour != 'exclusive' or len(answers_set) > 0:
                 if topic_match.subword_index is not None:
                     subword = doc[topic_match.index_within_document]._.holmes.subwords\
                         [topic_match.subword_index]

@@ -13,17 +13,16 @@ if __name__ in ('__main__', 'example_search_DE_literature'):
 
     print('Initializing Holmes...')
     # Start the Holmes manager with the German model
-    holmes_manager = holmes.MultiprocessingManager(
-        model='de_core_news_lg', overall_similarity_threshold=0.85, number_of_workers=4)
-        # set number_of_workers to prevent memory exhaustion / swapping; it should never be more
-        # than the number of cores on the machine
+    holmes_manager = holmes.Manager(
+        model='de_core_news_lg', number_of_workers=4)
 
-    def process_documents_from_front_page(
-            manager, front_page_uri, front_page_label):
+    def process_documents_from_front_page(front_page_uri, front_page_label):
         """ Download and save all the stories from a front page."""
 
         front_page = urllib.request.urlopen(front_page_uri)
         front_page_soup = BeautifulSoup(front_page, 'html.parser')
+        document_texts = []
+        labels = []
         # For each story ...
         for anchor in front_page_soup.find_all('a'):
             if not anchor['href'].startswith('/') and not anchor['href'].startswith('https'):
@@ -44,15 +43,16 @@ if __name__ in ('__main__', 'example_search_DE_literature'):
                 this_document_text = ' '.join(this_document_text.split())
                 # Create a document label from the front page label and the story name
                 this_document_label = ' - '.join((front_page_label, anchor.contents[0]))
-                # Parse the document
-                print('Parsing', this_document_label)
-                manager.parse_and_register_document(this_document_text, this_document_label)
-                # Save the document
-                print('Saving', this_document_label)
-                output_filename = os.sep.join((working_directory, this_document_label))
-                output_filename = '.'.join((output_filename, HOLMES_EXTENSION))
-                with open(output_filename, "w") as file:
-                    file.write(manager.serialize_document(this_document_label))
+                document_texts.append(this_document_text)
+                labels.append(this_document_label)
+        parsed_documents = holmes_manager.nlp.pipe(document_texts)
+        for index, parsed_document in enumerate(parsed_documents):
+            label = labels[index]
+            print('Saving', label)
+            output_filename = os.sep.join((working_directory, label))
+            output_filename = '.'.join((output_filename, HOLMES_EXTENSION))
+            with open(output_filename, "wb") as file:
+                file.write(parsed_document.to_bytes())
 
     def load_documents_from_working_directory():
         serialized_documents = {}
@@ -61,10 +61,10 @@ if __name__ in ('__main__', 'example_search_DE_literature'):
                 print('Loading', file)
                 label = file[:-4]
                 long_filename = os.sep.join((working_directory, file))
-                with open(long_filename, "r") as file:
+                with open(long_filename, "rb") as file:
                     contents = file.read()
                 serialized_documents[label] = contents
-        holmes_manager.deserialize_and_register_documents(serialized_documents)
+        holmes_manager.register_serialized_documents(serialized_documents)
 
     if os.path.exists(working_directory):
         if not os.path.isdir(working_directory):
@@ -75,17 +75,16 @@ if __name__ in ('__main__', 'example_search_DE_literature'):
     if os.path.isfile(flag_filename):
         load_documents_from_working_directory()
     else:
-        normal_holmes_manager = holmes.Manager(model='de_core_news_lg')
         process_documents_from_front_page(
-            normal_holmes_manager, "https://maerchen.com/grimm/", 'Gebrüder Grimm')
+            "https://maerchen.com/grimm/", 'Gebrüder Grimm')
         process_documents_from_front_page(
-            normal_holmes_manager, "https://maerchen.com/grimm2/", 'Gebrüder Grimm')
+            "https://maerchen.com/grimm2/", 'Gebrüder Grimm')
         process_documents_from_front_page(
-            normal_holmes_manager, "https://maerchen.com/andersen/", 'Hans Christian Andersen')
+            "https://maerchen.com/andersen/", 'Hans Christian Andersen')
         process_documents_from_front_page(
-            normal_holmes_manager, "https://maerchen.com/bechstein/", 'Ludwig Bechstein')
+            "https://maerchen.com/bechstein/", 'Ludwig Bechstein')
         process_documents_from_front_page(
-            normal_holmes_manager, "https://maerchen.com/wolf/", 'Johann Wilhelm Wolf')
+            "https://maerchen.com/wolf/", 'Johann Wilhelm Wolf')
         # Generate flag file to indicate files can be reloaded on next run
         open(flag_filename, 'a').close()
         load_documents_from_working_directory()
@@ -101,7 +100,7 @@ if __name__ in ('__main__', 'example_search_DE_literature'):
 
     class RestHandler():
         def on_get(self, req, resp):
-            resp.body = \
+            resp.text = \
                 json.dumps(holmes_manager.topic_match_documents_against(
                     req.params['entry'][0:200], only_one_result_per_document=True))
             resp.cache_control = ["s-maxage=31536000"]

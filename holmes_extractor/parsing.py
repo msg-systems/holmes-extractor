@@ -1900,9 +1900,14 @@ class SemanticMatchingHelper(ABC):
         initial_question_word_embedding_match_threshold:float) ->  bool:
         pass
 
-    @abstractmethod
     def get_subtree_list_without_conjunction(self, token:Token):
-        pass
+        list_to_return = []
+        for working_token in token.subtree:
+            if token == working_token or working_token.dep_ not in self.conjunction_deps:
+                list_to_return.append(working_token)
+            else:
+                return [token] if len(list_to_return) == 0 else list_to_return
+        return list_to_return
 
     def cosine_similarity(self, vector1, vector2):
         return dot (vector1,vector2) / (norm(vector1) * norm(vector2))
