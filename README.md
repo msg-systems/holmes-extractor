@@ -326,7 +326,7 @@ demonstration chatbot console:
 
 ```
 import holmes_extractor as holmes
-holmes_manager = holmes.Manager(model='en_core_web_lg')
+holmes_manager = holmes.Manager(model='en_core_web_lg', number_of_workers=1)
 holmes_manager.register_search_phrase('A big dog chases a cat')
 holmes_manager.start_chatbot_mode_console()
 ```
@@ -335,7 +335,7 @@ holmes_manager.start_chatbot_mode_console()
 
 ```
 import holmes_extractor as holmes
-holmes_manager = holmes.Manager(model='de_core_news_lg')
+holmes_manager = holmes.Manager(model='de_core_news_lg', number_of_workers=1)
 holmes_manager.register_search_phrase('Ein großer Hund jagt eine Katze')
 holmes_manager.start_chatbot_mode_console()
 ```
@@ -351,8 +351,8 @@ Ready for input
 A big dog chased a cat
 
 
-Matched search phrase 'A big dog chases a cat':
-'big'->'big' (direct); 'A big dog'->'dog' (direct); 'chased'->'chase' (direct); 'a cat'->'cat' (direct)
+Matched search phrase with text 'A big dog chases a cat':
+'big'->'big' (Matches BIG directly); 'A big dog'->'dog' (Matches DOG directly); 'chased'->'chase' (Matches CHASE directly); 'a cat'->'cat' (Matches CAT directly)
 ```
 
 *German:*
@@ -386,6 +386,12 @@ The cat the big dog chased was scared
 The big dog chasing the cat was a problem
 There was a big dog that was chasing a cat
 The cat chase by the big dog
+There was a big dog and it was chasing a cat.
+I saw a big dog. My cat was afraid of being chased by the dog.
+There was a big dog. His name was Fido. He was chasing my cat.
+A dog appeared. It was chasing a cat. It was very big.
+The cat sneaked back into our lounge because a big dog had been chasing her outside.
+Our big dog was excited because he had been chasing a cat.
 ```
 
 *German:*
@@ -397,27 +403,15 @@ Die Katze wurde vom großen Hund gejagt
 Die Katze wurde immer wieder durch den großen Hund gejagt
 Der große Hund wollte die Katze jagen
 Der große Hund entschied sich, die Katze zu jagen
-Die Katze hatte genug, vom großen Hund gejagt zu werden
 Die Katze, die der große Hund gejagt hatte, hatte Angst
 Dass der große Hund die Katze jagte, war ein Problem
 Es gab einen großen Hund, der eine Katze jagte
 Die Katzenjagd durch den großen Hund
-```
-
-In English but not presently in German, [coreference resolution](#coreference-resolution)
-is active. This means that the system can link pronouns and nouns to other pronouns and nouns
-nearby in the same text that refer to the same entities. It increases the variety of
-structures that Holmes can recognise:
-
-*English:*
-
-```
-There was a big dog and it was chasing a cat.
-I saw a big dog. My cat was afraid of being chased by the dog.
-The big dog was called Fido. He was chasing my cat.
-A dog appeared. It was chasing a cat. It was very big.
-The cat sneaked back into our lounge because a big dog had been chasing her outside.
-Our big dog was excited because he had been chasing a cat.
+Es gab einen großen Hund und er jagte eine Katze
+Es gab einen großen Hund. Er hieß Fido. Er jagte meine Katze
+Es erschien ein Hund. Er jagte eine Katze. Er war sehr groß.
+Die Katze schlich sich in unser Wohnzimmer zurück, weil ein großer Hund sie draußen gejagt hatte
+Unser großer Hund war aufgeregt, weil er eine Katze gejagt hatte
 ```
 
 The demonstration is not complete without trying other sentences that
@@ -489,11 +483,11 @@ Ready for input
 I met Richard Hudson and John Doe last week. They didn't want to go into town.
 
 
-Matched search phrase 'An ENTITYPERSON goes into town'; negated; uncertain; involves coreference:
-'Richard Hudson'->'ENTITYPERSON' (entity); 'go'->'go' (direct); 'into'->'into' (direct); 'town'->'town' (direct)
+Matched search phrase with text 'An ENTITYPERSON goes into town'; negated; uncertain; involves coreference:
+'Richard Hudson'->'ENTITYPERSON' (Has an entity label matching ENTITYPERSON); 'go'->'go' (Matches GO directly); 'into'->'into' (Matches INTO directly); 'town'->'town' (Matches TOWN directly)
 
-Matched search phrase 'An ENTITYPERSON goes into town'; negated; uncertain; involves coreference:
-'John Doe'->'ENTITYPERSON' (entity); 'go'->'go' (direct); 'into'->'into' (direct); 'town'->'town' (direct)
+Matched search phrase with text 'An ENTITYPERSON goes into town'; negated; uncertain; involves coreference:
+'John Doe'->'ENTITYPERSON' (Has an entity label matching ENTITYPERSON); 'go'->'go' (Matches GO directly); 'into'->'into' (Matches INTO directly); 'town'->'town' (Matches TOWN directly)
 ```
 
 *German:*
@@ -501,14 +495,14 @@ Matched search phrase 'An ENTITYPERSON goes into town'; negated; uncertain; invo
 ```
 Ready for input
 
-Richard Hudson und Max Mustermann wollten nicht mehr in die Stadt gehen
+Letzte Woche sah ich Richard Hudson und Max Mustermann. Sie wollten nicht mehr in die Stadt gehen.
 
 
-Matched search phrase 'Ein ENTITYPER geht in die Stadt'; negated; uncertain:
-'Richard Hudson'->'ENTITYPER' (entity); 'gehen'->'gehen' (direct); 'in'->'in' (direct); 'die Stadt'->'stadt' (direct)
+Matched search phrase with text 'Ein ENTITYPER geht in die Stadt'; negated; uncertain; involves coreference:
+'Richard Hudson'->'ENTITYPER' (Has an entity label matching ENTITYPER); 'gehen'->'gehen' (Matches GEHEN directly); 'in'->'in' (Matches IN directly); 'die Stadt'->'stadt' (Matches STADT directly)
 
-Matched search phrase 'Ein ENTITYPER geht in die Stadt'; negated; uncertain:
-'Max Mustermann'->'ENTITYPER' (entity); 'gehen'->'gehen' (direct); 'in'->'in' (direct); 'die Stadt'->'stadt' (direct)
+Matched search phrase with text 'Ein ENTITYPER geht in die Stadt'; negated; uncertain; involves coreference:
+'Max Mustermann'->'ENTITYPER' (Has an entity label matching ENTITYPER); 'gehen'->'gehen' (Matches GEHEN directly); 'in'->'in' (Matches IN directly); 'die Stadt'->'stadt' (Matches STADT directly)
 ```
 
 In each of the two languages, this last example demonstrates several

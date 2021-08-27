@@ -605,23 +605,23 @@ class Manager:
             model, self.overall_similarity_threshold, verbose)
 
     def start_chatbot_mode_console(self):
-        """Starts a chatbot mode console enabling the matching of pre-registered search phrases
-            to documents (chatbot entries) entered ad-hoc by the user.
+        """Starts a chatbot mode console enabling the matching of pre-registered
+            search phrases to short example documents entered ad-hoc by the user.
         """
         holmes_consoles = HolmesConsoles(self)
         holmes_consoles.start_chatbot_mode()
 
-    def start_structural_search_mode_console(self):
-        """Starts a structural search mode console enabling the matching of pre-registered documents
-            to search phrases entered ad-hoc by the user.
+    def start_information_extraction_mode_console(self):
+        """Starts an information extraction mode console enabling the matching of pre-registered
+            documents to search phrases entered ad-hoc by the user.
         """
         holmes_consoles = HolmesConsoles(self)
-        holmes_consoles.start_structural_search_mode()
+        holmes_consoles.start_information_extraction_mode()
 
     def start_topic_matching_search_mode_console(
             self, only_one_result_per_document=False,
-            maximum_number_of_single_word_matches_for_relation_matching=500,
-            maximum_number_of_single_word_matches_for_embedding_matching=100):
+            word_embedding_match_threshold=0.8,
+            initial_question_word_embedding_match_threshold=0.5):
         """Starts a topic matching search mode console enabling the matching of pre-registered
             documents to search texts entered ad-hoc by the user.
 
@@ -629,22 +629,15 @@ class Manager:
 
             only_one_result_per_document -- if 'True', prevents multiple topic match
                 results from being returned for the same document.
-            maximum_number_of_single_word_matches_for_relation_matching -- the maximum number
-                of single word matches that are used as the basis for matching relations. If more
-                document words than this value correspond to each of the two words within a
-                relation phraselet, matching on the phraselet is not attempted.
-            maximum_number_of_single_word_matches_for_embedding_matching = the maximum
-                number of single word matches that are used as the basis for reverse matching with
-                embeddings at the parent word. If more than this value exist, reverse matching with
-                embeddings is not attempted because the performance hit would be too great.
+            word_embedding_match_threshold -- the cosine similarity above which two words match.
+            initial_question_word_embedding_match_threshold -- the cosine similarity above which two
+                words match where the search phrase word governs an interrogative pronoun.
         """
         holmes_consoles = HolmesConsoles(self)
         holmes_consoles.start_topic_matching_search_mode(
             only_one_result_per_document,
-            maximum_number_of_single_word_matches_for_relation_matching=
-            maximum_number_of_single_word_matches_for_relation_matching,
-            maximum_number_of_single_word_matches_for_embedding_matching=
-            maximum_number_of_single_word_matches_for_embedding_matching)
+            word_embedding_match_threshold,
+            initial_question_word_embedding_match_threshold)
 
     def close(self):
         for worker in self.workers:

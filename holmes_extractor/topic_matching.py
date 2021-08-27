@@ -850,7 +850,7 @@ class TopicMatcher:
             sentences_character_end_index_in_document = doc[topic_match.sentences_end_index].idx + \
                 len(doc[topic_match.sentences_end_index].text)
             word_infos_to_word_infos = {}
-            answers = []
+            answers_set = set()
             for match in topic_match.structural_matches:
                 for word_match in match.word_matches:
                     if word_match.document_subword is not None:
@@ -891,7 +891,7 @@ class TopicMatcher:
                             answer_relative_end_index = subtree_without_conjunction[-1].idx + \
                                 len(subtree_without_conjunction[-1].text) - \
                                 sentences_character_start_index_in_document
-                        answers.append((answer_relative_start_index, answer_relative_end_index))
+                        answers_set.add((answer_relative_start_index, answer_relative_end_index))
                     if word_info in word_infos_to_word_infos:
                         existing_word_info = word_infos_to_word_infos[word_info]
                         if not existing_word_info.word_match_type == 'overlapping_relation':
@@ -932,6 +932,7 @@ class TopicMatcher:
                 word_infos = sorted(
                     word_infos_to_word_infos.values(), key=lambda word_info: (
                         word_info.relative_start_index, word_info.relative_end_index))
+                answers = list(answers_set)
                 answers.sort(key=lambda answer:(answer[0], answer[1]))
                 for answer in answers.copy():
                     if len([1 for other_answer in answers if other_answer[0] < answer[0] and
