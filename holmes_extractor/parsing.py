@@ -1878,6 +1878,8 @@ class SemanticMatchingHelper(ABC):
 
     preposition_deps = NotImplemented
 
+    question_answer_blacklist_deps = NotImplemented
+
     def __init__(self, ontology, analyze_derivational_morphology):
         self.ontology = ontology
         self.analyze_derivational_morphology = analyze_derivational_morphology
@@ -1900,10 +1902,11 @@ class SemanticMatchingHelper(ABC):
         initial_question_word_embedding_match_threshold:float) ->  bool:
         pass
 
-    def get_subtree_list_without_conjunction(self, token:Token):
+    def get_subtree_list_for_question_answer(self, token:Token):
         list_to_return = []
         for working_token in token.subtree:
-            if token == working_token or working_token.dep_ not in self.conjunction_deps:
+            if token == working_token or working_token.dep_ not in \
+                    self.question_answer_blacklist_deps:
                 list_to_return.append(working_token)
             else:
                 return [token] if len(list_to_return) == 0 else list_to_return

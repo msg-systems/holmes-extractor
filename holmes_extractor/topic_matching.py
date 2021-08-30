@@ -884,7 +884,7 @@ class TopicMatcher:
                             answer_relative_end_index = relative_end_index
                         else:
                             subtree_without_conjunction = \
-                                self.semantic_matching_helper.get_subtree_list_without_conjunction(
+                                self.semantic_matching_helper.get_subtree_list_for_question_answer(
                                 word_match.document_token)
                             answer_relative_start_index = subtree_without_conjunction[0].idx - \
                                 sentences_character_start_index_in_document

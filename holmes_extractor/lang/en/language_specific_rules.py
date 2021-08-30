@@ -832,8 +832,8 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
     # Dependency labels that can mark righthand siblings
     sibling_marker_deps = ('conj', 'appos')
 
-    # Dependency labels that occur in a conjunction phrase (righthand siblings and conjunctions)
-    conjunction_deps = ('conj', 'appos', 'cc')
+    # Dependency labels from a token's subtree that are not included in a question answer
+    question_answer_blacklist_deps = ('conj', 'appos', 'cc', 'case')
 
     def normalize_hyphens(self, word):
         """ Normalizes hyphens for ontology matching. Depending on the language,

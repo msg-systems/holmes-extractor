@@ -720,8 +720,24 @@ class StructuralMatcher:
                 question_word_matches = self.semantic_matching_helper.question_word_matches(
                     search_phrase.label, search_phrase_token, document_token, None, None, None)
             if question_word_matches:
+                first_document_token_index = last_document_token_index = document_token.i
+                if document_token.ent_type_ is not None and len(document_token.ent_type_) > 0:
+                    while first_document_token_index >= 1:
+                        if document_token.doc[first_document_token_index - 1].ent_type == \
+                                document_token.ent_type:
+                            first_document_token_index = first_document_token_index - 1
+                        else:
+                            break
+                    while last_document_token_index + 1 < len(document_token.doc):
+                        if document_token.doc[last_document_token_index + 1].ent_type == \
+                                document_token.ent_type:
+                            last_document_token_index = last_document_token_index + 1
+                        else:
+                            break
                 handle_match(search_phrase_token._.holmes.lemma, document_word_to_use, 'question',
-                    0, search_phrase_initial_question_word=True)
+                    0, first_document_token=document_token.doc[first_document_token_index],
+                    last_document_token=document_token.doc[last_document_token_index],
+                    search_phrase_initial_question_word=True)
                 return True
         return False
 
