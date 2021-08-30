@@ -755,11 +755,6 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
             ['WP'], reverse_only=False, question=True),
         PhraseletTemplate(
-            "head-whose", "whose thing", 1, 0,
-            ['poss', 'det'],
-            ['FW', 'NN', 'NNP', 'NNPS', 'NNS'],
-            ['WP$'], reverse_only=False, question=True),
-        PhraseletTemplate(
             "word", "thing", 0, None,
             None,
             ['FW', 'NN', 'NNP', 'NNPS', 'NNS'],
@@ -796,28 +791,24 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
                 'outside', 'round', 'through', 'to', 'under', 'underneath', 'up')
         if search_phrase_token._.holmes.lemma == 'when':
             if document_token.tag_ == 'IN':
-                return document_token._.holmes.lemma in ('at', 'after', 'before', 'by', 'for',
-                    'from', 'in', 'on', 'since', 'till', 'until')
-            return document_token.dep_ == 'advmod' or document_token.ent_type_ in ('DATE', 'TIME')
+                return document_token._.holmes.lemma in ('after', 'before', 'by', 'for',
+                    'since', 'till', 'until')
+            return document_token.ent_type_ in ('DATE', 'TIME')
         if search_phrase_token._.holmes.lemma == 'how':
-            if document_token.tag_ == 'IN':
-                return document_token._.holmes.lemma in ('by', 'with')
-            return document_token.tag_ == 'RB'
+            return document_token.tag_ == 'IN' and document_token._.holmes.lemma in ('by', 'with')
         if search_phrase_token._.holmes.lemma == 'why':
             if document_token.tag_ == 'IN':
                 if document_token._.holmes.lemma == 'in':
                     return len([1 for c in document_token._.holmes.children if
                         c.child_token(document_token.doc)._.holmes.lemma == 'order']) > 0
-                return document_token._.holmes.lemma in ('as', 'because')
+                return document_token._.holmes.lemma in ('because')
             if document_token.dep_ in ('advcl', 'prep') and document_token.text.lower() == 'owing':
                 return True
             if document_token.dep_ == 'npadvmod' and document_token.text.lower() == 'thanks':
                 return True
             return document_token.dep_ in ('advmod', 'advcl', 'acomp') and len([1 for c in
-                document_token.children if c._.holmes.lemma in ('so', 'to', 'because', 'as')]) > 0
+                document_token.children if c._.holmes.lemma in ('to', 'because')]) > 0
                 # syntactic not semantic children to handle subject-predicate phrases correctly
-        if search_phrase_token._.holmes.lemma == 'whose':
-            return True
         return False
 
     # Parts of speech that are preferred as lemmas within phraselets

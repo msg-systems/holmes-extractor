@@ -296,7 +296,7 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
         self._check_equals('When did the meeting take place?', 'the meeting took place yesterday', 143, 23, 32)
 
     def test_check_when_right_prep(self):
-        self._check_equals('When did the meeting take place?', 'the meeting took place at dawn', 143, 23, 30)
+        self._check_equals('When did the meeting take place?', 'the meeting took place after dawn', 143, 23, 33)
 
     def test_check_when_wrong_prep(self):
         self._check_equals('When did the meeting take place?', 'the meeting took place about dawn', 83, None, None)
@@ -319,23 +319,14 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
     def test_check_how_negative_case(self):
         self._check_equals('How did the team manage it?', 'the team managed it because of the weather', 34, None, None)
 
-    def test_check_how_adverb(self):
-        self._check_equals('How did the team manage it?', 'the team managed it quickly', 104, 20, 27)
-
     def test_check_why_positive_because(self):
         self._check_equals('Why did the team manage it?', 'the team managed it because they had ambition', 104, 20, 45)
-
-    def test_check_why_positive_as(self):
-        self._check_equals('Why did the team manage it?', 'the team managed it as they had ambition', 104, 20, 40)
 
     def test_check_why_positive_owing_to(self):
         self._check_equals('Why did the team manage it?', 'the team managed it owing to their ambition', 104, 20, 43)
 
     def test_check_why_positive_thanks_to(self):
         self._check_equals('Why did the team manage it?', 'the team managed it thanks to their ambition', 104, 20, 44)
-
-    def test_check_why_positive_so_that(self):
-        self._check_equals('Why did the team manage it?', 'the team managed it so that they won', 104, 20, 36)
 
     def test_check_why_positive_to(self):
         self._check_equals('Why did the team manage it?', 'the team managed it to show everyone', 104, 20, 36)
@@ -352,18 +343,6 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
     def test_check_why_because_of_be(self):
         self._check_equals('Why did the team manage it?', 'the team managed it because it was efficient', 104, 20, 44)
 
-    def test_check_whose_positive_case(self):
-        manager.remove_all_documents()
-        manager.parse_and_register_document("This is Richard's dog.", 'q')
-        topic_matches = manager.topic_match_documents_against("Whose dog is this?")
-        self.assertEqual(topic_matches, [{'document_label': 'q', 'text': "This is Richard's dog.", 'text_to_match': 'Whose dog is this?', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 5, 'sentences_character_start_index': 0, 'sentences_character_end_index': 22, 'score': 1257.2, 'word_infos': [[5, 7, 'overlapping_relation', False, 'Matches BE directly.'], [8, 15, 'overlapping_relation', False, 'Matches the question word WHOSE.'], [18, 21, 'overlapping_relation', True, 'Matches DOG directly.']], 'answers': [[8, 15]]}])
-
-    def test_check_whose_coreference(self):
-        self._check_equals('Whose dog is this?', "This is Richard and his dog", 96, 8, 15)
-
-    def test_check_whose_negative_case(self):
-        self._check_equals('Whose dog is this?', "This is Richard and a dog", 28, None, None)
-
     def test_in_answers_split_1(self):
         manager.remove_all_documents()
         manager.parse_and_register_document("I lived in a house and a flat.")
@@ -374,13 +353,13 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
         manager.remove_all_documents()
         manager.parse_and_register_document("I am going in two weeks and in three weeks")
         topic_matches = manager.topic_match_documents_against("When are you going?")
-        self.assertEqual(topic_matches[0]['answers'], [[11, 23], [28, 42]])
+        self.assertEqual(topic_matches[0]['answers'], [[14, 23], [31, 42]])
 
     def test_in_answers_split_3(self):
         manager.remove_all_documents()
         manager.parse_and_register_document("I am going in two weeks and three weeks")
         topic_matches = manager.topic_match_documents_against("When are you going?")
-        self.assertEqual(topic_matches[0]['answers'], [[11, 23], [28, 39]])
+        self.assertEqual(topic_matches[0]['answers'], [[14, 23], [28, 39]])
 
     def test_entity_multiword(self):
         manager.remove_all_documents()
