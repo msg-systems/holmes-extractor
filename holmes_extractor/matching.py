@@ -340,6 +340,14 @@ class StructuralMatcher:
                                     working_index for working_index
                                     in working_document_child_indexes):
                                 at_least_one_document_dependency_tried = True
+                                if search_phrase.question_phraselet and \
+                                        document[
+                                        working_document_parent_index.token_index] in \
+                                        self.semantic_matching_helper.\
+                                        get_subtree_list_for_question_answer(
+                                        document[
+                                        working_document_child_index.token_index]):
+                                    continue
                                 if working_document_child_index in \
                                         search_phrase_and_document_visited_table[
                                         dependency.child_index] or \

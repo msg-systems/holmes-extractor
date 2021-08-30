@@ -833,7 +833,7 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
     sibling_marker_deps = ('conj', 'appos')
 
     # Dependency labels from a token's subtree that are not included in a question answer
-    question_answer_blacklist_deps = ('conj', 'appos', 'cc', 'case')
+    question_answer_blacklist_deps = ('conj', 'appos', 'cc', 'case', 'punct')
 
     def normalize_hyphens(self, word):
         """ Normalizes hyphens for ontology matching. Depending on the language,

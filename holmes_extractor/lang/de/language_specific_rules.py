@@ -1141,8 +1141,7 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
 
     sibling_marker_deps = ('cj', 'app')
 
-    conjunction_deps = ('cj', 'cd', 'punct', 'app')
-
+    question_answer_blacklist_deps = ('cj', 'cd', 'punct', 'app', 'punct')
 
     def normalize_hyphens(self, word):
         """ Normalizes hyphens in a multiword for ontology matching. Depending on the language,

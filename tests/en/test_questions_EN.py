@@ -13,7 +13,8 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
 
     def _check_equals(self, text_to_match, document_text, highest_score, answer_start, answer_end,
         word_embedding_match_threshold=0.42, initial_question_word_embedding_match_threshold=0.42,
-        use_frequency_factor=True, initial_question_word_answer_score=40, relation_matching_frequency_threshold=0.0, embedding_matching_frequency_threshold=0.0):
+        use_frequency_factor=True, initial_question_word_answer_score=40, relation_matching_frequency_threshold=0.0, embedding_matching_frequency_threshold=0.0,
+        ):
         manager.remove_all_documents()
         manager.parse_and_register_document(document_text)
         topic_matches = manager.topic_match_documents_against(text_to_match,
@@ -59,7 +60,8 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
     def test_governed_interrogative_pronoun_matching_common_noun(self):
         manager.remove_all_documents()
         manager.parse_and_register_document("The man sang a duet.", 'q')
-        topic_matches = manager.topic_match_documents_against("Which person sings?")
+        topic_matches = manager.topic_match_documents_against("Which person sings?",
+        initial_question_word_embedding_match_threshold=0.5)
         self.assertEqual([{'document_label': 'q', 'text': 'The man sang a duet.', 'text_to_match': 'Which person sings?', 'rank': '1', 'index_within_document': 2, 'subword_index': None, 'start_index': 1, 'end_index': 2, 'sentences_start_index': 0, 'sentences_end_index': 5, 'sentences_character_start_index': 0, 'sentences_character_end_index': 20, 'score': 288.3671696, 'word_infos': [[4, 7, 'relation', False, 'Has a word embedding that is 55% similar to PERSON.'], [8, 12, 'relation', True, 'Matches SING directly.']], 'answers': [[0, 7]]}], topic_matches)
         topic_matches = manager.topic_match_documents_against("A person sings", word_embedding_match_threshold=0.42)
         self.assertEqual([{'document_label': 'q', 'text': 'The man sang a duet.', 'text_to_match': 'A person sings', 'rank': '1', 'index_within_document': 2, 'subword_index': None, 'start_index': 1, 'end_index': 2, 'sentences_start_index': 0, 'sentences_end_index': 5, 'sentences_character_start_index': 0, 'sentences_character_end_index': 20, 'score': 154.1835848, 'word_infos': [[4, 7, 'relation', False, 'Has a word embedding that is 55% similar to PERSON.'], [8, 12, 'relation', True, 'Matches SING directly.']], 'answers': []}], topic_matches)
@@ -189,7 +191,7 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
         topic_matches = manager.topic_match_documents_against("Which big cat?",
         relation_matching_frequency_threshold=1.0, embedding_matching_frequency_threshold=1.0,
         initial_question_word_embedding_match_threshold=0.2, word_embedding_match_threshold=0.2)
-        self.assertEqual(topic_matches, [{'document_label': 'q', 'text': 'A big dog. A big dog. A big dog.', 'text_to_match': 'Which big cat?', 'rank': '1', 'index_within_document': 2, 'subword_index': None, 'start_index': 1, 'end_index': 10, 'sentences_start_index': 0, 'sentences_end_index': 11, 'sentences_character_start_index': 0, 'sentences_character_end_index': 32, 'score': 126.24642828586148, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [6, 9, 'relation', True, 'Has a word embedding that is 80% similar to CAT.'], [13, 16, 'relation', False, 'Matches BIG directly.'], [17, 20, 'relation', False, 'Has a word embedding that is 80% similar to CAT.'], [24, 27, 'relation', False, 'Matches BIG directly.'], [28, 31, 'relation', False, 'Has a word embedding that is 80% similar to CAT.']], 'answers': [[0, 10], [11, 21], [22, 32]]}])
+        self.assertEqual(topic_matches, [{'document_label': 'q', 'text': 'A big dog. A big dog. A big dog.', 'text_to_match': 'Which big cat?', 'rank': '1', 'index_within_document': 2, 'subword_index': None, 'start_index': 1, 'end_index': 10, 'sentences_start_index': 0, 'sentences_end_index': 11, 'sentences_character_start_index': 0, 'sentences_character_end_index': 32, 'score': 126.24642828586148, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [6, 9, 'relation', True, 'Has a word embedding that is 80% similar to CAT.'], [13, 16, 'relation', False, 'Matches BIG directly.'], [17, 20, 'relation', False, 'Has a word embedding that is 80% similar to CAT.'], [24, 27, 'relation', False, 'Matches BIG directly.'], [28, 31, 'relation', False, 'Has a word embedding that is 80% similar to CAT.']], 'answers': [[0, 9], [11, 20], [22, 31]]}])
 
     def test_no_embedding_frequency_threshold_for_governed_question_words_on_parent_control(self):
         manager.remove_all_documents()
@@ -385,3 +387,6 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
         manager.parse_and_register_document("Then Richard Hudson spoke")
         topic_matches = manager.topic_match_documents_against("Who spoke?")
         self.assertEqual(topic_matches, [{'document_label': '', 'text': 'Then Richard Hudson spoke', 'text_to_match': 'Who spoke?', 'rank': '1', 'index_within_document': 3, 'subword_index': None, 'start_index': 1, 'end_index': 3, 'sentences_start_index': 0, 'sentences_end_index': 3, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 620.0, 'word_infos': [[5, 19, 'relation', False, 'Matches the question word WHO.'], [20, 25, 'relation', True, 'Matches SPEAK directly.']], 'answers': [[5, 19]]}])
+
+    def test_governing_verb_within_noun_phrase(self):
+        self._check_equals('Who did Richard see?', 'The person Richard saw was angry', 34, None, None)

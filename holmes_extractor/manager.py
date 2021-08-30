@@ -418,13 +418,13 @@ class Manager:
     def topic_match_documents_against(
             self, text_to_match, *, use_frequency_factor=True, maximum_activation_distance=75,
             word_embedding_match_threshold=0.8,
-            initial_question_word_embedding_match_threshold=0.5,
+            initial_question_word_embedding_match_threshold=0.7,
             relation_score=300, reverse_only_relation_score=200,
             single_word_score=50, single_word_any_tag_score=20, initial_question_word_answer_score=600,
             initial_question_word_behaviour='process', different_match_cutoff_score=15,
             overlapping_relation_multiplier=1.5, embedding_penalty=0.6,
             ontology_penalty=0.9,
-            relation_matching_frequency_threshold=0.5, embedding_matching_frequency_threshold=0.75,
+            relation_matching_frequency_threshold=0.25, embedding_matching_frequency_threshold=0.75,
             sideways_match_extent=100, only_one_result_per_document=False, number_of_results=10,
             document_label_filter=None, tied_result_quotient=0.9):
 

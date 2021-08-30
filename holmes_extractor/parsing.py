@@ -496,9 +496,17 @@ class PhraseletInfo:
             self.parent_lemma == other.parent_lemma and \
             self.parent_derived_lemma == other.parent_derived_lemma and \
             self.parent_pos == other.parent_pos and \
+            self.parent_ent_type == other.parent_ent_type and \
+            self.parent_is_initial_question_word == other.parent_is_initial_question_word and \
+            self.parent_has_initial_question_word_in_phrase == \
+            other.parent_has_initial_question_word_in_phrase and \
             self.child_lemma == other.child_lemma and \
             self.child_derived_lemma == other.child_derived_lemma and \
             self.child_pos == other.child_pos and \
+            self.child_ent_type == other.child_ent_type and \
+            self.child_is_initial_question_word == other.child_is_initial_question_word and \
+            self.child_has_initial_question_word_in_phrase == \
+            other.child_has_initial_question_word_in_phrase and \
             self.created_without_matching_tags == other.created_without_matching_tags and \
             self.reverse_only_parent_lemma == other.reverse_only_parent_lemma and \
             str(self.frequency_factor) == str(other.frequency_factor) and \
@@ -508,16 +516,18 @@ class PhraseletInfo:
     def __hash__(self):
         return hash((
             self.label, self.template_label, self.parent_lemma, self.parent_derived_lemma,
-            self.parent_pos, self.child_lemma, self.child_derived_lemma,
-            self.child_pos, self.created_without_matching_tags, self.reverse_only_parent_lemma,
-            str(self.frequency_factor), str(self.parent_frequency_factor),
-            str(self.child_frequency_factor)))
+            self.parent_pos, self.parent_ent_type, self.parent_is_initial_question_word,
+            self.parent_has_initial_question_word_in_phrase, self.child_lemma,
+            self.child_derived_lemma, self.child_pos, self.child_is_initial_question_word,
+            self.child_has_initial_question_word_in_phrase, self.created_without_matching_tags,
+            self.reverse_only_parent_lemma, str(self.frequency_factor),
+            str(self.parent_frequency_factor), str(self.child_frequency_factor)))
 
 class SearchPhrase:
 
     def __init__(self, doc, matchable_token_indexes, root_token_index,
             matchable_non_entity_tokens_to_vectors, label, topic_match_phraselet,
-            topic_match_phraselet_created_without_matching_tags, reverse_only,
+            topic_match_phraselet_created_without_matching_tags, question_phraselet, reverse_only,
             treat_as_reverse_only_during_initial_relation_matching, words_matching_root_token,
             root_word_to_match_info_dict, has_single_matchable_word):
         """Args:
@@ -533,6 +543,8 @@ class SearchPhrase:
         topic_match_phraselet -- 'True' if a topic match phraselet, otherwise 'False'.
         topic_match_phraselet_created_without_matching_tags -- 'True' if a topic match
         phraselet created without matching tags (match_all_words), otherwise 'False'.
+        question_phraselet -- 'True' if a topic match phraselet where the child member is
+        an initial question word, otherwise 'False'
         reverse_only -- 'True' if a phraselet that should only be reverse-matched.
         treat_as_reverse_only_during_initial_relation_matching -- phraselets are
             set to *True* in the context of topic matching to prevent them from being taken into
@@ -553,6 +565,7 @@ class SearchPhrase:
         self.topic_match_phraselet = topic_match_phraselet
         self.topic_match_phraselet_created_without_matching_tags = \
                 topic_match_phraselet_created_without_matching_tags
+        self.question_phraselet = question_phraselet
         self.reverse_only = reverse_only
         self.treat_as_reverse_only_during_initial_relation_matching = \
             treat_as_reverse_only_during_initial_relation_matching
@@ -1788,6 +1801,7 @@ class LinguisticObjectFactory:
             search_phrase_doc, [token.i for token in tokens_to_match], root_token.i,
             matchable_non_entity_tokens_to_vectors, label, phraselet_template is not None,
             topic_match_phraselet_created_without_matching_tags,
+            (phraselet_template is not None and phraselet_template.question),
             reverse_only, treat_as_reverse_only_during_initial_relation_matching,
             words_matching_root_token, root_word_to_match_info_dict, len(tokens_to_match) == 1 and
             not (phraselet_template is not None and phraselet_template.question))

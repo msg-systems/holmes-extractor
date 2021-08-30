@@ -29,7 +29,7 @@ class ErrorsTest(unittest.TestCase):
 
     def test_language_not_supported(self):
         with self.assertRaises(ValueError) as context:
-            holmes.Manager(model='pl_core_news_sm')
+            holmes.Manager(model='pl_core_news_md')
 
     def test_search_phrase_contains_conjunction(self):
         with self.assertRaises(SearchPhraseContainsConjunctionError) as context:
