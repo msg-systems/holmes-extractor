@@ -721,16 +721,17 @@ class StructuralMatcher:
                     search_phrase.label, search_phrase_token, document_token, None, None, None)
             if question_word_matches:
                 first_document_token_index = last_document_token_index = document_token.i
-                if document_token.ent_type_ is not None and len(document_token.ent_type_) > 0:
+                if document_token.pos_ in self.semantic_matching_helper.noun_pos and \
+                        len(document_token.ent_type_) > 0:
                     while first_document_token_index >= 1:
-                        if document_token.doc[first_document_token_index - 1].ent_type == \
-                                document_token.ent_type:
+                        if document_token.doc[first_document_token_index - 1].pos_ in \
+                                self.semantic_matching_helper.noun_pos:
                             first_document_token_index = first_document_token_index - 1
                         else:
                             break
                     while last_document_token_index + 1 < len(document_token.doc):
-                        if document_token.doc[last_document_token_index + 1].ent_type == \
-                                document_token.ent_type:
+                        if document_token.doc[last_document_token_index + 1].pos_ in \
+                                self.semantic_matching_helper.noun_pos:
                             last_document_token_index = last_document_token_index + 1
                         else:
                             break

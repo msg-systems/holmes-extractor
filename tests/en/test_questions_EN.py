@@ -354,7 +354,7 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
         manager.remove_all_documents()
         manager.parse_and_register_document("This is Richard's dog.", 'q')
         topic_matches = manager.topic_match_documents_against("Whose dog is this?")
-        self.assertEqual(topic_matches, [{'document_label': 'q', 'text': "This is Richard's dog.", 'text_to_match': 'Whose dog is this?', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 5, 'sentences_character_start_index': 0, 'sentences_character_end_index': 22, 'score': 1257.2, 'word_infos': [[5, 7, 'overlapping_relation', False, 'Matches BE directly.'], [8, 15, 'overlapping_relation', False, 'Matches the question word WHOSE.'], [18, 21, 'overlapping_relation', True, 'Matches DOG directly.']], 'answers': [[8, 17]]}])
+        self.assertEqual(topic_matches, [{'document_label': 'q', 'text': "This is Richard's dog.", 'text_to_match': 'Whose dog is this?', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 5, 'sentences_character_start_index': 0, 'sentences_character_end_index': 22, 'score': 1257.2, 'word_infos': [[5, 7, 'overlapping_relation', False, 'Matches BE directly.'], [8, 15, 'overlapping_relation', False, 'Matches the question word WHOSE.'], [18, 21, 'overlapping_relation', True, 'Matches DOG directly.']], 'answers': [[8, 15]]}])
 
     def test_check_whose_coreference(self):
         self._check_equals('Whose dog is this?', "This is Richard and his dog", 96, 8, 15)
@@ -379,3 +379,9 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
         manager.parse_and_register_document("I am going in two weeks and three weeks")
         topic_matches = manager.topic_match_documents_against("When are you going?")
         self.assertEqual(topic_matches[0]['answers'], [[11, 23], [28, 39]])
+
+    def test_entity_multiword(self):
+        manager.remove_all_documents()
+        manager.parse_and_register_document("Then Richard Hudson spoke")
+        topic_matches = manager.topic_match_documents_against("Who spoke?")
+        self.assertEqual(topic_matches, [{'document_label': '', 'text': 'Then Richard Hudson spoke', 'text_to_match': 'Who spoke?', 'rank': '1', 'index_within_document': 3, 'subword_index': None, 'start_index': 1, 'end_index': 3, 'sentences_start_index': 0, 'sentences_end_index': 3, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 620.0, 'word_infos': [[5, 19, 'relation', False, 'Matches the question word WHO.'], [20, 25, 'relation', True, 'Matches SPEAK directly.']], 'answers': [[5, 19]]}])
