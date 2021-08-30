@@ -74,8 +74,8 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
     # Absolute minimum length of a subword.
     minimum_subword_length = 3
 
-    # Subwords at least this long are more likely to be genuine (not nonsensical) vocab entries.
-    minimum_long_subword_length = 6
+    # Subwords at least this long are preferred.
+    minimum_normal_subword_length = 6
 
     # Subwords longer than this are likely not be atomic and solutions that split them up are
     # preferred
@@ -170,9 +170,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                 self.fugen_s_status = fugen_s_status
 
         def get_subword(lemma, initial_index, length):
-            # find the shortest subword longer than length, unless length is less than
-            # minimum_long_subword_length, in which case only that length is tried. This strategy
-            # is necessary because of the large number of nonsensical short vocabulary entries.
+            # find the shortest subword longer than length.
             for end_index in range(initial_index + length, len(lemma) + 1):
                 possible_word = lemma[initial_index: end_index]
                 if (not self.is_oov(possible_word) or possible_word in self.subword_whitelist) \
@@ -186,17 +184,15 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                             or
                             possible_word[-2:] in self.subword_end_consonant_bigraph_whitelist):
                     return possible_word
-                elif length < self.minimum_long_subword_length:
-                    break
             return None
 
         def score(possible_solution):
             # Lower scores are better.
             number = 0
             for subword in possible_solution:
-                # subwords shorter than minimum_long_subword_length: penalty of 2
-                if len(subword.text) < self.minimum_long_subword_length:
-                    number += 2 * (self.minimum_long_subword_length - len(subword.text))
+                # subwords shorter than minimum_normal_subword_length: penalty of 2
+                if len(subword.text) < self.minimum_normal_subword_length:
+                    number += 2 * (self.minimum_normal_subword_length - len(subword.text))
                 # subwords longer than 12: penalty of 2
                 elif len(subword.text) > self.maximum_realistic_subword_length:
                     number += 2 * (len(subword.text) - self.maximum_realistic_subword_length)
