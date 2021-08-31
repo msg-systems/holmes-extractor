@@ -1123,7 +1123,7 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
                 c.child_token(document_token.doc)._.holmes.lemma == 'weil']) > 0
         if search_phrase_token._.holmes.lemma in ('warum', 'wieso', 'weshalb'):
             if document_token.tag_ in ('APPR', 'APPRART'):
-                return document_token._.holmes.lemma in ('aus', 'auf', 'wegen')
+                return document_token._.holmes.lemma in ('wegen')
             return document_token.dep_ in ('mo', 'oc', 'cd') and len([1 for c in
                 document_token.children if c._.holmes.lemma in ('weil', 'damit')]) > 0
                 # syntactic not semantic children to handle subject-predicate phrases correctly
