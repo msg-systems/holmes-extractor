@@ -1894,6 +1894,8 @@ class SemanticMatchingHelper(ABC):
 
     question_answer_blacklist_deps = NotImplemented
 
+    question_answer_final_blacklist_deps = NotImplemented
+
     def __init__(self, ontology, analyze_derivational_morphology):
         self.ontology = ontology
         self.analyze_derivational_morphology = analyze_derivational_morphology
@@ -1924,6 +1926,9 @@ class SemanticMatchingHelper(ABC):
                 list_to_return.append(working_token)
             else:
                 return [token] if len(list_to_return) == 0 else list_to_return
+        if len(list_to_return) > 1 and list_to_return[-1].dep_ in \
+                self.question_answer_final_blacklist_deps:
+            list_to_return = list_to_return[:-1]
         return list_to_return
 
     def cosine_similarity(self, vector1, vector2):

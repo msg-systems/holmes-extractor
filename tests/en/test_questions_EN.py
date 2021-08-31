@@ -307,6 +307,12 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
     def test_check_when_wrong_syntax(self):
         self._check_equals('When did the meeting take place?', 'the meeting took place', 83, None, None)
 
+    def test_check_when_in_time_phrase(self):
+        self._check_equals('When will the meeting take place?', 'the meeting will take place in three weeks', 142, 31, 42)
+
+    def test_check_where_in_time_phrase(self):
+        self._check_equals('Where will the meeting take place?', 'the meeting will take place in three weeks', 83, None, None)
+
     def test_check_how_positive_case_phrase(self):
         self._check_equals('How did the team manage it?', 'the team managed it by working hard', 104, 20, 35)
 

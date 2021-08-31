@@ -1010,7 +1010,7 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
                 'VAFIN', 'VAIMP', 'VAINF', 'VAPP'],
             ['FM', 'NE', 'NNE', 'NN'], reverse_only=True, question=False),
         PhraseletTemplate(
-            "noun-dependent", "Eine beschriebene Sache", 2, 1,
+            "noun-dependent", "Eine große Sache", 2, 1,
             ['nk'],
             ['FM', 'NE', 'NNE', 'NN'],
             ['FM', 'NE', 'NNE', 'NN', 'ADJA', 'ADJD', 'ADV', 'CARD'], reverse_only=False,
@@ -1142,6 +1142,8 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
     sibling_marker_deps = ('cj', 'app')
 
     question_answer_blacklist_deps = ('cj', 'cd', 'punct', 'app', 'punct')
+
+    question_answer_final_blacklist_deps = ()
 
     def normalize_hyphens(self, word):
         """ Normalizes hyphens in a multiword for ontology matching. Depending on the language,

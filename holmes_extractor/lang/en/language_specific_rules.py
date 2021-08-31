@@ -699,7 +699,7 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
             ['FW', 'NN', 'NNP', 'NNPS', 'NNS'], reverse_only=False, question=False),
         PhraseletTemplate(
-            "governor-adjective", "A described thing", 2, 1,
+            "governor-adjective", "A big thing", 2, 1,
             ['acomp', 'amod', 'advmod', 'npmod', 'advcl', 'dobj'],
             ['FW', 'NN', 'NNP', 'NNPS', 'NNS', 'VB', 'VBD', 'VBG', 'VBN', 'VBP', 'VBZ'],
             ['JJ', 'JJR', 'JJS', 'VBN', 'RB', 'RBR', 'RBS'], reverse_only=False, question=False),
@@ -784,11 +784,14 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
         if search_phrase_token._.holmes.lemma == 'what':
             return True
         if search_phrase_token._.holmes.lemma == 'where':
-            return document_token.tag_ == 'IN' and document_token._.holmes.lemma in (
+            return document_token.ent_type_ not in ('DATE', 'TIME') and \
+                len([1 for c in document_token._.holmes.children
+                if c.child_token(document_token.doc).ent_type_ in ('DATE', 'TIME')]) == 0 \
+                and document_token.tag_ == 'IN' and document_token._.holmes.lemma in (
                 'above', 'across', 'against', 'along', 'among', 'amongst', 'around', 'at',
                 'behind', 'below', 'beneath', 'beside', 'between', 'beyond', 'by', 'close', 'down',
                 'in', 'into', 'near', 'next', 'off', 'on', 'onto', 'opposite', 'out',
-                'outside', 'round', 'through', 'to', 'under', 'underneath', 'up')
+                'outside', 'round', 'through', 'under', 'underneath', 'up')
         if search_phrase_token._.holmes.lemma == 'when':
             if document_token.tag_ == 'IN':
                 return document_token._.holmes.lemma in ('after', 'before', 'by', 'for',
@@ -806,8 +809,9 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
                 return True
             if document_token.dep_ == 'npadvmod' and document_token.text.lower() == 'thanks':
                 return True
+
             return document_token.dep_ in ('advmod', 'advcl', 'acomp') and len([1 for c in
-                document_token.children if c._.holmes.lemma in ('to', 'because')]) > 0
+                document_token.children if c._.holmes.lemma in ('because') or c.tag_ == 'TO']) > 0
                 # syntactic not semantic children to handle subject-predicate phrases correctly
         return False
 
@@ -824,7 +828,11 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
     sibling_marker_deps = ('conj', 'appos')
 
     # Dependency labels from a token's subtree that are not included in a question answer
-    question_answer_blacklist_deps = ('conj', 'appos', 'cc', 'case', 'punct')
+    question_answer_blacklist_deps = ('conj', 'appos', 'cc', 'punct')
+
+    # Dependency labels from a token's subtree that are not included in a question answer if in
+    # final position.
+    question_answer_final_blacklist_deps = ('case')
 
     def normalize_hyphens(self, word):
         """ Normalizes hyphens for ontology matching. Depending on the language,
