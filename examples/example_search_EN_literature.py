@@ -11,11 +11,15 @@ if __name__ in ('__main__', 'example_search_EN_literature'):
     working_directory = # REPLACE WITH PATH TO WORKING DIRECTORY IN SINGLE OR DOUBLE QUOTES
     HOLMES_EXTENSION = 'hdc'
     flag_filename = os.sep.join((working_directory, 'STORY_PARSING_COMPLETE'))
+    print('Initializing Holmes (this may take some time) ...')
 
-    print('Initializing Holmes...')
+    script_directory = os.path.dirname(os.path.realpath(__file__))
+    ontology = holmes.Ontology(os.sep.join((
+        script_directory, 'example_search_EN_literature_ontology.owl')))
+
     # Start the Holmes manager with the English model
     holmes_manager = holmes.Manager(
-        model='en_core_web_trf', number_of_workers=4)
+        model='en_core_web_trf', ontology=ontology)
 
     def extract_chapters_from_book(book_uri, title):
         """ Download and save the chapters from a book."""
@@ -70,6 +74,7 @@ if __name__ in ('__main__', 'example_search_EN_literature'):
                 with open(long_filename, "rb") as file:
                     contents = file.read()
                 serialized_documents[label] = contents
+        print('Indexing documents (this may take some time) ...')
         holmes_manager.register_serialized_documents(serialized_documents)
 
     if os.path.exists(working_directory):
@@ -105,7 +110,7 @@ if __name__ in ('__main__', 'example_search_EN_literature'):
         def on_get(self, req, resp):
             resp.text = \
                 json.dumps(holmes_manager.topic_match_documents_against(
-                    req.params['entry'][0:200], only_one_result_per_document=True))
+                    req.params['entry'][0:200]))
             resp.cache_control = ["s-maxage=31536000"]
 
     application = falcon.App()

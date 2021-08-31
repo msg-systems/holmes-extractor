@@ -11,10 +11,10 @@ if __name__ in ('__main__', 'example_search_DE_literature'):
     HOLMES_EXTENSION = 'hdc'
     flag_filename = os.sep.join((working_directory, 'STORY_PARSING_COMPLETE'))
 
-    print('Initializing Holmes...')
+    print('Initializing Holmes (this may take some time) ...')
     # Start the Holmes manager with the German model
     holmes_manager = holmes.Manager(
-        model='de_core_news_lg', number_of_workers=4)
+        model='de_core_news_lg')
 
     def process_documents_from_front_page(front_page_uri, front_page_label):
         """ Download and save all the stories from a front page."""
@@ -64,6 +64,7 @@ if __name__ in ('__main__', 'example_search_DE_literature'):
                 with open(long_filename, "rb") as file:
                     contents = file.read()
                 serialized_documents[label] = contents
+        print('Indexing documents (this may take some time) ...')
         holmes_manager.register_serialized_documents(serialized_documents)
 
     if os.path.exists(working_directory):
