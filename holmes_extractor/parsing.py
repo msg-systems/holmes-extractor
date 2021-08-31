@@ -1922,7 +1922,7 @@ class SemanticMatchingHelper(ABC):
         list_to_return = []
         for working_token in token.subtree:
             if token == working_token or working_token.dep_ not in \
-                    self.question_answer_blacklist_deps:
+                    self.question_answer_blacklist_deps or working_token.text == '-':
                 list_to_return.append(working_token)
             else:
                 return [token] if len(list_to_return) == 0 else list_to_return
