@@ -713,10 +713,25 @@ class StructuralMatcher:
                     search_phrase_vector, self.entity_label_to_vector_dict,
                     (document_token.ent_type_,), single_token_similarity_threshold)
                 if cosine_similarity > 0:
+                    for multiword_span in \
+                            self.semantic_matching_helper.multiword_spans_with_head_token(
+                            document_token):
+                        for working_token in multiword_span.tokens:
+                            if not working_token.ent_type == document_token.ent_type:
+                                continue
+                        for working_token in multiword_span.tokens:
+                            search_phrase_and_document_visited_table[search_phrase_token.i].add(
+                                working_token.i)
+                        handle_match(search_phrase_token.text, document_token.text,
+                        'entity_embedding', 0, similarity_measure=cosine_similarity,
+                        first_document_token=multiword_span.tokens[0],
+                        last_document_token=multiword_span.tokens[-1],
+                        search_phrase_initial_question_word=search_phrase_initial_question_word)
+                        return True
                     handle_match(search_phrase_token.text, document_token.text, 'entity_embedding',
-                    0, similarity_measure=cosine_similarity,
-                    search_phrase_initial_question_word=search_phrase_initial_question_word)
-                return True
+                        0, similarity_measure=cosine_similarity,
+                        search_phrase_initial_question_word=search_phrase_initial_question_word)
+                    return True
 
         if process_initial_question_words and search_phrase_token._.holmes.is_initial_question_word:
             if document_vector is not None:

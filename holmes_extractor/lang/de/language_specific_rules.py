@@ -1079,13 +1079,13 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
     def question_word_matches(self, search_phrase_label:str, search_phrase_token:Token,
             document_token:Token, document_vector, entity_label_to_vector_dict:dict,
             initial_question_word_embedding_match_threshold:float) -> str:
-        if search_phrase_token._.holmes.lemma in ('wer', 'wen'):
+        if search_phrase_token._.holmes.lemma in ('wer', 'wen', 'wem'):
             ent_types = ('PER', 'ORG')
             return document_token.ent_type_ in ent_types or \
                 self.token_matches_ent_type(document_vector,
                 entity_label_to_vector_dict, ent_types,
                 initial_question_word_embedding_match_threshold) > 0
-        if search_phrase_token._.holmes.lemma in ('was', 'wem'):
+        if search_phrase_token._.holmes.lemma in ('was'):
             return True
         if search_phrase_token._.holmes.lemma == 'wo':
             # spaCy model does not handle postpositions

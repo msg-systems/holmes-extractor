@@ -85,9 +85,6 @@ class GermanInitialQuestionsTest(unittest.TestCase):
     def test_check_wem_positive_case(self):
         self._check_equals('Wem hilfst du?', 'Ich helfe der Person', 45, 10, 20)
 
-    def test_check_wem_non_personal_noun(self):
-        self._check_equals('Wem hilfst du?', 'Ich helfe dem Gebäude', 45, 10, 21)
-
     def test_check_wo_positive_case(self):
         self._check_equals('Wo wohnst du?', 'Ich wohne in einem Haus', 45, 10, 23)
 
