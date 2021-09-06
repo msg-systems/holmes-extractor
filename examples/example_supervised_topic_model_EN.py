@@ -5,7 +5,6 @@ import zipfile
 import holmes_extractor as holmes
 
 working_directory = # REPLACE WITH PATH TO WORKING DIRECTORY IN SINGLE OR DOUBLE QUOTES
-working_directory = 'c:\\Users\\hudsonr\\leaving_soon'
 
 if __name__ in ('__main__', 'example_supervised_topic_model_EN'):
     def is_training_data(document_number):
