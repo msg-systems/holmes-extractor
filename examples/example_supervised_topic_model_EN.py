@@ -8,7 +8,7 @@ working_directory = # REPLACE WITH PATH TO WORKING DIRECTORY IN SINGLE OR DOUBLE
 
 if __name__ in ('__main__', 'example_supervised_topic_model_EN'):
     def is_training_data(document_number):
-        # We use any docum'ents with numbers ending in 8,9,0 for test and all other documents for
+        # We use any documents with numbers ending in 8,9,0 for test and all other documents for
         # training.
         return document_number[-1:] not in ('8', '9', '0')
 
