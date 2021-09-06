@@ -240,16 +240,6 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(
             doc[2]._.holmes.string_representation_of_children(), '-2:None')
 
-    def test_who_predicate_conjunction(self):
-        doc = nlp(
-            "The dog which chased and caught the cat was tired")
-        self.assertEqual(doc[3]._.holmes.string_representation_of_children(),
-                         '1:nsubj; 4:cc; 5:conj')
-        self.assertEqual(
-            doc[5]._.holmes.string_representation_of_children(), '1:nsubj; 7:dobj')
-        self.assertEqual(
-            doc[2]._.holmes.string_representation_of_children(), '-2:None')
-
     def test_which_many_antecedents(self):
         doc = nlp(
             "The lion, the tiger and the dog which chased the cat were tired")
@@ -433,7 +423,7 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(
             doc[4]._.holmes.string_representation_of_children(), '-4:None')
 
-    def test_phrasal_verb(self):
+    def test_phrasal_verb_1(self):
         doc = nlp("He took out insurance")
         self.assertEqual(doc[1]._.holmes.lemma, 'take out')
         self.assertEqual(
@@ -459,17 +449,17 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[3]._.holmes.string_representation_of_children(),
                          '0:nsubj(U); 2:aux; 4:dobj')
 
-    def test_phrasal_verb(self):
+    def test_phrasal_verb_2(self):
         doc = nlp("He will have been doing it")
         self.assertEqual(doc[4]._.holmes.string_representation_of_children(),
                          '0:nsubj; 1:aux; 2:aux; 3:aux; 5:dobj')
 
-    def test_pobjb(self):
+    def test_pobjb_1(self):
         doc = nlp("Eating by employees")
         self.assertEqual(
             doc[0]._.holmes.string_representation_of_children(), '1:prep; 2:pobjb')
 
-    def test_pobjb(self):
+    def test_pobjb_2(self):
         doc = nlp("Eating of icecream")
         self.assertEqual(
             doc[0]._.holmes.string_representation_of_children(), '1:prep; 2:pobjo')
@@ -650,12 +640,12 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[10]._.holmes.string_representation_of_children(),
                          '5:nsubj(U)')
 
-    def test_verb_p_c_with_conjunction_of_dependent_verb_and_non_coreferring_pronoun(self):
+    def test_verb_p_c_with_conjunction_of_dependent_verb_and_non_coreferring_pronoun_1(self):
         doc = nlp("It kept on singing and shouting")
         self.assertEqual(doc[3]._.holmes.string_representation_of_children(),
-                         '4:cc; 5:conj')
+                         '0:nsubj(U); 4:cc; 5:conj')
         self.assertEqual(doc[5]._.holmes.string_representation_of_children(),
-                         '')
+                         '0:nsubj(U)')
 
     def test_adjective_prepositional_complement_with_conjunction_of_dependent_verb(self):
         doc = nlp(
@@ -673,7 +663,7 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[11]._.holmes.string_representation_of_children(),
                          '5:nsubj(U)')
 
-    def test_verb_p_c_with_conjunction_of_dependent_verb_and_non_coreferring_pronoun(self):
+    def test_verb_p_c_with_conjunction_of_dependent_verb_and_non_coreferring_pronoun_2(self):
         doc = nlp("It was worried about singing and shouting")
         self.assertEqual(doc[4]._.holmes.string_representation_of_children(),
                          '5:cc; 6:conj')
@@ -891,11 +881,11 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         doc = nlp("It stank horribly.")
         self.assertEqual(doc[2]._.holmes.derived_lemma, 'horrible')
 
-    def test_derived_lemma_ibly(self):
+    def test_derived_lemma_ably(self):
         doc = nlp("Regrettably it was a problem.")
         self.assertEqual(doc[0]._.holmes.derived_lemma, 'regrettable')
 
-    def test_derived_lemma_ibly(self):
+    def test_derived_lemma_ily(self):
         doc = nlp("He used the software happily.")
         self.assertEqual(doc[4]._.holmes.derived_lemma, 'happy')
 

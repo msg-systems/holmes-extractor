@@ -1,7 +1,5 @@
 import copy
 import sys
-from string import punctuation
-from threading import Lock
 from spacy.tokens import Token
 from .errors import DuplicateDocumentError, NoSearchPhraseError, NoDocumentError
 from .parsing import Subword, Index
@@ -25,7 +23,7 @@ class WordMatch:
     document_subword -- the subword from the token that matched, or *None* if the match was
         with the whole token.
     document_word -- the word or subword that matched structurally from the document.
-    type -- *direct*, *entity*, *embedding*, *ontology* or *derivation*.
+    word_match_type -- *direct*, *entity*, *embedding*, *ontology* or *derivation*.
     similarity_measure -- for type *embedding*, the similarity between the two tokens,
         otherwise 1.0.
     is_negated -- *True* if this word match leads to a match of which it
@@ -100,7 +98,8 @@ class WordMatch:
             printable_similarity = str(int(self.similarity_measure * 100))
             return ''.join((
                 "Has an entity label that is ", printable_similarity,
-                "% similar to the word embedding corresponding to ", search_phrase_display_word, "."))
+                "% similar to the word embedding corresponding to ", search_phrase_display_word,
+                "."))
         elif self.word_match_type == 'ontology':
             working_depth = self.depth
             if working_depth > 4:
@@ -169,6 +168,7 @@ class Match:
         match_to_return.is_negated = self.is_negated
         match_to_return.is_uncertain = self.is_uncertain
         match_to_return.index_within_document = self.index_within_document
+        match_to_return.overall_similarity_measure = self.overall_similarity_measure
         return match_to_return
 
     def get_subword_index(self):
@@ -181,12 +181,8 @@ class Match:
 
     def get_subword_index_for_sorting(self):
         # returns *-1* rather than *None* in the absence of a subword
-        for word_match in self.word_matches:
-            if word_match.search_phrase_token.dep_ == 'ROOT':
-                if word_match.document_subword is None:
-                    return -1
-                return word_match.document_subword.index
-        raise RuntimeError('No word match with search phrase token with root dependency')
+        subword_index = self.get_subword_index()
+        return subword_index if subword_index is not None else -1
 
 class StructuralMatcher:
     """The class responsible for matching search phrases with documents."""
@@ -200,9 +196,12 @@ class StructuralMatcher:
 
         semantic_matching_helper -- the *SemanticMatchingHelper* object to use
         ontology -- optionally, an *Ontology* object to use in matching
+        embedding_based_matching_on_root_words -- *True* if embedding-based matching should be
+            attempted on search-phrase root tokens
         analyze_derivational_morphology -- *True* if matching should be attempted between different
             words from the same word family. Defaults to *True*.
-        perform_coreference_resolution -- *True* if coreference resolution should be performed.
+        perform_coreference_resolution -- *True* if coreference resolution should be taken into
+            account when matching.
         use_reverse_dependency_matching -- *True* if appropriate dependencies in documents can be
             matched to dependencies in search phrases where the two dependencies point in opposite
             directions.
@@ -217,6 +216,8 @@ class StructuralMatcher:
         self.entity_label_to_vector_dict = entity_label_to_vector_dict
 
     def match_type(self, search_phrase_and_document_derived_lemmas_identical, *match_types):
+        """ Selects the most salient match type out of a list of relevant match types. """
+
         if 'ontology' in match_types and search_phrase_and_document_derived_lemmas_identical:
             # an ontology entry happens to have created a derivation word match before the
             # derivation match itself was processed, so mark the type as 'derivation'.
@@ -766,6 +767,8 @@ class StructuralMatcher:
         return False
 
     def embedding_matching_permitted(self, obj):
+        """ Embedding matching is suppressed for some parts of speech as well as for very short
+            words. """
         if isinstance(obj, Token):
             if len(obj._.holmes.lemma.split()) > 1:
                 working_lemma = obj.lemma_
@@ -884,8 +887,9 @@ class StructuralMatcher:
         def check_document_tokens_are_linked_by_dependency(
                 parent_token, parent_subword, child_token, child_subword):
             """ The recursive nature of the main matching algorithm can mean that all the tokens
-                in the search phrase have matched but that two of them are linked by a dependency
-                that is absent from the document, which invalidates the match.
+                in the search phrase have matched but that two of them are linked by a
+                search-phrase dependency that is absent from the document, which invalidates the
+                match.
             """
             if parent_subword is not None:
                 if child_subword is not None and parent_subword.dependent_index == \
@@ -1225,38 +1229,37 @@ class StructuralMatcher:
                                     overall_similarity_threshold,
                                     initial_question_word_overall_similarity_threshold))
                 continue
-            else:
-                matched_corpus_word_positions = set()
-                if self.semantic_matching_helper.is_entity_search_phrase_token(
-                        search_phrase.root_token, search_phrase.topic_match_phraselet):
-                    if search_phrase.topic_match_phraselet:
-                        entity_label = search_phrase.root_token._.holmes.lemma
-                    else:
-                        entity_label = search_phrase.root_token.text
-                    if entity_label in corpus_index_dict.keys():
-                        entity_matching_corpus_word_positions = [
-                            cwp for cwp, _, _ in corpus_index_dict[entity_label]]
-                        if match_specific_indexes:
-                            entity_matching_corpus_word_positions = [
-                                cwp for cwp in entity_matching_corpus_word_positions
-                                if cwp in reverse_matching_corpus_word_positions
-                                or cwp in embedding_reverse_matching_corpus_word_positions
-                                and not cwp.index.is_subword()]
-                        matched_corpus_word_positions.update(
-                            entity_matching_corpus_word_positions)
+            matched_corpus_word_positions = set()
+            if self.semantic_matching_helper.is_entity_search_phrase_token(
+                    search_phrase.root_token, search_phrase.topic_match_phraselet):
+                if search_phrase.topic_match_phraselet:
+                    entity_label = search_phrase.root_token._.holmes.lemma
                 else:
-                    for word_matching_root_token in search_phrase.words_matching_root_token:
-                        if word_matching_root_token in corpus_index_dict.keys():
+                    entity_label = search_phrase.root_token.text
+                if entity_label in corpus_index_dict.keys():
+                    entity_matching_corpus_word_positions = [
+                        cwp for cwp, _, _ in corpus_index_dict[entity_label]]
+                    if match_specific_indexes:
+                        entity_matching_corpus_word_positions = [
+                            cwp for cwp in entity_matching_corpus_word_positions
+                            if cwp in reverse_matching_corpus_word_positions
+                            or cwp in embedding_reverse_matching_corpus_word_positions
+                            and not cwp.index.is_subword()]
+                    matched_corpus_word_positions.update(
+                        entity_matching_corpus_word_positions)
+            else:
+                for word_matching_root_token in search_phrase.words_matching_root_token:
+                    if word_matching_root_token in corpus_index_dict.keys():
+                        direct_matching_corpus_word_positions = [
+                            cwp for cwp, _, _ in corpus_index_dict[
+                                word_matching_root_token]]
+                        if match_specific_indexes:
                             direct_matching_corpus_word_positions = [
-                                cwp for cwp, _, _ in corpus_index_dict[
-                                    word_matching_root_token]]
-                            if match_specific_indexes:
-                                direct_matching_corpus_word_positions = [
-                                    cwp for cwp in direct_matching_corpus_word_positions
-                                    if cwp in reverse_matching_corpus_word_positions
-                                    or cwp in embedding_reverse_matching_corpus_word_positions]
-                            matched_corpus_word_positions.update(
-                                direct_matching_corpus_word_positions)
+                                cwp for cwp in direct_matching_corpus_word_positions
+                                if cwp in reverse_matching_corpus_word_positions
+                                or cwp in embedding_reverse_matching_corpus_word_positions]
+                        matched_corpus_word_positions.update(
+                            direct_matching_corpus_word_positions)
             if compare_embeddings_on_root_words and not \
                     self.semantic_matching_helper.is_entity_search_phrase_token(
                         search_phrase.root_token, search_phrase.topic_match_phraselet) \

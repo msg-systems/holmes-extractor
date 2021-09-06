@@ -5,6 +5,7 @@ import zipfile
 import holmes_extractor as holmes
 
 working_directory = # REPLACE WITH PATH TO WORKING DIRECTORY IN SINGLE OR DOUBLE QUOTES
+working_directory = 'c:\\Users\\hudsonr\\leaving_soon'
 
 if __name__ in ('__main__', 'example_supervised_topic_model_EN'):
     def is_training_data(document_number):
@@ -74,7 +75,7 @@ if __name__ in ('__main__', 'example_supervised_topic_model_EN'):
 
     if os.path.exists(working_directory):
         if not os.path.isdir(working_directory):
-            raise RuntimeError(' '.join((working_directory), 'must be a directory'))
+            raise RuntimeError(' '.join((working_directory, 'must be a directory')))
     else:
         os.mkdir(working_directory)
     zip_filename = (os.sep.join((working_directory, 'bbc-fulltext.zip')))

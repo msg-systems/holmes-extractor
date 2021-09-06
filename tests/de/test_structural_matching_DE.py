@@ -439,16 +439,6 @@ class GermanStructuralMatchingTest(unittest.TestCase):
         holmes_manager_with_variable_search_phrases.register_search_phrase(
             "Ein ENTITYMISC")
 
-    def test_entitynoun_as_non_root_node(self):
-        matches = self._get_matches(
-            holmes_manager, "Das Fahrzeug hat einen Fehler.")
-        holmes_manager_with_variable_search_phrases.remove_all_search_phrases()
-        holmes_manager_with_variable_search_phrases.register_search_phrase(
-            "Ich sah ein ENTITYNOUN")
-        matches = self._get_matches(holmes_manager_with_variable_search_phrases,
-                                    "Ich sah einen Hund und eine Elefantenkatze")
-        self.assertEqual(len(matches), 2)
-
     def test_separable_verb_in_main_and_dependent_clauses(self):
         matches = self._get_matches(holmes_manager,
                                     "Der Mitarbeiter hatte vor, eine Versicherung abzuschließen.")
@@ -1075,13 +1065,12 @@ class GermanStructuralMatchingTest(unittest.TestCase):
                                     "Wort-Ohne-Bindestrich-Nicht-In-Ontologie")
         self.assertEqual(len(matches), 1)
 
-    def test_reverse_dependency_subword_in_document(self):
+    def test_reverse_dependency_subword_in_document_1(self):
         matches = self._get_matches(holmes_manager,
                                     "Reiseverkauf")
         self.assertEqual(len(matches), 1)
-        self.assertTrue(matches[0]['uncertain'])
 
-    def test_reverse_dependency_subword_in_document(self):
+    def test_reverse_dependency_subword_in_document_2(self):
         matches = self._get_matches(holmes_manager,
                                     "Reise- und Reiseverkauf")
         self.assertEqual(len(matches), 2)

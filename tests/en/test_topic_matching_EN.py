@@ -636,11 +636,6 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                            "gift", 5,
                            holmes_manager_coref)
 
-    def test_derived_form_text_to_match_single_word(self):
-        self._check_equals("information",
-                           "inform", 10,
-                           holmes_manager_coref)
-
     def test_derived_form_single_word_control(self):
         self._check_equals("information",
                            "information", 10,
@@ -847,7 +842,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self.assertEqual(topic_matches[0]['start_index'], 117)
         self.assertEqual(topic_matches[0]['end_index'], 120)
 
-    def test_result_ordering_by_match_length_different_documents(self):
+    def test_result_ordering_by_match_length_different_documents_2(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.remove_all_search_phrases()
         holmes_manager_coref.parse_and_register_document("""
@@ -863,9 +858,9 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         topic_matches = holmes_manager_coref.topic_match_documents_against(
             "The dog chased the cat")
         self.assertEqual(
-            topic_matches[0]['end_index'] - topic_matches[0]['start_index'], 7)
+            topic_matches[0]['end_index'] - topic_matches[0]['start_index'], 6)
         self.assertEqual(
-            topic_matches[1]['end_index'] - topic_matches[1]['start_index'], 4)
+            topic_matches[1]['end_index'] - topic_matches[1]['start_index'], 3)
 
     def test_dictionaries(self):
         holmes_manager_coref.remove_all_documents()
@@ -926,7 +921,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self.assertEqual(topic_match_dictionaries,
                          [{'document_label': '', 'text': 'Can somebody give Harry Potter his present', 'text_to_match': 'Somebody gives a present to Harry', 'rank': '1', 'index_within_document': 6, 'subword_index': None, 'start_index': 2, 'end_index': 6, 'sentences_start_index': 0, 'sentences_end_index': 6, 'sentences_character_start_index': 0, 'sentences_character_end_index': 42, 'score': 926.3511111111111, 'word_infos': [[13, 17, 'overlapping_relation', False, 'Matches GIVE directly.'], [18, 30, 'overlapping_relation', False, 'Is a synonym of HARRY in the ontology.'], [35, 42, 'overlapping_relation', True, 'Matches PRESENT directly.']], 'answers': []}])
 
-    def test_result_ordering_by_match_length_different_documents(self):
+    def test_result_ordering_by_match_length_different_documents_1(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.remove_all_search_phrases()
         holmes_manager_coref.parse_and_register_document(
@@ -1067,7 +1062,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 "A dog")
         self.assertEqual(len(topic_match_dictionaries), 1)
 
-    def test_different_match_cutoff_score_high(self):
+    def test_different_match_cutoff_score_high_1(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.remove_all_search_phrases()
         holmes_manager_coref.parse_and_register_document(
@@ -1199,7 +1194,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self.assertEqual(len(topic_match_dictionaries), 0)
         m.close()
 
-    def test_different_match_cutoff_score_high(self):
+    def test_different_match_cutoff_score_high_2(self):
         m = holmes.Manager('en_core_web_sm', number_of_workers=2,
                                           ontology=ontology_for_sm_tests)
         m.parse_and_register_document("A dog then and then and then and then and then a dog")

@@ -300,14 +300,6 @@ class WordMatchingTest(unittest.TestCase):
         self.assertEqual(text_matches[0]['word_matches'][0]['explanation'],
                 "Is an ancestor of SZEŚĆ in the ontology.")
 
-    def test_ontology_matching_depth_minus_5(self):
-        text_matches = second_holmes_manager_coref.match(
-                document_text='jeden')
-        self.assertEqual(len(text_matches), 1)
-        self.assertEqual(text_matches[0]['word_matches'][0]['match_type'], 'ontology')
-        self.assertEqual(text_matches[0]['word_matches'][0]['explanation'],
-                "Is an ancestor of SZEŚĆ in the ontology.")
-
     def test_entity_embedding_matching(self):
         text_matches = second_holmes_manager_coref.match(
                 document_text='Richard Hudson made an announcement')

@@ -63,15 +63,6 @@ class SerializationTest(unittest.TestCase):
         serialized_doc = holmes_manager.serialize_document('pets')
         self.assertEqual(serialized_doc, None)
 
-    def test_matching_with_both_documents(self):
-        holmes_manager.remove_all_documents()
-        holmes_manager.parse_and_register_document(
-            "The cat was chased by the dog", 'pets')
-        serialized_doc = holmes_manager.serialize_document('pets')
-        holmes_manager.register_serialized_document(
-            serialized_doc, 'pets2')
-        self.assertEqual(len(holmes_manager.match()), 2)
-
     def test_parent_token_indexes(self):
         holmes_manager.remove_all_documents()
         holmes_manager.parse_and_register_document(

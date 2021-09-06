@@ -14,9 +14,11 @@ from spacy.tokens import Doc, Token
 from thinc.api import Config
 from .errors import *
 from .matching import StructuralMatcher
+from .ontology import Ontology
 from .parsing import SemanticAnalyzerFactory, SemanticAnalyzer, SemanticMatchingHelperFactory,\
-    LinguisticObjectFactory, SERIALIZED_DOCUMENT_VERSION
-from .classification import SupervisedTopicTrainingBasis, SupervisedTopicClassifier
+    LinguisticObjectFactory, SearchPhrase, SERIALIZED_DOCUMENT_VERSION
+from .classification import SupervisedTopicTrainingBasis, SupervisedTopicClassifier,\
+    SupervisedTopicClassifierModel
 from .topic_matching import TopicMatcher, TopicMatchDictionaryOrderer
 from .consoles import HolmesConsoles
 
@@ -26,7 +28,7 @@ absolute_config_filename = pkg_resources.resource_filename(__name__, 'config.cfg
 config = Config().from_disk(absolute_config_filename)
 vector_nlps_config_dict = config['vector_nlps']
 model_names_to_nlps = {}
-model_names_to_semantic_analyzers = {}
+MODEL_NAMES_TO_SEMANTIC_ANALYZERS = {}
 nlp_lock = Lock()
 pipeline_components_lock = Lock()
 
@@ -41,15 +43,15 @@ def get_nlp(model_name:str) -> Language:
         return model_names_to_nlps[model_name]
 
 def get_semantic_analyzer(nlp:Language) -> SemanticAnalyzer:
-    global model_names_to_semantic_analyzers
+    global MODEL_NAMES_TO_SEMANTIC_ANALYZERS
     model_name = '_'.join((nlp.meta['lang'], nlp.meta['name']))
     vectors_nlp = get_nlp(vector_nlps_config_dict[model_name]) \
         if model_name in vector_nlps_config_dict else nlp
     with nlp_lock:
-        if model_name not in model_names_to_semantic_analyzers:
-            model_names_to_semantic_analyzers[model_name] = \
+        if model_name not in MODEL_NAMES_TO_SEMANTIC_ANALYZERS:
+            MODEL_NAMES_TO_SEMANTIC_ANALYZERS[model_name] = \
                 SemanticAnalyzerFactory().semantic_analyzer(nlp=nlp, vectors_nlp=vectors_nlp)
-        return model_names_to_semantic_analyzers[model_name]
+        return MODEL_NAMES_TO_SEMANTIC_ANALYZERS[model_name]
 
 class Manager:
     """The facade class for the Holmes library.
@@ -58,15 +60,18 @@ class Manager:
 
     model -- the name of the spaCy model, e.g. *en_core_web_trf*
     overall_similarity_threshold -- the overall similarity threshold for embedding-based
-        matching. Defaults to *1.0*, which deactivates embedding-based matching.
+        matching. Defaults to *1.0*, which deactivates embedding-based matching. Note that this
+        parameter is not relevant for topic matching, where the thresholds for embedding-based
+        matching are set on the call to *topic_match_documents_against*.
     embedding_based_matching_on_root_words -- determines whether or not embedding-based
         matching should be attempted on search-phrase root tokens, which has a considerable
-        performance hit. Defaults to *False*.
+        performance hit. Defaults to *False*. Note that this parameter is not relevant for topic
+        matching.
     ontology -- an *Ontology* object. Defaults to *None* (no ontology).
     analyze_derivational_morphology -- *True* if matching should be attempted between different
         words from the same word family. Defaults to *True*.
-    perform_coreference_resolution -- *True*, *False*, or *None* if coreference resolution
-        should be taken into account when matching. Defaults to *True*.
+    perform_coreference_resolution -- *True* if coreference resolution should be taken into account
+        when matching. Defaults to *True*.
     use_reverse_dependency_matching -- *True* if appropriate dependencies in documents can be
         matched to dependencies in search phrases where the two dependencies point in opposite
         directions. Defaults to *True*.
@@ -77,11 +82,11 @@ class Manager:
     """
 
     def __init__(
-            self, model, *, overall_similarity_threshold=1.0,
-            embedding_based_matching_on_root_words=False, ontology=None,
-            analyze_derivational_morphology=True, perform_coreference_resolution=True,
-            use_reverse_dependency_matching=True, verbose=False,
-            number_of_workers:int=None):
+            self, model:str, *, overall_similarity_threshold:float=1.0,
+            embedding_based_matching_on_root_words:bool=False, ontology:Ontology=None,
+            analyze_derivational_morphology:bool=True, perform_coreference_resolution:bool=True,
+            use_reverse_dependency_matching:bool=True, number_of_workers:int=None,
+            verbose:bool=False):
         self.verbose = verbose
         self.nlp = get_nlp(model)
         with pipeline_components_lock:
@@ -127,7 +132,7 @@ class Manager:
                 phraselet_template.template_sentence)
         if number_of_workers is None:
             number_of_workers = cpu_count()
-        elif not 0 < number_of_workers:
+        elif number_of_workers <= 0:
             raise ValueError('number_of_workers must be a positive integer.')
         self.number_of_workers = number_of_workers
         self.next_worker_to_use = 0
@@ -164,8 +169,8 @@ class Manager:
         exception_worker_label = None
         for _ in range(number_of_messages):
             worker_label, return_value, return_info = reply_queue.get(timeout=TIMEOUT_SECONDS)
-            if isinstance(return_info, WrongModelDeserializationError) or \
-                    isinstance(return_info, WrongVersionDeserializationError):
+            if isinstance(return_info, (WrongModelDeserializationError,
+                    WrongVersionDeserializationError)):
                 raise return_info
             elif isinstance(return_info, Exception):
                 if exception_worker_label is None:
@@ -182,7 +187,7 @@ class Manager:
                 '. Please examine the output from the worker processes to identify the problem.')))
         return return_values
 
-    def register_serialized_documents(self, document_dictionary):
+    def register_serialized_documents(self, document_dictionary:dict[str, Doc]) -> None:
         """Parameters:
 
         document_dictionary -- a dictionary from labels to serialized documents.
@@ -201,7 +206,7 @@ class Manager:
                         (serialized_doc, label), reply_queue), TIMEOUT_SECONDS)
         self.handle_response(reply_queue, len(document_dictionary), 'register_serialized_documents')
 
-    def register_serialized_document(self, serialized_document, label):
+    def register_serialized_document(self, serialized_document:bytes, label:str) -> None:
         """Parameters:
 
         document -- a preparsed Holmes document.
@@ -210,7 +215,7 @@ class Manager:
         """
         self.register_serialized_documents({label: serialized_document})
 
-    def parse_and_register_document(self, document_text, label=''):
+    def parse_and_register_document(self, document_text:str, label:str='') -> None:
         """Parameters:
 
         document_text -- the raw document text.
@@ -221,7 +226,7 @@ class Manager:
         doc = self.nlp(document_text)
         self.register_serialized_document(doc.to_bytes(), label)
 
-    def remove_document(self, label):
+    def remove_document(self, label:str) -> None:
         """Parameters:
 
         label -- the label of the document to be removed.
@@ -230,30 +235,30 @@ class Manager:
         with self.lock:
             if label in self.document_labels_to_worker_queues:
                 self.input_queues[self.document_labels_to_worker_queues[label]].put((
-                    self.worker.remove_document, (label,), reply_queue), TIMEOUT_SECONDS)
+                    self.worker.remove_document, (label,), reply_queue), timeout=TIMEOUT_SECONDS)
                 del self.document_labels_to_worker_queues[label]
                 self.word_dictionaries_need_rebuilding = True
             else:
                 return
         self.handle_response(reply_queue, 1, 'remove_document')
 
-    def remove_all_documents(self):
+    def remove_all_documents(self) -> None:
         reply_queue = self.multiprocessing_manager.Queue()
         with self.lock:
             for worker_index in range(self.number_of_workers):
                 self.input_queues[worker_index].put((
-                    self.worker.remove_all_documents, None, reply_queue), TIMEOUT_SECONDS)
+                    self.worker.remove_all_documents, None, reply_queue), timeout=TIMEOUT_SECONDS)
             self.word_dictionaries_need_rebuilding = True
             self.document_labels_to_worker_queues = {}
         self.handle_response(reply_queue, self.number_of_workers, 'remove_all_documents')
 
-    def document_labels(self):
+    def document_labels(self) -> list[str]:
         """Returns a list of the labels of the currently registered documents."""
         with self.lock:
             unsorted_labels = self.document_labels_to_worker_queues.keys()
         return sorted(unsorted_labels)
 
-    def serialize_document(self, label):
+    def serialize_document(self, label:str) -> bytes:
         """Returns a serialized representation of a Holmes document that can be persisted to
             a file. If *label* is not the label of a registered document, *None* is returned
             instead.
@@ -271,12 +276,21 @@ class Manager:
                 return None
         return self.handle_response(reply_queue, 1, 'serialize_document')[0]
 
-    def get_document(self, label=''):
+    def get_document(self, label='') -> Doc:
+        """Returns a Holmes document. If *label* is not the label of a registered document, *None*
+            is returned instead.
+
+        Parameters:
+
+        label -- the label of the document to be serialized.
+        """
         serialized_document = self.serialize_document(label)
         return None if serialized_document is None else \
             Doc(self.nlp.vocab).from_bytes(serialized_document)
 
-    def debug_document(self, label=''):
+    def debug_document(self, label='') -> None:
+        """Outputs a debug representation for a loaded document.
+        """
         serialized_document = self.serialize_document(label)
         if serialized_document is not None:
             doc = Doc(self.nlp.vocab).from_bytes(serialized_document)
@@ -292,8 +306,8 @@ class Manager:
             search_phrase_text, search_phrase_doc, label, None, False, False, False, False)
         return search_phrase
 
-    def register_search_phrase(self, search_phrase_text, label=None):
-        """Returns the new search phrase.
+    def register_search_phrase(self, search_phrase_text:str, label:str=None) -> SearchPhrase:
+        """Registers and returns a new search phrase.
 
         Parameters:
 
@@ -308,37 +322,48 @@ class Manager:
             for worker_index in range(self.number_of_workers):
                 self.input_queues[worker_index].put((
                     self.worker.register_search_phrase,
-                    (search_phrase,), reply_queue), TIMEOUT_SECONDS)
+                    (search_phrase,), reply_queue), timeout=TIMEOUT_SECONDS)
             self.search_phrases.append(search_phrase)
         self.handle_response(reply_queue, self.number_of_workers, 'register_search_phrase')
         return search_phrase
 
-    def remove_all_search_phrases_with_label(self, label):
+    def remove_all_search_phrases_with_label(self, label:str) -> None:
         reply_queue = self.multiprocessing_manager.Queue()
         with self.lock:
             for worker_index in range(self.number_of_workers):
                 self.input_queues[worker_index].put((
                     self.worker.remove_all_search_phrases_with_label,
-                    (label,), reply_queue), TIMEOUT_SECONDS)
+                    (label,), reply_queue), timeout=TIMEOUT_SECONDS)
             self.search_phrases = [search_phrase for search_phrase in self.search_phrases
                 if search_phrase.label != label]
         self.handle_response(reply_queue, self.number_of_workers,
             'remove_all_search_phrases_with_label')
 
-    def remove_all_search_phrases(self):
+    def remove_all_search_phrases(self) -> None:
         reply_queue = self.multiprocessing_manager.Queue()
         with self.lock:
             for worker_index in range(self.number_of_workers):
                 self.input_queues[worker_index].put((
-                    self.worker.remove_all_search_phrases, None, reply_queue), TIMEOUT_SECONDS)
+                    self.worker.remove_all_search_phrases, None, reply_queue),
+                    timeout=TIMEOUT_SECONDS)
             self.search_phrases = []
         self.handle_response(reply_queue, self.number_of_workers, 'remove_all_search_phrases')
 
-    def list_search_phrase_labels(self):
+    def list_search_phrase_labels(self) -> list[str]:
         with self.lock:
-            return sorted(list(set([search_phrase.label for search_phrase in self.search_phrases])))
+            return sorted(list({search_phrase.label for search_phrase in self.search_phrases}))
 
-    def match(self, search_phrase_text=None, document_text=None):
+    def match(self, search_phrase_text:str=None, document_text:str=None) -> list[dict]:
+        """ Matches search phrases to documents and returns the result as match dictionaries.
+
+        Parameters:
+
+        search_phrase_text -- a text from which to generate a search phrase, or *None* if the
+            preloaded search phrases should be used for matching.
+        document_text -- a text from which to generate a document, or *None* if the preloaded
+            documents should be used for matching.
+        """
+
         if search_phrase_text is not None:
             search_phrase = self.internal_get_search_phrase(search_phrase_text, '')
         elif len(self.list_search_phrase_labels()) == 0:
@@ -362,7 +387,7 @@ class Manager:
         for worker_index in worker_range:
             self.input_queues[worker_index].put((
                 self.worker.match, (serialized_document, search_phrase), reply_queue),
-                TIMEOUT_SECONDS)
+                timeout=TIMEOUT_SECONDS)
         worker_match_dictss = self.handle_response(reply_queue, number_of_workers,
             'match')
         match_dicts = []
@@ -373,11 +398,11 @@ class Manager:
     def get_corpus_frequency_information(self):
 
         def merge_dicts_adding_common_values(dict1, dict2):
-           dict_to_return = {**dict1, **dict2}
-           for key, value in dict_to_return.items():
-               if key in dict1 and key in dict2:
-                   dict_to_return[key] = dict1[key] + dict2[key]
-           return dict_to_return
+            dict_to_return = {**dict1, **dict2}
+            for key in dict_to_return:
+                if key in dict1 and key in dict2:
+                    dict_to_return[key] = dict1[key] + dict2[key]
+            return dict_to_return
 
         with self.lock:
             if self.word_dictionaries_need_rebuilding:
@@ -386,7 +411,7 @@ class Manager:
                 for worker_index in range(self.number_of_workers):
                     self.input_queues[worker_index].put((
                         self.worker.get_words_to_corpus_frequencies, None, reply_queue),
-                        TIMEOUT_SECONDS)
+                        timeout=TIMEOUT_SECONDS)
                 exception_worker_label = None
                 for _ in range(self.number_of_workers):
                     worker_label, return_value, return_info = reply_queue.get(
@@ -416,17 +441,21 @@ class Manager:
             return self.words_to_corpus_frequencies, self.maximum_corpus_frequency
 
     def topic_match_documents_against(
-            self, text_to_match, *, use_frequency_factor=True, maximum_activation_distance=75,
-            word_embedding_match_threshold=0.8,
-            initial_question_word_embedding_match_threshold=0.7,
-            relation_score=300, reverse_only_relation_score=200,
-            single_word_score=50, single_word_any_tag_score=20, initial_question_word_answer_score=600,
-            initial_question_word_behaviour='process', different_match_cutoff_score=15,
-            overlapping_relation_multiplier=1.5, embedding_penalty=0.6,
-            ontology_penalty=0.9,
-            relation_matching_frequency_threshold=0.25, embedding_matching_frequency_threshold=0.5,
-            sideways_match_extent=100, only_one_result_per_document=False, number_of_results=10,
-            document_label_filter=None, tied_result_quotient=0.9):
+            self, text_to_match:str, *, use_frequency_factor:bool=True,
+            maximum_activation_distance:int=75,
+            word_embedding_match_threshold:float=0.8,
+            initial_question_word_embedding_match_threshold:float=0.7,
+            relation_score:int=300, reverse_only_relation_score:int=200,
+            single_word_score:int=50, single_word_any_tag_score:int=20,
+            initial_question_word_answer_score:int=600,
+            initial_question_word_behaviour:str='process', different_match_cutoff_score:int=15,
+            overlapping_relation_multiplier:float=1.5, embedding_penalty:float=0.6,
+            ontology_penalty:float=0.9,
+            relation_matching_frequency_threshold:float=0.25,
+            embedding_matching_frequency_threshold:float=0.5,
+            sideways_match_extent:int=100, only_one_result_per_document:bool=False,
+            number_of_results:int=10, document_label_filter:str=None,
+            tied_result_quotient:float=0.9) -> list[dict]:
 
         """Returns the results of a topic match between an entered text and the loaded documents.
 
@@ -450,8 +479,8 @@ class Manager:
             word is matched.
         single_word_any_tag_score -- the activation score added when a single word is matched
             whose tag did not correspond to the template specification.
-        initial_question_word_answer_score -- the activation score added when a question word is matched
-            to an answering phrase. Set to the value of *relation_score* if not supplied.
+        initial_question_word_answer_score -- the activation score added when a question word is
+            matched to an answering phrase. Set to the value of *relation_score* if not supplied.
         initial_question_word_behaviour -- 'process' if a question word in the sentence
             constinuent at the beginning of *text_to_match* is to be matched to document phrases
             that answer it; 'exclusive' if only topic matches that involve such question words
@@ -493,8 +522,7 @@ class Manager:
                 'initial_question_word_embedding_match_threshold must be between 0 and 1')
 
         if not self.semantic_analyzer.model_supports_embeddings():
-                word_embedding_match_threshold = initial_question_word_embedding_match_threshold = \
-                    1.0
+            word_embedding_match_threshold = initial_question_word_embedding_match_threshold = 1.0
 
         overall_similarity_threshold = sqrt(word_embedding_match_threshold)
         initial_question_word_overall_similarity_threshold = sqrt(
@@ -553,7 +581,7 @@ class Manager:
                 ontology_penalty, relation_matching_frequency_threshold,
                 embedding_matching_frequency_threshold, sideways_match_extent,
                 only_one_result_per_document, number_of_results, document_label_filter,
-                use_frequency_factor), reply_queue), TIMEOUT_SECONDS)
+                use_frequency_factor), reply_queue), timeout=TIMEOUT_SECONDS)
         worker_topic_match_dictss = self.handle_response(reply_queue,
             self.number_of_workers, 'match')
         topic_match_dicts = []
@@ -564,8 +592,9 @@ class Manager:
             topic_match_dicts, number_of_results, tied_result_quotient)
 
     def get_supervised_topic_training_basis(
-            self, *, classification_ontology=None,
-            overlap_memory_size=10, oneshot=True, match_all_words=False, verbose=True):
+            self, *, classification_ontology:Ontology=None,
+            overlap_memory_size:int=10, oneshot:bool=True, match_all_words:bool=False,
+            verbose:bool=True) -> SupervisedTopicTrainingBasis:
         """ Returns an object that is used to train and generate a document model.
 
             Parameters:
@@ -588,7 +617,8 @@ class Manager:
             match_all_words=match_all_words,
             overall_similarity_threshold=self.overall_similarity_threshold, verbose=verbose)
 
-    def deserialize_supervised_topic_classifier(self, serialized_model, verbose=False):
+    def deserialize_supervised_topic_classifier(self,
+            serialized_model:str, verbose:bool=False) -> SupervisedTopicClassifier:
         """ Returns a document classifier that will use a pre-trained model.
 
             Parameters:
@@ -617,9 +647,9 @@ class Manager:
         holmes_consoles.start_information_extraction_mode()
 
     def start_topic_matching_search_mode_console(
-            self, only_one_result_per_document=False,
-            word_embedding_match_threshold=0.8,
-            initial_question_word_embedding_match_threshold=0.5):
+            self, only_one_result_per_document:bool=False,
+            word_embedding_match_threshold:float=0.8,
+            initial_question_word_embedding_match_threshold:float=0.7):
         """Starts a topic matching search mode console enabling the matching of pre-registered
             documents to search texts entered ad-hoc by the user.
 
@@ -637,7 +667,7 @@ class Manager:
             word_embedding_match_threshold,
             initial_question_word_embedding_match_threshold)
 
-    def close(self):
+    def close(self) -> None:
         for worker in self.workers:
             worker.terminate()
 
@@ -670,16 +700,16 @@ class Worker:
                     return_value, return_info = method(state, *args)
                 else:
                     return_value, return_info = method(state)
-                reply_queue.put((worker_label, return_value, return_info), TIMEOUT_SECONDS)
+                reply_queue.put((worker_label, return_value, return_info), timeout=TIMEOUT_SECONDS)
             except Exception as err:
                 print(self.error_header(method, args, worker_label))
                 print(traceback.format_exc())
-                reply_queue.put((worker_label, None, err), TIMEOUT_SECONDS)
+                reply_queue.put((worker_label, None, err), timeout=TIMEOUT_SECONDS)
             except:
                 print(self.error_header(method, args, worker_label))
                 print(traceback.format_exc())
                 err_identifier = str(sys.exc_info()[0])
-                reply_queue.put((worker_label, None, err_identifier), TIMEOUT_SECONDS)
+                reply_queue.put((worker_label, None, err_identifier), timeout=TIMEOUT_SECONDS)
 
     def load_document(self, state, serialized_doc, document_label, corpus_index_dict):
         doc = Doc(state['vocab']).from_bytes(serialized_doc)

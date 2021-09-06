@@ -237,6 +237,9 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
     def test_check_who_prep_to_positive_case(self):
         self._check_equals('who did the dog talk to', 'the dog talked to its man', 104, 18, 25)
 
+    def test_check_who_wrong_prep(self):
+        self._check_equals('who did the dog talk to', 'the dog talked with its man', 34, None, None)
+
     def test_check_who_prep_to_control_no_question_word(self):
         self._check_equals('a dog talks to a man', 'the dog talked to its man', 81, None, None)
 

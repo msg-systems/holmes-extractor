@@ -16,8 +16,6 @@ class TopicMatch:
         'start_index'
     sentences_end_index -- the end index within the document of the sentence that contains
         'end_index'
-    relative_start_index -- the start index of the topic match relative to 'sentences_start_index'
-    relative_end_index -- the end index of the topic match relative to 'sentences_start_index'
     score -- the similarity score of the topic match
     text -- the text between 'sentences_start_index' and 'sentences_end_index'
     structural_matches -- a list of `Match` objects that were used to derive this object.
@@ -73,30 +71,6 @@ class PhraseletWordMatchInfo:
         self.child_match_corpus_words_to_matches = {}
         # Dictionary from indexes where phraselets with this word as the child were matched
         # to the match objects.
-
-class TopicMatchDictionaryOrderer:
-    # extracted into its own class to facilite use by MultiprocessingManager
-
-    def order(self, topic_match_dicts, number_of_results, tied_result_quotient):
-
-        topic_match_dicts = sorted(
-            topic_match_dicts, key=lambda dict: (
-                0-dict['score'], 0-len(dict['text'].split()), dict['document_label'],
-                dict['word_infos'][0][0]))
-        topic_match_dicts = topic_match_dicts[0:number_of_results]
-        topic_match_counter = 0
-        while topic_match_counter < len(topic_match_dicts):
-            topic_match_dicts[topic_match_counter]['rank'] = str(topic_match_counter + 1)
-            following_topic_match_counter = topic_match_counter + 1
-            while following_topic_match_counter < len(topic_match_dicts) and \
-                    topic_match_dicts[following_topic_match_counter]['score'] / topic_match_dicts[
-                        topic_match_counter]['score'] > tied_result_quotient:
-                working_rank = ''.join((str(topic_match_counter + 1), '='))
-                topic_match_dicts[topic_match_counter]['rank'] = working_rank
-                topic_match_dicts[following_topic_match_counter]['rank'] = working_rank
-                following_topic_match_counter += 1
-            topic_match_counter = following_topic_match_counter
-        return topic_match_dicts
 
 class TopicMatcher:
     """A topic matcher object. See manager.py for details of the properties."""
@@ -591,7 +565,7 @@ class TopicMatcher:
         else:
             dictionary[key] = [value]
 
-    def _add_to_dict_set(self, dictionary, key, value):
+    def add_to_dict_set(self, dictionary, key, value):
         if not key in dictionary:
             dictionary[key] = set()
         dictionary[key].add(value)
@@ -613,13 +587,12 @@ class TopicMatcher:
             # searched text and on the document side, it should receive the same activation as a
             # single-word match.
             return (match.search_phrase_label.startswith('intcompound') and
-                len(set([wm.document_token.i for wm in match.word_matches])) == 1)
+                len({wm.document_token.i for wm in match.word_matches}) == 1)
 
         def get_current_activation_for_phraselet(phraselet_activation_tracker, current_index):
             distance_to_last_match = current_index - phraselet_activation_tracker.position
             tailoff_quotient = distance_to_last_match / self.maximum_activation_distance
-            if tailoff_quotient > 1.0:
-                tailoff_quotient = 1.0
+            tailoff_quotient = min(tailoff_quotient, 1.0)
             return (1-tailoff_quotient) * phraselet_activation_tracker.score
 
         document_labels_to_indexes_to_phraselet_labels = {}
@@ -633,10 +606,10 @@ class TopicMatcher:
                 inner_dict = {}
                 document_labels_to_indexes_to_phraselet_labels[match.document_label] = inner_dict
             parent_word_match = self.get_word_match_from_match(match, True)
-            self._add_to_dict_set(
+            self.add_to_dict_set(
                 inner_dict, parent_word_match.get_document_index(), match.search_phrase_label)
             child_word_match = self.get_word_match_from_match(match, False)
-            self._add_to_dict_set(
+            self.add_to_dict_set(
                 inner_dict, child_word_match.get_document_index(), match.search_phrase_label)
         current_document_label = None
         for pssm_index, match in enumerate(position_sorted_structural_matches):
@@ -918,7 +891,8 @@ class TopicMatcher:
                     highest_activation_relative_start_index = \
                         doc[topic_match.index_within_document].idx - \
                         sentences_character_start_index_in_document
-                    highest_activation_relative_end_index = doc[topic_match.index_within_document].idx \
+                    highest_activation_relative_end_index = \
+                        doc[topic_match.index_within_document].idx \
                         + len(doc[topic_match.index_within_document].text) - \
                         sentences_character_start_index_in_document
                 highest_activation_word_info = WordInfo(
@@ -936,10 +910,10 @@ class TopicMatcher:
                 answers.sort(key=lambda answer:(answer[0], answer[1]))
                 for answer in answers.copy():
                     if len([1 for other_answer in answers if other_answer[0] < answer[0] and
-                            other_answer[1] >= answer[1]]):
+                            other_answer[1] >= answer[1]]) > 0:
                         answers.remove(answer)
                     elif len([1 for other_answer in answers if other_answer[0] == answer[0] and
-                            other_answer[1] > answer[1]]):
+                            other_answer[1] > answer[1]]) > 0:
                         answers.remove(answer)
                 topic_match_dict = {
                     'document_label': topic_match.document_label,
@@ -967,4 +941,28 @@ class TopicMatcher:
                     'answers': [[answer[0], answer[1]] for answer in answers]
                 }
                 topic_match_dicts.append(topic_match_dict)
+        return topic_match_dicts
+
+class TopicMatchDictionaryOrderer:
+    # in its own class as it is called from the main process rather than from the workers
+
+    def order(self, topic_match_dicts, number_of_results, tied_result_quotient):
+
+        topic_match_dicts = sorted(
+            topic_match_dicts, key=lambda dict: (
+                0-dict['score'], 0-len(dict['text'].split()), dict['document_label'],
+                dict['word_infos'][0][0]))
+        topic_match_dicts = topic_match_dicts[0:number_of_results]
+        topic_match_counter = 0
+        while topic_match_counter < len(topic_match_dicts):
+            topic_match_dicts[topic_match_counter]['rank'] = str(topic_match_counter + 1)
+            following_topic_match_counter = topic_match_counter + 1
+            while following_topic_match_counter < len(topic_match_dicts) and \
+                    topic_match_dicts[following_topic_match_counter]['score'] / topic_match_dicts[
+                        topic_match_counter]['score'] > tied_result_quotient:
+                working_rank = ''.join((str(topic_match_counter + 1), '='))
+                topic_match_dicts[topic_match_counter]['rank'] = working_rank
+                topic_match_dicts[following_topic_match_counter]['rank'] = working_rank
+                following_topic_match_counter += 1
+            topic_match_counter = following_topic_match_counter
         return topic_match_dicts

@@ -334,12 +334,6 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                            ['governor-adjective: mimi momo-big',
                             'word: mimi momo'], False, False)
 
-    def test_ontology_and_entity_defined_multiword_not_match_all_words_with_adjective(self):
-        self._check_equals(ontology_holmes_manager,
-                           "The big Richard Mimi Momo",
-                           ['governor-adjective: richard mimi momo-big',
-                            'word: richard mimi momo'], False, False)
-
     def test_entity_defined_multiword_match_all_words(self):
         self._check_equals(no_ontology_coref_holmes_manager,
                            "Richard Paul Hudson came",

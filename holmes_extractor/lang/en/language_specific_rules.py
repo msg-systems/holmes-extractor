@@ -6,9 +6,6 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
 
     language_name = 'English'
 
-    #
-    default_vectors_model_name = 'en_core_web_lg'
-
     # The part of speech tags that can refer to nouns
     noun_pos = ('NOUN', 'PROPN')
 
@@ -55,7 +52,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
     conjunction_deps = ('conj', 'appos', 'cc')
 
     # Syntactic tags that can mark interrogative pronouns
-    interrogative_pronoun_tags = ('WDT', 'WP', 'WRB', 'WP$')
+    interrogative_pronoun_tags = ('WDT', 'WP', 'WRB')
 
     # Syntactic tags that exclude a token from being the child token within a semantic dependency
     semantic_dependency_excluded_tags = ('DT')
@@ -108,7 +105,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
 
     def add_subwords(self, token, subword_cache):
         """ Analyses the internal structure of the word to find atomic semantic elements. Is
-            relevant for German and not currently implemented for English.
+            relevant for German but not implemented for English.
         """
         pass
 
@@ -548,9 +545,6 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                     verb_token._.holmes.children.append(SemanticDependency(
                         verb_token.i, token.i, 'arg', True))
 
-    def is_interrogative_pronoun(self, token:Token):
-        return token.tag_ in self.interrogative_pronoun_tags
-
 class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
 
     # The part of speech tags that can refer to nouns
@@ -585,6 +579,25 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
     # Lemmas that should be suppressed within relation phraselets or as words of
     # single-word phraselets during supervised document classification.
     supervised_document_classification_phraselet_stop_lemmas = ('be', 'have')
+
+    # Parts of speech that are preferred as lemmas within phraselets
+    preferred_phraselet_pos = ('NOUN', 'PROPN')
+
+    # The part-o'f-speech labels permitted for elements of an entity-defined multiword.
+    entity_defined_multiword_pos = ('NOUN', 'PROPN')
+
+    # The entity labels permitted for elements of an entity-defined multiword.
+    entity_defined_multiword_entity_types = ('PERSON', 'ORG', 'GPE', 'WORK_OF_ART')
+
+    # Dependency labels that can mark righthand siblings
+    sibling_marker_deps = ('conj', 'appos')
+
+    # Dependency labels from a token's subtree that are not included in a question answer
+    question_answer_blacklist_deps = ('conj', 'appos', 'cc', 'punct')
+
+    # Dependency labels from a token's subtree that are not included in a question answer if in
+    # final position.
+    question_answer_final_blacklist_deps = ('case')
 
     # Maps from dependency tags as occurring within search phrases to corresponding implication
     # definitions. This is the main source of the asymmetry in matching from search phrases to
@@ -764,11 +777,8 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
     def question_word_matches(self, search_phrase_label:str,
             search_phrase_token:Token, document_token:Token,
             document_vector, entity_label_to_vector_dict:dict,
-            initial_question_word_embedding_match_threshold:float) -> str:
-
-        if search_phrase_label == 'headprep-WH' and not \
-                self.check_for_common_preposition(search_phrase_token, document_token):
-            return False
+            initial_question_word_embedding_match_threshold:float) -> bool:
+        """ Checks whether *search_phrase_token* is a question word matching *document_token*. """
 
         if search_phrase_token._.holmes.lemma.startswith('who'):
             ent_types = ('PERSON', 'NORP', 'ORG', 'GPE')
@@ -814,25 +824,6 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
                 document_token.children if c._.holmes.lemma in ('because') or c.tag_ == 'TO']) > 0
                 # syntactic not semantic children to handle subject-predicate phrases correctly
         return False
-
-    # Parts of speech that are preferred as lemmas within phraselets
-    preferred_phraselet_pos = ('NOUN', 'PROPN')
-
-    # The part-o'f-speech labels permitted for elements of an entity-defined multiword.
-    entity_defined_multiword_pos = ('NOUN', 'PROPN')
-
-    # The entity labels permitted for elements of an entity-defined multiword.
-    entity_defined_multiword_entity_types = ('PERSON', 'ORG', 'GPE', 'WORK_OF_ART')
-
-    # Dependency labels that can mark righthand siblings
-    sibling_marker_deps = ('conj', 'appos')
-
-    # Dependency labels from a token's subtree that are not included in a question answer
-    question_answer_blacklist_deps = ('conj', 'appos', 'cc', 'punct')
-
-    # Dependency labels from a token's subtree that are not included in a question answer if in
-    # final position.
-    question_answer_final_blacklist_deps = ('case')
 
     def normalize_hyphens(self, word):
         """ Normalizes hyphens for ontology matching. Depending on the language,

@@ -19,9 +19,9 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
 
     adjectival_predicate_subject_dep = 'sb'
 
-    adjectival_predicate_predicate_dep = 'pd'
-
     adjectival_predicate_predicate_pos = 'ADV'
+
+    adjectival_predicate_predicate_dep = 'pd'
 
     modifier_dep = 'nk'
 
@@ -63,7 +63,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
     # Only words at least this long are examined for possible subwords
     minimum_length_for_subword_search = 10
 
-    # Part-of-speech pos examined for subwords
+    # Part-of-speech pos examined for subwords (additionally to part-of-speech tags below)
     pos_for_subword_search = ('X')
 
     # Part-of-speech tags examined for subwords
@@ -77,7 +77,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
     # Subwords at least this long are preferred.
     minimum_normal_subword_length = 6
 
-    # Subwords longer than this are likely not be atomic and solutions that split them up are
+    # Subwords longer than this are likely not to be atomic and solutions that split them up are
     # preferred
     maximum_realistic_subword_length = 12
 
@@ -95,7 +95,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
     fugen_s_ending_whitelist = (
         'tum', 'ling', 'ion', 'tät', 'heit', 'keit', 'schaft', 'sicht', 'ung')
 
-    # Endings after which a Fugen_S is normally disallowed
+    # Endings after which a Fugen-S is normally disallowed
     fugen_s_ending_blacklist = (
         'a', 'ä', 'e', 'i', 'o', 'ö', 'u', 'ü', 'nt', 'sch', 's', 'ß', 'st', 'tz', 'z')
 
@@ -152,6 +152,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
             len(list(token.children)) == 0)
 
     def add_subwords(self, token, subword_cache):
+        """ Adds any subwords to *token._.holmes*. """
 
         class PossibleSubword:
             """ A subword within a possible solution.
@@ -159,8 +160,8 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                 text -- the text
                 char_start_index -- the character start index of the subword within the word.
                 fugen_s_status --
-                '1' if the preceding word has an ending that normally has a Fugen-s,
-                '2' if the preceding word has an ending that precludes using a Fugen-s,
+                '1' if the preceding word has an ending that normally has a Fugen-S,
+                '2' if the preceding word has an ending that precludes using a Fugen-S,
                 '0' otherwise.
             """
 
@@ -274,7 +275,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                 return possible_solutions[0]
 
         def get_lemmatization_doc(possible_subwords, pos):
-            # We retrieve the lemma for each subword by calling Spacy. To reduce the
+            # We retrieve the lemma for each subword by calling spaCy. To reduce the
             # overhead, we concatenate the subwords in the form:
             # Subword1. Subword2. Subword3
             entry_words = []
@@ -423,7 +424,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
             token._.holmes.is_negated = True
 
     def set_negation(self, token):
-        """Marks the negation on the token. A token is negative if it or one of its ancestors
+        """Marks any negation on *token*. A token is negative if it or one of its ancestors
             has a negation word as a syntactic (not semantic!) child.
         """
         if token._.holmes.is_negated is not None:
@@ -847,7 +848,8 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                     relevant_dependency.child_token(token.doc))
                 for target_token in (
                         target_token for target_token in target_tokens
-                        if target_token.i != dependency.parent_index and len([dep for dep in target_token._.holmes.children if dep.label ==
+                        if target_token.i != dependency.parent_index and len([dep for dep in
+                        target_token._.holmes.children if dep.label ==
                         target_dependency and not dep.is_uncertain]) == 0):
                     # these dependencies are always uncertain
                     target_token._.holmes.children.append(SemanticDependency(
@@ -912,9 +914,6 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                             dependency.child_index in real_subject_indexes):
                         dependency.label = 'sb'
 
-    def is_interrogative_pronoun(self, token:Token):
-        return token.tag_ in self.interrogative_pronoun_tags or token._.holmes.lemma == 'wessen'
-
 class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
 
     noun_pos = ('NOUN', 'PROPN', 'ADJ')
@@ -936,6 +935,18 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
     topic_matching_phraselet_stop_tags = ('PPER', 'PDS', 'PRF')
 
     supervised_document_classification_phraselet_stop_lemmas = ('sein', 'haben')
+
+    preferred_phraselet_pos = ('NOUN', 'PROPN')
+
+    entity_defined_multiword_pos = ('NOUN', 'PROPN')
+
+    entity_defined_multiword_entity_types = ('PER', 'LOC')
+
+    sibling_marker_deps = ('cj', 'app')
+
+    question_answer_blacklist_deps = ('cj', 'cd', 'punct', 'app', 'punct')
+
+    question_answer_final_blacklist_deps = ()
 
     match_implication_dict = {
         'sb': MatchImplication(search_phrase_dependency='sb',
@@ -1078,7 +1089,7 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
 
     def question_word_matches(self, search_phrase_label:str, search_phrase_token:Token,
             document_token:Token, document_vector, entity_label_to_vector_dict:dict,
-            initial_question_word_embedding_match_threshold:float) -> str:
+            initial_question_word_embedding_match_threshold:float) -> bool:
         if search_phrase_token._.holmes.lemma in ('wer', 'wen', 'wem'):
             ent_types = ('PER', 'ORG')
             return document_token.ent_type_ in ent_types or \
@@ -1132,18 +1143,6 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             return True
         # 'wessen' is not correctly recognized by the current _lg model
         return False
-
-    preferred_phraselet_pos = ('NOUN', 'PROPN')
-
-    entity_defined_multiword_pos = ('NOUN', 'PROPN')
-
-    entity_defined_multiword_entity_types = ('PER', 'LOC')
-
-    sibling_marker_deps = ('cj', 'app')
-
-    question_answer_blacklist_deps = ('cj', 'cd', 'punct', 'app', 'punct')
-
-    question_answer_final_blacklist_deps = ()
 
     def normalize_hyphens(self, word):
         """ Normalizes hyphens in a multiword for ontology matching. Depending on the language,

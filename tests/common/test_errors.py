@@ -119,7 +119,7 @@ class ErrorsTest(unittest.TestCase):
             nocoref_holmes_manager.remove_all_documents()
             nocoref_holmes_manager.match(search_phrase_text="Try this")
 
-    def test_no_document_error_structural_match(self):
+    def test_no_document_error_topic_match(self):
         with self.assertRaises(NoDocumentError) as context:
             nocoref_holmes_manager.remove_all_documents()
             nocoref_holmes_manager.topic_match_documents_against(text_to_match="Try this")

@@ -329,7 +329,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         self._check_word_match(matches[0], 1, 3, 'elefant', 1)
         self._check_word_match(matches[1], 1, 7, 'elefant', 1)
 
-    def test_coreference_and_last_subword_and_reverse_dependency(self):
+    def test_coreference_and_last_subword_and_reverse_dependency_simple(self):
         coref_holmes_manager.remove_all_documents()
         coref_holmes_manager.parse_and_register_document(
             """Es gab einen Versicherungsurlaub. Jemand verkaufte ihn.""")
@@ -337,7 +337,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         self.assertEqual(len(matches), 1)
         self._check_word_match(matches[0], 1, 3, 'urlaub', 1)
 
-    def test_coreference_and_last_subword_and_reverse_dependency(self):
+    def test_coreference_and_last_subword_and_reverse_dependency_compound(self):
         coref_holmes_manager.remove_all_documents()
         coref_holmes_manager.parse_and_register_document(
             """Es gab einen Versicherungsurlaub und einen Versicherungsurlaub. Jemand verkaufte sie.""")

@@ -111,7 +111,7 @@ class SupervisedTopicTrainingUtils:
     def record_matches(
             self, *, phraselet_labels_to_search_phrases, semantic_matching_helper,
             structural_matcher, sorted_label_dict, doc_label, doc, matrix, row_index,
-            overall_similarity_threshold, verbose):
+            overall_similarity_threshold):
         """ Matches a document against the currently stored phraselets and records the matches
             in a matrix.
 
@@ -128,7 +128,6 @@ class SupervisedTopicTrainingUtils:
             matrix -- the matrix within which to record the matches.
             row_index -- the row number within the matrix corresponding to the document.
             overall_similarity_threshold -- the threshold for embedding-based matching.
-            verbose -- if 'True', matching information is outputted to the console.
         """
         document_labels_to_documents = {doc_label: doc}
         corpus_index_dict = {}
@@ -403,8 +402,7 @@ class SupervisedTopicModelTrainer:
                 doc=self.training_basis.training_document_labels_to_documents[document_label].doc,
                 matrix=self.input_matrix,
                 row_index=index,
-                overall_similarity_threshold=self.training_basis.overall_similarity_threshold,
-                verbose=self.training_basis.verbose)
+                overall_similarity_threshold=self.training_basis.overall_similarity_threshold)
             self.record_classifications_for_training(document_label, index)
         self._hidden_layer_sizes = hidden_layer_sizes
         if self._hidden_layer_sizes is None:
@@ -612,8 +610,7 @@ class SupervisedTopicClassifier:
                 doc_label='',
                 matrix=new_document_matrix,
                 row_index=0,
-                overall_similarity_threshold=self.overall_similarity_threshold,
-                verbose=self.verbose):
+                overall_similarity_threshold=self.overall_similarity_threshold):
             return []
         else:
             classification_indexes = self.model.mlp.predict(new_document_matrix).nonzero()[1]

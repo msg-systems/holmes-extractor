@@ -79,7 +79,7 @@ if __name__ in ('__main__', 'example_search_EN_literature'):
 
     if os.path.exists(working_directory):
         if not os.path.isdir(working_directory):
-            raise RuntimeError(' '.join((working_directory), 'must be a directory'))
+            raise RuntimeError(' '.join((working_directory, 'must be a directory')))
     else:
         os.mkdir(working_directory)
 

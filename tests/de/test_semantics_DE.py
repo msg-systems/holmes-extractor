@@ -369,10 +369,10 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[2].lemma_, 'zur')
         self.assertEqual(doc[2]._.holmes.lemma, 'zu')
 
-    def test_von_phrase(self):
+    def test_von_phrase_1(self):
         doc = nlp("Der Abschluss von einer Versicherung")
         self.assertEqual(
-            doc[1]._.holmes.string_representation_of_children(), '2:mnr; 4:pobjo')
+            doc[1]._.holmes.string_representation_of_children(), '2:pg; 4:pobjo')
 
     def test_von_phrase_with_conjunction(self):
         doc = nlp(
@@ -771,7 +771,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[2]._.holmes.string_representation_of_parents(),
                          '0:pobjp; 1:nk')
 
-    def test_von_phrase(self):
+    def test_von_phrase_2(self):
         doc = nlp("Die Verwandlung von einem Mädchen")
         self.assertEqual(doc[1]._.holmes.string_representation_of_children(),
                          '2:pg; 4:pobjo')
@@ -860,29 +860,6 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[3]._.holmes.subwords[1].index, 1)
         self.assertEqual(doc[3]._.holmes.subwords[1].containing_token_index, 3)
         self.assertEqual(doc[3]._.holmes.subwords[1].char_start_index, 9)
-
-    def test_three_subwords_with_non_whitelisted_fugen_s(self):
-
-        doc = nlp("Inhaltsverzeichnisanlage")
-        self.assertEqual(len(doc[0]._.holmes.subwords), 3)
-
-        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Inhalt')
-        self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'inhalt')
-        self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
-        self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
-        self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
-
-        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'verzeichnis')
-        self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'verzeichnis')
-        self.assertEqual(doc[0]._.holmes.subwords[1].index, 1)
-        self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 0)
-        self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 7)
-
-        self.assertEqual(doc[0]._.holmes.subwords[2].text, 'anlage')
-        self.assertEqual(doc[0]._.holmes.subwords[2].lemma, 'anlage')
-        self.assertEqual(doc[0]._.holmes.subwords[2].index, 1)
-        self.assertEqual(doc[0]._.holmes.subwords[2].containing_token_index, 0)
-        self.assertEqual(doc[0]._.holmes.subwords[2].char_start_index, 18)
 
     def test_three_subwords_with_non_whitelisted_fugen_s(self):
 

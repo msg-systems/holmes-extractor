@@ -305,12 +305,6 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
         self.assertEqual(len(matches), 1)
         self.assertFalse(matches[0]['uncertain'])
 
-    def test_active_participle(self):
-        matches = self._get_matches(
-            nocoref_holmes_manager, "The dog chasing the cat was a problem")
-        self.assertEqual(len(matches), 1)
-        self.assertFalse(matches[0]['uncertain'])
-
     def test_gerund_with_of(self):
         matches = self._get_matches(nocoref_holmes_manager,
                                     "The dog's chasing of the cat was a problem")
