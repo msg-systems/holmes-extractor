@@ -639,12 +639,12 @@ class Manager:
         holmes_consoles = HolmesConsoles(self)
         holmes_consoles.start_chatbot_mode()
 
-    def start_information_extraction_mode_console(self):
-        """Starts an information extraction mode console enabling the matching of pre-registered
+    def start_structural_extraction_mode_console(self):
+        """Starts a structural extraction mode console enabling the matching of pre-registered
             documents to search phrases entered ad-hoc by the user.
         """
         holmes_consoles = HolmesConsoles(self)
-        holmes_consoles.start_information_extraction_mode()
+        holmes_consoles.start_structural_extraction_mode()
 
     def start_topic_matching_search_mode_console(
             self, only_one_result_per_document:bool=False,

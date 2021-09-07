@@ -115,8 +115,8 @@ class HolmesConsoles:
                     self.string_representation_of_word_match, match_dict['word_matches']))
                 print(word_matches_string)
 
-    def start_information_extraction_mode(self):
-        """Starts an information extraction mode console enabling the matching of pre-registered
+    def start_structural_extraction_mode(self):
+        """Starts a structural extraction mode console enabling the matching of pre-registered
             documents to search phrases entered ad-hoc by the user.
         """
         self.common()
@@ -129,7 +129,7 @@ class HolmesConsoles:
             else:
                 print("Embedding-based matching on root words is OFF")
         print()
-        print('Structural search mode')
+        print('Structural extraction mode')
         print()
         self.print_document_info()
         print()
