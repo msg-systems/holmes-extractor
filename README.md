@@ -56,17 +56,18 @@ Author: <a href="mailto:richard.hudson@msg.group">Richard Paul Hudson, msg syste
 -   [6 Interfaces intended for public
     use](#interfaces-intended-for-public-use)
     -   [6.1 `Manager`](#manager)
-    -   [6.2 `Ontology`](#ontology)
-    -   [6.3 `SupervisedTopicTrainingBasis`](#supervised-topic-training-basis)
+    -   [6.2 `manager.nlp`](#manager.nlp)
+    -   [6.3 `Ontology`](#ontology)
+    -   [6.4 `SupervisedTopicTrainingBasis`](#supervised-topic-training-basis)
     (returned from `Manager.get_supervised_topic_training_basis()`)
-    -   [6.4 `SupervisedTopicModelTrainer`](#supervised-topic-model-trainer)
+    -   [6.5 `SupervisedTopicModelTrainer`](#supervised-topic-model-trainer)
     (returned from `SupervisedTopicTrainingBasis.train()`)
-    -   [6.5 `SupervisedTopicClassifier`](#supervised-topic-classifier)
+    -   [6.6 `SupervisedTopicClassifier`](#supervised-topic-classifier)
     (returned from `SupervisedTopicModelTrainer.classifier()` and
     `Manager.deserialize_supervised_topic_classifier()`)
-    -   [6.6 Dictionary returned from
-        `Manager.match()`)](#dictionary)
     -   [6.7 Dictionary returned from
+        `Manager.match()`)](#dictionary)
+    -   [6.8 Dictionary returned from
         `Manager.topic_match_documents_against()`](#topic-match-dictionary)
 -   [7 A note on the license](#a-note-on-the-license)
 -   [8 Information for developers](#information-for-developers)
@@ -932,7 +933,7 @@ that can be matched to documents.
 <a id="coreferring-pronouns"></a>
 ##### 4.2.5 Coreferring pronouns
 
-***A dog chases a cat and he chases a mouse*** (English)
+***A dog chases a cat and he chases a mouse*** (English)  
 ***Ein Hund jagt eine Katze und er jagt eine Maus*** (German)
 
 Pronouns that corefer with nouns elsewhere in the search phrase are not permitted as this
@@ -1053,7 +1054,7 @@ and to allow the corresponding nominal phrases to be matched via [derivation-bas
 The chatbot use case has [already been introduced](#getting-started):
 a predefined set of search phrases is used to extract
 information from phrases entered interactively by an end user, which in
-this use case act as the 'documents'.
+this use case act as the documents.
 
 The Holmes source code ships with two examples demonstrating the chatbot
 use case, one for each language, with predefined ontologies. Having
@@ -1212,27 +1213,27 @@ The facade class for the Holmes library.
 
 Parameters:
 
-    model -- the name of the spaCy model, e.g. *en_core_web_trf*
-    overall_similarity_threshold -- the overall similarity threshold for embedding-based
-        matching. Defaults to *1.0*, which deactivates embedding-based matching. Note that this
-        parameter is not relevant for topic matching, where the thresholds for embedding-based
-        matching are set on the call to *topic_match_documents_against*.
-    embedding_based_matching_on_root_words -- determines whether or not embedding-based
-        matching should be attempted on search-phrase root tokens, which has a considerable
-        performance hit. Defaults to *False*. Note that this parameter is not relevant for topic
-        matching.
-    ontology -- an *Ontology* object. Defaults to *None* (no ontology).
-    analyze_derivational_morphology -- *True* if matching should be attempted between different
-        words from the same word family. Defaults to *True*.
-    perform_coreference_resolution -- *True* if coreference resolution should be taken into account
-        when matching. Defaults to *True*.
-    use_reverse_dependency_matching -- *True* if appropriate dependencies in documents can be
-        matched to dependencies in search phrases where the two dependencies point in opposite
-        directions. Defaults to *True*.
-    number_of_workers -- the number of worker processes to use, or *None* if the number of worker
-        processes should depend on the number of available cores. Defaults to *None*
-    verbose -- a boolean value specifying whether multiprocessing messages should be outputted to
-        the console. Defaults to *False*
+model -- the name of the spaCy model, e.g. *en_core_web_trf*
+overall_similarity_threshold -- the overall similarity threshold for embedding-based
+  matching. Defaults to *1.0*, which deactivates embedding-based matching. Note that this
+  parameter is not relevant for topic matching, where the thresholds for embedding-based
+  matching are set on the call to *topic_match_documents_against*.
+embedding_based_matching_on_root_words -- determines whether or not embedding-based
+  matching should be attempted on search-phrase root tokens, which has a considerable
+  performance hit. Defaults to *False*. Note that this parameter is not relevant for topic
+  matching.
+ontology -- an *Ontology* object. Defaults to *None* (no ontology).
+analyze_derivational_morphology -- *True* if matching should be attempted between different
+  words from the same word family. Defaults to *True*.
+perform_coreference_resolution -- *True* if coreference resolution should be taken into account
+  when matching. Defaults to *True*.
+use_reverse_dependency_matching -- *True* if appropriate dependencies in documents can be
+  matched to dependencies in search phrases where the two dependencies point in opposite
+  directions. Defaults to *True*.
+number_of_workers -- the number of worker processes to use, or *None* if the number of worker
+  processes should depend on the number of available cores. Defaults to *None*
+verbose -- a boolean value specifying whether multiprocessing messages should be outputted to
+  the console. Defaults to *False*
 ```
 
 ``` {.python}
@@ -1245,6 +1246,7 @@ label -- a label for the document which must be unique. Defaults to the empty st
     which is intended for use cases involving single documents (typically user entries).
 ```
 
+<a id="manager-register-serialized-documents-function"></a>
 ``` {.python}
 Manager.register_serialized_documents(self, document_dictionary:dict[str, Doc]) -> None
 
@@ -1277,10 +1279,6 @@ Manager.remove_all_documents(self) -> None
 Manager.document_labels(self) -> list[str]
 
 Returns a list of the labels of the currently registered documents.
-```
-
-``` {.python}
-Manager.remove_all_search_phrases_with_label(self, label)
 ```
 
 ``` {.python}
@@ -1509,8 +1507,13 @@ Manager.close(self) -> None
 Terminates the worker processes.
 ```
 
+<a id="manager.nlp"></a>
+#### 6.2 `manager.nlp`
+
+`manager.nlp` is the underlying spaCy [Language](https://spacy.io/api/language/) object on which both Coreferee and Holmes have been registered as custom pipeline components. The most efficient way of parsing documents for use with Holmes is to call [`manager.nlp.pipe()`](https://spacy.io/api/language/#pipe). This yields an iterable of documents that can then be loaded into Holmes via [`manager.register_serialized_documents()`](#manager-register-serialized-documents-function)
+
 <a id="ontology"></a>
-#### 6.2 `Ontology`
+#### 6.3 `Ontology`
 
 ``` {.python}
 holmes_extractor.Ontology(self, ontology_path,
@@ -1547,7 +1550,7 @@ symmetric_matching -- if 'True', means hypernym relationships are also taken int
 ```
 
 <a id="supervised-topic-training-basis"></a>
-#### 6.3 `SupervisedTopicTrainingBasis` (returned from `Manager.get_supervised_topic_training_basis()`)
+#### 6.4 `SupervisedTopicTrainingBasis` (returned from `Manager.get_supervised_topic_training_basis()`)
 
 Holder object for training documents and their classifications from which one or more
 [SupervisedTopicModelTrainer](#supervised-topic-model-trainer) objects can be derived. This class is NOT threadsafe.
@@ -1621,7 +1624,7 @@ hidden_layer_sizes -- a list where each entry is the size of a hidden layer, or 
 ```
 
 <a id="supervised-topic-model-trainer"></a>
-#### 6.4 `SupervisedTopicModelTrainer` (returned from `SupervisedTopicTrainingBasis.train()`)
+#### 6.5 `SupervisedTopicModelTrainer` (returned from `SupervisedTopicTrainingBasis.train()`)
 
 Worker object used to train and generate models. This object could be removed from the public interface
 (`SupervisedTopicTrainingBasis.train()` could return a `SupervisedTopicClassifier` directly) but has
@@ -1635,7 +1638,7 @@ can be serialized.
 ```
 
 <a id="supervised-topic-classifier"></a>
-#### 6.5 `SupervisedTopicClassifier` (returned from
+#### 6.6 `SupervisedTopicClassifier` (returned from
 `SupervisedTopicModelTrainer.classifier()` and
 `Manager.deserialize_supervised_topic_classifier()`))
 
@@ -1668,7 +1671,7 @@ SupervisedTopicClassifier.serialize_model(self) -> str
 ```
 
 <a id="dictionary"></a>
-#### 6.6 Dictionary returned from `Manager.match_returning_dictionaries()`)
+#### 6.7 Dictionary returned from `Manager.match_returning_dictionaries()`)
 
 ``` {.python}
 A text-only representation of a match between a search phrase and a
@@ -1720,7 +1723,7 @@ word_matches -- an array of dictionaries with the properties:
 ```
 
 <a id="topic-match-dictionary"></a>
-#### 6.7 Dictionary returned from `Manager.topic_match_documents_returning_dictionaries_against()` and  `Manager.topic_match_documents_returning_dictionaries_against()`
+#### 6.8 Dictionary returned from `Manager.topic_match_documents_returning_dictionaries_against()` and  `Manager.topic_match_documents_returning_dictionaries_against()`
 
 ``` {.python}
 A text-only representation of a topic match between a search text and a
