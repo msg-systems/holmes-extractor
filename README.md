@@ -255,17 +255,13 @@ python3 -m spacy download en_core_web_sm
 
 *Windows:*
 ```
-python3 -m spacy download en_core_web_sm
+python -m spacy download en_core_web_sm
 ```
 
-`en_core_web_trf` and `de_core_web_lg` are the models that have been found to yield the best results for English and German respectively. Because `en_core_web_trf` does not have word vectors, the `en_core_web_lg` model as a vector source for [embedding-based-matching](#embedding-based-matching) when parsing using `en_core_web_trf`.
+You specify a spaCy model for Holmes to use [when you instantiate the Manager facade class](#getting-started). `en_core_web_trf` and `de_core_web_lg` are the models that have been found to yield the best results for English and German respectively. Because `en_core_web_trf` does not have its own word vectors, Holmes uses the `en_core_web_lg` model as a vector source for [embedding-based-matching](#embedding-based-matching) when `en_core_web_trf` is the main model being used for everything else.
 
 <a id="comments-about-deploying-holmes-in-an-enterprise-environment"></a>
 ##### 1.2.4 Comments about deploying Holmes in an enterprise environment
-
-Python 3 is a language that is absent from the architecture standards of
-many large enterprises. For a number of reasons, however, it was the
-only serious contender with which to develop Holmes.
 
 The best way of integrating Holmes into a non-Python environment is to
 wrap it as a RESTful HTTP service and to deploy it as a
@@ -286,7 +282,7 @@ Holmes holds loaded documents in memory, which ties in with its intended use wit
 The easiest use case with which to get a quick basic idea of how Holmes works is the **chatbot** use case.
 
 Here one or more search phrases are defined to Holmes in advance, and the
-searched 'documents' are short sentences or paragraphs typed in
+searched documents are short sentences or paragraphs typed in
 interactively by an end user. In a real-life setting, the extracted
 information would be used to
 determine the flow of interaction with the end user. For testing and
@@ -505,19 +501,13 @@ For more examples, please see [section 5](#use-cases-and-examples).
 <a id="word-level-matching-strategies"></a>
 ### 2. Word-level matching strategies
 
-The same word-level matching strategies are employed with [all use cases](#use-cases-and-examples) and most
-of the comments that follow apply equally to all use cases. An exception to this principle
-is that there are different ways of configuring
-[ontology-based matching](#ontology-based-matching) and that the choices that are typically
-recommended are different for different use cases.
-
 <a id="direct-matching"></a>
 #### 2.1 Direct matching (`word_match.type=='direct'`)
 
 Direct matching between search phrase words and document words is always
 active. The strategy relies mainly on matching stem forms of words,
-e.g. matching English *buy* and *child* for *bought* and *children*,
-German *steigen* and *Kind* for *stieg* and *Kinder*. However, in order to
+e.g. matching English *buy* and *child* to *bought* and *children*,
+German *steigen* and *Kind* to *stieg* and *Kinder*. However, in order to
 increase the chance of direct matching working when the parser delivers an
 incorrect stem form for a word, the raw-text forms of both search-phrase and
 document words are also taken into consideration during direct matching.
@@ -542,8 +532,8 @@ e.g.
 
 The supported named-entity identifiers depend directly on the named
 entity information supplied by the spaCy models for each language
-(descriptions copied from the [spaCy
-documentation](https://spacy.io/usage/linguistic-features#section-named-entities)):
+(descriptions copied from an earlier version of the spaCy
+documentation):
 
 *English:*
 
@@ -731,10 +721,10 @@ the functional use case.
 
 For the [chatbot](#chatbot), [structural extraction](#structural-extraction) and [supervised document classification](#supervised-document-classification) use cases, Holmes makes use of word-
 embedding-based similarities using a `overall_similarity_threshold` parameter defined globally on
-the [Manager](#manager) class . A match is detected between a
+the [Manager](#manager) class. A match is detected between a
 search phrase and a structure within a document whenever the geometric
 mean of the similarities between the individual corresponding word pairs
-is greater than the threshold. The intuition behind this technique is
+is greater than this threshold. The intuition behind this technique is
 that where a search phrase with e.g. six lexical words has matched a
 document structure where five of these words match exactly and only one
 corresponds via an embedding, the similarity that should be required to match this sixth word is
@@ -763,16 +753,16 @@ Neither the `overall_similarity_threshold` nor the `embedding_based_matching_on_
 <a id="named-entity-embedding-based-matching"></a>
 #### 2.6 Named-entity-embedding-based matching (`word_match.type=='entity_embedding'`)
 
-An named-entity-embedding based match obtains between a searched-document word that has a certain entity label and a search-phrase or query-document word whose embedding is sufficiently similar to the underlying meaning of the entity label, e.g. the word *individual* in a search phrase has a similar word embedding to the underlying meaning of the *PERSON* entity label. Note that named-entity-embedding-based matching is not active on root words regardless of the `embedding_based_matching_on_root_words` setting.
+A named-entity-embedding based match obtains between a searched-document word that has a certain entity label and a search-phrase or query-document word whose embedding is sufficiently similar to the underlying meaning of that entity label, e.g. the word *individual* in a search phrase has a similar word embedding to the underlying meaning of the *PERSON* entity label. Note that named-entity-embedding-based matching is never active on root words regardless of the `embedding_based_matching_on_root_words` setting.
 
 <a id="initial-question-word-matching"></a>
 #### 2.7 Initial-question-word matching (`word_match.type=='question'`)
 
-Initial-question-word matching is only active during [topic matching](#topic-matching). Initial question words in query phrases match entities in the searched documents that represent potential answers to the question, e.g. when comparing the query phrase ***When did Peter have breakfast*** to the searched-document phrase *Peter had breakfast at 8 a.m.*, the question word *when* would match the temporal adverbial phrase *at 8 a.m.*.
+Initial-question-word matching is only active during [topic matching](#topic-matching). Initial question words in query phrases match entities in the searched documents that represent potential answers to the question, e.g. when comparing the query phrase ***When did Peter have breakfast*** to the searched-document phrase *Peter had breakfast at 8 a.m.*, the question word **When** would match the temporal adverbial phrase *at 8 a.m.*.
 
-Initial-question-word matching is switched on and off using the `initial_question_word_behaviour` parameter when calling the [`topic_match_documents_against` function on the Manager class](#manager-topic-match-function). iT is only likely to be useful when performing topic matching in an interactive setting where the user enters short query phrases, as opposed to when it is being used to find documents on a similar topic to an pre-existing query document; initial question words are in any case only processed at the beginning of the first sentence of the query phrase or query document.
+Initial-question-word matching is switched on and off using the `initial_question_word_behaviour` parameter when calling the [`topic_match_documents_against` function on the Manager class](#manager-topic-match-function). It is only likely to be useful when topic matching is being performed in an interactive setting where the user enters short query phrases, as opposed to when it is being used to find documents on a similar topic to an pre-existing query document. Initial question words are in any case only processed at the beginning of the first sentence of the query phrase or query document.
 
-If a query phrase consists of a complex question with several elements dependent on the main verb, a finding in a searched document is only strictly an 'answer' if contains matches to all these elements. Because recall is typically more important than precision when performing topic matching with interactive query phrases, however, Holmes will match an initial question word to a searched-document phrase wherever they correspond semantically (e.g. *when* corresponds to a temporal adverbial phrase) and each depend on verbs that themselves match at the word level. One possible strategy to filter out such 'incomplete answers' would be to calculate the maximum possible score for a query phrase and reject topic matches that score below a threshold based on this maximum.
+If a query phrase consists of a complex question with several elements dependent on the main verb, a finding in a searched document is only strictly an 'answer' if contains matches to all these elements. Because recall is typically more important than precision when performing topic matching with interactive query phrases, however, Holmes will match an initial question word to a searched-document phrase whenever they correspond semantically (e.g. **when** corresponds to a temporal adverbial phrase) and each depend on verbs that themselves match at the word level. One possible strategy to filter out such 'incomplete answers' would be to calculate the maximum possible score for a query phrase and reject topic matches that score below a threshold scaled to this maximum.
 
 <a id="coreference-resolution"></a>
 ### 3. Coreference resolution
