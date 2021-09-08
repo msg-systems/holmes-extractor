@@ -89,6 +89,7 @@ Author: <a href="mailto:richard.hudson@msg.group">Richard Paul Hudson, msg syste
         -   [8.4.2 Version 2.1.0](#version-210)
         -   [8.4.3 Version 2.2.0](#version-220)
         -   [8.4.4 Version 2.2.1](#version-221)
+        -   [8.4.5 Version 3.0.0](#version-300)
 
 <a id="introduction"></a>
 ### 1. Introduction
@@ -275,7 +276,7 @@ microservice. See [here](https://github.com/msg-systems/holmes-extractor/blob/ma
 
 Because Holmes performs complex, intelligent analysis, it is inevitable that it requires more hardware resources than more traditional search frameworks. The use cases that involve loading documents — [structural extraction](#structural-extraction) and [topic matching](#topic-matching) — are most immediately applicable to large but not massive corpora (e.g. all the documents belonging to a certain organisation, all the patents on a certain topic, all the books by a certain author). For cost reasons, Holmes would not be an appropriate tool with which to analyse the content of the entire Internet!
 
-That said, Holmes is both vertically and horizontally scalable. With sufficient hardware, both these use cases can be applied to an essentially unlimited number of documents by running Holmes on multiple machines, processing a different set of documents on each one and conflating the results. Note that this is the strategy already employed to distribute matching amongst multiple cores on a single machine.
+That said, Holmes is both vertically and horizontally scalable. With sufficient hardware, both these use cases can be applied to an essentially unlimited number of documents by running Holmes on multiple machines, processing a different set of documents on each one and conflating the results. Note that this strategy is already employed to distribute matching amongst multiple cores on a single machine: the [Manager](#manager) class starts a number of worker processes and distributes registered documents between them but sends search phrases to all of them.
 
 Holmes holds loaded documents in memory, which ties in with its intended use with large but not massive corpora. The performance of document loading, [structural extraction](#structural-extraction) and [topic matching](#topic-matching) all degrade heavily if the operating system has to swaps memory pages to secondary storage, because Holmes can require memory from a variety of pages to be addressed when processing a single sentence. This means it is important to supply enough RAM on each machine to hold all loaded documents.
 
@@ -1809,17 +1810,29 @@ you are proposing involves the USA in any way.
 The word-level matching and the high-level operation of structural
 matching between search-phrase and document subgraphs both work more or
 less as one would expect. What is perhaps more in need of further
-comment is the semantic analysis code subsumed in the `semantics.py`
-script.
+comment is the semantic analysis code subsumed in the `parsing.py`
+script as well as in the `language_specific_rules.py` script for each
+language..
 
 `SemanticAnalyzer` is an abstract class that is subclassed for each new
 language: at present by `EnglishSemanticAnalyzer` and
-`GermanSemanticAnalyzer`. At present, all functionality that is common
-to the two languages is realised in the abstract parent class.
+`GermanSemanticAnalyzer`. These classes contain most semantic analysis code.
+`SemanticMatchingHelper` is an abstract class, again with an concrete
+implementation for each language, that contains semantic analysis code
+that is required at matching time. Moving this out to a separate class family
+was necessary because, on operating systems that spawn processes rather
+than forking processes (e.g. Windows), `SemanticMatchingHelper` instances
+have to be serialized when the worker processes are created; this would
+not be possible for all `SemanticAnalyzer` instances because not all
+spaCy models are serializable and would also unnecessarily consume
+large amounts of memory.
+
+At present, all functionality that is common
+to the two languages is realised in the two abstract parent classes.
 Especially because English and German are closely related languages, it
 is probable that functionality will need to be moved from the abstract
-parent class to specific implementing children classes when new semantic
-analyzers are added for new languages.
+parent classes to specific implementing children classes if and when new
+semantic analyzers are added for new languages.
 
 The `HolmesDictionary` class is defined as a [spaCy extension
 attribute](https://spacy.io/usage/processing-pipelines#section-custom-components-attributes)
@@ -1846,9 +1859,9 @@ exclusively for matching and are therefore neither intended nor required
 to form a coherent set of linguistic theoretical entities or relationships;
 whatever works best for matching is assigned on an ad-hoc basis.
 
-For each language, the `_matching_dep_dict` dictionary maps search-phrase semantic dependencies to matching
-document semantic dependencies and is responsible for the [asymmetry of matching between search phrases
-and documents](#general-comments).
+For each language, the `match_implication_dict` dictionary maps search-phrase semantic dependencies
+to matching document semantic dependencies and is responsible for the [asymmetry of matching
+between search phrases and documents](#general-comments).
 
 <a id="how-it-works-topic-matching"></a>
 ##### 8.1.2 Topic matching
@@ -1863,63 +1876,51 @@ are found. The structures that trigger two-word phraselets differ from language 
 but typically include verb-subject, verb-object and noun-adjective pairs as well as verb-noun and noun-noun relations spanning prepositions. Each relation phraselet
 has a parent (governor) word or subword and a child (governed) word or subword. The relevant
 phraselet structures for a given language are defined in `SemanticAnalyzer.phraselet_templates`.
-3. Phraselet templates where the parent word belongs to a closed word class e.g. prepositions can be defined as 'reverse_only'. This signals that matching with derived templates should only be attempted starting from the child word rather than from the parent word as normal. Phraselets are also defined as reverse-only when the parent word is one of a handful of words defined within the semantic analyzer (`SemanticAnalyzer.topic_matching_reverse_only_parent_lemmas`). This is necessary because
-matching on e.g. a parent preposition would lead to a large number of
+3. Both types of phraselet are assigned a **frequency factor** expressing how common or rare its word or words are in the corpus. Frequency factors are determined using a logarithmic calculation and range from 0.0 (very common) to 1.0 (very rare). Each word within a relation phraselet is also assigned its own frequency factor.
+4. Phraselet templates where the parent word belongs to a closed word class e.g. prepositions can be defined as 'reverse_only'. This signals that matching with derived templates should only be attempted starting from the child word rather than from the parent word as normal. Phraselets are also defined as reverse-only when the parent word is one of a handful of words defined within the semantic analyzer (`SemanticAnalyzer.topic_matching_reverse_only_parent_lemmas`) or when the frequency factor for the parent word is below the threshold for relation matching ( `relation_matching_frequency_threshold`, default: 0.25).  These measures are necessary because matching on e.g. a parent preposition would lead to a large number of
 potential matches that would take a lot of resources to investigate: it is better to start
 investigation from the less frequent word within a given relation.
-4. All single-word phraselets are matched against the document corpus. If words matching the parent
-member of a normal (not reverse-only) phraselet occur more often within the corpus than a certain threshold
-('maximum_number_of_single_word_matches_for_relation_matching'; default: 500), the phraselet is set for
-reverse-matching for the duration of this topic match only.
-5. Normal [structural matching](#how-it-works-structural-matching) is used to match against the document corpus all relation phraselets
+5. All single-word phraselets are matched against the document corpus.
+6. Normal [structural matching](#how-it-works-structural-matching) is used to match against the document corpus all relation phraselets
 that are not set to reverse-matching.
-6. Reverse matching starts at all words in the corpus that match a relation phraselet child word. Every
-word governing one of these words is a potential match for the corresponding relation phraselet parent word, so
-structural matching is attempted starting at all these parent words. Reverse matching is only attempted
-for reverse-only relation phraselets where the child word occurs less frequently in the corpus
-that the 'maximum_number_of_single_word_matches_for_relation_matching' threshold.
-7. If either the parent or the child word of a relation template has been matched less frequently
-than a certain threshold within the corpus ('maximum_number_of_single_word_matches_for_embedding_matching';
-default: 100), matching at all of those words where the relation template has not already been
-matched is retried using embeddings at the other word within the relation. This is only relevant
-if the manager was started with `overall_similarity_threshold < 1.0`.
-8. The set of structural matches collected up to this point is filtered to cover cases where the same
+7. Reverse matching starts at all words in the corpus that match a relation phraselet child word. Every word governing one of these words is a potential match for the corresponding relation phraselet parent word, so structural matching is attempted starting at all these parent words. Reverse matching is only attempted for reverse-only relation phraselets where the child word's frequency factor is above the threshold for relation matching ( `relation_matching_frequency_threshold`, default: 0.25).
+8. If either the parent or the child word of a relation template has a frequency factor above a configurable threshold (`embedding_matching_frequency_threshold`, default: 0.5), matching at all of those words where the relation template has not already been
+matched is retried using embeddings at the other word within the relation. A pair of words is then regarded as matching when their mutual cosine similarity is above `initial_question_word_embedding_match_threshold` (default: 0.7) in situations where the document word has an initial question word in its phrase or `word_embedding_match_threshold` (default: 0.7) in all other situations.
+9. The set of structural matches collected up to this point is filtered to cover cases where the same
 document words were matched by multiple phraselets, where multiple sibling words have been matched by the same
 phraselet where one sibling has a higher [embedding-based similarity](#embedding-based-matching) than the
 other, and where a phraselet has matched multiple words that [corefer](#coreference-resolution) with one another.
-9. Each document is scanned from beginning to end and a psychologically inspired **activation score**
+10. Each document is scanned from beginning to end and a psychologically inspired **activation score**
 is determined for each word in each document.
 
-  - In contrast to Holmes versions < 2.1.0, activation is now tracked separately for each phraselet. Each time
+  - Activation is tracked separately for each phraselet. Each time
   a match for a phraselet is encountered, the activation for that phraselet is set to the score returned by
-  the match, unless the existing activation is already greater than that score.
+  the match, unless the existing activation is already greater than that score. If the parameter `use_frequency_factor` is set to `True` (the default), each score are scaled by the frequency factor of its phraselet, meaning that words that occur less frequently in the corpus lead to higher scores.
   - For as long as the activation score for a phraselet has a value above zero, it is reduced by 1 divided by a
-  configurable number ('maximum_activation_distance'; default: 75) as each new word is read.
-  - The score returned by a match depends on whether the match was produced by a single-word noun phraselet that matched an entire word ('single_word_score'; default: 5), another type of single-word phraselet or a noun phraselet that matched a subword ('single_word_any_tag_score'; default: 2),
-  a relation phraselet produced by a reverse-only template ('reverse_only_relation_score'; default: 20) or
-  any other (normally matched) relation phraselet ('relation_score'; default: 30).
+  configurable number (`maximum_activation_distance`; default: 75) as each new word is read.
+  - The score returned by a match depends on whether the match was produced by a single-word noun phraselet that matched an entire word (`single_word_score`; default: 50), another type of single-word phraselet or a noun phraselet that matched a subword (`single_word_any_tag_score`; default: 20),
+  a relation phraselet produced by a reverse-only template (`reverse_only_relation_score`; default: 200) or
+  any other (normally matched) relation phraselet (`relation_score`; default: 300).
   - Where a match involves embedding-based matching, the resulting inexactitude is
   captured by multiplying the potential new activation score with the value of the
-  'Match.overall_similarity_measure' quotient that was returned for the match multiplied by a penalty value ('embedding_penalty; default: 0.6').
+  'Match.overall_similarity_measure' quotient that was returned for the match multiplied by a penalty value (`embedding_penalty`; default: 0.6').
   - Where a match involves ontology-based matching, the resulting inexactitude is captured
-  by multiplying the potential new activation score by a penalty value ('ontology_penalty;
+  by multiplying the potential new activation score by a penalty value (`ontology_penalty`;
   default: 0.9') once more often than the difference in depth between the two ontology entries,
   i.e. once for a synonym, twice for a child, three times for a grandchild and so on.
   - When the same word was involved in matches against more than one two-word phraselets, this
   implies that a structure involving three or more words has been matched. The activation score returned by
   each match within such a structure is multiplied by a configurable factor
-  ('overlapping_relation_multiplier'; default: 1.5).
+  (`overlapping_relation_multiplier`; default: 1.5).
 
-10. The most relevant passages are then determined by the highest activation score peaks within the documents. Areas to either side of each peak up to a certain distance
-('sideways_match_extent'; default: 100 words) within which the activation score is higher than the number of points
-awarded for a single-word noun phraselet match (default: 5) are regarded as belonging to a contiguous passage around
-the peak that is then returned as a `TopicMatch` object. A word whose activation equals the threshold exactly is included at the beginning of the area as long as the next word where
+11. The most relevant passages are then determined by the highest activation score peaks within the documents. Areas to either side of each peak up to a certain distance
+(`sideways_match_extent`; default: 100 words) within which the activation score is higher than the `different_match_cutoff_score` (default: 15) are regarded as belonging to a contiguous passage around the peak that is then returned as a `TopicMatch` object. (Note that this default will almost certainly turn out to be too low if `use_frequency_factor`is set to `False`.) A word whose activation equals the threshold exactly is included at the beginning of the area as long as the next word where
 activation increases has a score above the threshold. If the topic match peak is below the
 threshold, the topic match will only consist of the peak word.
-11. Setting `only_one_result_per_document = True` prevents more than one result from being returned from the same
+12. If `initial_question_word_behaviour` is set to `process` (the default) or `exclusive`, where a document word has [matched an initial question word](#initial-question-word-matching) from the query phrase, the subtree of the matched document word is identified as a potential answer to the question and added to the dictionary to be returned. If `initial_question_word_behaviour` is set to `exclusive`, any topic matches that do not contain answers are discarded.
+13. Setting `only_one_result_per_document = True` prevents more than one result from being returned from the same
 document; only the result from each document with the highest score will then be returned.
-12. If the results are being returned as dictionaries, the score for each topic match is used to calculate a rank.
-Adjacent topic matches whose scores differ by less than 'tied_result_quotient' (default: 0.9) are labelled as tied.
+14. Adjacent topic matches whose scores differ by less than `tied_result_quotient` (default: 0.9) are labelled as tied.
 
 <a id="how-it-works-supervised-document-classification"></a>
 ##### 8.1.3 Supervised document classification
@@ -1942,9 +1943,9 @@ See [here](#improve-performance-of-supervised-document-classification-training) 
 performance of this step.
 3. The results for each phraselet are examined and phraselets are removed from the model that do not play a
 statistically significant role in predicting classifications. Phraselets are removed that did not match within
-the documents of any classification a minimum number of times ('minimum_occurrences'; default: 4) or where the
+the documents of any classification a minimum number of times (`minimum_occurrences`; default: 4) or where the
 coefficient of variation (the standard deviation divided by the arithmetic mean) of the occurrences across the
-categories is below a [threshold](#supervised-topic-training-basis) ('cv_threshold'; default: 1.0).
+categories is below a [threshold](#supervised-topic-training-basis) (`cv_threshold`; default: 1.0).
 4. The phraselets that made it into the model are once again matched against each document. Matches against each
 phraselet are used to determine the input values to a multilayer perceptron: the input nodes can either record
 occurrence (binary) or match frequency (scalar) (`oneshot==True` vs. `oneshot==False` respectively). The outputs are the
@@ -1966,7 +1967,7 @@ the complexity of some of the code, Holmes adheres to a 100-character
 rather than an 80-character line width as permitted as an option there.
 
 The complexity of what Holmes does makes development impossible without
-a robust set of over 1100 regression tests. These can be executed individually
+a robust set of over 1350 regression tests. These can be executed individually
 with `unittest` or all at once by running the
 [pytest](https://docs.pytest.org/en/latest/) utility from the Holmes
 source code root directory. (Note that the Python 3 command on Linux
@@ -1976,9 +1977,9 @@ The `pytest` variant will only work on machines with sufficient memory resources
 reduce this problem, the tests are distributed across three subdirectories, so that
 `pytest` can be run three times, once from each subdirectory:
 
--   [en](https://github.com/msg-systems/holmes-extractor/blob/master/holmes_extractor/tests/en): tests relating to English
--   [de](https://github.com/msg-systems/holmes-extractor/blob/master/holmes_extractor/tests/de): tests relating to German
--   [common](https://github.com/msg-systems/holmes-extractor/blob/master/holmes_extractor/tests/common): language-independent tests
+-   [en](https://github.com/msg-systems/holmes-extractor/blob/master/tests/en): tests relating to English
+-   [de](https://github.com/msg-systems/holmes-extractor/blob/master/tests/de): tests relating to German
+-   [common](https://github.com/msg-systems/holmes-extractor/blob/master/tests/common): language-independent tests
 
 <a id="areas-for-further-development"></a>
 #### 8.3 Areas for further development
@@ -2072,3 +2073,12 @@ that only documents whose labels begin with a certain string should be searched.
 
 -  Fixed bug with reverse derived lemmas and subwords (only affects German).
 -  Removed dead code.
+
+<a id="version-300"></a>
+##### 8.4.5 Version 3.0.0
+
+-  Moved to [coreferee](https://github.com/msg-systems/coreferee) as the source of coreference information, meaning that coreference resolution is now active for German as well as English, all documents can be serialized and the latest spaCy version can be supported.
+- The corpus frequencies of words is now taken into account when scoring topic matches.
+- Reverse dependencies are now taken into account, so that e.g. *a man dies* can match *the dead man* although the dependencies in the two phrases point in opposite directions.
+- Merged the pre-existing `Manager` and `MultiprocessingManager` classes into a single `Manager` class, with a redesigned public interface, that uses worker threads for everything except supervised document classification.
+- Added support for [initial question words](#initial-question-word-matching)

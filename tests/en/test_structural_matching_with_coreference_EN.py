@@ -572,21 +572,13 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         self._check_word_match(matches[1], 0, 4, 'leopard')
         self._check_word_match(matches[1], 0, 4, 'leopard')
 
-    def test_different_extracted_word_preceding_hyponym(self):
+    def test_different_extracted_word(self):
         coref_holmes_manager.remove_all_documents()
         coref_holmes_manager.parse_and_register_document(
             "We discussed Peters plc. The big company was in difficulties. It had made a loss")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
         self._check_word_match(matches[0], 1, 7, 'Peters plc')
-
-    def test_different_extracted_word_preceding_individual(self):
-        coref_holmes_manager.remove_all_documents()
-        coref_holmes_manager.parse_and_register_document(
-            "We discussed Bakers plc. The big company was in difficulties. It had made a loss")
-        matches = coref_holmes_manager.match()
-        self.assertEqual(len(matches), 1)
-        self._check_word_match(matches[0], 1, 7, 'Bakers plc')
 
     def test_repeated_noun(self):
         coref_holmes_manager.remove_all_documents()

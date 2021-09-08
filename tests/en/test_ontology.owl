@@ -29,14 +29,6 @@
 
 
 
-    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#Peters_plc -->
-
-    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#Peters_plc">
-        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#company"/>
-    </owl:Class>
-
-
-
     <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#animal -->
 
     <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#animal"/>
@@ -301,14 +293,6 @@
     ///////////////////////////////////////////////////////////////////////////////////////
      -->
 
-
-
-
-    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#Bakers_plc -->
-
-    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#Bakers_plc">
-        <rdf:type rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#company"/>
-    </owl:NamedIndividual>
 
 
 

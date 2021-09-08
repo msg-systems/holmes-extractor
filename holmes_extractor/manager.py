@@ -207,7 +207,9 @@ class Manager:
         self.handle_response(reply_queue, len(document_dictionary), 'register_serialized_documents')
 
     def register_serialized_document(self, serialized_document:bytes, label:str) -> None:
-        """Parameters:
+        """Note that this function is the most efficient way of loading documents.
+
+        Parameters:
 
         document -- a preparsed Holmes document.
         label -- a label for the document which must be unique. Defaults to the empty string,
@@ -276,7 +278,7 @@ class Manager:
                 return None
         return self.handle_response(reply_queue, 1, 'serialize_document')[0]
 
-    def get_document(self, label='') -> Doc:
+    def get_document(self, label:str='') -> Doc:
         """Returns a Holmes document. If *label* is not the label of a registered document, *None*
             is returned instead.
 
@@ -288,7 +290,7 @@ class Manager:
         return None if serialized_document is None else \
             Doc(self.nlp.vocab).from_bytes(serialized_document)
 
-    def debug_document(self, label='') -> None:
+    def debug_document(self, label:str='') -> None:
         """Outputs a debug representation for a loaded document.
         """
         serialized_document = self.serialize_document(label)
@@ -457,7 +459,8 @@ class Manager:
             number_of_results:int=10, document_label_filter:str=None,
             tied_result_quotient:float=0.9) -> list[dict]:
 
-        """Returns the results of a topic match between an entered text and the loaded documents.
+        """Returns a list of dictionaries representing the results of a topic match between an
+        entered text and the loaded documents.
 
         Properties:
 
@@ -595,7 +598,8 @@ class Manager:
             self, *, classification_ontology:Ontology=None,
             overlap_memory_size:int=10, oneshot:bool=True, match_all_words:bool=False,
             verbose:bool=True) -> SupervisedTopicTrainingBasis:
-        """ Returns an object that is used to train and generate a document model.
+        """ Returns an object that is used to train and generate a model for the supervised
+            document classification use case.
 
             Parameters:
 
@@ -619,7 +623,8 @@ class Manager:
 
     def deserialize_supervised_topic_classifier(self,
             serialized_model:str, verbose:bool=False) -> SupervisedTopicClassifier:
-        """ Returns a document classifier that will use a pre-trained model.
+        """ Returns a classifier for the supervised document classification use case
+            that will use a supplied pre-trained model.
 
             Parameters:
 
@@ -634,7 +639,7 @@ class Manager:
 
     def start_chatbot_mode_console(self):
         """Starts a chatbot mode console enabling the matching of pre-registered
-            search phrases to short example documents entered ad-hoc by the user.
+            search phrases to documents (chatbot entries) ad-hoc by the user.
         """
         holmes_consoles = HolmesConsoles(self)
         holmes_consoles.start_chatbot_mode()
@@ -651,7 +656,7 @@ class Manager:
             word_embedding_match_threshold:float=0.8,
             initial_question_word_embedding_match_threshold:float=0.7):
         """Starts a topic matching search mode console enabling the matching of pre-registered
-            documents to search texts entered ad-hoc by the user.
+            documents to query phrases entered ad-hoc by the user.
 
             Parameters:
 
@@ -668,6 +673,7 @@ class Manager:
             initial_question_word_embedding_match_threshold)
 
     def close(self) -> None:
+        """ Terminates the worker processes. """
         for worker in self.workers:
             worker.terminate()
 
