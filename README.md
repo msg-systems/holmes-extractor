@@ -16,7 +16,7 @@ Author: <a href="mailto:richard.hudson@msg.group">Richard Paul Hudson, msg syste
 -   [2. Word-level matching strategies](#word-level-matching-strategies)
     -   [2.1 Direct matching](#direct-matching)
     -   [2.2 Derivation-based matching](#derivation-based-matching)
-    -   [2.3 Named entity matching](#named-entity-matching)
+    -   [2.3 Named-entity matching](#named-entity-matching)
     -   [2.4 Ontology-based matching](#ontology-based-matching)
     -   [2.5 Embedding-based matching](#embedding-based-matching)
     -   [2.6 Named-entity-embedding-based matching](#named-entity-embedding-based-matching)
@@ -266,7 +266,7 @@ You specify a spaCy model for Holmes to use [when you instantiate the Manager fa
 
 The best way of integrating Holmes into a non-Python environment is to
 wrap it as a RESTful HTTP service and to deploy it as a
-microservice. See [here](https://github.com/msg-systems/holmes-extractor/blob/master/holmes_extractor/examples/example_search_EN_literature.py) for an example.
+microservice. See [here](https://github.com/msg-systems/holmes-extractor/blob/master/examples/example_search_EN_literature.py) for an example.
 
 <a id="resource-requirements"></a>
 ##### 1.2.5 Resource requirements
@@ -749,7 +749,7 @@ of search phrase root words, it is controlled separately from embedding-based ma
 using the `embedding_based_matching_on_root_words` parameter, which is set when instantiating the
 [Manager](#manager) class. You are advised to keep this setting switched off (value `False`) for most use cases.
 
-Neither the `overall_similarity_threshold` nor the `embedding_based_matching_on_root_words` parameter has any effect on the [topic_matching](#topic_matching) use case. Here word-level embedding similarity thresholds are set using the `word_embedding_match_threshold` and  `initial_question_word_embedding_match_threshold` parameters when calling the [`topic_match_documents_against` function on the Manager class](#manager-topic-match-function).
+Neither the `overall_similarity_threshold` nor the `embedding_based_matching_on_root_words` parameter has any effect on the [topic matching](#topic_matching) use case. Here word-level embedding similarity thresholds are set using the `word_embedding_match_threshold` and  `initial_question_word_embedding_match_threshold` parameters when calling the [`topic_match_documents_against` function on the Manager class](#manager-topic-match-function).
 
 <a id="named-entity-embedding-based-matching"></a>
 #### 2.6 Named-entity-embedding-based matching (`word_match.type=='entity_embedding'`)
@@ -781,7 +781,7 @@ We discussed *msg systems*. *The company* had made a profit.
 If this example were to match the search phrase ***A company makes a profit***, the
 coreference information that the company under discussion is msg systems is clearly
 relevant and worth extracting in addition to the word(s) directly matched to the search
-phrase. Such information is captured in the [word_match.extracted_word](#wordmatch) field.
+phrase. Such information is captured in the [word_match.extracted_word](#dictionary) field.
 
 <a id="writing-effective-search-phrases"></a>
 ### 4. Writing effective search phrases
@@ -1125,15 +1125,15 @@ in the documents whose topic most closely corresponds to the topic of the query 
 a ordered list of passages scored according to topic similarity. Additionally, if a query phrase contains an [initial question word](#initial-question-word-matching), the output will contain potential answers to the question.
 
 Topic matching queries may contain [generic pronouns](#generic-pronouns) and
-[named entity identifiers](#named-entity-matching) just like search phrases, although the `ENTITYNOUN`
+[named-entity identifiers](#named-entity-matching) just like search phrases, although the `ENTITYNOUN`
 token is not supported. However, an important difference from
 search phrases is that the topic matching use case places no
 restrictions on the grammatical structures permissible within the query document.
 
 The Holmes source code ships with three examples demonstrating the topic matching use case with an English literature
 corpus, a German literature corpus and a German legal corpus respectively. The two literature examples are hosted at
-the [Holmes demonstration website](http://holmes-demo.xt.msg.team), although users are encouraged to run [the scripts](https://github.com/msg-systems/holmes-extractor/blob/master/holmes_extractor/examples/)
-locally as well to get a feel for how they work. The German law example starts a simple interactive console and its [script](https://github.com/msg-systems/holmes-extractor/blob/master/holmes_extractor/examples/example_search_DE_law.py) contains some example queries as comments.
+the [Holmes demonstration website](http://holmes-demo.xt.msg.team), although users are encouraged to run [the scripts](https://github.com/msg-systems/holmes-extractor/blob/master/examples/)
+locally as well to get a feel for how they work. The German law example starts a simple interactive console and its [script](https://github.com/msg-systems/holmes-extractor/blob/master/examples/example_search_DE_law.py) contains some example queries as comments.
 
 Topic matching uses a variety of strategies to find text passages that are relevant to the query. These include
 resource-hungry procedures like investigating semantic relationships and comparing embeddings. Because applying these
@@ -1159,8 +1159,7 @@ remedied by specifying a smaller number of hidden layers or a smaller number of 
 A trained document classification model retains no references to its training data. This is an advantage
 from a data protection viewpoint, although it
 [cannot presently be guaranteed](#remove-names-from-supervised-document-classification-models) that models will
-not contain individual personal or company names. It also means that models can be serialized even when
-[the training documents were not serializable](#coreference-resolution).
+not contain individual personal or company names.
 
 <a id="preselection"></a>
 A typical problem with the execution of many document classification use cases is that a new classification label
@@ -1171,7 +1170,7 @@ are not preselected as having the new classification label are then passed to th
 classifier in the normal way. When enough documents exemplifying the new classification have accumulated in the system,
 the model can be retrained and the preselection search phrases removed.
 
-Holmes ships with an example [script](https://github.com/msg-systems/holmes-extractor/blob/master/holmes_extractor/examples/example_supervised_topic_model_EN.py) demonstrating supervised document classification for English with the
+Holmes ships with an example [script](https://github.com/msg-systems/holmes-extractor/blob/master/examples/example_supervised_topic_model_EN.py) demonstrating supervised document classification for English with the
 [BBC Documents dataset](http://mlg.ucd.ie/datasets/bbc.html). The script downloads the documents (for
 this operation and for this operation alone, you will need to be online) and places them in a working directory.
 When training is complete, the script saves the model to the working directory. If the model file is found
@@ -1597,6 +1596,7 @@ Matches the phraselets derived from the training documents against the training
   or additional classification labels.
 ```
 
+<a id="supervised-topic-training-basis-train"></a>
 ``` {.python}
 SupervisedTopicTrainingBasis.train(self, *, minimum_occurrences=4, cv_threshold=1.0,  
   mlp_activation='relu', mlp_solver='adam', mlp_learning_rate='constant',
@@ -1724,7 +1724,7 @@ word_matches -- an array of dictionaries with the properties:
 ```
 
 <a id="topic-match-dictionary"></a>
-#### 6.8 Dictionary returned from `Manager.topic_match_documents_returning_dictionaries_against()` and  `Manager.topic_match_documents_returning_dictionaries_against()`
+#### 6.8 Dictionary returned from `Manager.topic_match_documents_returning_dictionaries_against()`
 
 ``` {.python}
 A text-only representation of a topic match between a search text and a document.
@@ -1773,7 +1773,7 @@ answers -- an array of arrays with the semantics:
 
 Holmes encompasses several concepts that build on work that the author, Richard
 Paul Hudson, carried out as a young graduate and for which his former
-employer, [Definiens](https://www.definiens.com), has since been granted a
+employer, [Definiens], has since been granted a
 [U.S. patent](https://patents.google.com/patent/US8155946B2/en).
 Definiens has kindly permitted the author to publish Holmes under the GNU General Public
 License ("GPL"). As long as you abide by the terms of the GPL, this means you can
@@ -1939,14 +1939,14 @@ performance of this step.
 statistically significant role in predicting classifications. Phraselets are removed that did not match within
 the documents of any classification a minimum number of times (`minimum_occurrences`; default: 4) or where the
 coefficient of variation (the standard deviation divided by the arithmetic mean) of the occurrences across the
-categories is below a [threshold](#supervised-topic-training-basis) (`cv_threshold`; default: 1.0).
+categories is below a threshold (`cv_threshold`; default: 1.0).
 4. The phraselets that made it into the model are once again matched against each document. Matches against each
 phraselet are used to determine the input values to a multilayer perceptron: the input nodes can either record
 occurrence (binary) or match frequency (scalar) (`oneshot==True` vs. `oneshot==False` respectively). The outputs are the
 category labels, including any additional labels determined via a classification ontology.  By default, the multilayer
 perceptron has three hidden layers where the first hidden layer has the same number of neurons as the input layer and
 the second and third layers have sizes in between the input and the output layer with an equally sized step between
-each size; the user is however [free to specify any other topology](#supervised-topic-training-basis).
+each size; the user is however [free to specify any other topology](#supervised-topic-training-basis-train).
 5. The resulting model is serializable, i.e. can be saved and reloaded.
 6. When a new document is classified, the output
 is zero, one or many suggested classifications; when more than one classification is suggested, the classifications
@@ -1982,11 +1982,8 @@ reduce this problem, the tests are distributed across three subdirectories, so t
 ##### 8.3.1 Additional languages
 
 New languages can be added to Holmes by subclassing the
-`SemanticAnalyzer` class as explained [here](#how-it-works-structural-matching). Because [some of
-the linguistic features](https://spacy.io/api/annotation) returned by
-spaCy are the same for all languages except English and German, the
-additional effort required to add a *fourth* language may well be less
-than the additional effort required to add a third language.
+`SemanticAnalyzer` and `SemanticMatchingHelper` classes as explained
+[here](#how-it-works-structural-matching).
 
 <a id="use-of-machine-learning-to-improve-matching"></a>
 ##### 8.3.2 Use of machine learning to improve matching
@@ -2035,8 +2032,8 @@ The initial open-source version.
 
 -  Upgrade to spaCy 2.1.0 and neuralcoref 4.0.0.
 -  Addition of new dependency `pobjp` linking parents of prepositions directly with their children.
--  Development of the multiprocessing architecture, which has the
-[MultiprocessingManager](#multiprocessing-manager) object as its facade.
+-  Development of the multiprocessing architecture, which has the `MultiprocessingManager` object
+as its facade.
 -  Complete overhaul of [topic matching](#how-it-works-topic-matching).
 -  Incorporation of coreference information into Holmes document structures so it no longer needs to be calculated on the fly.
 -  New literature examples for both languages and the facility to serve them over RESTful HTTP.
@@ -2053,12 +2050,11 @@ same stem.
 -  Ontology implication rules are now calculated eagerly to improve runtime performance.
 -  [Ontology-based matching](#ontology-based-matching) now includes special, language-specific rules to handle hyphens within ontology entries.
 -  Word-match information is now included in all matches including single-word matches.
--  [Word matches](#wordmatch) and dictionaries derived from them now include human-readable explanations designed to be used as tooltips.
+-  Word matches and dictionaries derived from them now include human-readable explanations designed to be used as tooltips.
 -  In [topic matching](#manager-topic-match-function), a penalty is now applied to ontology-based matches as well as to embedding-based matches.
 -  [Topic matching](#manager-topic-match-function) now includes a filter facility to specify
 that only documents whose labels begin with a certain string should be searched.
--  Error handling and reporting have been improved for the
-[MultiprocessingManager](#multiprocessing-manager).
+-  Error handling and reporting have been improved for the MultiprocessingManager.
 -  Numerous minor improvements and bugfixes.
 -  The [demo website](http://holmes-demo.xt.msg.team/) has been updated to reflect the changes.
 
@@ -2072,7 +2068,8 @@ that only documents whose labels begin with a certain string should be searched.
 ##### 8.4.5 Version 3.0.0
 
 -  Moved to [coreferee](https://github.com/msg-systems/coreferee) as the source of coreference information, meaning that coreference resolution is now active for German as well as English; all documents can be serialized; and the latest spaCy version can be supported.
-- The corpus frequencies of words are now taken into account when scoring topic matches.
-- Reverse dependencies are now taken into account, so that e.g. *a man dies* can match *the dead man* although the dependencies in the two phrases point in opposite directions.
-- Merged the pre-existing `Manager` and `MultiprocessingManager` classes into a single `Manager` class, with a redesigned public interface, that uses worker threads for everything except supervised document classification.
-- Added support for [initial question words](#initial-question-word-matching).
+-  The corpus frequencies of words are now taken into account when scoring topic matches.
+-  Reverse dependencies are now taken into account, so that e.g. *a man dies* can match *the dead man* although the dependencies in the two phrases point in opposite directions.
+-  Merged the pre-existing `Manager` and `MultiprocessingManager` classes into a single `Manager` class, with a redesigned public interface, that uses worker threads for everything except supervised document classification.
+-  Added support for [initial question words](#initial-question-word-matching).
+-  The [demo website](http://holmes-demo.xt.msg.team/) has been updated to reflect the changes.
