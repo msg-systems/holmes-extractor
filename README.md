@@ -7,12 +7,11 @@ Author: <a href="mailto:richard.hudson@msg.group">Richard Paul Hudson, msg syste
     -   [1.2 Installation](#installation)
         -   [1.2.1 Prerequisites](#prerequisites)
         -   [1.2.2 Library installation](#library-installation)
-        -   [1.2.3 Installing the spaCy models](#installing-the-spacy-models)
+        -   [1.2.3 Installing the spaCy and coreferee models](#installing-the-spacy-and-coreferee-models)
         -   [1.2.4 Comments about deploying Holmes in an
             enterprise
             environment](#comments-about-deploying-holmes-in-an-enterprise-environment)
-        -   [1.2.5 Using multiprocessing](#using-multiprocessing)
-        -   [1.2.6 Resource requirements](#resource-requirements)
+        -   [1.2.5 Resource requirements](#resource-requirements)
     -   [1.3 Getting started](#getting-started)
 -   [2. Word-level matching strategies](#word-level-matching-strategies)
     -   [2.1 Direct matching](#direct-matching)
@@ -20,6 +19,8 @@ Author: <a href="mailto:richard.hudson@msg.group">Richard Paul Hudson, msg syste
     -   [2.3 Named entity matching](#named-entity-matching)
     -   [2.4 Ontology-based matching](#ontology-based-matching)
     -   [2.5 Embedding-based matching](#embedding-based-matching)
+    -   [2.6 Named-entity-embedding-based matching](#named-entity-embedding-based-matching)
+    -   [2.7 Initial-question-word matching](#initial-question-word-matching)
 -   [3. Coreference resolution](#coreference-resolution)
 -   [4. Writing effective search
     phrases](#writing-effective-search-phrases)
@@ -55,25 +56,18 @@ Author: <a href="mailto:richard.hudson@msg.group">Richard Paul Hudson, msg syste
 -   [6 Interfaces intended for public
     use](#interfaces-intended-for-public-use)
     -   [6.1 `Manager`](#manager)
-    -   [6.2 `MultiprocessingManager`](#multiprocessing-manager)
-    -   [6.3 `Ontology`](#ontology)
-    -   [6.4 `SupervisedTopicTrainingBasis`](#supervised-topic-training-basis)
+    -   [6.2 `Ontology`](#ontology)
+    -   [6.3 `SupervisedTopicTrainingBasis`](#supervised-topic-training-basis)
     (returned from `Manager.get_supervised_topic_training_basis()`)
-    -   [6.5 `SupervisedTopicModelTrainer`](#supervised-topic-model-trainer)
+    -   [6.4 `SupervisedTopicModelTrainer`](#supervised-topic-model-trainer)
     (returned from `SupervisedTopicTrainingBasis.train()`)
-    -   [6.6 `SupervisedTopicClassifier`](#supervised-topic-classifier)
+    -   [6.5 `SupervisedTopicClassifier`](#supervised-topic-classifier)
     (returned from `SupervisedTopicModelTrainer.classifier()` and
     `Manager.deserialize_supervised_topic_classifier()`)
-    -   [6.7 `Match` (returned from
-          `Manager.match()`)](#match)
-    -   [6.8 `WordMatch` (returned from
-        `Manager.match().word_matches`)](#wordmatch)
-    -   [6.9  `Subword` (returned from `word_match.subword`)](#subword)
-    -   [6.10 Dictionary returned from
-        `Manager.match_returning_dictionaries()`)](#dictionary)
-    -   [6.11 `TopicMatch`(returned from `Manager.topic_match_documents_against()`)](#topic-match)
-    -   [6.12 Dictionary returned from
-        `Manager.topic_match_documents_returning_dictionaries_against()` and  `MultiprocessingManager.topic_match_documents_returning_dictionaries_against()`](#topic-match-dictionary)
+    -   [6.6 Dictionary returned from
+        `Manager.match()`)](#dictionary)
+    -   [6.7 Dictionary returned from
+        `Manager.topic_match_documents_against()`](#topic-match-dictionary)
 -   [7 A note on the license](#a-note-on-the-license)
 -   [8 Information for developers](#information-for-developers)
     -   [8.1 How it works](#how-it-works)
@@ -102,9 +96,11 @@ Author: <a href="mailto:richard.hudson@msg.group">Richard Paul Hudson, msg syste
 <a id="the-basic-idea"></a>
 #### 1.1 The basic idea
 
-**Holmes** is a Python 3 library (tested with version 3.7.7) that supports a number of
-use cases involving information extraction from English and German texts. In all use cases, the information extraction
-is based on analysing the semantic relationships expressed by the component parts of each sentence:
+**Holmes** is a Python 3 library (tested with version 3.9.5) running on top of
+[spaCy](https://spacy.io/) (tested with version 3.1.2) that supports a number of use cases
+involving information extraction from English and German texts. In all use cases, the information
+extraction is based on analysing the semantic relationships expressed by the component parts of
+each sentence:
 
 - In the [chatbot](#getting-started) use case, the system is configured using one or more **search phrases**.
 Holmes then looks for structures whose meanings correspond to those of these search phrases within
@@ -115,7 +111,7 @@ corresponds to one or more such words in the document. Both the fact that a sear
 - The [structural extraction](#structural-extraction) use case uses exactly the same
 [structural matching](#how-it-works-structural-matching) technology as the chatbot use
 case, but searching takes place with respect to a pre-existing document or documents that are typically much
-longer than the snippets analysed in the chatbot use case, and the aim to extract and store structured information. For example, a set of business articles could be searched to find all the places where one company is said to be planning to
+longer than the snippets analysed in the chatbot use case, and the aim is to extract and store structured information. For example, a set of business articles could be searched to find all the places where one company is said to be planning to
 take over a second company. The identities of the companies concerned could then be stored in a database.
 
 - The [topic matching](#topic-matching) use case aims to find passages in a document or documents whose meaning
@@ -165,24 +161,20 @@ before installing Holmes.
 <a id="library-installation"></a>
 ##### 1.2.2 Library installation
 
-Because of a conflict between the install scripts of two of Holmes' dependencies
-(`neuralcoref` and `numpy`), `numpy` has to be installed before the Holmes installation
-script runs. Install Holmes using the following commands:
+Install Holmes using the following commands:
 
 *Linux:*
 ```
-pip3 install numpy
 pip3 install holmes-extractor
 ```
 
 *Windows:*
 ```
-pip install numpy
 pip install holmes-extractor
 ```
 
 To upgrade from a previous Holmes version, issue the following commands and then
-[reissue the commands to download the spaCy models](#installing-the-spacy-models) to ensure
+[reissue the commands to download the spaCy and coreferee models](#installing-the-spacy-and-coreferee-models) to ensure
 you have the correct versions of them:
 
 *Linux:*
@@ -206,10 +198,6 @@ If you wish to use the examples and tests, clone the source code using
 git clone https://github.com/msg-systems/holmes-extractor
 ```
 
-Note that at present spaCy version 2.1.0 is installed rather than the current version
-because of a conflict between later versions of spaCy and the version of `neuralcoref` that
-was available when Holmes 2.2 was developed.
-
 If you wish to experiment with changing the source code, you can
 override the installed code by starting Python (type `python3` (Linux) or `python`
 (Windows)) in the parent directory of the directory where your altered `holmes_extractor`
@@ -225,40 +213,51 @@ import holmes_extractor
 print(holmes_extractor.__file__)
 ```
 
-<a id="installing-the-spacy-models"></a>
-##### 1.2.3 Installing the spaCy models
+<a id="installing-the-spacy-and-coreferee-models"></a>
+##### 1.2.3 Installing the spaCy and coreferee models
 
-The spaCy library that Holmes builds upon requires
-[language-specific models](https://spacy.io/usage/models) that have to be downloaded
-separately before Holmes can be used. The following models are for English and German
-respectively:
+The spaCy and coreferee libraries that Holmes builds upon require
+language-specific models that have to be downloaded separately before Holmes can be used:
 
-*Linux:*
+*Linux/English:*
 ```
+python3 -m spacy download en_core_web_trf
 python3 -m spacy download en_core_web_lg
+python3 -m coreferee install en
+```
+
+*Linux/German:*
+```
 python3 -m spacy download de_core_news_lg
+python3 -m coreferee install de
+```
+
+*Windows/English:*
+```
+python -m spacy download en_core_web_trf
+python -m spacy download en_core_web_lg
+python -m coreferee install en
+```
+
+*Windows/German:*
+```
+python -m spacy download de_core_news_lg
+python -m coreferee install de
 ```
 
 and if you plan to run the [regression tests](#development-and-testing-guidelines):
 
+*Linux:*
 ```
 python3 -m spacy download en_core_web_sm
 ```
 
-
 *Windows:*
 ```
-python -m spacy download en_core_web_lg
-python -m spacy download de_core_news_lg
+python3 -m spacy download en_core_web_sm
 ```
 
-and if you plan to run the [regression tests](#development-and-testing-guidelines):
-
-```
-python -m spacy download en_core_web_sm
-```
-
-`en_core_web_sm` is one of the smaller models that are also available. Users of Holmes are nonetheless urged to stick to the `en_core_web_lg` and `de_core_news_lg` models as they have consistently been found to yield the best results.
+`en_core_web_trf` and `de_core_web_lg` are the models that have been found to yield the best results for English and German respectively. Because `en_core_web_trf` does not have word vectors, the `en_core_web_lg` model as a vector source for [embedding-based-matching](#embedding-based-matching) when parsing using `en_core_web_trf`.
 
 <a id="comments-about-deploying-holmes-in-an-enterprise-environment"></a>
 ##### 1.2.4 Comments about deploying Holmes in an enterprise environment
@@ -271,35 +270,14 @@ The best way of integrating Holmes into a non-Python environment is to
 wrap it as a RESTful HTTP service and to deploy it as a
 microservice. See [here](https://github.com/msg-systems/holmes-extractor/blob/master/holmes_extractor/examples/example_search_EN_literature.py) for an example.
 
-<a id="using-multiprocessing"></a>
-##### 1.2.5 Using multiprocessing
-
-Holmes normally only occupies a single processor core. In order to improve performance, the workload of the
-[topic matching](#topic-matching) use case can be distributed amongst multiple processors using the
-[MultiprocessingManager](#multiprocessing-manager) class. This is achieved by assigning the registered
-documents to worker processes in a round-robin fashion, which implies that there is no point in starting
-more worker threads than there are documents to analyse, and that the best performance is achieved when
-all documents are of a fairly similar length.
-
-Usually, multiprocessing involves a physical copy of working process memory on Windows but not on Linux. Because of
-an issue with `neuralcoref` memory management, however, the MultiprocessingManager has to start a separate instance
-of the spaCy model for each worker process on all operating systems. In a typically configured environment, this makes it likely that
-memory will be exhausted before CPU, which should be taken into account when deciding how many processes to start.
-
-The parent process communicates with its workers via queues. On one occasion, the MultiprocessingManager was observed
-to stop working and the culprit was an old worker process that had not completed normally and was reading queue
-objects that were destined for a process that had been started subsequently. If the MultiprocessingManager hangs shortly
-after being started, the probable solution is therefore to ensure all Python processes have been killed before
-trying again.
-
 <a id="resource-requirements"></a>
-##### 1.2.6 Resource requirements
+##### 1.2.5 Resource requirements
 
 Because Holmes performs complex, intelligent analysis, it is inevitable that it requires more hardware resources than more traditional search frameworks. The use cases that involve loading documents — [structural extraction](#structural-extraction) and [topic matching](#topic-matching) — are most immediately applicable to large but not massive corpora (e.g. all the documents belonging to a certain organisation, all the patents on a certain topic, all the books by a certain author). For cost reasons, Holmes would not be an appropriate tool with which to analyse the content of the entire Internet!
 
-That said, Holmes is both vertically and horizontally scalable. With sufficient hardware, both these use cases can be applied to an essentially unlimited number of documents by running Holmes on multiple machines, processing a different set of documents on each one and conflating the results. Note that this is the strategy employed by the [MultiprocessingManager](#multiprocessing-manager) to distribute [topic matching](#topic-matching) processing amongst multiple cores on a single machine and that the [TopicMatchDictionaryOrderer](https://github.com/msg-systems/holmes-extractor/blob/master/holmes_extractor/extensive_matching.py) class, which is used to conflate results from several cores, could easily be reused to conflate results received from multiple machines over the network.
+That said, Holmes is both vertically and horizontally scalable. With sufficient hardware, both these use cases can be applied to an essentially unlimited number of documents by running Holmes on multiple machines, processing a different set of documents on each one and conflating the results. Note that this is the strategy already employed to distribute matching amongst multiple cores on a single machine.
 
-Holmes holds loaded documents in memory. On the one hand, this ties in with its intended use with large but not massive corpora; on the other hand, documents that have been analysed using [coreference resolution](#coreference-resolution) are not serializable, so that it would not be technically possible to offer a persistent storage option. The performance of document loading, [structural extraction](#structural-extraction) and [topic matching](#topic-matching) all degrade heavily if the operating system has to swaps memory pages to secondary storage, because Holmes can require memory from a variety of pages to be addressed when processing a single sentence. This means it is important to supply enough RAM on each machine to hold all loaded documents.
+Holmes holds loaded documents in memory, which ties in with its intended use with large but not massive corpora. The performance of document loading, [structural extraction](#structural-extraction) and [topic matching](#topic-matching) all degrade heavily if the operating system has to swaps memory pages to secondary storage, because Holmes can require memory from a variety of pages to be addressed when processing a single sentence. This means it is important to supply enough RAM on each machine to hold all loaded documents.
 
 <a id="getting-started"></a>
 #### 1.3 Getting started
@@ -364,7 +342,7 @@ Ein großer Hund jagte eine Katze
 
 
 Matched search phrase 'Ein großer Hund jagt eine Katze':
-'großer'->'groß' (direct); 'Ein großer Hund'->'hund' (direct); 'jagte'->'jagen' (direct); 'eine Katze'->'katze' (direct)
+'großer'->'groß' (Matches GROSS directly); 'Ein großer Hund'->'hund' (Matches HUND directly); 'jagte'->'jagen' (Matches JAGEN directly); 'eine Katze'->'katze' (Matches KATZE directly)
 ```
 
 This could easily have been achieved with a simple matching algorithm, so type
@@ -549,12 +527,12 @@ document words are also taken into consideration during direct matching.
 Derivation-based matching involves distinct but related words that typically
 belong to different word classes, e.g. English *assess* and *assessment*,
 German *jagen* and *Jagd*. It is active by default but can be switched off using
-the `analyze_derivational_morphology` parameter, which is set when instantiating the [Manager](#manager) and [MultiprocessingManager](#multiprocessing-manager) classes.
+the `analyze_derivational_morphology` parameter, which is set when instantiating the [Manager](#manager) class.
 
 <a id="named-entity-matching"></a>
-#### 2.3 Named entity matching (`word_match.type=='entity'`)
+#### 2.3 Named-entity matching (`word_match.type=='entity'`)
 
-Named entity matching is activated by inserting a special named-entity
+Named-entity matching is activated by inserting a special named-entity
 identifier at the desired point in a search phrase in place of a noun,
 e.g.
 
@@ -729,7 +707,7 @@ account when training the classifier.
 <a id="embedding-based-matching"></a>
 #### 2.5 Embedding-based matching (`word_match.type=='embedding'`)
 
-For both English and German, spaCy offers **word embeddings**:
+spaCy offers **word embeddings**:
 machine-learning-generated numerical vector representations of words
 that capture the contexts in which each word
 tends to occur. Two words with similar meaning tend to emerge with word
@@ -738,18 +716,9 @@ embeddings that are close to each other, and spaCy can measure the
 between 0.0 (no similarity) and 1.0 (the same word). Because *dog* and
 *cat* tend to appear in similar contexts, they have a similarity of
 0.80; *dog* and *horse* have less in common and have a similarity of
-0.62; and *dog* and *iron* have a similarity of only 0.25.
-
-Holmes makes use of word-embedding-based similarities using a globally
-defined **overall similarity threshold**. A match is detected between a
-search phrase and a structure within a document whenever the geometric
-mean of the similarities between the individual corresponding word pairs
-is greater than the threshold. The intuition behind this technique is
-that where a search phrase with e.g. six lexical words has matched a
-document structure where five of these words match exactly and only one
-corresponds via an embedding, the similarity that should be required to match this sixth word is less than
-when only three of the words matched exactly and two of the other words also correspond via embeddings. Embedding-based matching is only activated for nouns, adjectives and adverbs
-because the results have been found to be unsatisfactory with other word classes.
+0.62; and *dog* and *iron* have a similarity of only 0.25. Embedding-based matching
+is only activated for nouns, adjectives and adverbs because the results have been found to be
+unsatisfactory with other word classes.
 
 It is important to understand that the fact that two words have similar
 embeddings does not imply the same sort of logical relationship between
@@ -757,9 +726,19 @@ the two as when [ontology-based matching](#ontology-based-matching) is used: for
 fact that *dog* and *cat* have similar embeddings means neither that a
 dog is a type of cat nor that a cat is a type of dog. Whether or not
 embedding-based matching is nonetheless an appropriate choice depends on
-the use case. It is more likely to be appropriate for the [topic matching](#topic-matching) and
-[supervised document classification](#supervised-document-classification) use cases than for the
-[chatbot](#chatbot) and [structural extraction](#structural-extraction) use cases.
+the functional use case.
+
+For the [chatbot](#chatbot), [structural extraction](#structural-extraction) and [supervised document classification](#supervised-document-classification) use cases, Holmes makes use of word-
+embedding-based similarities using a `overall_similarity_threshold` parameter defined globally on
+the [Manager](#manager) class . A match is detected between a
+search phrase and a structure within a document whenever the geometric
+mean of the similarities between the individual corresponding word pairs
+is greater than the threshold. The intuition behind this technique is
+that where a search phrase with e.g. six lexical words has matched a
+document structure where five of these words match exactly and only one
+corresponds via an embedding, the similarity that should be required to match this sixth word is
+less than when only three of the words matched exactly and two of the other words also correspond
+via embeddings.
 
 Matching a search phrase to a document begins by finding words
 in the document that match the word at the root (syntactic head) of the
@@ -776,60 +755,41 @@ except the [chatbot](#chatbot) use case essentially unusable.
 To avoid the typically unnecessary performance hit that results from embedding-based matching
 of search phrase root words, it is controlled separately from embedding-based matching in general
 using the `embedding_based_matching_on_root_words` parameter, which is set when instantiating the
-[Manager](#manager) and [MultiprocessingManager](#multiprocessing-manager) classes. You are advised to keep this setting switched off (value `False`) for most use cases.
+[Manager](#manager) class. You are advised to keep this setting switched off (value `False`) for most use cases.
 
-Note that with [topic matching](#topic-matching), embeddings are automatically investigated in
-[certain circumstances](#how-it-works-topic-matching) regardless of the value of the
-`embedding_based_matching_on_root_words` parameter. However, switching the parameter
-on for topic matching (which is absolutely not recommended!) will still lead to embeddings being investigated for all root words that have valid word classes.
+Neither the `overall_similarity_threshold` nor the `embedding_based_matching_on_root_words` parameter has any effect on the [topic_matching](#topic_matching) use case. Here word-level embedding similarity thresholds are set using the `word_embedding_match_threshold` and  `initial_question_word_embedding_match_threshold` parameters when calling the [`topic_match_documents_against` function on the Manager class](#manager-topic-match-function).
+
+<a id="named-entity-embedding-based-matching"></a>
+#### 2.6 Named-entity-embedding-based matching (`word_match.type=='entity_embedding'`)
+
+An named-entity-embedding based match obtains between a searched-document word that has a certain entity label and a search-phrase or query-document word whose embedding is sufficiently similar to the underlying meaning of the entity label, e.g. the word *individual* in a search phrase has a similar word embedding to the underlying meaning of the *PERSON* entity label. Note that named-entity-embedding-based matching is not active on root words regardless of the `embedding_based_matching_on_root_words` setting.
+
+<a id="initial-question-word-matching"></a>
+#### 2.7 Initial-question-word matching (`word_match.type=='question'`)
+
+Initial-question-word matching is only active during [topic matching](#topic-matching). Initial question words in query phrases match entities in the searched documents that represent potential answers to the question, e.g. when comparing the query phrase ***When did Peter have breakfast*** to the searched-document phrase *Peter had breakfast at 8 a.m.*, the question word *when* would match the temporal adverbial phrase *at 8 a.m.*.
+
+Initial-question-word matching is switched on and off using the `initial_question_word_behaviour` parameter when calling the [`topic_match_documents_against` function on the Manager class](#manager-topic-match-function). iT is only likely to be useful when performing topic matching in an interactive setting where the user enters short query phrases, as opposed to when it is being used to find documents on a similar topic to an pre-existing query document; initial question words are in any case only processed at the beginning of the first sentence of the query phrase or query document.
+
+If a query phrase consists of a complex question with several elements dependent on the main verb, a finding in a searched document is only strictly an 'answer' if contains matches to all these elements. Because recall is typically more important than precision when performing topic matching with interactive query phrases, however, Holmes will match an initial question word to a searched-document phrase wherever they correspond semantically (e.g. *when* corresponds to a temporal adverbial phrase) and each depend on verbs that themselves match at the word level. One possible strategy to filter out such 'incomplete answers' would be to calculate the maximum possible score for a query phrase and reject topic matches that score below a threshold based on this maximum.
 
 <a id="coreference-resolution"></a>
 ### 3. Coreference resolution
 
-As explained in the [initial examples](#getting-started), Holmes can be configured to use
-**coreference resolution** when analysing English (but not yet German). This
-means that situations are recognised where pronouns and nouns that are located near one another
-within a text refer to the same entities. The information from one mention can then
-be applied to the analysis of further mentions:
+Before Holmes analyses a searched document or query document, coreference resolution is performed using the [coreferee](https://github.com/msg-systems/coreferee)
+library running on top of spaCy.  This means that situations are recognised where pronouns and nouns that are located near one another within a text refer to the same entities. The information from one mention can then be applied to the analysis of further mentions:
 
 I saw a *big dog*. *It* was chasing a cat.   
 I saw a *big dog*. *The dog* was chasing a cat.
 
-Coreference resolution is performed using the [neuralcoref](https://github.com/huggingface/neuralcoref)
-library running on top of spaCy. The `neuralcoref` library detects chains of coreferring nouns and pronouns that can
-grow to considerable lengths when longer texts are analysed. For Holmes, it has been found
-to be appropriate to limit the consideration of coreference resolution information to a small
-number of mentions either side of a noun or pronoun within a chain — the threshold is currently set to 3 — as well as to suppress coreference between elements more than 300 words apart.
-
-Alongside the main use of coreference resolution information to increase the scope of
-structural matching between search phrases and documents, Holmes also looks for situations
-where a matched word is in a coreference chain with another word that is linked to the
-matched word in an [ontology](#ontology-based-matching) and that is more specific than the
-matched word:
+Coreferee also detects situations where a noun refers back to a named entity:
 
 We discussed *msg systems*. *The company* had made a profit.
 
-If this example were to match the search phrase ***A company makes a profit*** and if
-*msg systems* were defined as a named-individual instance of *company* in the ontology, the
+If this example were to match the search phrase ***A company makes a profit***, the
 coreference information that the company under discussion is msg systems is clearly
 relevant and worth extracting in addition to the word(s) directly matched to the search
 phrase. Such information is captured in the [word_match.extracted_word](#wordmatch) field.
-
-A caveat applies when using coreference resolution in the context of the
-[structural extraction](#structural-extraction) use case. The `neuralcoref` library yields excellent results with
-grammatical structures of low or average complexity. However, with very complex texts, the proportion of errors in
-the detected coreference chains seems to increase significantly to an extent that is not observed either for the
-underlying spaCy syntactic parses or for the Holmes semantic interpretations of them. This is presumably because humans
-performing coreference resolution rely partially on information about the world to which the library does
-not have access. This should be borne in mind when extracting structured information from very complex documents:
-there is a danger that using coreference resolution will lead to an unacceptable proportion of the
-extracted information being incorrect.
-
-The `neuralcoref` library does not currently support
-[serialization](#manager-serialize-function): an attempt to serialize a document that has been parsed
-with coreference resolution will result in an error being raised. If you wish to serialize documents and
-are using a spaCy model for which coreference resolution is available (essentially: if you are working in
-English), you have to switch off coreference resolution when instantiating the [Manager](#manager) class by setting the `perform_coreference_resolution` parameter to `False`.
 
 <a id="writing-effective-search-phrases"></a>
 ### 4. Writing effective search phrases
@@ -841,8 +801,7 @@ The concept of search phrases has [already been introduced](#getting-started) an
 chatbot use case, the structural extraction use case and to [preselection](#preselection) within the supervised
 document classification use case.
 
-**It is crucial to understand that the tips and limitations set out in Section 4 do not apply in any way to search queries in topic matching. If you are using
-Holmes for topic matching only, you can completely ignore this section!**
+**It is crucial to understand that the tips and limitations set out in Section 4 do not apply in any way to query phrases in topic matching. If you are using Holmes for topic matching only, you can completely ignore this section!**
 
 Structural matching between search phrases and documents is not symmetric: there
 are many situations in which sentence X as a search phrase would match
@@ -982,14 +941,11 @@ that can be matched to documents.
 <a id="coreferring-pronouns"></a>
 ##### 4.2.5 Coreferring pronouns
 
-***A dog chases a cat and he chases a mouse*** (English)  
+***A dog chases a cat and he chases a mouse*** (English)
+***Ein Hund jagt eine Katze und er jagt eine Maus*** (German)
 
 Pronouns that corefer with nouns elsewhere in the search phrase are not permitted as this
 would overcomplicate the library without offering any benefits.
-Whether or not this applies to a specific pronoun depends not only on the search phrase
-content, but also on whether or not [coreference resolution](#coreference-resolution)
-is available for the model being used and is [switched on](#manager). Because coreference
-resolution is not currently available for German, only an English example is given.
 
 <a id="structures-strongly-discouraged-in-search-phrases"></a>
 #### 4.3 Structures strongly discouraged in search phrases
@@ -1023,7 +979,7 @@ search phrases are expressed in the present active.
 ***Who chases the cat?*** (English)  
 ***Wer jagt die Katze?*** (German)
 
-Although questions are supported in a limited sense as query phrases in the
+Although questions are supported as query phrases in the
 [topic matching](#topic-matching) use case, they are not appropriate as search phrases.
 Questions should be re-phrased as statements, in this case
 
@@ -1174,18 +1130,13 @@ information to be extracted
 The topic matching use case matches a **query document**, or alternatively a **query phrase**
 entered ad-hoc by the user, against a set of documents pre-loaded into memory. The aim is to find the passages
 in the documents whose topic most closely corresponds to the topic of the query document; the output is
-a ordered list of passages scored according to topic similarity.
+a ordered list of passages scored according to topic similarity. Additionally, if a query phrase contains an [initial question word](#initial-question-word-matching), the output will contain potential answers to the question.
 
 Topic matching queries may contain [generic pronouns](#generic-pronouns) and
 [named entity identifiers](#named-entity-matching) just like search phrases, although the `ENTITYNOUN`
 token is not supported. However, an important difference from
 search phrases is that the topic matching use case places no
-restrictions on the grammatical structures permissible within the query document. This means that query phrases
-can be expressed as questions, and indeed questions may well be the most natural way for many users to formulate query
-phrases. However, it is important to understand that Holmes is not a dedicated question answering system in that it
-makes no attempt to retrieve content based on the meanings of question words. Instead, question words are
-ignored as grammatical words; the lexical words within the question are analysed and used as a basis for
-matching in the same way as if they had been contained within a statement.
+restrictions on the grammatical structures permissible within the query document.
 
 The Holmes source code ships with three examples demonstrating the topic matching use case with an English literature
 corpus, a German literature corpus and a German legal corpus respectively. The two literature examples are hosted at
@@ -1197,26 +1148,6 @@ resource-hungry procedures like investigating semantic relationships and compari
 across the board would prevent topic matching from scaling, Holmes only attempts them for specific areas of the text
 that less resource-intensive strategies have already marked as looking promising. This and the other interior workings
 of topic matching are explained [here](#how-it-works-topic-matching).
-
-Because the decision as to which strategies to apply when are driven by thresholds that measure how often certain
-features occur within the document corpus, it is important to realise that a given result may not remain constant when
-the size of the corpus changes. This issue is especially pertinent when using the
-[MultiprocessingManager](#multiprocessing-manager) because each worker process applies its own thresholds and the
-scored results are pooled at the end. In practice, this seems to make little difference to the results that are
-actually observed, but there may be use cases where consistency and predicability are more important than performance.
-Consistency and predictability can be ensured by setting each of the
-`maximum_number_of_single_word_matches_for_relation_matching` and
-`maximum_number_of_single_word_matches_for_embedding_matching` parameters to either `0` (always off) or
-`sys.maxsize` (always on).
-
-[Embedding-based matching](#embedding-based-matching) is controlled by the overall similarity threshold set on the
-[Manager](#manager) or [MultiprocessingManager](#multiprocessing-manager) object, which measures the geometric mean
-of all the words matched within a structure. In topic matching used in the normal situation where
-`embedding_based_matching_on_root_words==False`, there are always two words involved in a match and the similarity for
-one of these words is always 1. A target value for the second word can thus be specified by setting the overall
-similarity threshold to the *square root* of that target value. For example, if pairs of words
-whose embedding similarity is higher than 0.75 are to be matched, the threshold should be set to
-the square root of 0.75, which is around 0.866.
 
 <a id="supervised-document-classification"></a>
 #### 5.4 Supervised document classification
@@ -1290,72 +1221,71 @@ The facade class for the Holmes library.
 
 Parameters:
 
-model -- the name of the spaCy model, e.g. 'en_core_web_lg'  
-overall_similarity_threshold -- the overall similarity threshold for
-  embedding-based matching. Defaults to '1.0', which deactivates embedding-based matching.  
-embedding_based_matching_on_root_words -- determines whether  or not embedding-based
-  matching should be attempted on search-phrase root tokens, which has a considerable
-  performance hit. Defaults to 'False'.
-ontology -- an 'Ontology' object. Defaults to 'None' (no ontology).  
-analyze_derivational_morphology -- *True* if matching should be attempted between different
-  words from the same word family. Defaults to *True*.
-perform_coreference_resolution -- 'True', 'False', or 'None' if coreference resolution
-  should be performed depending on whether the model supports it. Defaults to 'None'.
-debug -- a boolean value specifying whether debug representations should
-be outputted for parsed sentences. Defaults to 'False'.
+    model -- the name of the spaCy model, e.g. *en_core_web_trf*
+    overall_similarity_threshold -- the overall similarity threshold for embedding-based
+        matching. Defaults to *1.0*, which deactivates embedding-based matching. Note that this
+        parameter is not relevant for topic matching, where the thresholds for embedding-based
+        matching are set on the call to *topic_match_documents_against*.
+    embedding_based_matching_on_root_words -- determines whether or not embedding-based
+        matching should be attempted on search-phrase root tokens, which has a considerable
+        performance hit. Defaults to *False*. Note that this parameter is not relevant for topic
+        matching.
+    ontology -- an *Ontology* object. Defaults to *None* (no ontology).
+    analyze_derivational_morphology -- *True* if matching should be attempted between different
+        words from the same word family. Defaults to *True*.
+    perform_coreference_resolution -- *True* if coreference resolution should be taken into account
+        when matching. Defaults to *True*.
+    use_reverse_dependency_matching -- *True* if appropriate dependencies in documents can be
+        matched to dependencies in search phrases where the two dependencies point in opposite
+        directions. Defaults to *True*.
+    number_of_workers -- the number of worker processes to use, or *None* if the number of worker
+        processes should depend on the number of available cores. Defaults to *None*
+    verbose -- a boolean value specifying whether multiprocessing messages should be outputted to
+        the console. Defaults to *False*
 ```
 
 ``` {.python}
-Manager.parse_and_register_document(self, document_text, label='')
+Manager.register_serialized_document(self, serialized_document:bytes, label:str) -> None
 
 Parameters:
 
-document_text -- the raw document text.  
-label -- a label for the document which must be unique. Defaults to the
-  empty string, which is intended for use cases where single documents
-  (user entries) are matched to predefined search phrases.
+document -- a preparsed Holmes document.
+label -- a label for the document which must be unique. Defaults to the empty string,
+    which is intended for use cases involving single documents (typically user entries).
 ```
 
 ``` {.python}
-Manager.register_parsed_document(self, document, label='')
+Manager.register_serialized_documents(self, document_dictionary:dict[str, Doc]) -> None
+
+Note that this function is the most efficient way of loading documents.
 
 Parameters:
 
-document -- a preparsed Holmes document.  
-label -- a label for the document which must be unique. Defaults to the
-  empty string, which is intended for the chatbot use case where single documents
-  (user entries) are matched to predefined search phrases.
+document_dictionary -- a dictionary from labels to serialized documents.
 ```
 
 ``` {.python}
-Manager.deserialize_and_register_document(self, document, label='')
-
-Raises a 'WrongModelDeserializationError' if the model used to parse the serialized
-  document does not correspond to the model with which this Manager object was created.
+Manager.parse_and_register_document(self, document_text:str, label:str='') -> None
 
 Parameters:
 
-document -- a Holmes document serialized using the
-  'serialize_document()' function.  
-label -- a label for the document which must be unique. Defaults to the
-  empty string, which is intended for the chatbot use case where single documents
-  (user entries) are matched to predefined search phrases.
+document_text -- the raw document text.
+label -- a label for the document which must be unique. Defaults to the empty string,
+    which is intended for use cases involving single documents (typically user entries).
 ```
 
 ``` {.python}
-Manager.remove_document(self, label)
-
-Parameters:
-
-label -- the label of the document to be removed.
+Manager.remove_document(self, label:str) -> None
 ```
 
 ``` {.python}
-Manager.remove_all_documents(self)
+Manager.remove_all_documents(self) -> None
 ```
 
 ``` {.python}
-Manager.remove_all_search_phrases(self)
+Manager.document_labels(self) -> list[str]
+
+Returns a list of the labels of the currently registered documents.
 ```
 
 ``` {.python}
@@ -1363,14 +1293,13 @@ Manager.remove_all_search_phrases_with_label(self, label)
 ```
 
 ``` {.python}
-Manager.document_labels(self)
+Manager.document_labels(self) -> list[str]
 
 Returns a list of the labels of the currently registered documents.
 ```
 
-<a id="manager-serialize-function"></a>
 ``` {.python}
-Manager.serialize_document(self, label)
+Manager.serialize_document(self, label:str) -> bytes
 
 Returns a serialized representation of a Holmes document that can be
   persisted to a file. If 'label' is not the label of a registered document,
@@ -1382,7 +1311,30 @@ label -- the label of the document to be serialized.
 ```
 
 ``` {.python}
-Manager.register_search_phrase(self, search_phrase_text, label=None)
+Manager.get_document(self, label:str='') -> Doc
+
+Returns a Holmes document. If *label* is not the label of a registered document, *None*
+  is returned instead.
+
+Parameters:
+
+label -- the label of the document to be serialized.
+```
+
+``` {.python}
+Manager.debug_document(self, label:str='') -> Doc
+
+Outputs a debug representation for a loaded document.
+
+Parameters:
+
+label -- the label of the document to be serialized.
+```
+
+``` {.python}
+Manager.register_search_phrase(self, search_phrase_text:str, label:str=None) -> SearchPhrase
+
+Registers and returns a new search phrase.
 
 Parameters:
 
@@ -1390,66 +1342,82 @@ search_phrase_text -- the raw search phrase text.
 label -- a label for the search phrase which need not be unique.
   If label==None, the assigned label defaults to the raw search phrase text.
 ```
+
+``` {.python}
+Manager.remove_all_search_phrases_with_label(self, label:str) -> None
+```
+
+```
+Manager.remove_all_search_phrases(self) -> None
+```
+
+```
+Manager.list_search_phrase_labels(self) -> list[str]
+```
+
 <a id="manager-match-function"></a>
 ``` {.python}
-Manager.match(self)
+Manager.match(self, search_phrase_text:str=None, document_text:str=None) -> list[dict]
 
-Matches the registered search phrases to the registered documents.
-  Returns a list of Match objects sorted by their overall similarity
-  measures in descending order. Should be called by applications wishing
-  to retain references to the spaCy and Holmes information that was used
-  to derive the matches.
-```
+Matches search phrases to documents and returns the result as match dictionaries.
 
-``` {.python}
-Manager.match_returning_dictionaries(self)
+Parameters:
 
-Matches the registered search phrases to the registered documents.
-  Returns a list of dictionaries describing any matches, sorted by their
-  overall similarity measures in descending order. Callers of this method
-  do not have to manage any further dependencies on spaCy or Holmes.
-```
-
-
-``` {.python}
-Manager.match_search_phrases_against(self, entry)
-
-Matches the registered search phrases against a single document
-  supplied to the method and returns dictionaries describing any matches.
-```
-
-
-``` {.python}
-Manager.match_documents_against(self, search_phrase)
-
-Matches the registered documents against a single search phrase
-  supplied to the method and returns dictionaries describing any matches.
+search_phrase_text -- a text from which to generate a search phrase, or *None* if the
+    preloaded search phrases should be used for matching.
+document_text -- a text from which to generate a document, or *None* if the preloaded
+    documents should be used for matching.
 ```
 
 <a id="manager-topic-match-function"></a>
 ``` {.python}
-topic_match_documents_against(self, text_to_match, *, maximum_activation_distance=75,
-  relation_score=30, reverse_only_relation_score = 20, single_word_score=5,
-  single_word_any_tag_score=2, overlapping_relation_multiplier=1.5,
-  embedding_penalty=0.6, ontology_penalty=0.9,
-  maximum_number_of_single_word_matches_for_relation_matching = 500,
-  maximum_number_of_single_word_matches_for_embedding_matching = 100,
-  sideways_match_extent=100, only_one_result_per_document=False,
-  number_of_results=10, document_label_filter=None):
+topic_match_documents_against(self, text_to_match:str, *, use_frequency_factor:bool=True,
+    maximum_activation_distance:int=75,
+    word_embedding_match_threshold:float=0.8,
+    initial_question_word_embedding_match_threshold:float=0.7,
+    relation_score:int=300, reverse_only_relation_score:int=200,
+    single_word_score:int=50, single_word_any_tag_score:int=20,
+    initial_question_word_answer_score:int=600,
+    initial_question_word_behaviour:str='process', different_match_cutoff_score:int=15,
+    overlapping_relation_multiplier:float=1.5, embedding_penalty:float=0.6,
+    ontology_penalty:float=0.9,
+    relation_matching_frequency_threshold:float=0.25,
+    embedding_matching_frequency_threshold:float=0.5,
+    sideways_match_extent:int=100, only_one_result_per_document:bool=False,
+    number_of_results:int=10, document_label_filter:str=None,
+    tied_result_quotient:float=0.9) -> list[dict]:
 
-Returns the results of a topic match between an entered text and the loaded documents.
+Returns a list of dictionaries representing the results of a topic match between an entered text and the loaded documents.
 
-Parameters:
+Properties:
 
 text_to_match -- the text to match against the loaded documents.
-maximum_activation_distance -- the number of words it takes for a previous    
-  phraselet activation to reduce to zero when the library is reading through a document.
-relation_score -- the activation score added when a normal two-word relation is matched.
+use_frequency_factor -- *True* if scores should be multiplied by a factor between 0 and 1
+  expressing how rare the words matching each phraselet are in the corpus. Note that,
+  even if set to *False*, the factors are still calculated as they are required for
+  determining which relation and embedding matches should be attempted.
+maximum_activation_distance -- the number of words it takes for a previous phraselet
+  activation to reduce to zero when the library is reading through a document.
+word_embedding_match_threshold -- the cosine similarity above which two words match.
+initial_question_word_embedding_match_threshold -- the cosine similarity above which two
+  words match where the search phrase word governs an interrogative pronoun.
+relation_score -- the activation score added when a normal two-word
+  relation is matched.
 reverse_only_relation_score -- the activation score added when a two-word relation
   is matched using a search phrase that can only be reverse-matched.
-single_word_score -- the activation score added when a normal single word is matched.
+single_word_score -- the activation score added when a normal single
+  word is matched.
 single_word_any_tag_score -- the activation score added when a single word is matched
   whose tag did not correspond to the template specification.
+initial_question_word_answer_score -- the activation score added when a question word is
+  matched to an answering phrase. Set to the value of *relation_score* if not supplied.
+initial_question_word_behaviour -- 'process' if a question word in the sentence
+  constinuent at the beginning of *text_to_match* is to be matched to document phrases
+  that answer it; 'exclusive' if only topic matches that involve such question words
+  are to be permitted; 'ignore' if question words are to be ignored.
+different_match_cutoff_score -- the activation threshold under which topic matches are
+  separated from one another. Note that the default value will probably be too low if
+  *use_frequency_factor* is set to *False*.
 overlapping_relation_multiplier -- the value by which the activation score is multiplied
   when two relations were matched and the matches involved a common document word.
 embedding_penalty -- a value between 0 and 1 with which scores are multiplied when the
@@ -1460,65 +1428,11 @@ ontology_penalty -- a value between 0 and 1 with which scores are multiplied for
   the score is multiplied by the value (abs(depth) + 1) times, so that the penalty is
   higher for hyponyms and hypernyms than for synonyms and increases with the
   depth distance.
-maximum_number_of_single_word_matches_for_relation_matching -- the maximum number
-  of single word matches that are used as the basis for matching relations. If more
-  document words than this value correspond to each of the two words within a
-  relation phraselet, matching on the phraselet is not attempted.
-maximum_number_of_single_word_matches_for_embedding_matching = the maximum number
-  of single word matches that are used as the basis for matching with
-  embeddings at the other word. If more than this value exist, matching with
-  embeddings is not attempted because the performance hit would be too great.
-sideways_match_extent -- the maximum number of words that may be incorporated into a
-  topic match either side of the word where the activation peaked.
-only_one_result_per_document -- if 'True', prevents multiple results from being returned
-  for the same document.
-number_of_results -- the number of topic match objects to return.
-document_label_filter -- optionally, a string with which document labels must start to
-  be considered for inclusion in the results.
-```
-
-``` {.python}
-topic_match_documents_returning_dictionaries_against(self, text_to_match, *,
-  maximum_activation_distance=75, relation_score=30, reverse_only_relation_score = 20,
-  single_word_score=5, single_word_any_tag_score=2, overlapping_relation_multiplier=1.5,
-  embedding_penalty=0.6, ontology_penalty=0.9,
-  maximum_number_of_single_word_matches_for_relation_matching = 500,
-  maximum_number_of_single_word_matches_for_embedding_matching = 100,
-  sideways_match_extent=100, only_one_result_per_document=False, number_of_results=10,
-  document_label_filter=None, tied_result_quotient=0.9):
-
-Returns a list of dictionaries representing the results of a topic match between an entered text and the loaded
-  documents. Callers of this method do not have to manage any further dependencies on spaCy or Holmes.
-
-Parameters:
-
-text_to_match -- the text to match against the loaded documents.
-maximum_activation_distance -- the number of words it takes for a previous    
-  phraselet activation to reduce to zero when the library is reading through a document.
-relation_score -- the activation score added when a normal two-word relation is matched.
-reverse_only_relation_score -- the activation score added when a two-word relation
-  is matched using a search phrase that can only be reverse-matched.
-single_word_score -- the activation score added when a normal single word is matched.
-single_word_any_tag_score -- the activation score added when a single word is matched
-  whose tag did not correspond to the template specification.
-overlapping_relation_multiplier -- the value by which the activation score is multiplied
-  when two relations were matched and the matches involved a common document word.
-embedding_penalty -- a value between 0 and 1 with which scores are multiplied when the
-  match involved an embedding. The result is additionally multiplied by the overall
-  similarity measure of the match.
-ontology_penalty -- a value between 0 and 1 with which scores are multiplied for each
-  word match within a match that involved the ontology. For each such word match,
-  the score is multiplied by the value (abs(depth) + 1) times, so that the penalty is
-  higher for hyponyms and hypernyms than for synonyms and increases with the
-  depth distance.
-maximum_number_of_single_word_matches_for_relation_matching -- the maximum number
-  of single word matches that are used as the basis for matching relations. If more
-  document words than this value correspond to each of the two words within a
-  relation phraselet, matching on the phraselet is not attempted.
-maximum_number_of_single_word_matches_for_embedding_matching = the maximum number
-  of single word matches that are used as the basis for matching with
-  embeddings at the other word. If more than this value exist, matching with
-  embeddings is not attempted because the performance hit would be too great.
+relation_matching_frequency_threshold -- the frequency threshold above which single
+  word matches are used as the basis for attempting relation matches.
+embedding_matching_frequency_threshold -- the frequency threshold above which single
+  word matches are used as the basis for attempting relation matches with
+  embedding-based matching on the second word.
 sideways_match_extent -- the maximum number of words that may be incorporated into a
   topic match either side of the word where the activation peaked.
 only_one_result_per_document -- if 'True', prevents multiple results from being returned
@@ -1531,8 +1445,9 @@ tied_result_quotient -- the quotient between a result and following results abov
 ```
 
 ``` {.python}
-Manager.get_supervised_topic_training_basis(self, *, classification_ontology=None,
-  overlap_memory_size=10, oneshot=True, match_all_words=False, verbose=True)
+Manager.self, *, classification_ontology:Ontology=None,
+  overlap_memory_size:int=10, oneshot:bool=True, match_all_words:bool=False,
+  verbose:bool=True) -> SupervisedTopicTrainingBasis:
 
 Returns an object that is used to train and generate a model for the
 supervised document classification use case.
@@ -1552,14 +1467,17 @@ verbose -- if 'True', information about training progress is outputted to the co
 ```
 
 ``` {.python}
-Manager.deserialize_supervised_topic_classifier(self, serialized_model)
+Manager.deserialize_supervised_topic_classifier(self,
+  serialized_model:str, verbose:bool=False) -> SupervisedTopicClassifier:
 
 Returns a classifier for the supervised document classification use case
 that will use a supplied pre-trained model.
 
 Parameters:
 
-serialized_model -- the pre-trained model.
+serialized_model -- the pre-trained model, which will correspond to a
+  'SupervisedTopicClassifierModel' instance.
+verbose -- if 'True', information about matching is outputted to the console.
 ```
 
 ``` {.python}
@@ -1573,97 +1491,35 @@ Starts a chatbot mode console enabling the matching of pre-registered
 ``` {.python}
 Manager.start_structural_search_mode_console(self)
 
-Starts a search mode console enabling the matching of pre-registered
+Starts a structural extraction mode console enabling the matching of pre-registered
   documents to search phrases entered ad-hoc by the user.
 ```
 
 ``` {.python}
 Manager.start_topic_matching_search_mode_console(self,    
-  only_one_result_per_document=False,
-  maximum_number_of_single_word_matches_for_relation_matching=500,
-  maximum_number_of_single_word_matches_for_embedding_matching=100)
+  only_one_result_per_document:bool=False, word_embedding_match_threshold:float=0.8,
+  initial_question_word_embedding_match_threshold:float=0.7):
 
 Starts a topic mode console enabling the matching of pre-registered
-  documents to search texts entered ad-hoc by the user.
+  documents to query phrases entered ad-hoc by the user.
 
 Parameters:
 
 only_one_result_per_document -- if 'True', prevents multiple topic match
   results from being returned for the same document.
-maximum_number_of_single_word_matches_for_relation_matching -- the maximum number
-   of single word matches that are used as the basis for matching relations. If more
-   document words than this value correspond to each of the two words within a
-   relation phraselet, matching on the phraselet is not attempted.
-maximum_number_of_single_word_matches_for_embedding_matching = the maximum number
-  of single word matches that are used as the basis for matching with
-  embeddings at the other word. If more than this value exist, matching with
-  embeddings is not attempted because the performance hit would be too great.
-```
-
-<a id="multiprocessing-manager"></a>
-#### 6.2 `MultiprocessingManager`
-
-For details of the `MultiprocessingManager.document_labels()`,
-`MultiprocessingManager.topic_match_documents_returning_dictionaries_against()` and
-`MultiprocessingManager.start_topic_matching_search_mode_console()` methods, see the similarly named
-methods of the [Manager](#manager) class.
-
-``` {.python}
-holmes_extractor.MultiprocessingManager(self, model, *,
-  overall_similarity_threshold=1.0, embedding_based_matching_on_root_words=False,
-  ontology=None, analyze_derivational_morphology=True, perform_coreference_resolution=None,
-  debug=False, verbose=True, number_of_workers=None):
-
-The facade class for the Holmes library used in a multiprocessing environment.
-  This class is threadsafe.
-
-Parameters:
-
-model -- the name of the spaCy model, e.g. 'en_core_web_lg'  
-overall_similarity_threshold -- the overall similarity threshold for
-  embedding-based matching. Defaults to '1.0', which deactivates
-  embedding-based matching.  
-embedding_based_matching_on_root_words -- determines whether or not embedding-based
-  matching should be attempted on search-phrase root tokens, which has a considerable
-  performance hit. Defaults to 'False'.
-ontology -- an 'Ontology' object. Defaults to 'None' (no ontology).
-analyze_derivational_morphology -- *True* if matching should be attempted between different
-  words from the same word family. Defaults to *True*.
-perform_coreference_resolution -- 'True', 'False', or 'None' if coreference resolution
-  should be performed depending on whether the model supports it. Defaults to 'None'.
-debug -- a boolean value specifying whether debug representations should
-  be outputted for parsed sentences. Defaults to 'False'.
-verbose -- a boolean value specifying whether status messages should be outputted
-  to the console. Defaults to *True*
-number_of_workers -- the number of worker processes to use, or *None* if the number of worker
-  processes should depend on the number of available cores. Defaults to *None*
+word_embedding_match_threshold -- the cosine similarity above which two words match.
+initial_question_word_embedding_match_threshold -- the cosine similarity above which two
+  words match where the search phrase word governs an interrogative pronoun.
 ```
 
 ``` {.python}
-MultiprocessingManager.parse_and_register_documents(self, document_dictionary)
+Manager.close(self) -> None
 
-Parameters:
-
-document_dictionary -- a dictionary from unique document labels to raw document texts.
-```
-
-``` {.python}
-MultiprocessingManager.deserialize_and_register_documents(self, serialized_document_dictionary)
-
-Parameters:
-
-serialized_document_dictionary -- a dictionary from unique document labels to
-    documents serialized using the *Manager.serialize_document()* method.
-```
-
-``` {.python}
-MultiprocessingManager.close(self)
-
-Shut down all processes associated with this instance.
+Terminates the worker processes.
 ```
 
 <a id="ontology"></a>
-#### 6.3 `Ontology`
+#### 6.2 `Ontology`
 
 ``` {.python}
 holmes_extractor.Ontology(self, ontology_path,
@@ -1700,13 +1556,14 @@ symmetric_matching -- if 'True', means hypernym relationships are also taken int
 ```
 
 <a id="supervised-topic-training-basis"></a>
-#### 6.4 `SupervisedTopicTrainingBasis` (returned from `Manager.get_supervised_topic_training_basis`)
+#### 6.3 `SupervisedTopicTrainingBasis` (returned from `Manager.get_supervised_topic_training_basis()`)
 
 Holder object for training documents and their classifications from which one or more
-[SupervisedTopicModelTrainer](#supervised-topic-model-trainer) objects can be derived.
+[SupervisedTopicModelTrainer](#supervised-topic-model-trainer) objects can be derived. This class is NOT threadsafe.
 
 ``` {.python}
-SupervisedTopicTrainingBasis.parse_and_register_training_document(self, text, classification, label=None)
+SupervisedTopicTrainingBasis.parse_and_register_training_document(self, text, classification,
+  label=None)
 
 Parses and registers a document to use for training.
 
@@ -1752,10 +1609,10 @@ Matches the phraselets derived from the training documents against the training
 ```
 
 ``` {.python}
-SupervisedTopicTrainingBasis.train(self, *, minimum_occurrences=4, cv_threshold=1.0, mlp_activation='relu',
-  mlp_solver='adam', mlp_learning_rate='constant', mlp_learning_rate_init=0.001,
-  mlp_max_iter=200, mlp_shuffle=True, mlp_random_state=42, oneshot=True,
-  overlap_memory_size=10, hidden_layer_sizes=None):
+SupervisedTopicTrainingBasis.train(self, *, minimum_occurrences=4, cv_threshold=1.0,  
+  mlp_activation='relu', mlp_solver='adam', mlp_learning_rate='constant',
+  mlp_learning_rate_init=0.001, mlp_max_iter=200, mlp_shuffle=True, mlp_random_state=42,
+  hidden_layer_sizes=None):
 
 Trains a model based on the prepared state.
 
@@ -1768,16 +1625,12 @@ cv_threshold -- the minimum coefficient of variation with which a word or relati
   to occur across the explicit classification labels for the phraselet to be
   accepted into the final model.
 mlp_* -- see https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPClassifier.html.
-oneshot -- whether the same word or relationship matched multiple times within a single
-  document should be counted once only (value 'True') or multiple times (value 'False')
-overlap_memory_size -- No longer has any effect - the value defined in __init__()
-  is used instead. Retained for backwards compatibility.
 hidden_layer_sizes -- a list where each entry is the size of a hidden layer, or 'None'
   if the topology should be determined automatically.
 ```
 
 <a id="supervised-topic-model-trainer"></a>
-#### 6.5 `SupervisedTopicModelTrainer` (returned from `SupervisedTopicTrainingBasis.train()`)
+#### 6.4 `SupervisedTopicModelTrainer` (returned from `SupervisedTopicTrainingBasis.train()`)
 
 Worker object used to train and generate models. This object could be removed from the public interface
 (`SupervisedTopicTrainingBasis.train()` could return a `SupervisedTopicClassifier` directly) but has
@@ -1791,7 +1644,7 @@ can be serialized.
 ```
 
 <a id="supervised-topic-classifier"></a>
-#### 6.6 `SupervisedTopicClassifier` (returned from
+#### 6.5 `SupervisedTopicClassifier` (returned from
 `SupervisedTopicModelTrainer.classifier()` and
 `Manager.deserialize_supervised_topic_classifier()`))
 
@@ -1820,99 +1673,11 @@ doc -- the pre-parsed document to classify.
 ```
 
 ``` {.python}
-SupervisedTopicClassifier.serialize_model(self)
-```
-
-``` {.python}
-SupervisedTopicClassifier.deserialize_model(self, serialized_model)
-```
-
-<a id="match"></a>
-#### 6.7 `Match` (returned from `Manager.match()`)
-
-``` {.python}
-A match between a search phrase and a document. The indexes refer to words.
-
-Externally relevant properties:
-
-search_phrase_label -- the label of the search phrase that matched.
-document_label -- the label of the document that matched.
-is_negated -- 'True' if this match is negated.
-is_uncertain -- 'True' if this match is uncertain.
-involves_coreference -- 'True' if this match was found using
-  coreference resolution.
-overall_similarity_measure -- the overall similarity of the match, or
-  '1.0' if embedding-based matching was not involved in the match.  
-word_matches -- a list of WordMatch objects.
-index_within_document -- the index of the document token that matched
-  the search phrase root token.
-```
-
-<a id="wordmatch"></a>
-#### 6.8 `WordMatch` (returned from `Manager.match().word_matches`)
-
-``` {.python}
-A match between a searched phrase word and a document word.
-
-Properties:
-
-search_phrase_token -- the spaCy token from the search phrase.
-search_phrase_word -- the string that matched from the search phrase.
-document_token -- the spaCy token from the document.
-first_document_token -- the first token that matched from the document, which will equal
-   'document_token' except with multiword matches.
-last_document_token -- the lst token that matched from the document, which will equal
-   'document_token' except with multiword matches.
-document_word -- the string that matched from the document.
-document_subword -- the subword from the token that matched, or *None* if the match was
-    with the whole token.
-type -- 'direct', 'entity', 'embedding' or 'ontology'.
-similarity_measure -- for type 'embedding', the similarity between the
-  two tokens, otherwise '1.0'.
-is_negated -- 'True' if this word match leads to a match of which it
-  is a part being negated.
-is_uncertain -- 'True' if this word match leads to a match of which it
-  is a part being uncertain.
-structurally_matched_document_token -- the spaCy token from the document that matched
-  the parent dependencies, which may be different from 'document_token' if coreference
-  resolution is active.
-involves_coreference -- 'True' if 'document_token' and
-  'structurally_matched_document_token' are different.
-extracted_word -- within the coreference chain, the most specific term that corresponded to
-  'document_word' in the ontology.
-depth -- the number of hyponym relationships linking 'search_phrase_word' and
-  'extracted_word', or '0' if ontology-based matching is not active. Can be negative
-  if symmetric matching is active.
-explain() -- returns a human-readable explanation of the word match from the perspective of the
-  document word (e.g. to be used as a tooltip over it).
-```
-
-<a id="subword"></a>
-#### 6.9 `Subword` (returned from `word_match.subword`)
-
-``` {.python}
-A semantically atomic part of a word. Currently only used for German.
-
-containing_token_index -- the index of the containing token within the document.
-index -- the index of the subword within the word.
-text -- the original subword string.
-lemma -- the model-normalized representation of the subword string.
-derived_lemma -- where relevant, another lemma with which *lemma* is derivationally related
-and which can also be useful for matching in some usecases; otherwise *None*
-char_start_index -- the character index of the subword within the containing word.
-is_head -- **True**, if this subword is the head within its word, **False** otherwise.
-dependent_index -- the index of a subword that is dependent on this subword, or *None*
-  if there is no such subword.
-dependency_label -- the label of the dependency between this subword and its dependent,
-  or *None* if it has no dependent.
-governor_index -- the index of a subword on which this subword is dependent, or *None*
-  if there is no such subword.
-governing_dependency_label -- the label of the dependency between this subword and its
-  governor, or *None* if it has no governor.
+SupervisedTopicClassifier.serialize_model(self) -> str
 ```
 
 <a id="dictionary"></a>
-#### 6.10 Dictionary returned from `Manager.match_returning_dictionaries()`)
+#### 6.6 Dictionary returned from `Manager.match_returning_dictionaries()`)
 
 ``` {.python}
 A text-only representation of a match between a search phrase and a
@@ -1920,7 +1685,8 @@ document. The indexes refer to words.
 
 Properties:
 
-search_phrase -- the label of the search phrase.
+search_phrase_label -- the label of the search phrase.
+search_phrase_text -- the text of the search phrase.
 document -- the label of the document.
 index_within_document -- the index of the match within the document.
 sentences_within_document -- the raw text of the sentences within the document that matched.
@@ -1931,47 +1697,39 @@ overall_similarity_measure -- the overall similarity of the match, or
   '1.0' if embedding-based matching was not involved in the match.  
 word_matches -- an array of dictionaries with the properties:
 
+  search_phrase_token_index -- the index of the token that matched from the search phrase.
   search_phrase_word -- the string that matched from the search phrase.
+  document_token_index -- the index of the token that matched within the document.
+  first_document_token_index -- the index of the first token that matched within the document.
+    Identical to 'document_token_index' except where the match involves a multiword phrase.
+  last_document_token_index -- the index of the last token that matched within the document.
+    Identical to 'document_token_index' except where the match involves a multiword phrase.
+  structurally_matched_document_token_index -- the index of the token within the document that
+    structurally matched the search phrase token. Is either the same as 'document_token_index' or is linked to 'document_token_index' within a coreference chain.
+  document_subword_index -- the index of the token subword that matched within the document, or
+    'None' if matching was not with a subword but with an entire token.
+  document_subword_containing_token_index -- the index of the document token that contained the
+    subword that matched, which may be different from 'document_token_index' in situations where a word containing multiple subwords is split by hyphenation and a subword whose sense applies to a word is not overtly realised within that word.
   document_word -- the string that matched from the document.
-  document_phrase -- the phrase headed by the word that matched from the
-  document.
-  match_type -- 'direct', 'entity', 'embedding' or 'ontology'.
-  similarity_measure -- for type 'embedding', the similarity between the
+  document_phrase -- the phrase headed by the word that matched from the document.
+  match_type -- 'direct', 'derivation', 'entity', 'embedding', 'ontology', 'entity_embedding' or
+    'question'.
+  negated -- 'True' if this word match is negated.
+  uncertain -- 'True' if this word match is uncertain.
+  similarity_measure -- for types 'embedding' and 'entity_embedding', the similarity between the
     two tokens, otherwise '1.0'.
   involves_coreference -- 'True' if the word was matched using coreference resolution.
   extracted_word -- within the coreference chain, the most specific term that corresponded to
-    document_word in the ontology.
+    the document_word.
+  depth -- the number of hyponym relationships linking 'search_phrase_word' and
+    'extracted_word', or '0' if ontology-based matching is not active. Can be negative
+    if symmetric matching is active.
   explanation -- creates a human-readable explanation of the word match from the perspective of the
     document word (e.g. to be used as a tooltip over it).
 ```
 
-<a id="topic-match"></a>
-#### 6.11 `TopicMatch` (returned from `Manager.topic_match_documents_against()`))
-
-``` {.python}
-A topic match between some text and part of a document. The indexes refer to words.
-
-Properties:
-
-document_label -- the document label.
-index_within_document -- the index within the document where 'score' was achieved.
-subword_index -- the index of the subword within the token within the document where 'score'
-  was achieved, or *None* if the match involved the whole word.
-start_index -- the start index of the topic match within the document.
-end_index -- the end index of the topic match within the document.
-sentences_start_index -- the start index within the document of the sentence that contains
-    'start_index'.
-sentences_end_index -- the end index within the document of the sentence that contains
-    'end_index'.
-relative_start_index -- the start index of the topic match relative to 'sentences_start_index'.
-relative_end_index -- the end index of the topic match relative to 'sentences_start_index'.
-score -- the similarity score of the topic match.
-text -- the text between 'sentences_start_index' and 'sentences_end_index'.
-structural_matches -- a list of `Match` objects that were used to derive this object.
-```
-
 <a id="topic-match-dictionary"></a>
-#### 6.12 Dictionary returned from `Manager.topic_match_documents_returning_dictionaries_against()` and  `Manager.topic_match_documents_returning_dictionaries_against()`
+#### 6.7 Dictionary returned from `Manager.topic_match_documents_returning_dictionaries_against()` and  `Manager.topic_match_documents_returning_dictionaries_against()`
 
 ``` {.python}
 A text-only representation of a topic match between a search text and a
@@ -1983,6 +1741,15 @@ document_label -- the label of the document.
 text -- the document text that was matched.
 text_to_match -- the search text.
 rank -- a string representation of the scoring rank which can have the form '2=' in case of a tie.
+index_within_document -- the index of the document token where the activation peaked.
+subword_index -- the index of the subword within the document token where the activation peaked, or
+  'None' if the activation did not peak at a specific subword.
+start_index -- the index of the first document token in the topic match.
+end_index -- the index of the last document token in the topic match (NOT one more than that index).
+sentences_start_index -- the token start index within the document of the sentence that contains
+  'start_index'
+sentences_end_index -- the token end index within the document of the sentence that contains
+  'end_index' (NOT one more than that index).
 sentences_character_start_index_in_document -- the character index of the first character of 'text'
   within the document.
 sentences_character_end_index_in_document -- one more than the character index of the last
@@ -1999,13 +1766,19 @@ word_infos -- an array of arrays with the semantics:
   [3] -- 'is_highest_activation' -- 'True' if this was the word at which the highest activation score reported in 'score' was achieved, otherwise 'False'.
   [4] -- 'explanation' -- a human-readable explanation of the word match from the perspective of the
   document word (e.g. to be used as a tooltip over it).
+
+answers -- an array of arrays with the semantics:
+
+  [0] -- the index of the first character of a potential answer to an initial question word.
+  [1] -- one more than the index of the last character of a potential answer to an initial question
+    word.
 ```
 
 <a id="a-note-on-the-license"></a>
 ### 7 A note on the license
 
 Holmes encompasses several concepts that build on work that the author, Richard
-Paul Hudson, carried out as a young graduate and for which his former
+Paul Hudson, carried out as a recent graduate and for which his former
 employer, [Definiens](https://www.definiens.com), has since been granted a
 [U.S. patent](https://patents.google.com/patent/US8155946B2/en).
 Definiens has kindly permitted the author to publish Holmes under the GNU General Public
