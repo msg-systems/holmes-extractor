@@ -1207,7 +1207,8 @@ The interior workings of supervised document classification are explained [here]
 ``` {.python}
 holmes_extractor.Manager(self, model, *, overall_similarity_threshold=1.0,
   embedding_based_matching_on_root_words=False, ontology=None,
-  analyze_derivational_morphology=True, perform_coreference_resolution=None, debug=False)
+  analyze_derivational_morphology=True, perform_coreference_resolution=None, number_of_workers=None,
+  verbose=False)
 
 The facade class for the Holmes library.
 
@@ -1282,12 +1283,6 @@ Returns a list of the labels of the currently registered documents.
 ```
 
 ``` {.python}
-Manager.document_labels(self) -> list[str]
-
-Returns a list of the labels of the currently registered documents.
-```
-
-``` {.python}
 Manager.serialize_document(self, label:str) -> bytes
 
 Returns a serialized representation of a Holmes document that can be
@@ -1328,7 +1323,7 @@ Registers and returns a new search phrase.
 Parameters:
 
 search_phrase_text -- the raw search phrase text.  
-label -- a label for the search phrase which need not be unique.
+label -- a label for the search phrase, which need not be unique.
   If label==None, the assigned label defaults to the raw search phrase text.
 ```
 
@@ -1376,7 +1371,8 @@ topic_match_documents_against(self, text_to_match:str, *, use_frequency_factor:b
     number_of_results:int=10, document_label_filter:str=None,
     tied_result_quotient:float=0.9) -> list[dict]:
 
-Returns a list of dictionaries representing the results of a topic match between an entered text and the loaded documents.
+Returns a list of dictionaries representing the results of a topic match between an entered text
+and the loaded documents.
 
 Properties:
 
@@ -1387,19 +1383,18 @@ use_frequency_factor -- *True* if scores should be multiplied by a factor betwee
   determining which relation and embedding matches should be attempted.
 maximum_activation_distance -- the number of words it takes for a previous phraselet
   activation to reduce to zero when the library is reading through a document.
-word_embedding_match_threshold -- the cosine similarity above which two words match.
+word_embedding_match_threshold -- the cosine similarity above which two words match where
+  the search phrase word does not govern an interrogative pronoun.
 initial_question_word_embedding_match_threshold -- the cosine similarity above which two
   words match where the search phrase word governs an interrogative pronoun.
-relation_score -- the activation score added when a normal two-word
-  relation is matched.
+relation_score -- the activation score added when a normal two-word relation is matched.
 reverse_only_relation_score -- the activation score added when a two-word relation
   is matched using a search phrase that can only be reverse-matched.
-single_word_score -- the activation score added when a normal single
-  word is matched.
+single_word_score -- the activation score added when a normal single word is matched.
 single_word_any_tag_score -- the activation score added when a single word is matched
   whose tag did not correspond to the template specification.
 initial_question_word_answer_score -- the activation score added when a question word is
-  matched to an answering phrase. Set to the value of *relation_score* if not supplied.
+  matched to an potential answer phrase.
 initial_question_word_behaviour -- 'process' if a question word in the sentence
   constinuent at the beginning of *text_to_match* is to be matched to document phrases
   that answer it; 'exclusive' if only topic matches that involve such question words
@@ -1434,7 +1429,7 @@ tied_result_quotient -- the quotient between a result and following results abov
 ```
 
 ``` {.python}
-Manager.self, *, classification_ontology:Ontology=None,
+Manager.get_supervised_topic_training_basis(self, *, classification_ontology:Ontology=None,
   overlap_memory_size:int=10, oneshot:bool=True, match_all_words:bool=False,
   verbose:bool=True) -> SupervisedTopicTrainingBasis:
 
@@ -1464,8 +1459,7 @@ that will use a supplied pre-trained model.
 
 Parameters:
 
-serialized_model -- the pre-trained model, which will correspond to a
-  'SupervisedTopicClassifierModel' instance.
+serialized_model -- the pre-trained model as returned from `SupervisedTopicClassifier.serialize_model()`.
 verbose -- if 'True', information about matching is outputted to the console.
 ```
 
@@ -1496,7 +1490,8 @@ Parameters:
 
 only_one_result_per_document -- if 'True', prevents multiple topic match
   results from being returned for the same document.
-word_embedding_match_threshold -- the cosine similarity above which two words match.
+word_embedding_match_threshold -- the cosine similarity above which two words match where the  
+  search phrase word does not govern an interrogative pronoun.
 initial_question_word_embedding_match_threshold -- the cosine similarity above which two
   words match where the search phrase word governs an interrogative pronoun.
 ```
@@ -1646,7 +1641,7 @@ can be serialized.
 SupervisedTopicClassifier.parse_and_classify(self, text)
 
 Returns a list containing zero, one or many document classifications. Where more
-than one classifications are returned, the labels are ordered by decreasing
+than one classification is returned, the labels are ordered by decreasing
 probability.
 
 Parameters:
@@ -1658,7 +1653,7 @@ text -- the text to parse and classify.
 SupervisedTopicClassifier.classify(self, doc)
 
 Returns a list containing zero, one or many document classifications. Where more
-than one classifications are returned, the labels are ordered by decreasing
+than one classification is returned, the labels are ordered by decreasing
 probability.
 
 Parameters:
@@ -1668,6 +1663,9 @@ doc -- the pre-parsed document to classify.
 
 ``` {.python}
 SupervisedTopicClassifier.serialize_model(self) -> str
+
+Returns a serialized model that can be reloaded using
+  `Manager.deserialize_supervised_topic_classifier()`
 ```
 
 <a id="dictionary"></a>
@@ -1675,7 +1673,7 @@ SupervisedTopicClassifier.serialize_model(self) -> str
 
 ``` {.python}
 A text-only representation of a match between a search phrase and a
-document. The indexes refer to words.
+document. The indexes refer to tokens.
 
 Properties:
 
@@ -1696,18 +1694,21 @@ word_matches -- an array of dictionaries with the properties:
   document_token_index -- the index of the token that matched within the document.
   first_document_token_index -- the index of the first token that matched within the document.
     Identical to 'document_token_index' except where the match involves a multiword phrase.
-  last_document_token_index -- the index of the last token that matched within the document.
-    Identical to 'document_token_index' except where the match involves a multiword phrase.
+  last_document_token_index -- the index of the last token that matched within the document
+    (NOT one more than that index). Identical to 'document_token_index' except where the match
+    involves a multiword phrase.
   structurally_matched_document_token_index -- the index of the token within the document that
-    structurally matched the search phrase token. Is either the same as 'document_token_index' or is linked to 'document_token_index' within a coreference chain.
+    structurally matched the search phrase token. Is either the same as 'document_token_index' or
+    is linked to 'document_token_index' within a coreference chain.
   document_subword_index -- the index of the token subword that matched within the document, or
     'None' if matching was not with a subword but with an entire token.
   document_subword_containing_token_index -- the index of the document token that contained the
-    subword that matched, which may be different from 'document_token_index' in situations where a word containing multiple subwords is split by hyphenation and a subword whose sense applies to a word is not overtly realised within that word.
+    subword that matched, which may be different from 'document_token_index' in situations where a
+    word containing multiple subwords is split by hyphenation and a subword whose sense applies to
+    a word is not overtly realised within that word.
   document_word -- the string that matched from the document.
   document_phrase -- the phrase headed by the word that matched from the document.
-  match_type -- 'direct', 'derivation', 'entity', 'embedding', 'ontology', 'entity_embedding' or
-    'question'.
+  match_type -- 'direct', 'derivation', 'entity', 'embedding', 'ontology' or 'entity_embedding'.
   negated -- 'True' if this word match is negated.
   uncertain -- 'True' if this word match is uncertain.
   similarity_measure -- for types 'embedding' and 'entity_embedding', the similarity between the
@@ -1726,8 +1727,7 @@ word_matches -- an array of dictionaries with the properties:
 #### 6.8 Dictionary returned from `Manager.topic_match_documents_returning_dictionaries_against()` and  `Manager.topic_match_documents_returning_dictionaries_against()`
 
 ``` {.python}
-A text-only representation of a topic match between a search text and a
-document. The indexes refer to characters.
+A text-only representation of a topic match between a search text and a document.
 
 Properties:
 
@@ -1772,7 +1772,7 @@ answers -- an array of arrays with the semantics:
 ### 7 A note on the license
 
 Holmes encompasses several concepts that build on work that the author, Richard
-Paul Hudson, carried out as a recent graduate and for which his former
+Paul Hudson, carried out as a young graduate and for which his former
 employer, [Definiens](https://www.definiens.com), has since been granted a
 [U.S. patent](https://patents.google.com/patent/US8155946B2/en).
 Definiens has kindly permitted the author to publish Holmes under the GNU General Public
@@ -1809,15 +1809,15 @@ language..
 
 `SemanticAnalyzer` is an abstract class that is subclassed for each new
 language: at present by `EnglishSemanticAnalyzer` and
-`GermanSemanticAnalyzer`. These classes contain most semantic analysis code.
-`SemanticMatchingHelper` is an abstract class, again with an concrete
+`GermanSemanticAnalyzer`. These classes contain most of the semantic analysis code.
+`SemanticMatchingHelper` is a second abstract class, again with an concrete
 implementation for each language, that contains semantic analysis code
 that is required at matching time. Moving this out to a separate class family
 was necessary because, on operating systems that spawn processes rather
 than forking processes (e.g. Windows), `SemanticMatchingHelper` instances
-have to be serialized when the worker processes are created; this would
-not be possible for all `SemanticAnalyzer` instances because not all
-spaCy models are serializable and would also unnecessarily consume
+have to be serialized when the worker processes are created: this would
+not be possible for `SemanticAnalyzer` instances because not all
+spaCy models are serializable, and would also unnecessarily consume
 large amounts of memory.
 
 At present, all functionality that is common
@@ -1878,7 +1878,7 @@ investigation from the less frequent word within a given relation.
 that are not set to reverse-matching.
 7. Reverse matching starts at all words in the corpus that match a relation phraselet child word. Every word governing one of these words is a potential match for the corresponding relation phraselet parent word, so structural matching is attempted starting at all these parent words. Reverse matching is only attempted for reverse-only relation phraselets where the child word's frequency factor is above the threshold for relation matching ( `relation_matching_frequency_threshold`, default: 0.25).
 8. If either the parent or the child word of a relation template has a frequency factor above a configurable threshold (`embedding_matching_frequency_threshold`, default: 0.5), matching at all of those words where the relation template has not already been
-matched is retried using embeddings at the other word within the relation. A pair of words is then regarded as matching when their mutual cosine similarity is above `initial_question_word_embedding_match_threshold` (default: 0.7) in situations where the document word has an initial question word in its phrase or `word_embedding_match_threshold` (default: 0.7) in all other situations.
+matched is retried using embeddings at the other word within the relation. A pair of words is then regarded as matching when their mutual cosine similarity is above `initial_question_word_embedding_match_threshold` (default: 0.7) in situations where the document word has an initial question word in its phrase or `word_embedding_match_threshold` (default: 0.8) in all other situations.
 9. The set of structural matches collected up to this point is filtered to cover cases where the same
 document words were matched by multiple phraselets, where multiple sibling words have been matched by the same
 phraselet where one sibling has a higher [embedding-based similarity](#embedding-based-matching) than the
@@ -1892,8 +1892,9 @@ is determined for each word in each document.
   - For as long as the activation score for a phraselet has a value above zero, it is reduced by 1 divided by a
   configurable number (`maximum_activation_distance`; default: 75) as each new word is read.
   - The score returned by a match depends on whether the match was produced by a single-word noun phraselet that matched an entire word (`single_word_score`; default: 50), another type of single-word phraselet or a noun phraselet that matched a subword (`single_word_any_tag_score`; default: 20),
-  a relation phraselet produced by a reverse-only template (`reverse_only_relation_score`; default: 200) or
-  any other (normally matched) relation phraselet (`relation_score`; default: 300).
+  a relation phraselet produced by a reverse-only template (`reverse_only_relation_score`; default: 200),
+  any other (normally matched) relation phraselet (`relation_score`; default: 300), or a relation
+  phraselet involving an initial question word (`initial_question_word_answer_score`; default: 600).
   - Where a match involves embedding-based matching, the resulting inexactitude is
   captured by multiplying the potential new activation score with the value of the
   'Match.overall_similarity_measure' quotient that was returned for the match multiplied by a penalty value (`embedding_penalty`; default: 0.6').
@@ -2070,8 +2071,8 @@ that only documents whose labels begin with a certain string should be searched.
 <a id="version-300"></a>
 ##### 8.4.5 Version 3.0.0
 
--  Moved to [coreferee](https://github.com/msg-systems/coreferee) as the source of coreference information, meaning that coreference resolution is now active for German as well as English, all documents can be serialized and the latest spaCy version can be supported.
-- The corpus frequencies of words is now taken into account when scoring topic matches.
+-  Moved to [coreferee](https://github.com/msg-systems/coreferee) as the source of coreference information, meaning that coreference resolution is now active for German as well as English; all documents can be serialized; and the latest spaCy version can be supported.
+- The corpus frequencies of words are now taken into account when scoring topic matches.
 - Reverse dependencies are now taken into account, so that e.g. *a man dies* can match *the dead man* although the dependencies in the two phrases point in opposite directions.
 - Merged the pre-existing `Manager` and `MultiprocessingManager` classes into a single `Manager` class, with a redesigned public interface, that uses worker threads for everything except supervised document classification.
-- Added support for [initial question words](#initial-question-word-matching)
+- Added support for [initial question words](#initial-question-word-matching).

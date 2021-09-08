@@ -579,7 +579,7 @@ class SupervisedTopicClassifier:
 
     def parse_and_classify(self, text):
         """ Returns a list containing zero, one or many document classifications. Where more
-            than one classifications are returned, the labels are ordered by decreasing
+            than one classification is returned, the labels are ordered by decreasing
             probability.
 
             Parameter:
@@ -590,7 +590,7 @@ class SupervisedTopicClassifier:
 
     def classify(self, doc):
         """ Returns a list containing zero, one or many document classifications. Where more
-            than one classifications are returned, the labels are ordered by decreasing
+            than one classification is returned, the labels are ordered by decreasing
             probability.
 
             Parameter:

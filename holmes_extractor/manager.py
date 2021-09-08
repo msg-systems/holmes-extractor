@@ -471,21 +471,21 @@ class Manager:
             determining which relation and embedding matches should be attempted.
         maximum_activation_distance -- the number of words it takes for a previous phraselet
             activation to reduce to zero when the library is reading through a document.
-        word_embedding_match_threshold -- the cosine similarity above which two words match.
+        word_embedding_match_threshold -- the cosine similarity above which two words match where
+          the search phrase word does not govern an interrogative pronoun..
         initial_question_word_embedding_match_threshold -- the cosine similarity above which two
             words match where the search phrase word governs an interrogative pronoun.
         relation_score -- the activation score added when a normal two-word
             relation is matched.
         reverse_only_relation_score -- the activation score added when a two-word relation
                 is matched using a search phrase that can only be reverse-matched.
-        single_word_score -- the activation score added when a normal single
-            word is matched.
+        single_word_score -- the activation score added when a normal single word is matched.
         single_word_any_tag_score -- the activation score added when a single word is matched
             whose tag did not correspond to the template specification.
         initial_question_word_answer_score -- the activation score added when a question word is
-            matched to an answering phrase. Set to the value of *relation_score* if not supplied.
+            matched to an answering phrase.
         initial_question_word_behaviour -- 'process' if a question word in the sentence
-            constinuent at the beginning of *text_to_match* is to be matched to document phrases
+            constituent at the beginning of *text_to_match* is to be matched to document phrases
             that answer it; 'exclusive' if only topic matches that involve such question words
             are to be permitted; 'ignore' if question words are to be ignored.
         different_match_cutoff_score -- the activation threshold under which topic matches are
@@ -662,7 +662,8 @@ class Manager:
 
             only_one_result_per_document -- if 'True', prevents multiple topic match
                 results from being returned for the same document.
-            word_embedding_match_threshold -- the cosine similarity above which two words match.
+            word_embedding_match_threshold -- the cosine similarity above which two words match
+                where the search phrase word does not govern an interrogative pronoun.
             initial_question_word_embedding_match_threshold -- the cosine similarity above which two
                 words match where the search phrase word governs an interrogative pronoun.
         """
