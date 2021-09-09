@@ -259,7 +259,7 @@ python3 -m spacy download en_core_web_sm
 python -m spacy download en_core_web_sm
 ```
 
-You specify a spaCy model for Holmes to use [when you instantiate the Manager facade class](#getting-started). `en_core_web_trf` and `de_core_web_lg` are the models that have been found to yield the best results for English and German respectively. Because `en_core_web_trf` does not have its own word vectors, Holmes uses the `en_core_web_lg` model as a vector source for [embedding-based-matching](#embedding-based-matching) when `en_core_web_trf` is the main model being used for everything else.
+You specify a spaCy model for Holmes to use [when you instantiate the Manager facade class](#getting-started). `en_core_web_trf` and `de_core_web_lg` are the models that have been found to yield the best results for English and German respectively. Because `en_core_web_trf` does not have its own word vectors, but Holmes requires word vectors for [embedding-based-matching](#embedding-based-matching), the `en_core_web_lg` model is loaded as a vector source whenever `en_core_web_trf` is specified to the Manager class as the main model.
 
 <a id="comments-about-deploying-holmes-in-an-enterprise-environment"></a>
 ##### 1.2.4 Comments about deploying Holmes in an enterprise environment
@@ -273,7 +273,7 @@ microservice. See [here](https://github.com/msg-systems/holmes-extractor/blob/ma
 
 Because Holmes performs complex, intelligent analysis, it is inevitable that it requires more hardware resources than more traditional search frameworks. The use cases that involve loading documents — [structural extraction](#structural-extraction) and [topic matching](#topic-matching) — are most immediately applicable to large but not massive corpora (e.g. all the documents belonging to a certain organisation, all the patents on a certain topic, all the books by a certain author). For cost reasons, Holmes would not be an appropriate tool with which to analyse the content of the entire Internet!
 
-That said, Holmes is both vertically and horizontally scalable. With sufficient hardware, both these use cases can be applied to an essentially unlimited number of documents by running Holmes on multiple machines, processing a different set of documents on each one and conflating the results. Note that this strategy is already employed to distribute matching amongst multiple cores on a single machine: the [Manager](#manager) class starts a number of worker processes and distributes registered documents between them but sends search phrases to all of them.
+That said, Holmes is both vertically and horizontally scalable. With sufficient hardware, both these use cases can be applied to an essentially unlimited number of documents by running Holmes on multiple machines, processing a different set of documents on each one and conflating the results. Note that this strategy is already employed to distribute matching amongst multiple cores on a single machine: the [Manager](#manager) class starts a number of worker processes and distributes registered documents between them.
 
 Holmes holds loaded documents in memory, which ties in with its intended use with large but not massive corpora. The performance of document loading, [structural extraction](#structural-extraction) and [topic matching](#topic-matching) all degrade heavily if the operating system has to swaps memory pages to secondary storage, because Holmes can require memory from a variety of pages to be addressed when processing a single sentence. This means it is important to supply enough RAM on each machine to hold all loaded documents.
 
@@ -531,9 +531,8 @@ e.g.
 ***An ENTITYPERSON goes into town*** (English)  
 ***Ein ENTITYPER geht in die Stadt*** (German).
 
-The supported named-entity identifiers depend directly on the named
-entity information supplied by the spaCy models for each language
-(descriptions copied from an earlier version of the spaCy
+The supported named-entity identifiers depend directly on the named-entity information supplied
+by the spaCy models for each language (descriptions copied from an earlier version of the spaCy
 documentation):
 
 *English:*
@@ -689,7 +688,7 @@ to be classified. In the example ontology shown above, all words in the ontology
 - The **classification** ontology is used to capture relationships between classification labels: that a document
 has a certain classification implies it also has any classifications to whose subtree that classification belongs.
 Synonyms should be used sparingly if at all in classification ontologies because they add to the complexity of the
-neural network without adding any tangible value; and although it is technically possible to set up a classification
+neural network without adding any value; and although it is technically possible to set up a classification
 ontology to use symmetric matching, there is no sensible reason for doing so. Note that a label within the
 classification ontology that is not directly defined as the label of any training document
 [has to be registered specifically](#supervised-topic-training-basis) using the
@@ -704,7 +703,7 @@ machine-learning-generated numerical vector representations of words
 that capture the contexts in which each word
 tends to occur. Two words with similar meaning tend to emerge with word
 embeddings that are close to each other, and spaCy can measure the
-**similarity** between any two words' embeddings expressed as a decimal
+**cosine similarity** between any two words' embeddings expressed as a decimal
 between 0.0 (no similarity) and 1.0 (the same word). Because *dog* and
 *cat* tend to appear in similar contexts, they have a similarity of
 0.80; *dog* and *horse* have less in common and have a similarity of
@@ -754,16 +753,16 @@ Neither the `overall_similarity_threshold` nor the `embedding_based_matching_on_
 <a id="named-entity-embedding-based-matching"></a>
 #### 2.6 Named-entity-embedding-based matching (`word_match.type=='entity_embedding'`)
 
-A named-entity-embedding based match obtains between a searched-document word that has a certain entity label and a search-phrase or query-document word whose embedding is sufficiently similar to the underlying meaning of that entity label, e.g. the word *individual* in a search phrase has a similar word embedding to the underlying meaning of the *PERSON* entity label. Note that named-entity-embedding-based matching is never active on root words regardless of the `embedding_based_matching_on_root_words` setting.
+A named-entity-embedding based match obtains between a searched-document word that has a certain entity label and a search phrase or query document word whose embedding is sufficiently similar to the underlying meaning of that entity label, e.g. the word *individual* in a search phrase has a similar word embedding to the underlying meaning of the *PERSON* entity label. Note that named-entity-embedding-based matching is never active on root words regardless of the `embedding_based_matching_on_root_words` setting.
 
 <a id="initial-question-word-matching"></a>
 #### 2.7 Initial-question-word matching (`word_match.type=='question'`)
 
-Initial-question-word matching is only active during [topic matching](#topic-matching). Initial question words in query phrases match entities in the searched documents that represent potential answers to the question, e.g. when comparing the query phrase ***When did Peter have breakfast*** to the searched-document phrase *Peter had breakfast at 8 a.m.*, the question word **When** would match the temporal adverbial phrase *at 8 a.m.*.
+Initial-question-word matching is only active during [topic matching](#topic-matching). Initial question words in query phrases match entities in the searched documents that represent potential answers to the question, e.g. when comparing the query phrase *When did Peter have breakfast* to the searched-document phrase *Peter had breakfast at 8 a.m.*, the question word *When* would match the temporal adverbial phrase *at 8 a.m.*.
 
-Initial-question-word matching is switched on and off using the `initial_question_word_behaviour` parameter when calling the [`topic_match_documents_against` function on the Manager class](#manager-topic-match-function). It is only likely to be useful when topic matching is being performed in an interactive setting where the user enters short query phrases, as opposed to when it is being used to find documents on a similar topic to an pre-existing query document. Initial question words are in any case only processed at the beginning of the first sentence of the query phrase or query document.
+Initial-question-word matching is switched on and off using the `initial_question_word_behaviour` parameter when calling the [`topic_match_documents_against` function on the Manager class](#manager-topic-match-function). It is only likely to be useful when topic matching is being performed in an interactive setting where the user enters short query phrases, as opposed to when it is being used to find documents on a similar topic to an pre-existing query document: initial question words are only processed at the beginning of the first sentence of the query phrase or query document.
 
-If a query phrase consists of a complex question with several elements dependent on the main verb, a finding in a searched document is only strictly an 'answer' if contains matches to all these elements. Because recall is typically more important than precision when performing topic matching with interactive query phrases, however, Holmes will match an initial question word to a searched-document phrase whenever they correspond semantically (e.g. **when** corresponds to a temporal adverbial phrase) and each depend on verbs that themselves match at the word level. One possible strategy to filter out such 'incomplete answers' would be to calculate the maximum possible score for a query phrase and reject topic matches that score below a threshold scaled to this maximum.
+If a query phrase consists of a complex question with several elements dependent on the main verb, a finding in a searched document is only strictly an 'answer' if contains matches to all these elements. Because recall is typically more important than precision when performing topic matching with interactive query phrases, however, Holmes will match an initial question word to a searched-document phrase wherever they correspond semantically (e.g. wherever *when* corresponds to a temporal adverbial phrase) and each depend on verbs that themselves match at the word level. One possible strategy to filter out 'incomplete answers' would be to calculate the maximum possible score for a query phrase and reject topic matches that score below a threshold scaled to this maximum.
 
 <a id="coreference-resolution"></a>
 ### 3. Coreference resolution
@@ -1024,7 +1023,7 @@ Correlations between the resulting matches can then be established by
 matching via the [`Manager.match()` function](#manager-match-function) and looking for
 situations where the document token objects are shared across multiple match objects.
 
-One important exception to this piece of advice is when
+One possible exception to this piece of advice is when
 [embedding-based matching](#embedding-based-matching) is active. Because
 whether or not each word in a search phrase matches then depends on whether
 or not other words in the same search phrase have been matched, large, complex
@@ -1109,12 +1108,11 @@ drive a dialog flow; they are examined solely to extract and store structured in
 
 Code for performing structural extraction would typically perform the following tasks:
 
--   Initialize the Holmes manager object
--   Call `Manager.register_search_phrase()` several times to define a number of search phrases specifying the
-information to be extracted
--   Call `Manager.parse_and_register_document()` several times to load a number of documents within which to search
--   Call `Manager.match()` to perform the matching
--   Query the returned match objects to obtain the extracted information and store it in a database
+-   Initialize the Holmes manager object.
+-   Call `Manager.register_search_phrase()` several times to define a number of search phrases specifying the information to be extracted.
+-   Call `Manager.parse_and_register_document()` several times to load a number of documents within which to search.
+-   Call `Manager.match()` to perform the matching.
+-   Query the returned match objects to obtain the extracted information and store it in a database.
 
 <a id="topic-matching"></a>
 #### 5.3 Topic matching
@@ -1206,8 +1204,8 @@ The interior workings of supervised document classification are explained [here]
 ``` {.python}
 holmes_extractor.Manager(self, model, *, overall_similarity_threshold=1.0,
   embedding_based_matching_on_root_words=False, ontology=None,
-  analyze_derivational_morphology=True, perform_coreference_resolution=None, number_of_workers=None,
-  verbose=False)
+  analyze_derivational_morphology=True, perform_coreference_resolution=None,
+  number_of_workers=None, verbose=False)
 
 The facade class for the Holmes library.
 
@@ -1354,20 +1352,27 @@ document_text -- a text from which to generate a document, or *None* if the prel
 
 <a id="manager-topic-match-function"></a>
 ``` {.python}
-topic_match_documents_against(self, text_to_match:str, *, use_frequency_factor:bool=True,
+topic_match_documents_against(self, text_to_match:str, *,
+    use_frequency_factor:bool=True,
     maximum_activation_distance:int=75,
     word_embedding_match_threshold:float=0.8,
     initial_question_word_embedding_match_threshold:float=0.7,
-    relation_score:int=300, reverse_only_relation_score:int=200,
-    single_word_score:int=50, single_word_any_tag_score:int=20,
+    relation_score:int=300,
+    reverse_only_relation_score:int=200,
+    single_word_score:int=50,
+    single_word_any_tag_score:int=20,
     initial_question_word_answer_score:int=600,
-    initial_question_word_behaviour:str='process', different_match_cutoff_score:int=15,
-    overlapping_relation_multiplier:float=1.5, embedding_penalty:float=0.6,
+    initial_question_word_behaviour:str='process',
+    different_match_cutoff_score:int=15,
+    overlapping_relation_multiplier:float=1.5,
+    embedding_penalty:float=0.6,
     ontology_penalty:float=0.9,
     relation_matching_frequency_threshold:float=0.25,
     embedding_matching_frequency_threshold:float=0.5,
-    sideways_match_extent:int=100, only_one_result_per_document:bool=False,
-    number_of_results:int=10, document_label_filter:str=None,
+    sideways_match_extent:int=100,
+    only_one_result_per_document:bool=False,
+    number_of_results:int=10,
+    document_label_filter:str=None,
     tied_result_quotient:float=0.9) -> list[dict]:
 
 Returns a list of dictionaries representing the results of a topic match between an entered text
@@ -1391,7 +1396,7 @@ reverse_only_relation_score -- the activation score added when a two-word relati
   is matched using a search phrase that can only be reverse-matched.
 single_word_score -- the activation score added when a normal single word is matched.
 single_word_any_tag_score -- the activation score added when a single word is matched
-  whose tag did not correspond to the template specification.
+  whose tag would not normally allow it to be matched by phraselets.
 initial_question_word_answer_score -- the activation score added when a question word is
   matched to an potential answer phrase.
 initial_question_word_behaviour -- 'process' if a question word in the sentence
@@ -1482,7 +1487,7 @@ Manager.start_topic_matching_search_mode_console(self,
   only_one_result_per_document:bool=False, word_embedding_match_threshold:float=0.8,
   initial_question_word_embedding_match_threshold:float=0.7):
 
-Starts a topic mode console enabling the matching of pre-registered
+Starts a topic matching search mode console enabling the matching of pre-registered
   documents to query phrases entered ad-hoc by the user.
 
 Parameters:
@@ -1534,7 +1539,8 @@ Matching is case-insensitive.
 
 Parameters:
 
-ontology_path -- the path from where the ontology is to be loaded, or a list of several such paths. See https://github.com/RDFLib/rdflib/.  
+ontology_path -- the path from where the ontology is to be loaded,
+or a list of several such paths. See https://github.com/RDFLib/rdflib/.  
 owl_class_type -- optionally overrides the OWL 2 URL for types.  
 owl_individual_type -- optionally overrides the OWL 2 URL for individuals.  
 owl_type_link -- optionally overrides the RDF URL for types.  
@@ -1665,7 +1671,7 @@ doc -- the pre-parsed document to classify.
 SupervisedTopicClassifier.serialize_model(self) -> str
 
 Returns a serialized model that can be reloaded using
-  `Manager.deserialize_supervised_topic_classifier()`
+  *Manager.deserialize_supervised_topic_classifier()*
 ```
 
 <a id="dictionary"></a>
@@ -1704,8 +1710,8 @@ word_matches -- an array of dictionaries with the properties:
     'None' if matching was not with a subword but with an entire token.
   document_subword_containing_token_index -- the index of the document token that contained the
     subword that matched, which may be different from 'document_token_index' in situations where a
-    word containing multiple subwords is split by hyphenation and a subword whose sense applies to
-    a word is not overtly realised within that word.
+    word containing multiple subwords is split by hyphenation and a subword whose sense
+    contributes to a word is not overtly realised within that word.
   document_word -- the string that matched from the document.
   document_phrase -- the phrase headed by the word that matched from the document.
   match_type -- 'direct', 'derivation', 'entity', 'embedding', 'ontology' or 'entity_embedding'.
@@ -1753,13 +1759,15 @@ word_infos -- an array of arrays with the semantics:
 
   [0] -- 'relative_start_index' -- the index of the first character in the word relative to
     'sentences_character_start_index_in_document'.
-  [1] -- 'relative_end_index' -- one more than the index of the last character in the word relative to
-    'sentences_character_start_index_in_document'.  
-  [2] -- 'type' -- 'single' for a single-word match, 'relation' if within a relation match involving two words,
-    'overlapping_relation' if within a relation match involving three or more words.
-  [3] -- 'is_highest_activation' -- 'True' if this was the word at which the highest activation score reported in 'score' was achieved, otherwise 'False'.
-  [4] -- 'explanation' -- a human-readable explanation of the word match from the perspective of the
-  document word (e.g. to be used as a tooltip over it).
+  [1] -- 'relative_end_index' -- one more than the index of the last character in the word
+    relative to 'sentences_character_start_index_in_document'.  
+  [2] -- 'type' -- 'single' for a single-word match, 'relation' if within a relation match
+    involving two words, 'overlapping_relation' if within a relation match involving three
+    or more words.
+  [3] -- 'is_highest_activation' -- 'True' if this was the word at which the highest activation
+    score reported in 'score' was achieved, otherwise 'False'.
+  [4] -- 'explanation' -- a human-readable explanation of the word match from the perspective of
+    the document word (e.g. to be used as a tooltip over it).
 
 answers -- an array of arrays with the semantics:
 
@@ -1803,11 +1811,11 @@ you are proposing involves the USA in any way.
 The word-level matching and the high-level operation of structural
 matching between search-phrase and document subgraphs both work more or
 less as one would expect. What is perhaps more in need of further
-comment is the semantic analysis code subsumed in the `parsing.py`
+comment is the semantic analysis code subsumed in the [parsing.py](https://github.com/msg-systems/holmes-extractor/blob/master/holmes_extractor/parsing.py)
 script as well as in the `language_specific_rules.py` script for each
-language..
+language.
 
-`SemanticAnalyzer` is an abstract class that is subclassed for each new
+`SemanticAnalyzer` is an abstract class that is subclassed for each
 language: at present by `EnglishSemanticAnalyzer` and
 `GermanSemanticAnalyzer`. These classes contain most of the semantic analysis code.
 `SemanticMatchingHelper` is a second abstract class, again with an concrete
@@ -1862,15 +1870,15 @@ between search phrases and documents](#general-comments).
 Topic matching involves the following steps:
 
 1. The query document or query phrase is parsed and a number of **phraselets**
-are derived from it. Single-word phraselets are extracted for every word (or subword in German) with its own meaning within the query phrase apart from a handful of stop words defined within the semantic analyzer (`SemanticAnalyzer.topic_matching_phraselet_stop_lemmas`), which are
+are derived from it. Single-word phraselets are extracted for every word (or subword in German) with its own meaning within the query phrase apart from a handful of stop words defined within the semantic matching helper (`SemanticMatchingHelper.topic_matching_phraselet_stop_lemmas`), which are
 consistently ignored throughout the whole process.
 2. Two-word or **relation** phraselets are extracted wherever certain grammatical structures
 are found. The structures that trigger two-word phraselets differ from language to language
 but typically include verb-subject, verb-object and noun-adjective pairs as well as verb-noun and noun-noun relations spanning prepositions. Each relation phraselet
 has a parent (governor) word or subword and a child (governed) word or subword. The relevant
-phraselet structures for a given language are defined in `SemanticAnalyzer.phraselet_templates`.
+phraselet structures for a given language are defined in `SemanticMatchingHelper.phraselet_templates`.
 3. Both types of phraselet are assigned a **frequency factor** expressing how common or rare its word or words are in the corpus. Frequency factors are determined using a logarithmic calculation and range from 0.0 (very common) to 1.0 (very rare). Each word within a relation phraselet is also assigned its own frequency factor.
-4. Phraselet templates where the parent word belongs to a closed word class e.g. prepositions can be defined as 'reverse_only'. This signals that matching with derived templates should only be attempted starting from the child word rather than from the parent word as normal. Phraselets are also defined as reverse-only when the parent word is one of a handful of words defined within the semantic analyzer (`SemanticAnalyzer.topic_matching_reverse_only_parent_lemmas`) or when the frequency factor for the parent word is below the threshold for relation matching ( `relation_matching_frequency_threshold`, default: 0.25).  These measures are necessary because matching on e.g. a parent preposition would lead to a large number of
+4. Phraselet templates where the parent word belongs to a closed word class, e.g. prepositions, can be defined as 'reverse_only'. This signals that matching with derived templates should only be attempted starting from the child word rather than from the parent word as normal. Phraselets are also defined as reverse-only when the parent word is one of a handful of words defined within the semantic matching helper (`SemanticMatchingHelper.topic_matching_reverse_only_parent_lemmas`) or when the frequency factor for the parent word is below the threshold for relation matching ( `relation_matching_frequency_threshold`, default: 0.25).  These measures are necessary because matching on e.g. a parent preposition would lead to a large number of
 potential matches that would take a lot of resources to investigate: it is better to start
 investigation from the less frequent word within a given relation.
 5. All single-word phraselets are matched against the document corpus.
@@ -1888,7 +1896,7 @@ is determined for each word in each document.
 
   - Activation is tracked separately for each phraselet. Each time
   a match for a phraselet is encountered, the activation for that phraselet is set to the score returned by
-  the match, unless the existing activation is already greater than that score. If the parameter `use_frequency_factor` is set to `True` (the default), each score are scaled by the frequency factor of its phraselet, meaning that words that occur less frequently in the corpus lead to higher scores.
+  the match, unless the existing activation is already greater than that score. If the parameter `use_frequency_factor` is set to `True` (the default), each score are scaled by the frequency factor of its phraselet, meaning that words that occur less frequently in the corpus give rise to higher scores.
   - For as long as the activation score for a phraselet has a value above zero, it is reduced by 1 divided by a
   configurable number (`maximum_activation_distance`; default: 75) as each new word is read.
   - The score returned by a match depends on whether the match was produced by a single-word noun phraselet that matched an entire word (`single_word_score`; default: 50), another type of single-word phraselet or a noun phraselet that matched a subword (`single_word_any_tag_score`; default: 20),
@@ -1897,7 +1905,7 @@ is determined for each word in each document.
   phraselet involving an initial question word (`initial_question_word_answer_score`; default: 600).
   - Where a match involves embedding-based matching, the resulting inexactitude is
   captured by multiplying the potential new activation score with the value of the
-  'Match.overall_similarity_measure' quotient that was returned for the match multiplied by a penalty value (`embedding_penalty`; default: 0.6').
+  similarity measure that was returned for the match multiplied by a penalty value (`embedding_penalty`; default: 0.6').
   - Where a match involves ontology-based matching, the resulting inexactitude is captured
   by multiplying the potential new activation score by a penalty value (`ontology_penalty`;
   default: 0.9') once more often than the difference in depth between the two ontology entries,
@@ -1911,7 +1919,7 @@ is determined for each word in each document.
 (`sideways_match_extent`; default: 100 words) within which the activation score is higher than the `different_match_cutoff_score` (default: 15) are regarded as belonging to a contiguous passage around the peak that is then returned as a `TopicMatch` object. (Note that this default will almost certainly turn out to be too low if `use_frequency_factor`is set to `False`.) A word whose activation equals the threshold exactly is included at the beginning of the area as long as the next word where
 activation increases has a score above the threshold. If the topic match peak is below the
 threshold, the topic match will only consist of the peak word.
-12. If `initial_question_word_behaviour` is set to `process` (the default) or `exclusive`, where a document word has [matched an initial question word](#initial-question-word-matching) from the query phrase, the subtree of the matched document word is identified as a potential answer to the question and added to the dictionary to be returned. If `initial_question_word_behaviour` is set to `exclusive`, any topic matches that do not contain answers are discarded.
+12. If `initial_question_word_behaviour` is set to `process` (the default) or to `exclusive`, where a document word has [matched an initial question word](#initial-question-word-matching) from the query phrase, the subtree of the matched document word is identified as a potential answer to the question and added to the dictionary to be returned. If `initial_question_word_behaviour` is set to `exclusive`, any topic matches that do not contain answers to initial question words are discarded.
 13. Setting `only_one_result_per_document = True` prevents more than one result from being returned from the same
 document; only the result from each document with the highest score will then be returned.
 14. Adjacent topic matches whose scores differ by less than `tied_result_quotient` (default: 0.9) are labelled as tied.
@@ -1921,7 +1929,7 @@ document; only the result from each document with the highest score will then be
 
 The supervised document classification use case relies on the same phraselets as the
 [topic matching use case](#how-it-works-topic-matching), although reverse-only templates are ignored and
-a different set of stop words is used (`SemanticAnalyzer.supervised_document_classification_phraselet_stop_lemmas`).
+a different set of stop words is used (`SemanticMatchingHelper.supervised_document_classification_phraselet_stop_lemmas`).
 Classifiers are built and trained as follows:
 
 1. All phraselets are extracted from all training documents and registered with a structural matcher.
@@ -2004,7 +2012,7 @@ make them more compliant with data protection laws.
 <a id="improve-performance-of-supervised-document-classification-training"></a>
 ##### 8.3.4 Improve the performance of supervised document classification training
 
-As long as [embedding-based matching](#embedding-based-matching) is not active, the second step of the
+In cases where [embedding-based matching](#embedding-based-matching) is not active, the second step of the
 [supervised document classification](#how-it-works-supervised-document-classification) procedure repeats
 a considerable amount of processing from the first step. Retaining the relevant information from the first
 step of the procedure would greatly improve training performance. This has not been attempted up to now

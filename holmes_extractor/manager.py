@@ -481,7 +481,7 @@ class Manager:
                 is matched using a search phrase that can only be reverse-matched.
         single_word_score -- the activation score added when a normal single word is matched.
         single_word_any_tag_score -- the activation score added when a single word is matched
-            whose tag did not correspond to the template specification.
+            whose tag would not normally allow it to be matched by phraselets.
         initial_question_word_answer_score -- the activation score added when a question word is
             matched to an answering phrase.
         initial_question_word_behaviour -- 'process' if a question word in the sentence
