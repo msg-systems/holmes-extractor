@@ -22,7 +22,7 @@ from .classification import SupervisedTopicTrainingBasis, SupervisedTopicClassif
 from .topic_matching import TopicMatcher, TopicMatchDictionaryOrderer
 from .consoles import HolmesConsoles
 
-TIMEOUT_SECONDS = 60
+TIMEOUT_SECONDS = 120
 
 absolute_config_filename = pkg_resources.resource_filename(__name__, 'config.cfg')
 config = Config().from_disk(absolute_config_filename)
