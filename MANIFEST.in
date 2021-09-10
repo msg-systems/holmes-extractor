@@ -1,0 +1,4 @@
+include SHORTREADME.md
+global-include *.cfg
+global-include *.dat
+global-include LICENSE
