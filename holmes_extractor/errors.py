@@ -27,10 +27,7 @@ class DuplicateDocumentError(HolmesError):
 class NoSearchPhraseError(HolmesError):
     pass
 
-class NoSearchedDocumentError(HolmesError):
-    pass
-
-class SerializationNotSupportedError(HolmesError):
+class NoDocumentError(HolmesError):
     pass
 
 class WrongModelDeserializationError(HolmesError):
@@ -48,7 +45,7 @@ class FewerThanTwoClassificationsError(HolmesError):
 class NoPhraseletsAfterFilteringError(HolmesError):
     pass
 
-class EmbeddingThresholdGreaterThanRelationThresholdError(HolmesError):
+class EmbeddingThresholdLessThanRelationThresholdError(HolmesError):
     pass
 
 class IncompatibleAnalyzeDerivationalMorphologyDeserializationError(HolmesError):

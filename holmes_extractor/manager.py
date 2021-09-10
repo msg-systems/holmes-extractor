@@ -1,80 +1,223 @@
-from multiprocessing import Process, Queue, Manager as Multiprocessing_manager, cpu_count
+from multiprocessing import Process, Queue, Manager as MultiprocessingManager, cpu_count
 from threading import Lock
+from string import punctuation
+from math import sqrt
 import traceback
 import sys
+import os
 import jsonpickle
+import pkg_resources
+import spacy
+import coreferee
+from spacy import Language
+from spacy.tokens import Doc, Token
+from thinc.api import Config
 from .errors import *
-from .structural_matching import StructuralMatcher, ThreadsafeContainer
-from .semantics import SemanticAnalyzerFactory
-from .extensive_matching import *
+from .matching import StructuralMatcher
+from .ontology import Ontology
+from .parsing import SemanticAnalyzerFactory, SemanticAnalyzer, SemanticMatchingHelperFactory,\
+    LinguisticObjectFactory, SearchPhrase, SERIALIZED_DOCUMENT_VERSION
+from .classification import SupervisedTopicTrainingBasis, SupervisedTopicClassifier,\
+    SupervisedTopicClassifierModel
+from .topic_matching import TopicMatcher, TopicMatchDictionaryOrderer
 from .consoles import HolmesConsoles
 
-def validate_options(
-        semantic_analyzer, overall_similarity_threshold,
-        embedding_based_matching_on_root_words, perform_coreference_resolution):
-    if overall_similarity_threshold < 0.0 or overall_similarity_threshold > 1.0:
-        raise ValueError(
-            'overall_similarity_threshold must be between 0 and 1')
-    if overall_similarity_threshold != 1.0 and not semantic_analyzer.model_supports_embeddings():
-        raise ValueError(
-            'Model has no embeddings: overall_similarity_threshold must be 1.')
-    if overall_similarity_threshold == 1.0 and embedding_based_matching_on_root_words:
-        raise ValueError(
-            'overall_similarity_threshold is 1; embedding_based_matching_on_root_words must be '\
-            'False')
-    if perform_coreference_resolution and not \
-            semantic_analyzer.model_supports_coreference_resolution():
-        raise ValueError(
-            'Model does not support coreference resolution: perform_coreference_resolution may '\
-            'not be True')
+TIMEOUT_SECONDS = 180
 
+absolute_config_filename = pkg_resources.resource_filename(__name__, 'config.cfg')
+config = Config().from_disk(absolute_config_filename)
+vector_nlps_config_dict = config['vector_nlps']
+model_names_to_nlps = {}
+MODEL_NAMES_TO_SEMANTIC_ANALYZERS = {}
+nlp_lock = Lock()
+pipeline_components_lock = Lock()
+
+def get_nlp(model_name:str) -> Language:
+    with nlp_lock:
+        if model_name not in model_names_to_nlps:
+            if model_name.endswith('_trf'):
+                model_names_to_nlps[model_name] = spacy.load(model_name,
+                    config={'components.transformer.model.tokenizer_config.use_fast': False})
+            else:
+                model_names_to_nlps[model_name] = spacy.load(model_name)
+        return model_names_to_nlps[model_name]
+
+def get_semantic_analyzer(nlp:Language) -> SemanticAnalyzer:
+    global MODEL_NAMES_TO_SEMANTIC_ANALYZERS
+    model_name = '_'.join((nlp.meta['lang'], nlp.meta['name']))
+    vectors_nlp = get_nlp(vector_nlps_config_dict[model_name]) \
+        if model_name in vector_nlps_config_dict else nlp
+    with nlp_lock:
+        if model_name not in MODEL_NAMES_TO_SEMANTIC_ANALYZERS:
+            MODEL_NAMES_TO_SEMANTIC_ANALYZERS[model_name] = \
+                SemanticAnalyzerFactory().semantic_analyzer(nlp=nlp, vectors_nlp=vectors_nlp)
+        return MODEL_NAMES_TO_SEMANTIC_ANALYZERS[model_name]
 
 class Manager:
     """The facade class for the Holmes library.
 
     Parameters:
 
-    model -- the name of the spaCy model, e.g. *en_core_web_lg*
+    model -- the name of the spaCy model, e.g. *en_core_web_trf*
     overall_similarity_threshold -- the overall similarity threshold for embedding-based
-        matching. Defaults to *1.0*, which deactivates embedding-based matching.
+        matching. Defaults to *1.0*, which deactivates embedding-based matching. Note that this
+        parameter is not relevant for topic matching, where the thresholds for embedding-based
+        matching are set on the call to *topic_match_documents_against*.
     embedding_based_matching_on_root_words -- determines whether or not embedding-based
         matching should be attempted on search-phrase root tokens, which has a considerable
-        performance hit. Defaults to *False*.
+        performance hit. Defaults to *False*. Note that this parameter is not relevant for topic
+        matching.
     ontology -- an *Ontology* object. Defaults to *None* (no ontology).
     analyze_derivational_morphology -- *True* if matching should be attempted between different
         words from the same word family. Defaults to *True*.
-    perform_coreference_resolution -- *True*, *False*, or *None* if coreference resolution
-        should be performed depending on whether the model supports it. Defaults to *None*.
-    debug -- a boolean value specifying whether debug representations should be outputted
-        for parsed sentences. Defaults to *False*.
+    perform_coreference_resolution -- *True* if coreference resolution should be taken into account
+        when matching. Defaults to *True*.
+    use_reverse_dependency_matching -- *True* if appropriate dependencies in documents can be
+        matched to dependencies in search phrases where the two dependencies point in opposite
+        directions. Defaults to *True*.
+    number_of_workers -- the number of worker processes to use, or *None* if the number of worker
+        processes should depend on the number of available cores. Defaults to *None*
+    verbose -- a boolean value specifying whether multiprocessing messages should be outputted to
+        the console. Defaults to *False*
     """
 
     def __init__(
-            self, model, *, overall_similarity_threshold=1.0,
-            embedding_based_matching_on_root_words=False, ontology=None,
-            analyze_derivational_morphology=True, perform_coreference_resolution=None, debug=False):
-        self.semantic_analyzer = SemanticAnalyzerFactory().semantic_analyzer(
-            model=model,
-            perform_coreference_resolution=perform_coreference_resolution,
-            debug=debug)
-        if perform_coreference_resolution is None:
-            perform_coreference_resolution = \
-                self.semantic_analyzer.model_supports_coreference_resolution()
-        validate_options(
-            self.semantic_analyzer, overall_similarity_threshold,
-            embedding_based_matching_on_root_words, perform_coreference_resolution)
+            self, model:str, *, overall_similarity_threshold:float=1.0,
+            embedding_based_matching_on_root_words:bool=False, ontology:Ontology=None,
+            analyze_derivational_morphology:bool=True, perform_coreference_resolution:bool=True,
+            use_reverse_dependency_matching:bool=True, number_of_workers:int=None,
+            verbose:bool=False):
+        self.verbose = verbose
+        self.nlp = get_nlp(model)
+        with pipeline_components_lock:
+            if not self.nlp.has_pipe('coreferee'):
+                self.nlp.add_pipe('coreferee')
+            if not self.nlp.has_pipe('holmes'):
+                self.nlp.add_pipe('holmes')
+        self.semantic_analyzer = get_semantic_analyzer(self.nlp)
+        if not self.semantic_analyzer.model_supports_embeddings():
+            overall_similarity_threshold = 1.0
+        if overall_similarity_threshold < 0.0 or overall_similarity_threshold > 1.0:
+            raise ValueError(
+                'overall_similarity_threshold must be between 0.0 and 1.0')
+        if overall_similarity_threshold == 1.0 and embedding_based_matching_on_root_words:
+            raise ValueError(
+                'overall_similarity_threshold is 1.0; embedding_based_matching_on_root_words must '\
+                'be False')
         self.ontology = ontology
-        self.debug = debug
+        self.analyze_derivational_morphology = analyze_derivational_morphology
+        self.semantic_matching_helper = SemanticMatchingHelperFactory().semantic_matching_helper(
+            language=self.nlp.meta['lang'], ontology=ontology,
+            analyze_derivational_morphology=analyze_derivational_morphology)
         self.overall_similarity_threshold = overall_similarity_threshold
-        self.embedding_based_matching_on_root_words = embedding_based_matching_on_root_words
         self.perform_coreference_resolution = perform_coreference_resolution
-        self.structural_matcher = StructuralMatcher(
-            self.semantic_analyzer, ontology, overall_similarity_threshold,
-            embedding_based_matching_on_root_words,
+        self.use_reverse_dependency_matching = use_reverse_dependency_matching
+        self.linguistic_object_factory = LinguisticObjectFactory(
+            self.semantic_analyzer, self.semantic_matching_helper, ontology,
+            overall_similarity_threshold, embedding_based_matching_on_root_words,
             analyze_derivational_morphology, perform_coreference_resolution)
-        self.threadsafe_container = ThreadsafeContainer()
+        self.semantic_matching_helper.ontology_reverse_derivational_dict = \
+            self.linguistic_object_factory.get_ontology_reverse_derivational_dict()
+        self.structural_matcher = StructuralMatcher(
+            self.semantic_matching_helper, ontology, embedding_based_matching_on_root_words,
+            analyze_derivational_morphology, perform_coreference_resolution,
+            use_reverse_dependency_matching,
+            self.semantic_analyzer.get_entity_label_to_vector_dict() if
+            self.semantic_analyzer.model_supports_embeddings() else {})
+        self.document_labels_to_worker_queues = {}
+        self.search_phrases = []
+        HolmesBroker.set_extensions()
+        for phraselet_template in self.semantic_matching_helper.phraselet_templates:
+            phraselet_template.template_doc = self.semantic_analyzer.parse(
+                phraselet_template.template_sentence)
+        if number_of_workers is None:
+            number_of_workers = cpu_count()
+        elif number_of_workers <= 0:
+            raise ValueError('number_of_workers must be a positive integer.')
+        self.number_of_workers = number_of_workers
+        self.next_worker_to_use = 0
+        self.multiprocessing_manager = MultiprocessingManager()
+        self.worker = Worker() # will be copied to worker processes by value (Windows) or
+                                # by reference (Linux)
+        self.workers = []
+        self.input_queues = []
+        self.word_dictionaries_need_rebuilding = False
+        self.words_to_corpus_frequencies = {}
+        self.maximum_corpus_frequency = 0
 
-    def parse_and_register_document(self, document_text, label=''):
+        for counter in range(0, self.number_of_workers):
+            input_queue = Queue()
+            self.input_queues.append(input_queue)
+            worker_label = ' '.join(('Worker', str(counter)))
+            this_worker = Process(
+                target=self.worker.listen, args=(
+                self.structural_matcher, self.overall_similarity_threshold, self.nlp.vocab, model,
+                SERIALIZED_DOCUMENT_VERSION, input_queue, worker_label),
+                daemon=True)
+            self.workers.append(this_worker)
+            this_worker.start()
+        self.lock = Lock()
+
+    def next_worker_queue_number(self):
+        self.next_worker_to_use += 1
+        if self.next_worker_to_use == self.number_of_workers:
+            self.next_worker_to_use = 0
+        return self.next_worker_to_use
+
+    def handle_response(self, reply_queue, number_of_messages, method_name):
+        return_values = []
+        exception_worker_label = None
+        for _ in range(number_of_messages):
+            worker_label, return_value, return_info = reply_queue.get(timeout=TIMEOUT_SECONDS)
+            if isinstance(return_info, (WrongModelDeserializationError,
+                    WrongVersionDeserializationError)):
+                raise return_info
+            elif isinstance(return_info, Exception):
+                if exception_worker_label is None:
+                    exception_worker_label = worker_label
+            else:
+                return_values.append(return_value)
+                if self.verbose:
+                    with self.lock:
+                        print(return_info)
+        if exception_worker_label is not None:
+            with self.lock:
+                print(''.join(('ERROR executing ', method_name, '() on ',
+                exception_worker_label,
+                '. Please examine the output from the worker processes to identify the problem.')))
+        return return_values
+
+    def register_serialized_documents(self, document_dictionary:dict[str, Doc]) -> None:
+        """Parameters:
+
+        document_dictionary -- a dictionary from labels to serialized documents.
+        """
+        reply_queue = self.multiprocessing_manager.Queue()
+        with self.lock:
+            for label, serialized_doc in document_dictionary.items():
+                if label in self.document_labels_to_worker_queues:
+                    raise DuplicateDocumentError(label)
+                else:
+                    worker_queue_number = self.next_worker_queue_number()
+                    self.document_labels_to_worker_queues[label] = worker_queue_number
+                    self.word_dictionaries_need_rebuilding = True
+                    self.input_queues[worker_queue_number].put((
+                        self.worker.register_serialized_document,
+                        (serialized_doc, label), reply_queue), TIMEOUT_SECONDS)
+        self.handle_response(reply_queue, len(document_dictionary), 'register_serialized_documents')
+
+    def register_serialized_document(self, serialized_document:bytes, label:str) -> None:
+        """Note that this function is the most efficient way of loading documents.
+
+        Parameters:
+
+        document -- a preparsed Holmes document.
+        label -- a label for the document which must be unique. Defaults to the empty string,
+            which is intended for use cases involving single documents (typically user entries).
+        """
+        self.register_serialized_documents({label: serialized_document})
+
+    def parse_and_register_document(self, document_text:str, label:str='') -> None:
         """Parameters:
 
         document_text -- the raw document text.
@@ -82,48 +225,42 @@ class Manager:
             which is intended for use cases involving single documents (typically user entries).
         """
 
-        doc = self.semantic_analyzer.parse(document_text)
-        self.register_parsed_document(doc, label)
+        doc = self.nlp(document_text)
+        self.register_serialized_document(doc.to_bytes(), label)
 
-    def register_parsed_document(self, doc, label=''):
-        """Parameters:
-
-        document -- a preparsed Holmes document.
-        label -- a label for the document which must be unique. Defaults to the empty string,
-            which is intended for use cases involving single documents (typically user entries).
-        """
-        indexed_document = self.structural_matcher.index_document(doc)
-        self.threadsafe_container.register_document(indexed_document, label)
-
-    def deserialize_and_register_document(self, document, label=''):
-        """Parameters:
-
-        document -- a Holmes document serialized using the *serialize_document()* function.
-        label -- a label for the document which must be unique. Defaults to the empty string,
-            which is intended for use cases involving single documents (typically user entries).
-        """
-        if self.perform_coreference_resolution:
-            raise SerializationNotSupportedError(self.semantic_analyzer.model)
-        doc = self.semantic_analyzer.from_serialized_string(document)
-        self.semantic_analyzer.debug_structures(doc) # only has effect when debug=True
-        indexed_document = self.structural_matcher.index_document(doc)
-        self.threadsafe_container.register_document(indexed_document, label)
-
-    def remove_document(self, label):
+    def remove_document(self, label:str) -> None:
         """Parameters:
 
         label -- the label of the document to be removed.
         """
-        self.threadsafe_container.remove_document(label)
+        reply_queue = self.multiprocessing_manager.Queue()
+        with self.lock:
+            if label in self.document_labels_to_worker_queues:
+                self.input_queues[self.document_labels_to_worker_queues[label]].put((
+                    self.worker.remove_document, (label,), reply_queue), timeout=TIMEOUT_SECONDS)
+                del self.document_labels_to_worker_queues[label]
+                self.word_dictionaries_need_rebuilding = True
+            else:
+                return
+        self.handle_response(reply_queue, 1, 'remove_document')
 
-    def remove_all_documents(self):
-        self.threadsafe_container.remove_all_documents()
+    def remove_all_documents(self) -> None:
+        reply_queue = self.multiprocessing_manager.Queue()
+        with self.lock:
+            for worker_index in range(self.number_of_workers):
+                self.input_queues[worker_index].put((
+                    self.worker.remove_all_documents, None, reply_queue), timeout=TIMEOUT_SECONDS)
+            self.word_dictionaries_need_rebuilding = True
+            self.document_labels_to_worker_queues = {}
+        self.handle_response(reply_queue, self.number_of_workers, 'remove_all_documents')
 
-    def document_labels(self):
+    def document_labels(self) -> list[str]:
         """Returns a list of the labels of the currently registered documents."""
-        return self.threadsafe_container.document_labels()
+        with self.lock:
+            unsorted_labels = self.document_labels_to_worker_queues.keys()
+        return sorted(unsorted_labels)
 
-    def serialize_document(self, label):
+    def serialize_document(self, label:str) -> bytes:
         """Returns a serialized representation of a Holmes document that can be persisted to
             a file. If *label* is not the label of a registered document, *None* is returned
             instead.
@@ -132,165 +269,228 @@ class Manager:
 
         label -- the label of the document to be serialized.
         """
+        reply_queue = self.multiprocessing_manager.Queue()
+        with self.lock:
+            if label in self.document_labels_to_worker_queues:
+                self.input_queues[self.document_labels_to_worker_queues[label]].put((
+                    self.worker.get_serialized_document, (label,), reply_queue), TIMEOUT_SECONDS)
+            else:
+                return None
+        return self.handle_response(reply_queue, 1, 'serialize_document')[0]
 
-        if self.perform_coreference_resolution:
-            raise SerializationNotSupportedError(self.semantic_analyzer.model)
-        doc = self.threadsafe_container.get_document(label)
-        if doc is not None:
-            return self.semantic_analyzer.to_serialized_string(doc)
+    def get_document(self, label:str='') -> Doc:
+        """Returns a Holmes document. If *label* is not the label of a registered document, *None*
+            is returned instead.
+
+        Parameters:
+
+        label -- the label of the document to be serialized.
+        """
+        serialized_document = self.serialize_document(label)
+        return None if serialized_document is None else \
+            Doc(self.nlp.vocab).from_bytes(serialized_document)
+
+    def debug_document(self, label:str='') -> None:
+        """Outputs a debug representation for a loaded document.
+        """
+        serialized_document = self.serialize_document(label)
+        if serialized_document is not None:
+            doc = Doc(self.nlp.vocab).from_bytes(serialized_document)
+            self.semantic_analyzer.debug_structures(doc)
         else:
-            return None
+            print('No document with label', label)
 
-    def register_search_phrase(self, search_phrase_text, label=None):
-        """Parameters:
+    def internal_get_search_phrase(self, search_phrase_text, label):
+        if label is None:
+            label = search_phrase_text
+        search_phrase_doc = self.nlp(search_phrase_text)
+        search_phrase = self.linguistic_object_factory.create_search_phrase(
+            search_phrase_text, search_phrase_doc, label, None, False, False, False, False)
+        return search_phrase
+
+    def register_search_phrase(self, search_phrase_text:str, label:str=None) -> SearchPhrase:
+        """Registers and returns a new search phrase.
+
+        Parameters:
 
         search_phrase_text -- the raw search phrase text.
         label -- a label for the search phrase which need *not* be unique. Defaults to the raw
             search phrase text.
         """
-        if label is None:
-            label = search_phrase_text
-        search_phrase_doc = self.semantic_analyzer.parse(search_phrase_text)
-        search_phrase = self.structural_matcher.create_search_phrase(
-            search_phrase_text, search_phrase_doc, label, None, False)
-        self.threadsafe_container.register_search_phrase(search_phrase)
+        search_phrase = self.internal_get_search_phrase(search_phrase_text, label)
+        search_phrase.pack()
+        reply_queue = self.multiprocessing_manager.Queue()
+        with self.lock:
+            for worker_index in range(self.number_of_workers):
+                self.input_queues[worker_index].put((
+                    self.worker.register_search_phrase,
+                    (search_phrase,), reply_queue), timeout=TIMEOUT_SECONDS)
+            self.search_phrases.append(search_phrase)
+        self.handle_response(reply_queue, self.number_of_workers, 'register_search_phrase')
+        return search_phrase
 
-    def remove_all_search_phrases(self):
-        self.threadsafe_container.remove_all_search_phrases()
+    def remove_all_search_phrases_with_label(self, label:str) -> None:
+        reply_queue = self.multiprocessing_manager.Queue()
+        with self.lock:
+            for worker_index in range(self.number_of_workers):
+                self.input_queues[worker_index].put((
+                    self.worker.remove_all_search_phrases_with_label,
+                    (label,), reply_queue), timeout=TIMEOUT_SECONDS)
+            self.search_phrases = [search_phrase for search_phrase in self.search_phrases
+                if search_phrase.label != label]
+        self.handle_response(reply_queue, self.number_of_workers,
+            'remove_all_search_phrases_with_label')
 
-    def remove_all_search_phrases_with_label(self, label):
-        self.threadsafe_container.remove_all_search_phrases_with_label(label)
+    def remove_all_search_phrases(self) -> None:
+        reply_queue = self.multiprocessing_manager.Queue()
+        with self.lock:
+            for worker_index in range(self.number_of_workers):
+                self.input_queues[worker_index].put((
+                    self.worker.remove_all_search_phrases, None, reply_queue),
+                    timeout=TIMEOUT_SECONDS)
+            self.search_phrases = []
+        self.handle_response(reply_queue, self.number_of_workers, 'remove_all_search_phrases')
 
-    def match(self):
-        """Matches the registered search phrases to the registered documents. Returns a list
-            of *Match* objects sorted by their overall similarity measures in descending order.
-            Should be called by applications wishing to retain references to the spaCy and
-            Holmes information that was used to derive the matches.
+    def list_search_phrase_labels(self) -> list[str]:
+        with self.lock:
+            return sorted(list({search_phrase.label for search_phrase in self.search_phrases}))
+
+    def match(self, search_phrase_text:str=None, document_text:str=None) -> list[dict]:
+        """ Matches search phrases to documents and returns the result as match dictionaries.
+
+        Parameters:
+
+        search_phrase_text -- a text from which to generate a search phrase, or *None* if the
+            preloaded search phrases should be used for matching.
+        document_text -- a text from which to generate a document, or *None* if the preloaded
+            documents should be used for matching.
         """
-        indexed_documents = self.threadsafe_container.get_indexed_documents()
-        search_phrases = self.threadsafe_container.get_search_phrases()
-        return self.structural_matcher.match(
-            indexed_documents=indexed_documents,
-            search_phrases=search_phrases,
-            output_document_matching_message_to_console=False,
-            match_depending_on_single_words=None,
-            compare_embeddings_on_root_words=False,
-            compare_embeddings_on_non_root_words=True,
-            document_labels_to_indexes_for_reverse_matching_sets=None,
-            document_labels_to_indexes_for_embedding_reverse_matching_sets=None)
 
-    def _build_match_dictionaries(self, matches):
-        """Builds and returns a list of dictionaries describing matches."""
+        if search_phrase_text is not None:
+            search_phrase = self.internal_get_search_phrase(search_phrase_text, '')
+        elif len(self.list_search_phrase_labels()) == 0:
+            raise NoSearchPhraseError('At least one search phrase is required for matching.')
+        else:
+            search_phrase = None
+        if document_text is not None:
+            serialized_document = self.nlp(document_text).to_bytes()
+            with self.lock:
+                worker_queue_number = self.next_worker_queue_number()
+            worker_range = range(worker_queue_number, worker_queue_number + 1)
+            number_of_workers = 1
+        else:
+            with self.lock:
+                if len(self.document_labels_to_worker_queues) == 0:
+                    raise NoDocumentError('At least one document is required for matching.')
+            serialized_document = None
+            number_of_workers = self.number_of_workers
+            worker_range = range(number_of_workers)
+        reply_queue = self.multiprocessing_manager.Queue()
+        for worker_index in worker_range:
+            self.input_queues[worker_index].put((
+                self.worker.match, (serialized_document, search_phrase), reply_queue),
+                timeout=TIMEOUT_SECONDS)
+        worker_match_dictss = self.handle_response(reply_queue, number_of_workers,
+            'match')
         match_dicts = []
-        for match in matches:
-            earliest_sentence_index = sys.maxsize
-            latest_sentence_index = -1
-            for word_match in match.word_matches:
-                sentence_index = word_match.document_token.sent.start
-                if sentence_index < earliest_sentence_index:
-                    earliest_sentence_index = sentence_index
-                if sentence_index > latest_sentence_index:
-                    latest_sentence_index = sentence_index
-            sentences_string = ' '.join(
-                sentence.text.strip() for sentence in
-                match.word_matches[0].document_token.doc.sents if sentence.start >=
-                earliest_sentence_index and sentence.start <= latest_sentence_index)
+        for worker_match_dicts in worker_match_dictss:
+            match_dicts.extend(worker_match_dicts)
+        return self.structural_matcher.sort_match_dictionaries(match_dicts)
 
-            match_dict = {
-                'search_phrase': match.search_phrase_label,
-                'document': match.document_label,
-                'index_within_document': match.index_within_document,
-                'sentences_within_document': sentences_string,
-                'negated': match.is_negated,
-                'uncertain': match.is_uncertain,
-                'involves_coreference': match.involves_coreference,
-                'overall_similarity_measure': match.overall_similarity_measure}
-            text_word_matches = []
-            for word_match in match.word_matches:
-                text_word_matches.append({
-                    'search_phrase_word': word_match.search_phrase_word,
-                    'document_word': word_match.document_word,
-                    'document_phrase': self.semantic_analyzer.get_dependent_phrase(
-                        word_match.document_token, word_match.document_subword),
-                    'match_type': word_match.type,
-                    'similarity_measure': str(word_match.similarity_measure),
-                    'involves_coreference': word_match.involves_coreference,
-                    'extracted_word': word_match.extracted_word,
-                    'explanation': word_match.explain()})
-            match_dict['word_matches'] = text_word_matches
-            match_dicts.append(match_dict)
-        return match_dicts
+    def get_corpus_frequency_information(self):
 
-    def match_returning_dictionaries(self):
-        """Matches the registered search phrases to the registered documents. Returns a list
-            of dictionaries describing any matches, sorted by their overall similarity measures in
-            descending order. Callers of this method do not have to manage any further
-            dependencies on spaCy or Holmes.
-        """
-        return self._build_match_dictionaries(self.match())
+        def merge_dicts_adding_common_values(dict1, dict2):
+            dict_to_return = {**dict1, **dict2}
+            for key in dict_to_return:
+                if key in dict1 and key in dict2:
+                    dict_to_return[key] = dict1[key] + dict2[key]
+            return dict_to_return
 
-    def match_search_phrases_against(self, entry):
-        """Matches the registered search phrases against a single document
-            supplied to the method and returns dictionaries describing any matches.
-        """
-        search_phrases = self.threadsafe_container.get_search_phrases()
-        doc = self.semantic_analyzer.parse(entry)
-        indexed_documents = {'':self.structural_matcher.index_document(doc)}
-        matches = self.structural_matcher.match(
-            indexed_documents=indexed_documents,
-            search_phrases=search_phrases,
-            output_document_matching_message_to_console=False,
-            match_depending_on_single_words=None,
-            compare_embeddings_on_root_words=False,
-            compare_embeddings_on_non_root_words=True,
-            document_labels_to_indexes_for_reverse_matching_sets=None,
-            document_labels_to_indexes_for_embedding_reverse_matching_sets=None)
-        return self._build_match_dictionaries(matches)
-
-    def match_documents_against(self, search_phrase_text):
-        """Matches the registered documents against a single search phrase
-            supplied to the method and returns dictionaries describing any matches.
-        """
-        indexed_documents = self.threadsafe_container.get_indexed_documents()
-        search_phrase_doc = self.semantic_analyzer.parse(search_phrase_text)
-        search_phrases = [self.structural_matcher.create_search_phrase(
-            search_phrase_text, search_phrase_doc, search_phrase_text, None, False)]
-        matches = self.structural_matcher.match(
-            indexed_documents=indexed_documents,
-            search_phrases=search_phrases,
-            output_document_matching_message_to_console=False,
-            match_depending_on_single_words=None,
-            compare_embeddings_on_root_words=False,
-            compare_embeddings_on_non_root_words=True,
-            document_labels_to_indexes_for_reverse_matching_sets=None,
-            document_labels_to_indexes_for_embedding_reverse_matching_sets=None)
-        return self._build_match_dictionaries(matches)
+        with self.lock:
+            if self.word_dictionaries_need_rebuilding:
+                reply_queue = self.multiprocessing_manager.Queue()
+                worker_frequency_dict = {}
+                for worker_index in range(self.number_of_workers):
+                    self.input_queues[worker_index].put((
+                        self.worker.get_words_to_corpus_frequencies, None, reply_queue),
+                        timeout=TIMEOUT_SECONDS)
+                exception_worker_label = None
+                for _ in range(self.number_of_workers):
+                    worker_label, return_value, return_info = reply_queue.get(
+                        timeout=TIMEOUT_SECONDS)
+                    if isinstance(return_info, Exception):
+                        if exception_worker_label is None:
+                            exception_worker_label = worker_label
+                    else:
+                        worker_frequency_dict = merge_dicts_adding_common_values(
+                            worker_frequency_dict, return_value)
+                        if self.verbose:
+                            print(return_info)
+                    if exception_worker_label is not None:
+                        print(''.join(('ERROR executing ', method_name, '() on ',
+                        exception_worker_label,
+                        '. Please examine the output from the worker processes to identify the problem.')))
+                self.words_to_corpus_frequencies = {}
+                for word in worker_frequency_dict:
+                    if word in self.words_to_corpus_frequencies:
+                        self.words_to_corpus_frequencies[word] += \
+                            worker_frequency_dict[word]
+                    else:
+                        self.words_to_corpus_frequencies[word] = \
+                            worker_frequency_dict[word]
+                self.maximum_corpus_frequency = max(self.words_to_corpus_frequencies.values())
+                self.word_dictionaries_need_rebuilding = False
+            return self.words_to_corpus_frequencies, self.maximum_corpus_frequency
 
     def topic_match_documents_against(
-            self, text_to_match, *, maximum_activation_distance=75,
-            relation_score=30, reverse_only_relation_score=20,
-            single_word_score=5, single_word_any_tag_score=2,
-            overlapping_relation_multiplier=1.5, embedding_penalty=0.6,
-            ontology_penalty=0.9,
-            maximum_number_of_single_word_matches_for_relation_matching=500,
-            maximum_number_of_single_word_matches_for_embedding_matching=100,
-            sideways_match_extent=100, only_one_result_per_document=False, number_of_results=10,
-            document_label_filter=None):
-        """Returns the results of a topic match between an entered text and the loaded documents.
+            self, text_to_match:str, *, use_frequency_factor:bool=True,
+            maximum_activation_distance:int=75,
+            word_embedding_match_threshold:float=0.8,
+            initial_question_word_embedding_match_threshold:float=0.7,
+            relation_score:int=300, reverse_only_relation_score:int=200,
+            single_word_score:int=50, single_word_any_tag_score:int=20,
+            initial_question_word_answer_score:int=600,
+            initial_question_word_behaviour:str='process', different_match_cutoff_score:int=15,
+            overlapping_relation_multiplier:float=1.5, embedding_penalty:float=0.6,
+            ontology_penalty:float=0.9,
+            relation_matching_frequency_threshold:float=0.25,
+            embedding_matching_frequency_threshold:float=0.5,
+            sideways_match_extent:int=100, only_one_result_per_document:bool=False,
+            number_of_results:int=10, document_label_filter:str=None,
+            tied_result_quotient:float=0.9) -> list[dict]:
+
+        """Returns a list of dictionaries representing the results of a topic match between an
+        entered text and the loaded documents.
 
         Properties:
 
         text_to_match -- the text to match against the loaded documents.
+        use_frequency_factor -- *True* if scores should be multiplied by a factor between 0 and 1
+            expressing how rare the words matching each phraselet are in the corpus. Note that,
+            even if set to *False*, the factors are still calculated as they are required for
+            determining which relation and embedding matches should be attempted.
         maximum_activation_distance -- the number of words it takes for a previous phraselet
             activation to reduce to zero when the library is reading through a document.
+        word_embedding_match_threshold -- the cosine similarity above which two words match where
+          the search phrase word does not govern an interrogative pronoun..
+        initial_question_word_embedding_match_threshold -- the cosine similarity above which two
+            words match where the search phrase word governs an interrogative pronoun.
         relation_score -- the activation score added when a normal two-word
             relation is matched.
         reverse_only_relation_score -- the activation score added when a two-word relation
                 is matched using a search phrase that can only be reverse-matched.
-        single_word_score -- the activation score added when a normal single
-            word is matched.
+        single_word_score -- the activation score added when a normal single word is matched.
         single_word_any_tag_score -- the activation score added when a single word is matched
-            whose tag did not correspond to the template specification.
+            whose tag would not normally allow it to be matched by phraselets.
+        initial_question_word_answer_score -- the activation score added when a question word is
+            matched to an answering phrase.
+        initial_question_word_behaviour -- 'process' if a question word in the sentence
+            constituent at the beginning of *text_to_match* is to be matched to document phrases
+            that answer it; 'exclusive' if only topic matches that involve such question words
+            are to be permitted; 'ignore' if question words are to be ignored.
+        different_match_cutoff_score -- the activation threshold under which topic matches are
+            separated from one another. Note that the default value will probably be too low if
+            *use_frequency_factor* is set to *False*.
         overlapping_relation_multiplier -- the value by which the activation score is multiplied
             when two relations were matched and the matches involved a common document word.
         embedding_penalty -- a value between 0 and 1 with which scores are multiplied when the
@@ -301,14 +501,11 @@ class Manager:
             the score is multiplied by the value (abs(depth) + 1) times, so that the penalty is
             higher for hyponyms and hypernyms than for synonyms and increases with the
             depth distance.
-        maximum_number_of_single_word_matches_for_relation_matching -- the maximum number
-                of single word matches that are used as the basis for matching relations. If more
-                document words than this value correspond to each of the two words within a
-                relation phraselet, matching on the phraselet is not attempted.
-        maximum_number_of_single_word_matches_for_embedding_matching = the maximum number
-          of single word matches that are used as the basis for matching with
-          embeddings at the other word. If more than this value exist, matching with
-          embeddings is not attempted because the performance hit would be too great.
+        relation_matching_frequency_threshold -- the frequency threshold above which single
+            word matches are used as the basis for attempting relation matches.
+        embedding_matching_frequency_threshold -- the frequency threshold above which single
+            word matches are used as the basis for attempting relation matches with
+            embedding-based matching on the second word.
         sideways_match_extent -- the maximum number of words that may be incorporated into a
             topic match either side of the word where the activation peaked.
         only_one_result_per_document -- if 'True', prevents multiple results from being returned
@@ -316,111 +513,93 @@ class Manager:
         number_of_results -- the number of topic match objects to return.
         document_label_filter -- optionally, a string with which document labels must start to
             be considered for inclusion in the results.
-        """
-        topic_matcher = TopicMatcher(
-            semantic_analyzer=self.semantic_analyzer,
-            structural_matcher=self.structural_matcher,
-            indexed_documents=self.threadsafe_container.get_indexed_documents(),
-            maximum_activation_distance=maximum_activation_distance,
-            relation_score=relation_score,
-            reverse_only_relation_score=reverse_only_relation_score,
-            single_word_score=single_word_score,
-            single_word_any_tag_score=single_word_any_tag_score,
-            overlapping_relation_multiplier=overlapping_relation_multiplier,
-            embedding_penalty=embedding_penalty,
-            ontology_penalty=ontology_penalty,
-            maximum_number_of_single_word_matches_for_relation_matching=
-            maximum_number_of_single_word_matches_for_relation_matching,
-            maximum_number_of_single_word_matches_for_embedding_matching=
-            maximum_number_of_single_word_matches_for_embedding_matching,
-            sideways_match_extent=sideways_match_extent,
-            only_one_result_per_document=only_one_result_per_document,
-            number_of_results=number_of_results,
-            document_label_filter=document_label_filter)
-        return topic_matcher.topic_match_documents_against(text_to_match)
-
-    def topic_match_documents_returning_dictionaries_against(
-            self, text_to_match, *,
-            maximum_activation_distance=75, relation_score=30, reverse_only_relation_score=20,
-            single_word_score=5, single_word_any_tag_score=2, overlapping_relation_multiplier=1.5,
-            embedding_penalty=0.6, ontology_penalty=0.9,
-            maximum_number_of_single_word_matches_for_relation_matching=500,
-            maximum_number_of_single_word_matches_for_embedding_matching=100,
-            sideways_match_extent=100, only_one_result_per_document=False, number_of_results=10,
-            document_label_filter=None, tied_result_quotient=0.9):
-        """Returns a list of dictionaries representing the results of a topic match between an
-            entered text and the loaded documents. Callers of this method do not have to manage any
-            further dependencies on spaCy or Holmes.
-
-        Properties:
-
-        text_to_match -- the text to match against the loaded documents.
-        maximum_activation_distance -- the number of words it takes for a previous phraselet
-            activation to reduce to zero when the library is reading through a document.
-        relation_score -- the activation score added when a normal two-word
-            relation is matched.
-        reverse_only_relation_score -- the activation score added when a two-word relation
-                is matched using a search phrase that can only be reverse-matched.
-        single_word_score -- the activation score added when a normal single
-            word is matched.
-        single_word_any_tag_score -- the activation score added when a single word is matched
-            whose tag did not correspond to the template specification.
-        overlapping_relation_multiplier -- the value by which the activation score is multiplied
-            when two relations were matched and the matches involved a common document word.
-        embedding_penalty -- a value between 0 and 1 with which scores are multiplied when the
-            match involved an embedding. The result is additionally multiplied by the overall
-            similarity measure of the match.
-        ontology_penalty -- a value between 0 and 1 with which scores are multiplied for each
-            word match within a match that involved the ontology. For each such word match,
-            the score is multiplied by the value (abs(depth) + 1) times, so that the penalty is
-            higher for hyponyms and hypernyms than for synonyms and increases with the
-            depth distance.
-        maximum_number_of_single_word_matches_for_relation_matching -- the maximum number
-            of single word matches that are used as the basis for matching relations. If more
-            document words than this value correspond to each of the two words within a
-            relation phraselet, matching on the phraselet is not attempted.
-        maximum_number_of_single_word_matches_for_embedding_matching = the maximum number
-          of single word matches that are used as the basis for matching with
-          embeddings at the other word. If more than this value exist, matching with
-          embeddings is not attempted because the performance hit would be too great.
-        sideways_match_extent -- the maximum number of words that may be incorporated into a
-            topic match either side of the word where the activation peaked.
-        only_one_result_per_document -- if 'True', prevents multiple results from being returned
-            for the same document.
-        number_of_results -- the number of topic match objects to return.
         tied_result_quotient -- the quotient between a result and following results above which
             the results are interpreted as tied.
-        document_label_filter -- optionally, a string with which document labels must start to
-            be considered for inclusion in the results.
         """
+        if word_embedding_match_threshold < 0.0 or word_embedding_match_threshold > 1.0:
+            raise ValueError(
+                'word_embedding_match_threshold must be between 0 and 1')
+        if initial_question_word_embedding_match_threshold < 0.0 or \
+                initial_question_word_embedding_match_threshold > 1.0:
+            raise ValueError(
+                'initial_question_word_embedding_match_threshold must be between 0 and 1')
 
-        topic_matcher = TopicMatcher(
-            semantic_analyzer=self.semantic_analyzer,
-            structural_matcher=self.structural_matcher,
-            indexed_documents=self.threadsafe_container.get_indexed_documents(),
-            maximum_activation_distance=maximum_activation_distance,
-            relation_score=relation_score,
-            reverse_only_relation_score=reverse_only_relation_score,
-            single_word_score=single_word_score,
-            single_word_any_tag_score=single_word_any_tag_score,
-            overlapping_relation_multiplier=overlapping_relation_multiplier,
-            embedding_penalty=embedding_penalty,
-            ontology_penalty=ontology_penalty,
-            maximum_number_of_single_word_matches_for_relation_matching=
-            maximum_number_of_single_word_matches_for_relation_matching,
-            maximum_number_of_single_word_matches_for_embedding_matching=
-            maximum_number_of_single_word_matches_for_embedding_matching,
-            sideways_match_extent=sideways_match_extent,
-            only_one_result_per_document=only_one_result_per_document,
-            number_of_results=number_of_results,
-            document_label_filter=document_label_filter)
-        return topic_matcher.topic_match_documents_returning_dictionaries_against(
-            text_to_match, tied_result_quotient=tied_result_quotient)
+        if not self.semantic_analyzer.model_supports_embeddings():
+            word_embedding_match_threshold = initial_question_word_embedding_match_threshold = 1.0
+
+        overall_similarity_threshold = sqrt(word_embedding_match_threshold)
+        initial_question_word_overall_similarity_threshold = sqrt(
+            initial_question_word_embedding_match_threshold)
+
+        if initial_question_word_behaviour not in ('process', 'exclusive', 'ignore'):
+            raise ValueError(': '.join(('initial_question_word_behaviour',
+                initial_question_word_behaviour)))
+        if embedding_matching_frequency_threshold < 0.0 or \
+                embedding_matching_frequency_threshold > 1.0:
+            raise ValueError(': '.join(('embedding_matching_frequency_threshold',
+                str(embedding_matching_frequency_threshold))))
+        if relation_matching_frequency_threshold < 0.0 or \
+                relation_matching_frequency_threshold > 1.0:
+            raise ValueError(': '.join(('relation_matching_frequency_threshold',
+                str(relation_matching_frequency_threshold))))
+        if embedding_matching_frequency_threshold < relation_matching_frequency_threshold:
+            raise EmbeddingThresholdLessThanRelationThresholdError(' '.join((
+                'embedding',
+                str(embedding_matching_frequency_threshold),
+                'relation',
+                str(relation_matching_frequency_threshold))))
+        with self.lock:
+            if len(self.document_labels_to_worker_queues) == 0:
+                raise NoDocumentError('At least one document is required for matching.')
+        words_to_corpus_frequencies, maximum_corpus_frequency = \
+            self.get_corpus_frequency_information()
+
+        reply_queue = self.multiprocessing_manager.Queue()
+        text_to_match_doc = self.semantic_analyzer.parse(text_to_match)
+        phraselet_labels_to_phraselet_infos = \
+            self.linguistic_object_factory.get_phraselet_labels_to_phraselet_infos(
+            text_to_match_doc=text_to_match_doc,
+            words_to_corpus_frequencies=words_to_corpus_frequencies,
+            maximum_corpus_frequency=maximum_corpus_frequency,
+            process_initial_question_words=initial_question_word_behaviour in ('process',
+                'exclusive'))
+        if len(phraselet_labels_to_phraselet_infos) == 0:
+            return []
+        phraselet_labels_to_search_phrases = \
+            self.linguistic_object_factory.create_search_phrases_from_phraselet_infos(
+                phraselet_labels_to_phraselet_infos.values(), relation_matching_frequency_threshold)
+        for search_phrase in phraselet_labels_to_search_phrases.values():
+            search_phrase.pack()
+
+        for worker_index in range(self.number_of_workers):
+            self.input_queues[worker_index].put((
+                self.worker.get_topic_matches,
+                (text_to_match, phraselet_labels_to_phraselet_infos,
+                phraselet_labels_to_search_phrases, maximum_activation_distance,
+                overall_similarity_threshold, initial_question_word_overall_similarity_threshold,
+                relation_score, reverse_only_relation_score, single_word_score,
+                single_word_any_tag_score, initial_question_word_answer_score,
+                initial_question_word_behaviour, different_match_cutoff_score,
+                overlapping_relation_multiplier, embedding_penalty,
+                ontology_penalty, relation_matching_frequency_threshold,
+                embedding_matching_frequency_threshold, sideways_match_extent,
+                only_one_result_per_document, number_of_results, document_label_filter,
+                use_frequency_factor), reply_queue), timeout=TIMEOUT_SECONDS)
+        worker_topic_match_dictss = self.handle_response(reply_queue,
+            self.number_of_workers, 'match')
+        topic_match_dicts = []
+        for worker_topic_match_dicts in worker_topic_match_dictss:
+            if worker_topic_match_dicts is not None:
+                topic_match_dicts.extend(worker_topic_match_dicts)
+        return TopicMatchDictionaryOrderer().order(
+            topic_match_dicts, number_of_results, tied_result_quotient)
 
     def get_supervised_topic_training_basis(
-            self, *, classification_ontology=None,
-            overlap_memory_size=10, oneshot=True, match_all_words=False, verbose=True):
-        """ Returns an object that is used to train and generate a document model.
+            self, *, classification_ontology:Ontology=None,
+            overlap_memory_size:int=10, oneshot:bool=True, match_all_words:bool=False,
+            verbose:bool=True) -> SupervisedTopicTrainingBasis:
+        """ Returns an object that is used to train and generate a model for the supervised
+            document classification use case.
 
             Parameters:
 
@@ -435,13 +614,17 @@ class Manager:
             verbose -- if 'True', information about training progress is outputted to the console.
         """
         return SupervisedTopicTrainingBasis(
+            linguistic_object_factory=self.linguistic_object_factory,
             structural_matcher=self.structural_matcher,
             classification_ontology=classification_ontology,
             overlap_memory_size=overlap_memory_size, oneshot=oneshot,
-            match_all_words=match_all_words, verbose=verbose)
+            match_all_words=match_all_words,
+            overall_similarity_threshold=self.overall_similarity_threshold, verbose=verbose)
 
-    def deserialize_supervised_topic_classifier(self, serialized_model, verbose=False):
-        """ Returns a document classifier that will use a pre-trained model.
+    def deserialize_supervised_topic_classifier(self,
+            serialized_model:str, verbose:bool=False) -> SupervisedTopicClassifier:
+        """ Returns a classifier for the supervised document classification use case
+            that will use a supplied pre-trained model.
 
             Parameters:
 
@@ -451,373 +634,268 @@ class Manager:
         """
         model = jsonpickle.decode(serialized_model)
         return SupervisedTopicClassifier(
-            self.semantic_analyzer, self.structural_matcher, model, verbose)
+            self.semantic_analyzer, self.linguistic_object_factory, self.structural_matcher,
+            model, self.overall_similarity_threshold, verbose)
 
     def start_chatbot_mode_console(self):
-        """Starts a chatbot mode console enabling the matching of pre-registered search phrases
-            to documents (chatbot entries) entered ad-hoc by the user.
+        """Starts a chatbot mode console enabling the matching of pre-registered
+            search phrases to documents (chatbot entries) ad-hoc by the user.
         """
         holmes_consoles = HolmesConsoles(self)
         holmes_consoles.start_chatbot_mode()
 
-    def start_structural_search_mode_console(self):
-        """Starts a structural search mode console enabling the matching of pre-registered documents
-            to search phrases entered ad-hoc by the user.
+    def start_structural_extraction_mode_console(self):
+        """Starts a structural extraction mode console enabling the matching of pre-registered
+            documents to search phrases entered ad-hoc by the user.
         """
         holmes_consoles = HolmesConsoles(self)
-        holmes_consoles.start_structural_search_mode()
+        holmes_consoles.start_structural_extraction_mode()
 
     def start_topic_matching_search_mode_console(
-            self, only_one_result_per_document=False,
-            maximum_number_of_single_word_matches_for_relation_matching=500,
-            maximum_number_of_single_word_matches_for_embedding_matching=100):
+            self, only_one_result_per_document:bool=False,
+            word_embedding_match_threshold:float=0.8,
+            initial_question_word_embedding_match_threshold:float=0.7):
         """Starts a topic matching search mode console enabling the matching of pre-registered
-            documents to search texts entered ad-hoc by the user.
+            documents to query phrases entered ad-hoc by the user.
 
             Parameters:
 
             only_one_result_per_document -- if 'True', prevents multiple topic match
                 results from being returned for the same document.
-            maximum_number_of_single_word_matches_for_relation_matching -- the maximum number
-                of single word matches that are used as the basis for matching relations. If more
-                document words than this value correspond to each of the two words within a
-                relation phraselet, matching on the phraselet is not attempted.
-            maximum_number_of_single_word_matches_for_embedding_matching = the maximum
-                number of single word matches that are used as the basis for reverse matching with
-                embeddings at the parent word. If more than this value exist, reverse matching with
-                embeddings is not attempted because the performance hit would be too great.
+            word_embedding_match_threshold -- the cosine similarity above which two words match
+                where the search phrase word does not govern an interrogative pronoun.
+            initial_question_word_embedding_match_threshold -- the cosine similarity above which two
+                words match where the search phrase word governs an interrogative pronoun.
         """
         holmes_consoles = HolmesConsoles(self)
         holmes_consoles.start_topic_matching_search_mode(
             only_one_result_per_document,
-            maximum_number_of_single_word_matches_for_relation_matching=
-            maximum_number_of_single_word_matches_for_relation_matching,
-            maximum_number_of_single_word_matches_for_embedding_matching=
-            maximum_number_of_single_word_matches_for_embedding_matching)
+            word_embedding_match_threshold,
+            initial_question_word_embedding_match_threshold)
 
-class MultiprocessingManager:
-    """The facade class for the Holmes library used in a multiprocessing environment.
-        This class is threadsafe.
-
-    Parameters:
-
-    model -- the name of the spaCy model, e.g. *en_core_web_lg*
-    overall_similarity_threshold -- the overall similarity threshold for embedding-based
-        matching. Defaults to *1.0*, which deactivates embedding-based matching.
-    embedding_based_matching_on_root_words -- determines whether or not embedding-based
-        matching should be attempted on root (parent) tokens, which has a considerable
-        performance hit. Defaults to *False*.
-    ontology -- an *Ontology* object. Defaults to *None* (no ontology).
-    analyze_derivational_morphology -- *True* if matching should be attempted between different
-        words from the same word family. Defaults to *True*.
-    perform_coreference_resolution -- *True*, *False* or *None* if coreference resolution
-        should be performed depending on whether the model supports it. Defaults to *None*.
-    debug -- a boolean value specifying whether debug representations should be outputted
-        for parsed sentences. Defaults to *False*.
-    verbose -- a boolean value specifying whether status messages should be outputted to the
-        console. Defaults to *True*
-    number_of_workers -- the number of worker processes to use, or *None* if the number of worker
-        processes should depend on the number of available cores. Defaults to *None*
-    """
-    def __init__(
-            self, model, *, overall_similarity_threshold=1.0,
-            embedding_based_matching_on_root_words=False, ontology=None,
-            analyze_derivational_morphology=True, perform_coreference_resolution=None,
-            debug=False, verbose=True, number_of_workers=None):
-        self.semantic_analyzer = SemanticAnalyzerFactory().semantic_analyzer(
-            model=model, perform_coreference_resolution=perform_coreference_resolution, debug=debug)
-        if perform_coreference_resolution is None:
-            perform_coreference_resolution = \
-                self.semantic_analyzer.model_supports_coreference_resolution()
-        validate_options(
-            self.semantic_analyzer, overall_similarity_threshold,
-            embedding_based_matching_on_root_words, perform_coreference_resolution)
-        self.structural_matcher = StructuralMatcher(
-            self.semantic_analyzer, ontology, overall_similarity_threshold,
-            embedding_based_matching_on_root_words, analyze_derivational_morphology,
-            perform_coreference_resolution)
-        self._perform_coreference_resolution = perform_coreference_resolution
-
-        self._verbose = verbose
-        self._document_labels = []
-        self._input_queues = []
-        if number_of_workers is None:
-            number_of_workers = cpu_count()
-        self._number_of_workers = number_of_workers
-        self._next_worker_to_use = 0
-        self._multiprocessor_manager = Multiprocessing_manager()
-        self._worker = Worker() # will be copied to worker processes by value (Windows) or
-                                # by reference (Linux)
-        self._workers = []
-        for counter in range(0, self._number_of_workers):
-            input_queue = Queue()
-            self._input_queues.append(input_queue)
-            worker_label = ' '.join(('Worker', str(counter)))
-            this_worker = Process(
-                target=self._worker.listen, args=(
-                    self.semantic_analyzer, self.structural_matcher, input_queue, worker_label),
-                daemon=True)
-            self._workers.append(this_worker)
-            this_worker.start()
-        self._lock = Lock()
-
-    def _add_document_label(self, label):
-        with self._lock:
-            if label in self._document_labels:
-                raise DuplicateDocumentError(label)
-            else:
-                self._document_labels.append(label)
-
-    def _handle_reply(self, worker_label, return_value):
-        """ If 'return_value' is an exception, return it, otherwise return 'None'. """
-        if isinstance(return_value, Exception):
-            return return_value
-        elif self._verbose:
-            if not isinstance(return_value, list):
-                with self._lock:
-                    print(': '.join((worker_label, return_value)))
-            return None
-
-    def _internal_register_documents(self, dictionary, worker_method):
-        reply_queue = self._multiprocessor_manager.Queue()
-        for label, value in dictionary.items():
-            self._add_document_label(label)
-            with self._lock:
-                self._input_queues[
-                    self._next_worker_to_use].put((worker_method, (value, label), reply_queue))
-                self._next_worker_to_use += 1
-                if self._next_worker_to_use == self._number_of_workers:
-                    self._next_worker_to_use = 0
-        recorded_exception = None
-        for _ in range(0, len(dictionary)):
-            possible_exception = self._handle_reply(*reply_queue.get())
-            if possible_exception is not None and recorded_exception is None:
-                recorded_exception = possible_exception
-        if recorded_exception is not None:
-            with self._lock:
-                print('ERROR: not all documents were registered successfully. Please examine the '\
-                ' above output from the worker processes to identify the problem.')
-
-    def parse_and_register_documents(self, document_dictionary):
-        """Parameters:
-
-        document_dictionary -- a dictionary from unique document labels to raw document texts.
-        """
-        self._internal_register_documents(
-            document_dictionary, self._worker.worker_parse_and_register_document)
-
-    def deserialize_and_register_documents(self, serialized_document_dictionary):
-        """Parameters:
-
-        serialized_document_dictionary -- a dictionary from unique document labels to
-        documents serialized using the *Manager.serialize_document()* method.
-        """
-        if self._perform_coreference_resolution:
-            raise SerializationNotSupportedError(self.semantic_analyzer.model)
-        self._internal_register_documents(
-            serialized_document_dictionary, self._worker.worker_deserialize_and_register_document)
-
-    def document_labels(self):
-        with self._lock:
-            document_labels = self._document_labels
-        return sorted(document_labels)
-
-    def topic_match_documents_returning_dictionaries_against(
-            self, text_to_match, *, maximum_activation_distance=75, relation_score=30,
-            reverse_only_relation_score=20, single_word_score=5, single_word_any_tag_score=2,
-            overlapping_relation_multiplier=1.5, embedding_penalty=0.6, ontology_penalty=0.9,
-            maximum_number_of_single_word_matches_for_relation_matching=500,
-            maximum_number_of_single_word_matches_for_embedding_matching=100,
-            sideways_match_extent=100, only_one_result_per_document=False, number_of_results=10,
-            document_label_filter=None, tied_result_quotient=0.9):
-        """Returns the results of a topic match between an entered text and the loaded documents.
-
-        Properties:
-
-        text_to_match -- the text to match against the loaded documents.
-        maximum_activation_distance -- the number of words it takes for a previous phraselet
-            activation to reduce to zero when the library is reading through a document.
-        relation_score -- the activation score added when a normal two-word
-            relation is matched.
-        reverse_only_relation_score -- the activation score added when a two-word relation
-                is matched using a search phrase that can only be reverse-matched.
-        single_word_score -- the activation score added when a normal single
-            word is matched.
-        single_word_any_tag_score -- the activation score added when a single word is matched
-            whose tag did not correspond to the template specification.
-        overlapping_relation_multiplier -- the value by which the activation score is multiplied
-            when two relations were matched and the matches involved a common document word.
-        embedding_penalty -- a value between 0 and 1 with which scores are multiplied when the
-            match involved an embedding. The result is additionally multiplied by the overall
-            similarity measure of the match.
-        ontology_penalty -- a value between 0 and 1 with which scores are multiplied for each
-            word match within a match that involved the ontology. For each such word match,
-            the score is multiplied by the value (abs(depth) + 1) times, so that the penalty is
-            higher for hyponyms and hypernyms than for synonyms and increases with the
-            depth distance.
-        maximum_number_of_single_word_matches_for_relation_matching -- the maximum number
-                of single word matches that are used as the basis for matching relations. If more
-                document words than this value correspond to each of the two words within a
-                relation phraselet, matching on the phraselet is not attempted.
-        maximum_number_of_single_word_matches_for_embedding_matching = the maximum number
-                of single word matches that are used as the basis for reverse matching with
-                embeddings at the parent word. If more than this value exist, reverse matching with
-                embeddings is not attempted because the performance hit would be too great.
-        sideways_match_extent -- the maximum number of words that may be incorporated into a
-            topic match either side of the word where the activation peaked.
-        only_one_result_per_document -- if 'True', prevents multiple results from being returned
-            for the same document.
-        number_of_results -- the number of topic match objects to return.
-        document_label_filter -- optionally, a string with which document labels must start to
-            be considered for inclusion in the results.
-        tied_result_quotient -- the quotient between a result and following results above which
-            the results are interpreted as tied.
-        """
-        if maximum_number_of_single_word_matches_for_embedding_matching > \
-                maximum_number_of_single_word_matches_for_relation_matching:
-            raise EmbeddingThresholdGreaterThanRelationThresholdError(' '.join((
-                'embedding',
-                str(maximum_number_of_single_word_matches_for_embedding_matching),
-                'relation',
-                str(maximum_number_of_single_word_matches_for_relation_matching))))
-        reply_queue = self._multiprocessor_manager.Queue()
-        for counter in range(0, self._number_of_workers):
-            self._input_queues[counter].put((
-                self._worker.worker_topic_match_documents_returning_dictionaries_against,
-                (
-                    text_to_match, maximum_activation_distance, relation_score,
-                    reverse_only_relation_score, single_word_score, single_word_any_tag_score,
-                    overlapping_relation_multiplier, embedding_penalty, ontology_penalty,
-                    maximum_number_of_single_word_matches_for_relation_matching,
-                    maximum_number_of_single_word_matches_for_embedding_matching,
-                    sideways_match_extent, only_one_result_per_document, number_of_results,
-                    document_label_filter, tied_result_quotient), reply_queue))
-        topic_match_dicts = []
-        recorded_exception = None
-        for _ in range(0, self._number_of_workers):
-            worker_label, worker_topic_match_dicts = reply_queue.get()
-            if recorded_exception is None:
-                recorded_exception = self._handle_reply(worker_label, worker_topic_match_dicts)
-            if not isinstance(worker_topic_match_dicts, Exception):
-                topic_match_dicts.extend(worker_topic_match_dicts)
-        if recorded_exception is not None:
-            with self._lock:
-                print('ERROR: not all workers returned results. Please examine the above output '\
-                ' from the worker processes to identify the problem.')
-        return TopicMatchDictionaryOrderer().order(
-            topic_match_dicts, number_of_results, tied_result_quotient)
-
-    def start_topic_matching_search_mode_console(
-            self, only_one_result_per_document=False,
-            maximum_number_of_single_word_matches_for_relation_matching=500,
-            maximum_number_of_single_word_matches_for_embedding_matching=100):
-        """Starts a topic matching search mode console enabling the matching of pre-registered
-            documents to search texts entered ad-hoc by the user.
-
-            Parameters:
-
-            only_one_result_per_document -- if 'True', prevents multiple topic match
-                results from being returned for the same document.
-            maximum_number_of_single_word_matches_for_relation_matching -- the maximum number
-                of single word matches that are used as the basis for matching relations. If more
-                document words than this value correspond to each of the two words within a
-                relation phraselet, matching on the phraselet is not attempted.
-            maximum_number_of_single_word_matches_for_embedding_matching = the maximum number
-              of single word matches that are used as the basis for matching with
-              embeddings at the other word. If more than this value exist, matching with
-              embeddings is not attempted because the performance hit would be too great.
-        """
-        holmes_consoles = HolmesConsoles(self)
-        holmes_consoles.start_topic_matching_search_mode(
-            only_one_result_per_document,
-            maximum_number_of_single_word_matches_for_relation_matching=
-            maximum_number_of_single_word_matches_for_relation_matching,
-            maximum_number_of_single_word_matches_for_embedding_matching=
-            maximum_number_of_single_word_matches_for_embedding_matching)
-
-    def close(self):
-        for worker in self._workers:
+    def close(self) -> None:
+        """ Terminates the worker processes. """
+        for worker in self.workers:
             worker.terminate()
 
 class Worker:
-    """Worker implementation used by *MultiprocessingManager*.
+    """Worker implementation used by *Manager*.
     """
 
-    def _error_header(self, method, args, worker_label):
-        if method.__name__.endswith('register_document'):
-            return ''.join((
-                worker_label, ' - error registering document ', args[1],
-                '. Please submit a Github issue including the following stack trace for analysis:'))
-        else:
-            return ''.join((
-                worker_label,
-                ' - error. Please submit a Github issue including the following stack trace for '\
-                'analysis:'))
+    def error_header(self, method, args, worker_label):
+        return ''.join((
+            worker_label,
+            ' - error:'))
 
-    def listen(self, semantic_analyzer, structural_matcher, input_queue, worker_label):
-        semantic_analyzer.reload_model() # necessary to avoid neuralcoref MemoryError on Linux
-        indexed_documents = {}
+    def listen(self, structural_matcher, overall_similarity_threshold, vocab, model_name,
+            serialized_document_version, input_queue, worker_label):
+        state = {
+            'structural_matcher': structural_matcher,
+            'overall_similarity_threshold': overall_similarity_threshold,
+            'vocab': vocab,
+            'model_name': model_name,
+            'serialized_document_version': serialized_document_version,
+            'document_labels_to_documents': {},
+            'corpus_index_dict': {},
+            'search_phrases': [],
+        }
+        HolmesBroker.set_extensions()
         while True:
             method, args, reply_queue = input_queue.get()
             try:
-                reply = method(semantic_analyzer, structural_matcher, indexed_documents, *args)
-                reply_queue.put((worker_label, reply))
+                if args is not None:
+                    return_value, return_info = method(state, *args)
+                else:
+                    return_value, return_info = method(state)
+                reply_queue.put((worker_label, return_value, return_info), timeout=TIMEOUT_SECONDS)
             except Exception as err:
-                print(self._error_header(method, args, worker_label))
+                print(self.error_header(method, args, worker_label))
                 print(traceback.format_exc())
-                reply_queue.put((worker_label, err))
+                reply_queue.put((worker_label, None, err), timeout=TIMEOUT_SECONDS)
             except:
-                print(self._error_header(method, args, worker_label))
+                print(self.error_header(method, args, worker_label))
                 print(traceback.format_exc())
                 err_identifier = str(sys.exc_info()[0])
-                reply_queue.put((worker_label, err_identifier))
+                reply_queue.put((worker_label, None, err_identifier), timeout=TIMEOUT_SECONDS)
 
-    def worker_parse_and_register_document(
-            self, semantic_analyzer, structural_matcher, indexed_documents, document_text, label):
-        doc = semantic_analyzer.parse(document_text)
-        indexed_document = structural_matcher.index_document(doc)
-        indexed_documents[label] = indexed_document
-        return ' '.join(('Parsed and registered document', label))
+    def load_document(self, state, serialized_doc, document_label, corpus_index_dict):
+        doc = Doc(state['vocab']).from_bytes(serialized_doc)
+        if doc._.holmes_document_info.model != state['model_name']:
+            raise WrongModelDeserializationError('; '.join((
+                state['model_name'], doc._.holmes_document_info.model)))
+        if doc._.holmes_document_info.serialized_document_version != \
+                state['serialized_document_version']:
+            raise WrongVersionDeserializationError('; '.join((
+                str(state['serialized_document_version']),
+                str(doc._.holmes_document_info.serialized_document_version))))
+        state['document_labels_to_documents'][document_label] = doc
+        state['structural_matcher'].semantic_matching_helper.add_to_corpus_index(
+            corpus_index_dict, doc, document_label)
+        return doc
 
-    def worker_deserialize_and_register_document(
-            self, semantic_analyzer, structural_matcher, indexed_documents, document, label):
-        doc = semantic_analyzer.from_serialized_string(document)
-        indexed_document = structural_matcher.index_document(doc)
-        indexed_documents[label] = indexed_document
-        return ' '.join(('Deserialized and registered document', label))
+    def register_serialized_document(self, state, serialized_doc, document_label):
+        self.load_document(state, serialized_doc, document_label, state['corpus_index_dict'])
+        return None, ' '.join(('Registered document', document_label))
 
-    def worker_topic_match_documents_returning_dictionaries_against(
-            self, semantic_analyzer, structural_matcher, indexed_documents, text_to_match,
-            maximum_activation_distance, relation_score, reverse_only_relation_score,
-            single_word_score, single_word_any_tag_score, overlapping_relation_multiplier,
-            embedding_penalty, ontology_penalty,
-            maximum_number_of_single_word_matches_for_relation_matching,
-            maximum_number_of_single_word_matches_for_embedding_matching,
+    def remove_document(self, state, document_label):
+        state['document_labels_to_documents'].pop(document_label)
+        state['corpus_index_dict'] = \
+            state['structural_matcher'].semantic_matching_helper.get_corpus_index_removing_document(
+                state['corpus_index_dict'], document_label)
+        return None, ' '.join(('Removed document', document_label))
+
+    def remove_all_documents(self, state):
+        state['document_labels_to_documents'] = {}
+        state['corpus_index_dict'] = {}
+        return None, 'Removed all documents'
+
+    def get_serialized_document(self, state, label):
+        if label in state['document_labels_to_documents']:
+            return state['document_labels_to_documents'][label].to_bytes(), \
+                ' '.join(('Returned serialized document with label', label))
+        else:
+            return None, ' '.join(('No document found with label', label))
+
+    def register_search_phrase(self, state, search_phrase):
+        search_phrase.unpack(state['vocab'])
+        state['search_phrases'].append(search_phrase)
+        return None, ' '.join(('Registered search phrase with label', search_phrase.label))
+
+    def remove_all_search_phrases_with_label(self, state, label):
+        state['search_phrases'] = [search_phrase for search_phrase in state['search_phrases']
+            if search_phrase.label != label]
+        return None, ' '.join(("Removed all search phrases with label '", label, "'"))
+
+    def remove_all_search_phrases(self, state):
+        state['search_phrases'] = []
+        return None, 'Removed all search phrases'
+
+    def get_words_to_corpus_frequencies(self, state):
+        words_to_corpus_frequencies = {}
+        for word, token_info_tuples in state['corpus_index_dict'].items():
+            if word in punctuation:
+                continue
+            cwps = [corpus_word_position for corpus_word_position, _, _ in token_info_tuples]
+            if word in words_to_corpus_frequencies:
+                words_to_corpus_frequencies[word] += len(set(cwps))
+            else:
+                words_to_corpus_frequencies[word] = len(set(cwps))
+        return words_to_corpus_frequencies, 'Retrieved words to corpus frequencies'
+
+    def match(self, state, serialized_doc, search_phrase):
+        if serialized_doc is not None:
+            corpus_index_dict = {}
+            doc = self.load_document(state, serialized_doc, '', corpus_index_dict)
+            document_labels_to_documents = {'': doc}
+        else:
+            corpus_index_dict = state['corpus_index_dict']
+            document_labels_to_documents = state['document_labels_to_documents']
+        search_phrases = [search_phrase] if search_phrase is not None \
+            else state['search_phrases']
+        if len(document_labels_to_documents) > 0 and len(search_phrases) > 0:
+            matches = state['structural_matcher'].match(
+                document_labels_to_documents=document_labels_to_documents,
+                corpus_index_dict=corpus_index_dict,
+                search_phrases=search_phrases,
+                match_depending_on_single_words=None,
+                compare_embeddings_on_root_words=state['structural_matcher'].\
+                embedding_based_matching_on_root_words,
+                compare_embeddings_on_non_root_words=True,
+                reverse_matching_corpus_word_positions=None,
+                embedding_reverse_matching_corpus_word_positions=None,
+                process_initial_question_words=False,
+                overall_similarity_threshold=state['overall_similarity_threshold'],
+                initial_question_word_overall_similarity_threshold=1.0)
+            return state['structural_matcher'].build_match_dictionaries(matches), \
+                'Returned matches'
+        else:
+            return [], 'No stored objects to match against'
+
+    def get_topic_matches(self, state, text_to_match,
+            phraselet_labels_to_phraselet_infos, phraselet_labels_to_search_phrases,
+            maximum_activation_distance, overall_similarity_threshold,
+            initial_question_word_overall_similarity_threshold, relation_score,
+            reverse_only_relation_score, single_word_score, single_word_any_tag_score,
+            initial_question_word_answer_score, initial_question_word_behaviour,
+            different_match_cutoff_score, overlapping_relation_multiplier, embedding_penalty,
+            ontology_penalty, relation_matching_frequency_threshold,
+            embedding_matching_frequency_threshold,
             sideways_match_extent, only_one_result_per_document, number_of_results,
-            document_label_filter, tied_result_quotient):
-        if len(indexed_documents) == 0:
-            return []
+            document_label_filter, use_frequency_factor):
+        if len(state['document_labels_to_documents']) == 0:
+            return [], 'No stored documents to match against'
+        for search_phrase in phraselet_labels_to_search_phrases.values():
+            search_phrase.unpack(state['vocab'])
         topic_matcher = TopicMatcher(
-            semantic_analyzer=semantic_analyzer,
-            structural_matcher=structural_matcher,
-            indexed_documents=indexed_documents,
+            structural_matcher=state['structural_matcher'],
+            document_labels_to_documents=state['document_labels_to_documents'],
+            corpus_index_dict=state['corpus_index_dict'],
+            text_to_match=text_to_match,
+            phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
+            phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
             maximum_activation_distance=maximum_activation_distance,
+            overall_similarity_threshold=overall_similarity_threshold,
+            initial_question_word_overall_similarity_threshold=
+            initial_question_word_overall_similarity_threshold,
             relation_score=relation_score,
             reverse_only_relation_score=reverse_only_relation_score,
             single_word_score=single_word_score,
             single_word_any_tag_score=single_word_any_tag_score,
+            initial_question_word_answer_score=initial_question_word_answer_score,
+            initial_question_word_behaviour=initial_question_word_behaviour,
+            different_match_cutoff_score=different_match_cutoff_score,
             overlapping_relation_multiplier=overlapping_relation_multiplier,
             embedding_penalty=embedding_penalty,
             ontology_penalty=ontology_penalty,
-            maximum_number_of_single_word_matches_for_relation_matching=
-            maximum_number_of_single_word_matches_for_relation_matching,
-            maximum_number_of_single_word_matches_for_embedding_matching=
-            maximum_number_of_single_word_matches_for_embedding_matching,
+            relation_matching_frequency_threshold=relation_matching_frequency_threshold,
+            embedding_matching_frequency_threshold=embedding_matching_frequency_threshold,
             sideways_match_extent=sideways_match_extent,
             only_one_result_per_document=only_one_result_per_document,
             number_of_results=number_of_results,
-            document_label_filter=document_label_filter)
-        topic_match_dicts = \
-            topic_matcher.topic_match_documents_returning_dictionaries_against(
-                text_to_match, tied_result_quotient=tied_result_quotient)
-        return topic_match_dicts
+            document_label_filter=document_label_filter,
+            use_frequency_factor=use_frequency_factor)
+        return topic_matcher.get_topic_match_dictionaries(), \
+            'Returned topic match dictionaries'
+
+@Language.factory("holmes")
+class HolmesBroker:
+    def __init__(self, nlp:Language, name:str):
+        self.nlp = nlp
+        self.pid = os.getpid()
+        self.semantic_analyzer = get_semantic_analyzer(nlp)
+        self.set_extensions()
+
+    def __call__(self, doc:Doc) -> Doc:
+        if os.getpid() != self.pid:
+            raise MultiprocessingParsingNotSupportedError(
+                'Unfortunately at present parsing cannot be shared between forked processes.')
+        try:
+            self.semantic_analyzer.holmes_parse(doc)
+        except:
+            print('Unexpected error annotating document, skipping ....')
+            exception_info_parts = sys.exc_info()
+            print(exception_info_parts[0])
+            print(exception_info_parts[1])
+            traceback.print_tb(exception_info_parts[2])
+        return doc
+
+    def __getstate__(self):
+        return self.nlp.meta
+
+    def __setstate__(self, meta):
+        nlp_name = '_'.join((meta['lang'], meta['name']))
+        self.nlp = spacy.load(nlp_name)
+        self.semantic_analyzer = get_semantic_analyzer(self.nlp)
+        self.pid = os.getpid()
+        HolmesBroker.set_extensions()
+
+    @staticmethod
+    def set_extensions():
+        if not Doc.has_extension('coref_chains'):
+            Doc.set_extension('coref_chains', default=None)
+        if not Token.has_extension('coref_chains'):
+            Token.set_extension('coref_chains', default=None)
+        if not Doc.has_extension('holmes_document_info'):
+            Doc.set_extension('holmes_document_info', default=None)
+        if not Token.has_extension('holmes'):
+            Token.set_extension('holmes', default=None)
