@@ -261,6 +261,8 @@ python -m spacy download en_core_web_sm
 
 You specify a spaCy model for Holmes to use [when you instantiate the Manager facade class](#getting-started). `en_core_web_trf` and `de_core_web_lg` are the models that have been found to yield the best results for English and German respectively. Because `en_core_web_trf` does not have its own word vectors, but Holmes requires word vectors for [embedding-based-matching](#embedding-based-matching), the `en_core_web_lg` model is loaded as a vector source whenever `en_core_web_trf` is specified to the Manager class as the main model.
 
+The `en_core_web_trf` model requires sufficiently more resources than the other models; in a siutation where resources are scarce, it may be a sensible compromise to use `en_core_web_lg` as the main model instead.
+
 <a id="comments-about-deploying-holmes-in-an-enterprise-environment"></a>
 ##### 1.2.4 Comments about deploying Holmes in an enterprise environment
 
@@ -276,6 +278,8 @@ Because Holmes performs complex, intelligent analysis, it is inevitable that it 
 That said, Holmes is both vertically and horizontally scalable. With sufficient hardware, both these use cases can be applied to an essentially unlimited number of documents by running Holmes on multiple machines, processing a different set of documents on each one and conflating the results. Note that this strategy is already employed to distribute matching amongst multiple cores on a single machine: the [Manager](#manager) class starts a number of worker processes and distributes registered documents between them.
 
 Holmes holds loaded documents in memory, which ties in with its intended use with large but not massive corpora. The performance of document loading, [structural extraction](#structural-extraction) and [topic matching](#topic-matching) all degrade heavily if the operating system has to swaps memory pages to secondary storage, because Holmes can require memory from a variety of pages to be addressed when processing a single sentence. This means it is important to supply enough RAM on each machine to hold all loaded documents.
+
+Please note the [above comments](#installing-the-spacy-and-coreferee-models) about the relative resource requirements of the different models.
 
 <a id="getting-started"></a>
 #### 1.3 Getting started
