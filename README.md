@@ -189,6 +189,9 @@ pip3 install --upgrade holmes-extractor
 pip install --upgrade holmes-extractor
 ```
 
+Note that if you are upgrading to a new Holmes version that uses a different major or minor version
+of Python from the pre-existing version, you will need to upgrade Python and then follow the instructions for installing Holmes from scratch.
+
 If you are working on some versions of Windows and have not used Python before,
 several of Holmes' dependencies may require you to download Visual Studio and then
 rerun the installation. During the Visual Studio install, it is imperative to select
