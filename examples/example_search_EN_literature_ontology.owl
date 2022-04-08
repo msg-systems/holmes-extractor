@@ -1,0 +1,370 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#"
+     xml:base="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:xml="http://www.w3.org/XML/1998/namespace"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#">
+    <owl:Ontology rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Albus -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Albus">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Albus_Dumbledore"/>
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Dumbledore"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Albus_Dumbledore -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Albus_Dumbledore">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Dumbledore"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Cedric -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Cedric">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Cedric_Diggory"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Cedric_Diggory -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Cedric_Diggory"/>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Cho -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Cho">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Cho_Chang"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Cho_Chang -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Cho_Chang"/>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Cornelius_Fudge -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Cornelius_Fudge">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Fudge"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Dolores_Umbridge -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Dolores_Umbridge">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Umbridge"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Draco -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Draco">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Draco_Malfoy"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Draco_Malfoy -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Draco_Malfoy"/>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Dumbledore -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Dumbledore"/>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Fudge -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Fudge"/>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Hagrid -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Hagrid">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Rubeus_Hagrid"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Harry -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Harry">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Harry_Potter"/>
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Potter"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Harry_Potter -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Harry_Potter">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Potter"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Hermione -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Hermione">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Hermione_Granger"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Hermione_Granger -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Hermione_Granger"/>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Longbottom -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Longbottom">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Neville"/>
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Neville_Longbottom"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Lord_Voldemort -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Lord_Voldemort">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Tom_Riddle"/>
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Voldemort"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Lucius -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Lucius">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Lucius_Malfoy"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Lucius_Malfoy -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Lucius_Malfoy"/>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Luna -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Luna">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Luna_Lovegood"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Luna_Lovegood -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Luna_Lovegood"/>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Minerva_McGonagall -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Minerva_McGonagall">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Professor_McGonagall"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Moaning_Myrtle -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Moaning_Myrtle">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Myrtle"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Myrtle -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Myrtle"/>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Nearly_Headless_Nick -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Nearly_Headless_Nick">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Nick"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Neville -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Neville">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Neville_Longbottom"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Neville_Longbottom -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Neville_Longbottom"/>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Nick -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Nick"/>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Potter -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Potter"/>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Professor_McGonagall -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Professor_McGonagall"/>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Ron -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Ron">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Ron_Weasley"/>
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Ronald"/>
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Ronald_Weasley"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Ron_Weasley -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Ron_Weasley">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Ronald"/>
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Ronald_Weasley"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Ronald -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Ronald">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Ronald_Weasley"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Ronald_Weasley -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Ronald_Weasley"/>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Rubeus_Hagrid -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Rubeus_Hagrid"/>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Seamus -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Seamus">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Seamus_Finnigan"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Seamus_Finnigan -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Seamus_Finnigan"/>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Severus -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Severus">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Severus_Snape"/>
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Snape"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Severus_Snape -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Severus_Snape">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Snape"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Sirius -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Sirius">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Sirius_Black"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Sirius_Black -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Sirius_Black"/>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Snape -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Snape"/>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Tom_Riddle -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Tom_Riddle">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Voldemort"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Umbridge -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Umbridge"/>
+    
+
+
+    <!-- http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Voldemort -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/msg-systems/holmes-examples/harry-potter#Voldemort"/>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 4.5.7.2018-12-02T02:23:35Z) https://github.com/owlcs/owlapi -->
+

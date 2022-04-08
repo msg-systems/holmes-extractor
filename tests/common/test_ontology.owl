@@ -1,0 +1,341 @@
+<?xml version="1.0"?>
+<rdf:RDF xmlns="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#"
+     xml:base="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals"
+     xmlns:owl="http://www.w3.org/2002/07/owl#"
+     xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#"
+     xmlns:xml="http://www.w3.org/XML/1998/namespace"
+     xmlns:xsd="http://www.w3.org/2001/XMLSchema#"
+     xmlns:rdfs="http://www.w3.org/2000/01/rdf-schema#">
+    <owl:Ontology rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals"/>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Classes
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#German_Shepherd_dog -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#German_Shepherd_dog">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#dog"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#Peters_plc -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#Peters_plc">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#company"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#animal -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#animal"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#arc -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#arc"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#cat -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#cat">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#cat_creature"/>
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#pussy"/>
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#animal"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#cat_creature -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#cat_creature">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#animal"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#chase -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#chase">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#chasing"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#chasing -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#chasing"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#cinco -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#cinco">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#cuatro"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#company -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#company"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#cuatro -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#cuatro">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#tres"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#cztery -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#cztery">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#trzy"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#dog -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#dog">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#hound"/>
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#animal"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#dos -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#dos">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#unouno"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#dwa -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#dwa">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#jeden"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#foal -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#foal">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#horse"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#horse -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#horse">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#animal"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#hound -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#hound">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#animal"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#jeden -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#jeden"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#kitten -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#kitten">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#cat"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#oans -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#oans">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#unouno"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#open -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#open">
+        <owl:equivalentClass rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#take_out"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#pięć -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#pięć">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#cztery"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#puppy -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#puppy">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#dog"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#pussy -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#pussy">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#animal"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#rainbows -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#rainbows">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#arc"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#school_gear -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#school_gear"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#seis -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#seis">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#cinco"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#sześć -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#sześć">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#pięć"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#take_out -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#take_out"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#tres -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#tres">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#dos"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#trzy -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#trzy">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#dwa"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#unouno -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#unouno"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/sports#football -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/sports#football"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/sports#gymnastics_equipment -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/sports#gymnastics_equipment"/>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/sports#horse -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/sports#horse">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#school_gear"/>
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/sports#gymnastics_equipment"/>
+    </owl:Class>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/sports#vaulting_horse -->
+
+    <owl:Class rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/sports#vaulting_horse">
+        <rdfs:subClassOf rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/sports#horse"/>
+    </owl:Class>
+    
+
+
+    <!-- 
+    ///////////////////////////////////////////////////////////////////////////////////////
+    //
+    // Individuals
+    //
+    ///////////////////////////////////////////////////////////////////////////////////////
+     -->
+
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#Bakers_plc -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#Bakers_plc">
+        <rdf:type rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#company"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#Fido -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#Fido">
+        <rdf:type rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#dog"/>
+    </owl:NamedIndividual>
+    
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#Mimi_Momo -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#Mimi_Momo">
+        <rdf:type rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#cat"/>
+    </owl:NamedIndividual>
+</rdf:RDF>
+
+
+
+<!-- Generated by the OWL API (version 4.5.9.2019-02-01T07:24:44Z) https://github.com/owlcs/owlapi -->
+
