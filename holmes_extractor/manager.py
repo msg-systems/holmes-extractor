@@ -13,7 +13,7 @@ from spacy import Language
 from spacy.tokens import Doc, Token
 from thinc.api import Config
 from .errors import *
-from .matching import StructuralMatcher
+from .stuctural_matching import StructuralMatcher
 from .ontology import Ontology
 from .parsing import SemanticAnalyzerFactory, SemanticAnalyzer, SemanticMatchingHelperFactory,\
     LinguisticObjectFactory, SearchPhrase, SERIALIZED_DOCUMENT_VERSION

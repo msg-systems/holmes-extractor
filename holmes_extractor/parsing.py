@@ -1,3 +1,4 @@
+from typing import List, Dict, Tuple
 import math
 import pickle
 import importlib
@@ -14,7 +15,7 @@ from .errors import WrongModelDeserializationError, WrongVersionDeserializationE
         SearchPhraseContainsConjunctionError, SearchPhraseWithoutMatchableWordsError,\
         SearchPhraseContainsMultipleClausesError, SearchPhraseContainsCoreferringPronounError
 
-SERIALIZED_DOCUMENT_VERSION = '3.1'
+SERIALIZED_DOCUMENT_VERSION = '4.0'
 
 class SemanticDependency:
     """A labelled semantic dependency between two tokens."""
@@ -124,19 +125,21 @@ class Subword:
         self.index = index
         self.text = text
         self.lemma = lemma
+        self.direct_matching_reprs = [text]
+        if text != lemma:
+            self.direct_matching_reprs.append(lemma)
         self.derived_lemma = derived_lemma
+        if derived_lemma != lemma:
+            self.derivation_matching_reprs = [derived_lemma]
+            self.derivation_matching_reprs.extend(self.direct_matching_reprs)
+        else:
+            self.derivation_matching_reprs = None
         self.vector = vector
         self.char_start_index = char_start_index
         self.dependent_index = dependent_index
         self.dependency_label = dependency_label
         self.governor_index = governor_index
         self.governing_dependency_label = governing_dependency_label
-
-    def lemma_or_derived_lemma(self):
-        if self.derived_lemma is not None:
-            return self.derived_lemma
-        else:
-            return self.lemma
 
     @property
     def is_head(self):
@@ -199,19 +202,29 @@ class CorpusWordPosition:
 
 class MultiwordSpan:
 
-    def __init__(self, text, lemma, derived_lemma, tokens):
+    def __init__(self, text, hyphen_normalized_text, lemma, derived_lemma, token_indexes):
         """Args:
 
         text -- the raw text representation of the multiword span
         lemma - the lemma representation of the multiword span
         derived_lemma - the lemma representation with individual words that have derived
             lemmas replaced by those derived lemmas
-        tokens -- a list of tokens that make up the multiword span
+        token_indexes -- a list of token indexes that make up the multiword span
         """
         self.text = text
         self.lemma = lemma
         self.derived_lemma = derived_lemma
-        self.tokens = tokens
+        self.direct_matching_reprs = [text]
+        if hyphen_normalized_text != text:
+            self.direct_matching_reprs.append(hyphen_normalized_text)
+        if lemma != text:
+            self.direct_matching_reprs.append(lemma)
+        if derived_lemma != lemma:
+            self.derivation_matching_reprs = [derived_lemma]
+            self.derivation_matching_reprs.extend(self.direct_matching_reprs)
+        else:
+            self.derivation_matching_reprs = None
+        self.token_indexes = token_indexes
 
 class MatchImplication:
     """Entry describing which document dependencies match a given search phrase dependency.
@@ -257,16 +270,27 @@ class HolmesDictionary:
     lemma -- the value returned from *._.holmes.lemma* for the token.
     derived_lemma -- the value returned from *._.holmes.derived_lemma for the token; where relevant,
         another lemma with which *lemma* is derivationally related and which can also be useful for
-        matching in some usecases; otherwise *None*.
+        matching in some usecases; otherwise the same value as *._.holmes.lemma*.
+    direct_matching_reprs -- a list of representations of the token that can be used for direct
+        matching, consisting of *token.text* and optionally a hyphen-normalized version of *token.text*
+        and *token.lemma_* if these are different from *token.text*.
+    derivation_matching_reprs -- if *lemma != derived_lemma*, a list of representations of the token 
+        that can be used for derivation matching, consisting of *derived_lema*, *token.text* 
+        and optionally a hyphen-normalized version of *token.text* and *token.lemma_* if these 
+        are different from *token.text*; otherwise *None*.
+    multiword_spans -- where relevant, a list of multiword spans, otherwise *None*
     vector -- the vector representation of *lemma*, unless *lemma* is a multiword, in which case
         the vector representation of *token.lemma_* is used instead. *None* where there is no
         vector for the lexeme.
     """
 
-    def __init__(self, index, lemma, derived_lemma, vector):
+    def __init__(self, index, lemma, derived_lemma, direct_matching_reprs, derivation_matching_reprs, multiword_spans, vector):
         self.index = index
         self.lemma = lemma
-        self._derived_lemma = derived_lemma
+        self.derived_lemma = derived_lemma
+        self.direct_matching_reprs = direct_matching_reprs
+        self.derivation_matching_reprs = derivation_matching_reprs
+        self.multiword_spans = multiword_spans
         self.vector = vector
         self.children = [] # list of *SemanticDependency* objects where this token is the parent.
         self.parents = [] # list of *SemanticDependency* objects where this token is the child.
@@ -289,23 +313,6 @@ class HolmesDictionary:
         # index; where coreference, the token index followed by the indexes of coreferring tokens
         self.mentions = []
         self.subwords = []
-
-    @property
-    def derived_lemma(self):
-        if self.lemma == self._derived_lemma: # can occur with phraselets
-            return None
-        else:
-            return self._derived_lemma
-
-    @derived_lemma.setter
-    def derived_lemma(self, derived_lemma):
-        self._derived_lemma = derived_lemma
-
-    def lemma_or_derived_lemma(self):
-        if self._derived_lemma is not None:
-            return self._derived_lemma
-        else:
-            return self.lemma
 
     @property
     def is_uncertain(self):
@@ -535,8 +542,8 @@ class SearchPhrase:
     def __init__(self, doc, matchable_token_indexes, root_token_index,
             matchable_non_entity_tokens_to_vectors, label, topic_match_phraselet,
             topic_match_phraselet_created_without_matching_tags, question_phraselet, reverse_only,
-            treat_as_reverse_only_during_initial_relation_matching, words_matching_root_token,
-            root_word_to_match_info_dict, has_single_matchable_word):
+            treat_as_reverse_only_during_initial_relation_matching, 
+            has_single_matchable_word):
         """Args:
 
         doc -- the Holmes document created for the search phrase
@@ -557,9 +564,6 @@ class SearchPhrase:
             account during initial relation matching because the parent relation occurs too
             frequently during the corpus. *reverse_only* cannot be used instead because it
             has an effect on scoring.
-        words_matching_root_token -- a list of words that match the root token.
-        root_word_to_match_info_dict -- a dictionary from words in *words_matching_root_token*
-            to match information tuples.
         has_single_matchable_word -- **True** or **False**.
         """
         self.doc = doc
@@ -575,8 +579,8 @@ class SearchPhrase:
         self.reverse_only = reverse_only
         self.treat_as_reverse_only_during_initial_relation_matching = \
             treat_as_reverse_only_during_initial_relation_matching
-        self.words_matching_root_token = words_matching_root_token
-        self.root_word_to_match_info_dict = root_word_to_match_info_dict
+        self.words_matching_root_token = List[str]
+        self.root_word_to_match_info_dict = Dict[str, Tuple[str, int]]
         self.has_single_matchable_word = has_single_matchable_word#len(matchable_token_indexes) == 1
 
     @property
@@ -586,6 +590,12 @@ class SearchPhrase:
     @property
     def root_token(self):
         return self.doc[self.root_token_index]
+
+    def add_word_information(self, word:str, match_type:str, depth:int):
+        if word not in self.words_matching_root_token:
+            self.words_matching_root_token.append(word)
+        if not word in self.root_word_to_match_info_dict:
+            self.root_word_to_match_info_dict[word] = (match_type, depth)
 
     def pack(self):
         self.serialized_doc = self.doc.to_bytes()
@@ -752,9 +762,22 @@ class SemanticAnalyzer(ABC):
         for token in spacy_doc:
             lemma = self.holmes_lemma(token)
             derived_lemma = self.derived_holmes_lemma(token, lemma)
+            direct_matching_reprs = [token.text]
+            hyphen_normalized_text = self.normalize_hyphens(text)
+            if token.text != hyphen_normalized_text:
+                direct_matching_reprs.append(hyphen_normalized_text)
+            if token.text != lemma:
+                direct_matching_reprs.append(lemma)
+            if derived_lemma != lemma:
+                derivation_matching_reprs = [derived_lemma]
+                derivation_matching_reprs.extend(direct_matching_reprs)
+            else:
+                derivation_matching_reprs = None
             lexeme = self.vectors_nlp.vocab[token.lemma_ if len(lemma.split()) > 1 else lemma]
+            multiword_spans = self.multiword_spans_with_head_token(token)
             vector = lexeme.vector if lexeme.has_vector and lexeme.vector_norm > 0 else None
-            token._.set('holmes', HolmesDictionary(token.i, lemma, derived_lemma, vector))
+            token._.set('holmes', HolmesDictionary(token.i, lemma, derived_lemma, direct_matching_reprs, 
+                derivation_matching_reprs, multiword_spans, vector))
         for token in spacy_doc:
             self.set_negation(token)
         for token in spacy_doc:
@@ -1125,10 +1148,50 @@ class SemanticAnalyzer(ABC):
                     linked_child._.holmes.coreference_linked_parent_dependencies.append([
                         token.i, child_dependency.label])
 
+    def multiword_spans_with_head_token(self, token):
+        """Returns a list of *MultiwordSpan* objects with *token* at their head if *token* is a noun,
+           otherwise an empty list.
+        """
+
+        if not token.pos_ in self.noun_pos:
+            return None
+        return_list: List[MultiwordSpan] = []
+        pointer = token.left_edge.i
+        while pointer <= token.right_edge.i:
+            working_text = ''
+            working_hyphen_normalized_text = ''
+            working_lemma = ''
+            working_derived_lemma = ''
+            working_tokens = []
+            inner_pointer = pointer
+            while inner_pointer <= token.right_edge.i and \
+                    (token.doc[inner_pointer]._.holmes.is_matchable or
+                    token.doc[inner_pointer].text == '-'):
+                if token.doc[inner_pointer].text != '-':
+                    working_text = ' '.join((working_text, token.doc[inner_pointer].text))
+                    working_hyphen_normalized_text = ' '.join((working_hyphen_normalized_text, self.normalize_hyphens(token.doc[inner_pointer].text)))
+                    working_lemma = ' '.join((
+                        working_lemma, token.doc[inner_pointer]._.holmes.lemma))
+                    this_token_derived_lemma = token.doc[inner_pointer]._.holmes.derived_lemma
+                    working_derived_lemma = ' '.join((
+                        working_derived_lemma, this_token_derived_lemma))
+                    working_tokens.append(token.doc[inner_pointer])
+                inner_pointer += 1
+            if pointer + 1 < inner_pointer and token in working_tokens:
+                return_list.append(MultiwordSpan(
+                    working_text.strip(), working_hyphen_normalized_text.strip(), working_lemma.strip(), working_derived_lemma.strip(),
+                    [t.i for t in working_tokens]))
+            pointer += 1
+        return return_list if len(return_list) > 0 else None
+
     def get_entity_label_to_vector_dict(self):
         return {label:
             self.vectors_nlp.vocab[self.entity_labels_to_corresponding_lexemes[label]].vector
             for label in self.entity_labels_to_corresponding_lexemes}
+
+    @abstractmethod
+    def normalize_hyphens(self, word):
+        pass
 
 class LinguisticObjectFactory:
     """ Factory for search phrases and topic matching phraselets. """
@@ -1603,12 +1666,6 @@ class LinguisticObjectFactory:
                             token.doc[dependency.child_index])
             return token
 
-        def add_word_information(word, match_type, depth):
-            if word not in words_matching_root_token:
-                words_matching_root_token.append(word)
-            if not word in root_word_to_match_info_dict:
-                root_word_to_match_info_dict[word] = (match_type, depth)
-
         for token in search_phrase_doc:
             if len(token._.holmes.righthand_siblings) > 0:
                 # SearchPhrases may not themselves contain conjunctions like 'and'
@@ -1675,9 +1732,6 @@ class LinguisticObjectFactory:
             reverse_only = not phraselet_template.question and (is_reverse_only_parent_lemma or
                 phraselet_template.reverse_only)
 
-        words_matching_root_token = []
-        root_word_to_match_info_dict = {}
-
         add_word_information(root_token._.holmes.lemma, 'direct', 0)
         if phraselet_template is None and root_token.lemma_.lower() == \
                 root_token._.holmes.lemma.lower():
@@ -1696,7 +1750,7 @@ class LinguisticObjectFactory:
             topic_match_phraselet_created_without_matching_tags,
             (phraselet_template is not None and phraselet_template.question),
             reverse_only, treat_as_reverse_only_during_initial_relation_matching,
-            words_matching_root_token, root_word_to_match_info_dict, len(tokens_to_match) == 1 and
+            len(tokens_to_match) == 1 and
             not (phraselet_template is not None and phraselet_template.question))
 
 
@@ -1757,10 +1811,6 @@ class SemanticMatchingHelper(ABC):
     question_answer_blacklist_deps = NotImplemented
 
     question_answer_final_blacklist_deps = NotImplemented
-
-    @abstractmethod
-    def normalize_hyphens(self, word):
-        pass
 
     @abstractmethod
     def question_word_matches(self, search_phrase_label:str, search_phrase_token:Token,
@@ -1895,70 +1945,33 @@ class SemanticMatchingHelper(ABC):
                 document_dependency_label in self.match_implication_dict[
                 search_phrase_dependency_label].reverse_document_dependencies
 
-    def multiword_spans_with_head_token(self, token):
-        """Generator over *MultiwordSpan* objects with *token* at their head. Dependent phrases
-            are only returned for nouns because e.g. for verbs the whole sentence would be returned.
-        """
 
-        if not token.pos_ in self.noun_pos:
-            return
-        pointer = token.left_edge.i
-        while pointer <= token.right_edge.i:
-            working_text = ''
-            working_lemma = ''
-            working_derived_lemma = ''
-            working_tokens = []
-            inner_pointer = pointer
-            while inner_pointer <= token.right_edge.i and \
-                    (token.doc[inner_pointer]._.holmes.is_matchable or
-                    token.doc[inner_pointer].text == '-'):
-                if token.doc[inner_pointer].text != '-':
-                    working_text = ' '.join((working_text, token.doc[inner_pointer].text))
-                    working_lemma = ' '.join((
-                        working_lemma, token.doc[inner_pointer]._.holmes.lemma))
-                    if self.analyze_derivational_morphology and \
-                            token.doc[inner_pointer]._.holmes.derived_lemma is not None:
-                        this_token_derived_lemma = token.doc[inner_pointer]._.holmes.derived_lemma
-                    else:
-                        # if derivational morphology analysis is switched off, the derived lemma
-                        # will be identical to the lemma and will not be yielded by
-                        # _loop_textual_representations().
-                        this_token_derived_lemma = token.doc[inner_pointer]._.holmes.lemma
-                    working_derived_lemma = ' '.join((
-                        working_derived_lemma, this_token_derived_lemma))
-                    working_tokens.append(token.doc[inner_pointer])
-                inner_pointer += 1
-            if pointer + 1 < inner_pointer and token in working_tokens:
-                yield MultiwordSpan(
-                    working_text.strip(), working_lemma.strip(), working_derived_lemma.strip(),
-                    working_tokens)
-            pointer += 1
-
-    def is_entity_search_phrase_token(
-            self, search_phrase_token, examine_lemma_rather_than_text):
-        if examine_lemma_rather_than_text:
-            word_to_check = search_phrase_token._.holmes.lemma
-        else:
-            word_to_check = search_phrase_token.text
-        return word_to_check[:6] == 'ENTITY' and len(word_to_check) > 6
-
-    def is_entitynoun_search_phrase_token(
+    def get_entity_placeholder(
             self, search_phrase_token):
-        return search_phrase_token.text == 'ENTITYNOUN'
+        if search_phrase_token.text[:6] == 'ENTITY' and len(search_phrase_token.text) > 6:
+            return search_phrase_token.text 
+        if search_phrase_token._.holmes.lemma[:6] == 'ENTITY' and len(search_phrase_token._.holmes.lemma) > 6:
+            return search_phrase_token._.holmes.lemma
+        return None
 
-    def entity_search_phrase_token_matches(
-            self, search_phrase_token, topic_match_phraselet, document_token):
-        if topic_match_phraselet:
-            word_to_check = search_phrase_token._.holmes.lemma
+
+    def embedding_matching_permitted(self, obj):
+        """ Embedding matching is suppressed for some parts of speech as well as for very short
+            words. """
+        if isinstance(obj, Token):
+            if len(obj._.holmes.lemma.split()) > 1:
+                working_lemma = obj.lemma_
+            else:
+                working_lemma = obj._.holmes.lemma
+            return obj.pos_ in self.semantic_matching_helper.permissible_embedding_pos and \
+                len(working_lemma) >= \
+                self.semantic_matching_helper.minimum_embedding_match_word_length
+        elif isinstance(obj, Subword):
+            return len(obj.lemma) >= \
+                self.semantic_matching_helper.minimum_embedding_match_word_length
         else:
-            word_to_check = search_phrase_token.text
-        return (
-            document_token.ent_type_ == word_to_check[6:] and
-            len(document_token._.holmes.lemma.strip()) > 0) or (
-                word_to_check == 'ENTITYNOUN' and
-                document_token.pos_ in self.noun_pos)
-                # len(document_token._.holmes.lemma.strip()) > 0: in German spaCy sometimes
-                # classifies whitespace as entities.
+            raise RuntimeError("'obj' must be either a Token or a Subword")
+
 
     def loop_textual_representations(self, obj):
         if isinstance(obj, Token):

@@ -1,3 +1,24 @@
+from typing import Optional, List
+from spacy.tokens import Token
+from ..parsing import MultiwordSpan, SemanticMatchingHelper, Subword, Index, SearchPhrase
+
+class WordMatchingStrategy:
+
+    def __init__(self, semantic_matching_helper: SemanticMatchingHelper):
+        self.semantic_matching_helper == semantic_matching_helper
+
+    def match_multiword(self, search_phrase: SearchPhrase, search_phrase_token: Token, document_token: Token, document_multiwords: List[MultiwordSpan]) -> Optional["WordMatch"]:
+        pass
+
+    def match_token(self, search_phrase: SearchPhrase, search_phrase_token: Token, document_token: Token) -> Optional["WordMatch"]:
+        pass
+
+    def match_subword(self, search_phrase: SearchPhrase, search_phrase_token: Token, document_token: Token, document_subword: Subword) -> Optional["WordMatch"]:
+        pass
+
+    def add_words_matching_search_phrase_root_token(self, search_phrase:SearchPhrase):
+        pass
+
 class WordMatch:
     """A match between a searched phrase word and a document word.
 
@@ -16,13 +37,6 @@ class WordMatch:
     word_match_type -- *direct*, *entity*, *embedding*, or *derivation*.
     similarity_measure -- for type *embedding*, the similarity between the two tokens,
         otherwise 1.0.
-    is_negated -- *True* if this word match leads to a match of which it
-      is a part being negated.
-    is_uncertain -- *True* if this word match leads to a match of which it
-      is a part being uncertain.
-    structurally_matched_document_token -- the spaCy token from the document that matched
-        the dependency structure, which may be different from *document_token* if coreference
-        resolution is active.
     involves_coreference -- *True* if *document_token* and *structurally_matched_document_token*
         are different.
     extracted_word -- the most specific term that corresponded to *document_word* within the
@@ -35,9 +49,7 @@ class WordMatch:
     def __init__(
             self, search_phrase_token, search_phrase_word, document_token,
             first_document_token, last_document_token, document_subword, document_word,
-            word_match_type, similarity_measure, is_negated, is_uncertain,
-            structurally_matched_document_token, extracted_word, depth,
-            search_phrase_initial_question_word):
+            word_match_type, explanation):
 
         self.search_phrase_token = search_phrase_token
         self.search_phrase_word = search_phrase_word
@@ -47,13 +59,13 @@ class WordMatch:
         self.document_subword = document_subword
         self.document_word = document_word
         self.word_match_type = word_match_type
-        self.similarity_measure = similarity_measure
-        self.is_negated = is_negated
-        self.is_uncertain = is_uncertain
-        self.structurally_matched_document_token = structurally_matched_document_token
-        self.extracted_word = extracted_word
-        self.depth = depth
-        self.search_phrase_initial_question_word = search_phrase_initial_question_word
+        self.is_negated = None # will be set by StructuralMatcher
+        self.is_uncertain = None # will be set by StructuralMatcher
+        self.structurally_matched_document_token = None # will be set by StructuralMatcher
+        self.extracted_word = document_word
+        self.depth = 0
+        self.similarity_measure = 1.0
+        self.explanation = explanation
 
     @property
     def involves_coreference(self):
@@ -65,27 +77,3 @@ class WordMatch:
         else:
             subword_index = None
         return Index(self.document_token.i, subword_index)
-
-    def explain(self):
-        """ Creates a human-readable explanation of the word match from the perspective of the
-            document word (e.g. to be used as a tooltip over it)."""
-        search_phrase_display_word = self.search_phrase_token._.holmes.lemma.upper()
-        if self.word_match_type == 'direct':
-            return ''.join(("Matches ", search_phrase_display_word, " directly."))
-        elif self.word_match_type == 'derivation':
-            return ''.join(("Has a common stem with ", search_phrase_display_word, "."))
-        elif self.word_match_type == 'entity':
-            return ''.join(("Has an entity label matching ", search_phrase_display_word, "."))
-        elif self.word_match_type == 'question':
-            return ''.join(("Matches the question word ", search_phrase_display_word, "."))
-        elif self.word_match_type == 'embedding':
-            printable_similarity = str(int(self.similarity_measure * 100))
-            return ''.join((
-                "Has a word embedding that is ", printable_similarity,
-                "% similar to ", search_phrase_display_word, "."))
-        elif self.word_match_type == 'entity_embedding':
-            printable_similarity = str(int(self.similarity_measure * 100))
-            return ''.join((
-                "Has an entity label that is ", printable_similarity,
-                "% similar to the word embedding corresponding to ", search_phrase_display_word,
-                "."))

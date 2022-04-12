@@ -914,6 +914,16 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                             dependency.child_index in real_subject_indexes):
                         dependency.label = 'sb'
 
+    def normalize_hyphens(self, word):
+        """ Normalizes hyphens in a multiword. Depending on the language,
+            this may involve replacing them with spaces (English) or deleting them entirely
+            (German).
+        """
+        if word.strip().startswith('-') or word.endswith('-'):
+            return word
+        else:
+            return word.replace('-', '')
+
 class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
 
     noun_pos = ('NOUN', 'PROPN', 'ADJ')
@@ -1144,12 +1154,3 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
         # 'wessen' is not correctly recognized by the current _lg model
         return False
 
-    def normalize_hyphens(self, word):
-        """ Normalizes hyphens in a multiword. Depending on the language,
-            this may involve replacing them with spaces (English) or deleting them entirely
-            (German).
-        """
-        if word.strip().startswith('-') or word.endswith('-'):
-            return word
-        else:
-            return word.replace('-', '')

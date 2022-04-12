@@ -545,6 +545,17 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                     verb_token._.holmes.children.append(SemanticDependency(
                         verb_token.i, token.i, 'arg', True))
 
+
+    def normalize_hyphens(self, word):
+        """ Normalizes hyphens in a multiword. Depending on the language,
+            this may involve replacing them with spaces (English) or deleting them entirely
+            (German).
+        """
+        if word.strip().startswith('-') or word.endswith('-'):
+            return word
+        else:
+            return word.replace('-', ' ')
+
 class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
 
     # The part of speech tags that can refer to nouns
@@ -825,12 +836,3 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
                 # syntactic not semantic children to handle subject-predicate phrases correctly
         return False
 
-    def normalize_hyphens(self, word):
-        """ Normalizes hyphens in a multiword. Depending on the language,
-            this may involve replacing them with spaces (English) or deleting them entirely
-            (German).
-        """
-        if word.strip().startswith('-') or word.endswith('-'):
-            return word
-        else:
-            return word.replace('-', ' ')

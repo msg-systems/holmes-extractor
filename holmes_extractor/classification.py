@@ -18,7 +18,7 @@ from .errors import (
     NoPhraseletsAfterFilteringError,
     IncompatibleAnalyzeDerivationalMorphologyDeserializationError,
 )
-from .matching import Match, StructuralMatcher
+from .stuctural_matching import Match, StructuralMatcher
 from .ontology import Ontology
 from .parsing import (
     CorpusWordPosition,

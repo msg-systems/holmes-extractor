@@ -3,7 +3,7 @@ import sys
 from spacy.tokens import Token
 from .errors import DuplicateDocumentError, NoSearchPhraseError, NoDocumentError
 from .parsing import Subword, Index
-from word_matching.general import WordMatch
+from holmes_extractor.word_matching.general import WordMatch
 
 
 
@@ -592,23 +592,6 @@ class StructuralMatcher:
                     search_phrase_initial_question_word=True)
                 return True
         return False
-
-    def embedding_matching_permitted(self, obj):
-        """ Embedding matching is suppressed for some parts of speech as well as for very short
-            words. """
-        if isinstance(obj, Token):
-            if len(obj._.holmes.lemma.split()) > 1:
-                working_lemma = obj.lemma_
-            else:
-                working_lemma = obj._.holmes.lemma
-            return obj.pos_ in self.semantic_matching_helper.permissible_embedding_pos and \
-                len(working_lemma) >= \
-                self.semantic_matching_helper.minimum_embedding_match_word_length
-        elif isinstance(obj, Subword):
-            return len(obj.lemma) >= \
-                self.semantic_matching_helper.minimum_embedding_match_word_length
-        else:
-            raise RuntimeError("'obj' must be either a Token or a Subword")
 
     def build_matches(
             self, *, search_phrase, search_phrase_tokens_to_word_matches, document_label,
