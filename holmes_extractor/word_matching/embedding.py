@@ -33,7 +33,7 @@ class EmbeddingWordMatchingStrategy(WordMatchingStrategy):
                 self.semantic_matching_helper.embedding_matching_permitted(search_phrase_token):
             search_phrase_vector = search_phrase.matchable_non_entity_tokens_to_vectors[
                 search_phrase_token.i]
-            if search_phrase_vector is None or not self.embedding_matching_permitted(document_token):
+            if search_phrase_vector is None or not self.semantic_matching_helper.embedding_matching_permitted(document_token):
                 return None
             document_vector = document_token._.holmes.vector
             if search_phrase.root_token._.holmes.has_initial_question_word_in_phrase and self.initial_question_word_overall_similarity_threshold is not None:
@@ -79,7 +79,7 @@ class EmbeddingWordMatchingStrategy(WordMatchingStrategy):
                 self.semantic_matching_helper.embedding_matching_permitted(search_phrase_token):
             search_phrase_vector = search_phrase.matchable_non_entity_tokens_to_vectors[
                 search_phrase_token.i]
-            if search_phrase_vector is None or not self.embedding_matching_permitted(document_subword):
+            if search_phrase_vector is None or not self.semantic_matching_helper.embedding_matching_permitted(document_subword):
                 return None
             document_vector = document_subword.vector
             if search_phrase.root_token._.holmes.has_initial_question_word_in_phrase and self.initial_question_word_overall_similarity_threshold is not None:

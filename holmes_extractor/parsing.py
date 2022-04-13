@@ -125,9 +125,9 @@ class Subword:
         self.index = index
         self.text = text
         self.lemma = lemma
-        self.direct_matching_reprs = [text]
+        self.direct_matching_reprs = [lemma]
         if text != lemma:
-            self.direct_matching_reprs.append(lemma)
+            self.direct_matching_reprs.append(text)
         self.derived_lemma = derived_lemma
         if derived_lemma != lemma:
             self.derivation_matching_reprs = [derived_lemma]
@@ -221,11 +221,11 @@ class MultiwordSpan:
         self.text = text
         self.lemma = lemma
         self.derived_lemma = derived_lemma
-        self.direct_matching_reprs = [text]
+        self.direct_matching_reprs = [lemma]
         if hyphen_normalized_text != text:
             self.direct_matching_reprs.append(hyphen_normalized_text)
         if lemma != text:
-            self.direct_matching_reprs.append(lemma)
+            self.direct_matching_reprs.append(text)
         if derived_lemma != lemma:
             self.derivation_matching_reprs = [derived_lemma]
             self.derivation_matching_reprs.extend(self.direct_matching_reprs)
@@ -769,12 +769,12 @@ class SemanticAnalyzer(ABC):
         for token in spacy_doc:
             lemma = self.holmes_lemma(token)
             derived_lemma = self.derived_holmes_lemma(token, lemma)
-            direct_matching_reprs = [token.text]
+            direct_matching_reprs = [lemma]
             hyphen_normalized_text = self.normalize_hyphens(token.text)
             if token.text != hyphen_normalized_text:
                 direct_matching_reprs.append(hyphen_normalized_text)
             if token.text != lemma:
-                direct_matching_reprs.append(lemma)
+                direct_matching_reprs.append(token.text)
             if derived_lemma != lemma:
                 derivation_matching_reprs = [derived_lemma]
                 derivation_matching_reprs.extend(direct_matching_reprs)
@@ -1744,7 +1744,6 @@ class LinguisticObjectFactory:
             reverse_only, treat_as_reverse_only_during_initial_relation_matching,
             len(tokens_to_match) == 1 and
             not (phraselet_template is not None and phraselet_template.question))
-
         for word_matching_strategy in self.semantic_matching_helper.main_word_matching_strategies:
             word_matching_strategy.add_words_matching_search_phrase_root_token(search_phrase)
         return search_phrase
@@ -1873,7 +1872,7 @@ class SemanticMatchingHelper(ABC):
     def add_to_reverse_dict(self, reverse_dict: Dict[str, ReverseIndexValue], parsed_document: Doc, document_label: str):
         """ Indexes a parsed document. """
         for word_matching_strategy in self.main_word_matching_strategies:
-            word_matching_strategy.add_reverse_dict_entries(parsed_document, document_label, reverse_dict)
+            word_matching_strategy.add_reverse_dict_entries(reverse_dict, parsed_document, document_label)
 
     def get_reverse_dict_removing_document(self, reverse_dict: Dict[str, ReverseIndexValue], document_label: str) -> Dict[str, ReverseIndexValue]:
         new_reverse_dict = {}
@@ -1920,12 +1919,12 @@ class SemanticMatchingHelper(ABC):
                 working_lemma = obj.lemma_
             else:
                 working_lemma = obj._.holmes.lemma
-            return obj.pos_ in self.semantic_matching_helper.permissible_embedding_pos and \
+            return obj.pos_ in self.permissible_embedding_pos and \
                 len(working_lemma) >= \
-                self.semantic_matching_helper.minimum_embedding_match_word_length
+                self.minimum_embedding_match_word_length
         elif isinstance(obj, Subword):
             return len(obj.lemma) >= \
-                self.semantic_matching_helper.minimum_embedding_match_word_length
+                self.minimum_embedding_match_word_length
         else:
             raise RuntimeError("'obj' must be either a Token or a Subword")
 

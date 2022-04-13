@@ -7,7 +7,7 @@ class WordMatchingStrategy:
     def __init__(self, semantic_matching_helper: SemanticMatchingHelper):
         self.semantic_matching_helper = semantic_matching_helper
 
-    def match_multiword(self, search_phrase: SearchPhrase, search_phrase_token: Token, document_token: Token, document_multiwords: List[MultiwordSpan]) -> Optional["WordMatch"]:
+    def match_multiwords(self, search_phrase: SearchPhrase, search_phrase_token: Token, document_token: Token, document_multiwords: List[MultiwordSpan]) -> Optional["WordMatch"]:
         pass
 
     def match_token(self, search_phrase: SearchPhrase, search_phrase_token: Token, document_token: Token) -> Optional["WordMatch"]:
@@ -23,15 +23,15 @@ class WordMatchingStrategy:
         pass
 
     @staticmethod
-    def add_reverse_dict_entry(reverse_index: Dict[str, ReverseIndexValue], document_label:str, key_word:str, value_word:str, token_index:int, first_token_index:int, last_token_index: int, subword_index:int, match_type:str) -> None:
-        index = Index(token_index, first_token_index, last_token_index, subword_index)
+    def add_reverse_dict_entry(reverse_dict: Dict[str, ReverseIndexValue], document_label:str, key_word:str, value_word:str, token_index:int, subword_index:int, match_type:str) -> None:
+        index = Index(token_index, subword_index)
         corpus_word_position = CorpusWordPosition(document_label, index)
         reverse_index_value = ReverseIndexValue(corpus_word_position, value_word, match_type)
-        if key_word in reverse_index.keys():
-            if reverse_index[key_word].corpus_word_position != corpus_word_position:
-                reverse_index[key_word].append(reverse_index_value)
+        if key_word in reverse_dict.keys():
+            if not any(riv for riv in reverse_dict[key_word] if riv.corpus_word_position == corpus_word_position):
+                reverse_dict[key_word].append(reverse_index_value)
         else:
-            reverse_index[key_word] = [reverse_index_value]
+            reverse_dict[key_word] = [reverse_index_value]
 
 
 class WordMatch:
@@ -74,8 +74,8 @@ class WordMatch:
         self.document_subword = document_subword
         self.document_word = document_word
         self.word_match_type = word_match_type
-        self.is_negated = None # will be set by StructuralMatcher
-        self.is_uncertain = None # will be set by StructuralMatcher
+        self.is_negated = False # will be set by StructuralMatcher
+        self.is_uncertain = False # will be set by StructuralMatcher
         self.structurally_matched_document_token = None # will be set by StructuralMatcher
         self.extracted_word = document_word
         self.depth = 0

@@ -780,10 +780,10 @@ class Worker:
 
     def get_words_to_corpus_frequencies(self, state):
         words_to_corpus_frequencies = {}
-        for word, token_info_tuples in state['reverse_dict'].items():
+        for word, reverse_index_values in state['reverse_dict'].items():
             if word in punctuation:
                 continue
-            cwps = [corpus_word_position for corpus_word_position, _, _ in token_info_tuples]
+            cwps = [riv.corpus_word_position for riv in reverse_index_values]
             if word in words_to_corpus_frequencies:
                 words_to_corpus_frequencies[word] += len(set(cwps))
             else:

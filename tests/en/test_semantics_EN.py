@@ -863,7 +863,7 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
 
     def test_derived_lemma_root_word_from_dictionary(self):
         doc = nlp("He was imprisoned.")
-        self.assertEqual(doc[2]._.holmes.derived_lemma, None)
+        self.assertEqual(doc[2]._.holmes.derived_lemma, 'imprison')
 
     def test_derived_lemma_ization(self):
         doc = nlp("Linearization problems.")
@@ -921,9 +921,9 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         doc = nlp("The domestication of the dog.")
         self.assertEqual(doc[1]._.holmes.derived_lemma, 'domesticate')
 
-    def test_no_derived_lemma(self):
+    def test_derived_lemma_and_lemma_identical(self):
         doc = nlp("vehicle.")
-        self.assertEqual(doc[0]._.holmes.derived_lemma, None)
+        self.assertEqual(doc[0]._.holmes.derived_lemma, 'vehicle')
 
     def test_formerly_problematic_sentence_no_exception_thrown(self):
         nlp(

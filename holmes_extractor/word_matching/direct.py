@@ -128,6 +128,7 @@ class DirectWordMatchingStrategy(WordMatchingStrategy):
     ) -> None:
         for token in doc:
             for representation in token._.holmes.direct_matching_reprs:
+            
                 self.add_reverse_dict_entry(
                     reverse_dict,
                     document_label,
@@ -148,7 +149,7 @@ class DirectWordMatchingStrategy(WordMatchingStrategy):
                         subword.index,
                         self.WORD_MATCH_TYPE_LABEL,
                     )
-            entity_defined_multiword = (
+            entity_defined_multiword, _ = (
                 self.semantic_matching_helper.get_entity_defined_multiword(token)
             )
             if entity_defined_multiword is not None:
@@ -161,3 +162,4 @@ class DirectWordMatchingStrategy(WordMatchingStrategy):
                     None,
                     self.WORD_MATCH_TYPE_LABEL,
                 )
+                

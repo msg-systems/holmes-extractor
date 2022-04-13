@@ -78,7 +78,7 @@ class EntityWordMatchingStrategy(WordMatchingStrategy):
             # otherwise be excluded because the main sibling would normally also match the
             # entity root word.
             if len(token.ent_type_) > 0 and (
-                    token.dep_ == 'ROOT' or token.dep_ in self.sibling_marker_deps
+                    token.dep_ == 'ROOT' or token.dep_ in self.semantic_matching_helper.sibling_marker_deps
                     or token.ent_type_ != token.head.ent_type_):
                 entity_label = ''.join(('ENTITY', token.ent_type_))
                 self.add_reverse_dict_entry(

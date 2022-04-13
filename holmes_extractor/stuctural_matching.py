@@ -114,9 +114,10 @@ class StructuralMatcher:
         search_phrase_and_document_visited_table[search_phrase_token.i].add(index)
         if document_subword_index is None:
             for word_matching_strategy in word_matching_strategies:
-                potential_word_match = word_matching_strategy.match_multiword(search_phrase, search_phrase_token, document_token, document_token._.holmes.multiwords)
-                if potential_word_match is not None:
-                    break
+                if document_token._.holmes.multiword_spans is not None:
+                    potential_word_match = word_matching_strategy.match_multiwords(search_phrase, search_phrase_token, document_token, document_token._.holmes.multiword_spans)
+                    if potential_word_match is not None:
+                        break
                 potential_word_match = word_matching_strategy.match_token(search_phrase, search_phrase_token, document_token)
                 if potential_word_match is not None:
                     break
@@ -314,7 +315,8 @@ class StructuralMatcher:
         # store the word match
         potential_word_match.structurally_matched_document_token = structurally_matched_document_token
         potential_word_match.is_negated = document_token._.holmes.is_negated
-        potential_word_match.is_uncertain = is_uncertain or document_token._.holmes_is_uncertain
+        potential_word_match.is_uncertain = is_uncertain or document_token._.holmes.is_uncertain
+        potential_word_match.structurally_matched_document_token = structurally_matched_document_token
         if potential_word_match.first_document_token.i != potential_word_match.last_document_token.i: # multiword
             for working_token_index in range(potential_word_match.first_document_token.i, potential_word_match.last_document_token.i + 1):
                 search_phrase_and_document_visited_table[search_phrase_token.i].add(Index(working_token_index, None))
@@ -668,8 +670,6 @@ class StructuralMatcher:
                         search_phrase.root_token) is None:
                 # We are only matching a single word without embedding, so to improve
                 # performance we avoid entering the subgraph matching code.
-                search_phrase_token = [
-                    token for token in search_phrase.doc if token._.holmes.is_matchable][0]
                 existing_minimal_match_cwps = []
                 for word_matching_root_token in search_phrase.words_matching_root_token:
                     if word_matching_root_token in reverse_dict:
@@ -686,6 +686,7 @@ class StructuralMatcher:
                             document_label = cwp.document_label
                             index = cwp.index
                             doc = document_labels_to_documents[document_label]
+                            token = doc[index.token_index]
                             minimal_match = Match(
                                 search_phrase.label, search_phrase.doc_text, document_label,
                                 True, search_phrase.
@@ -694,23 +695,24 @@ class StructuralMatcher:
                             minimal_match.index_within_document = index.token_index
                             if len(word_matching_root_token.split()) > 1:
                                 for word_matching_strategy in word_matching_strategies:
-                                    potential_word_match = word_matching_strategy.match_multiword(search_phrase, search_phrase_token, doc[index.token_index],  doc[index.token_index]._.holmes.multiwords)
-                                    if potential_word_match is not None:
-                                        potential_word_match.depth = depth
-                                        minimal_match.word_matches.append(potential_word_match)
-                                        break
+                                    if doc[index.token_index]._.holmes.multiword_spans is not None:
+                                        potential_word_match = word_matching_strategy.match_multiwords(search_phrase, search_phrase.root_token, doc[index.token_index],  doc[index.token_index]._.holmes.multiword_spans)
+                                        if potential_word_match is not None:
+                                            potential_word_match.depth = depth
+                                            minimal_match.word_matches.append(potential_word_match)
+                                            break
                             if len(minimal_match.word_matches) == 0:
                                 if index.is_subword():
                                     subword = token._.holmes.subwords[index.subword_index]
                                     for word_matching_strategy in word_matching_strategies:
-                                        potential_word_match = word_matching_strategy.match_subword(search_phrase, search_phrase_token, doc[index.token_index], subword)
+                                        potential_word_match = word_matching_strategy.match_subword(search_phrase, search_phrase.root_token, doc[index.token_index], subword)
                                         if potential_word_match is not None:
                                             potential_word_match.depth = depth
                                             minimal_match.word_matches.append(potential_word_match)
                                             break
                                 else:
                                     for word_matching_strategy in word_matching_strategies:
-                                        potential_word_match = word_matching_strategy.match_token(search_phrase, search_phrase_token, doc[index.token_index])
+                                        potential_word_match = word_matching_strategy.match_token(search_phrase, search_phrase.root_token, doc[index.token_index])
                                         if potential_word_match is not None:
                                             potential_word_match.depth = depth
                                             minimal_match.word_matches.append(potential_word_match)
@@ -719,8 +721,10 @@ class StructuralMatcher:
                                 if token._.holmes.is_negated:
                                     minimal_match.is_negated = True
                                     if len(minimal_match.word_matches) == 1:
-                                        minimal_match.word_matches[0].is_negated = True 
-                            existing_minimal_match_cwps.append(corpus_word_position)
+                                        minimal_match.word_matches[0].is_negated = True
+                                if len(minimal_match.word_matches) == 1:
+                                    minimal_match.word_matches[0].structurally_matched_document_token = token
+                            existing_minimal_match_cwps.append(cwp)
                             matches.append(minimal_match)
                 continue
             direct_matching_corpus_word_positions = []
@@ -732,7 +736,7 @@ class StructuralMatcher:
                         if token.pos_ in self.semantic_matching_helper.noun_pos:
                             matches.extend(
                                 self.get_matches_starting_at_root_word_match(
-                                    search_phrase, doc, token, None, document_label,
+                                    word_matching_strategies, search_phrase, doc, token, None, document_label,
                                     compare_embeddings_on_non_root_words,
                                     overall_similarity_threshold,
                                     initial_question_word_overall_similarity_threshold))
@@ -830,7 +834,7 @@ class StructuralMatcher:
                     continue
                 doc = document_labels_to_documents[corpus_word_position.document_label]
                 matches.extend(self.get_matches_starting_at_root_word_match(
-                    search_phrase, doc, doc[corpus_word_position.index.token_index],
+                    word_matching_strategies, search_phrase, doc, doc[corpus_word_position.index.token_index],
                     corpus_word_position.index.subword_index, corpus_word_position.document_label,
                     compare_embeddings_on_non_root_words,
                     overall_similarity_threshold,
@@ -891,7 +895,7 @@ class StructuralMatcher:
                     'involves_coreference': word_match.involves_coreference,
                     'extracted_word': word_match.extracted_word,
                     'depth': word_match.depth,
-                    'explanation': word_match.explain()})
+                    'explanation': word_match.explanation})
             match_dict['word_matches'] = text_word_matches
             match_dicts.append(match_dict)
         return match_dicts
