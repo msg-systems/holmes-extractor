@@ -5,7 +5,7 @@ from ..parsing import CorpusWordPosition, MultiwordSpan, ReverseIndexValue, Sema
 class WordMatchingStrategy:
 
     def __init__(self, semantic_matching_helper: SemanticMatchingHelper):
-        self.semantic_matching_helper == semantic_matching_helper
+        self.semantic_matching_helper = semantic_matching_helper
 
     def match_multiword(self, search_phrase: SearchPhrase, search_phrase_token: Token, document_token: Token, document_multiwords: List[MultiwordSpan]) -> Optional["WordMatch"]:
         pass

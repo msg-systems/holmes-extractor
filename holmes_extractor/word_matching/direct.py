@@ -6,7 +6,6 @@ from ..parsing import (
     ReverseIndexValue,
     Subword,
     SearchPhrase,
-    CorpusWordPosition,
 )
 
 
@@ -119,7 +118,7 @@ class DirectWordMatchingStrategy(WordMatchingStrategy):
         self, search_phrase: SearchPhrase
     ) -> None:
         for word in search_phrase.root_token._.holmes.direct_matching_reprs:
-            search_phrase.add_word_information(word, self.WORD_MATCH_TYPE_LABEL, 0)
+            search_phrase.add_word_information(word, 0)
 
     def add_reverse_dict_entries(
         self,

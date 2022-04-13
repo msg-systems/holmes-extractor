@@ -654,7 +654,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                 not lemma[-2] in self.vowels:
             # for comparability with diminutive forms, e.g. äuglein <-> auge
             return lemma[:-1]
-        return None
+        return lemma
 
     def perform_language_specific_tasks(self, token):
 

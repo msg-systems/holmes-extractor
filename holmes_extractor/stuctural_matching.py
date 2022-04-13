@@ -664,8 +664,8 @@ class StructuralMatcher:
                 continue
             if search_phrase.has_single_matchable_word and \
                     not compare_embeddings_on_root_words and \
-                    not self.semantic_matching_helper.is_entity_search_phrase_token(
-                        search_phrase.root_token, search_phrase.topic_match_phraselet):
+                    self.semantic_matching_helper.get_entity_placeholder(
+                        search_phrase.root_token) is None:
                 # We are only matching a single word without embedding, so to improve
                 # performance we avoid entering the subgraph matching code.
                 search_phrase_token = [
@@ -724,8 +724,8 @@ class StructuralMatcher:
                             matches.append(minimal_match)
                 continue
             direct_matching_corpus_word_positions = []
-            if self.semantic_matching_helper.is_entitynoun_search_phrase_token(
-                    search_phrase.root_token): # phraselets are not generated for
+            if self.semantic_matching_helper.get_entity_placeholder(
+                    search_phrase.root_token) == "ENTITYNOUN": # phraselets are not generated for
                                                # ENTITYNOUN roots, so not relevant to topic matching
                 for document_label, doc in document_labels_to_documents.items():
                     for token in doc:
@@ -738,12 +738,8 @@ class StructuralMatcher:
                                     initial_question_word_overall_similarity_threshold))
                 continue
             matched_corpus_word_positions = set()
-            if self.semantic_matching_helper.is_entity_search_phrase_token(
-                    search_phrase.root_token, search_phrase.topic_match_phraselet):
-                if search_phrase.topic_match_phraselet:
-                    entity_label = search_phrase.root_token._.holmes.lemma
-                else:
-                    entity_label = search_phrase.root_token.text
+            entity_label = self.semantic_matching_helper.get_entity_placeholder(search_phrase.root_token)
+            if entity_label is not None:
                 if entity_label in reverse_dict.keys():
                     entity_matching_corpus_word_positions = [
                         riv.corpus_word_position for riv in reverse_dict[entity_label]]
@@ -768,9 +764,7 @@ class StructuralMatcher:
                                 or cwp in embedding_reverse_matching_corpus_word_positions]
                         matched_corpus_word_positions.update(
                             direct_matching_corpus_word_positions)
-            if compare_embeddings_on_root_words and not \
-                    self.semantic_matching_helper.is_entity_search_phrase_token(
-                        search_phrase.root_token, search_phrase.topic_match_phraselet) \
+            if compare_embeddings_on_root_words and self.semantic_matching_helper.get_entity_placeholder(search_phrase.root_token) is None \
                     and not search_phrase.reverse_only and \
                     self.embedding_matching_permitted(search_phrase.root_token):
                 if not search_phrase.topic_match_phraselet and \

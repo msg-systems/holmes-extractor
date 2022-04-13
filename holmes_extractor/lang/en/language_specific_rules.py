@@ -330,7 +330,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
         return token.lemma_.lower()
 
     def language_specific_derived_holmes_lemma(self, token, lemma):
-        """Generates and returns a derived lemma where appropriate, otherwise returns *None*.
+        """Generates and returns a derived lemma where appropriate, otherwise returns *lemma*.
         """
         if (token is None or token.pos_ == 'NOUN') and len(lemma) >= 10:
             possible_lemma = None
@@ -360,7 +360,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
             if not self.vectors_nlp.vocab[working_possible_lemma].is_oov:
                 return working_possible_lemma
             else:
-                return None
+                return lemma
         # adverb with 'ly' -> adjective without 'ly'
         if token is None or token.tag_ == 'RB':
             # domestically -> domestic
@@ -380,7 +380,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
             lemmatization_sentence = ' '.join(('it is', lemma))
             lemmatization_doc = self.spacy_parse(lemmatization_sentence)
             return lemmatization_doc[2].lemma_.lower()
-        return None
+        return lemma
 
     def perform_language_specific_tasks(self, token):
 

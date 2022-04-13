@@ -9,7 +9,6 @@ import srsly
 import pkg_resources
 from numpy import dot
 from numpy.linalg import norm
-from holmes_extractor.word_matching.general import WordMatchingStrategy
 from spacy.tokens import Token, Doc
 from .errors import WrongModelDeserializationError, WrongVersionDeserializationError,\
         DocumentTooBigError, SearchPhraseContainsNegationError,\
@@ -286,19 +285,19 @@ class HolmesDictionary:
         that can be used for derivation matching, consisting of *derived_lema*, *token.text* 
         and optionally a hyphen-normalized version of *token.text* and *token.lemma_* if these 
         are different from *token.text*; otherwise *None*.
-    multiword_spans -- where relevant, a list of multiword spans, otherwise *None*
+    multiword_spans -- where relevant, a list of multiword spans, otherwise *None*. Set after initialization.
     vector -- the vector representation of *lemma*, unless *lemma* is a multiword, in which case
         the vector representation of *token.lemma_* is used instead. *None* where there is no
         vector for the lexeme.
     """
 
-    def __init__(self, index, lemma, derived_lemma, direct_matching_reprs, derivation_matching_reprs, multiword_spans, vector):
+    def __init__(self, index, lemma, derived_lemma, direct_matching_reprs, derivation_matching_reprs, vector):
         self.index = index
         self.lemma = lemma
         self.derived_lemma = derived_lemma
         self.direct_matching_reprs = direct_matching_reprs
         self.derivation_matching_reprs = derivation_matching_reprs
-        self.multiword_spans = multiword_spans
+        self.multiword_spans = []
         self.vector = vector
         self.children = [] # list of *SemanticDependency* objects where this token is the parent.
         self.parents = [] # list of *SemanticDependency* objects where this token is the child.
@@ -587,8 +586,8 @@ class SearchPhrase:
         self.reverse_only = reverse_only
         self.treat_as_reverse_only_during_initial_relation_matching = \
             treat_as_reverse_only_during_initial_relation_matching
-        self.words_matching_root_token = List[str]
-        self.root_word_to_match_info_dict = Dict[str, int]
+        self.words_matching_root_token: List[str] = []
+        self.root_word_to_match_info_dict: Dict[str, int] = {}
         self.has_single_matchable_word = has_single_matchable_word#len(matchable_token_indexes) == 1
 
     @property
@@ -599,10 +598,10 @@ class SearchPhrase:
     def root_token(self):
         return self.doc[self.root_token_index]
 
-    def add_word_information(self, word:str, match_type:str, depth:int):
+    def add_word_information(self, word:str, depth:int):
         if word not in self.words_matching_root_token:
             self.words_matching_root_token.append(word)
-        if not word in self.root_word_to_match_info_dict:
+        if word not in self.root_word_to_match_info_dict:
             self.root_word_to_match_info_dict[word] = depth
 
     def pack(self):
@@ -771,7 +770,7 @@ class SemanticAnalyzer(ABC):
             lemma = self.holmes_lemma(token)
             derived_lemma = self.derived_holmes_lemma(token, lemma)
             direct_matching_reprs = [token.text]
-            hyphen_normalized_text = self.normalize_hyphens(text)
+            hyphen_normalized_text = self.normalize_hyphens(token.text)
             if token.text != hyphen_normalized_text:
                 direct_matching_reprs.append(hyphen_normalized_text)
             if token.text != lemma:
@@ -782,10 +781,9 @@ class SemanticAnalyzer(ABC):
             else:
                 derivation_matching_reprs = None
             lexeme = self.vectors_nlp.vocab[token.lemma_ if len(lemma.split()) > 1 else lemma]
-            multiword_spans = self.multiword_spans_with_head_token(token)
             vector = lexeme.vector if lexeme.has_vector and lexeme.vector_norm > 0 else None
             token._.set('holmes', HolmesDictionary(token.i, lemma, derived_lemma, direct_matching_reprs, 
-                derivation_matching_reprs, multiword_spans, vector))
+                derivation_matching_reprs, vector))
         for token in spacy_doc:
             self.set_negation(token)
         for token in spacy_doc:
@@ -804,6 +802,7 @@ class SemanticAnalyzer(ABC):
             self.set_coreference_information(token)
         for token in spacy_doc:
             self.set_matchability(token)
+            token._.holmes.multiword_spans = self.multiword_spans_with_head_token(token)
         for token in spacy_doc:
             self.correct_auxiliaries_and_passives(token)
         for token in spacy_doc:
@@ -893,10 +892,7 @@ class SemanticAnalyzer(ABC):
     def derived_holmes_lemma(self, token, lemma):
         if lemma in self.derivational_dictionary:
             derived_lemma = self.derivational_dictionary[lemma]
-            if lemma == derived_lemma: # basis entry, so do not call language specific method
-                return None
-            else:
-                return derived_lemma
+            return derived_lemma
         else:
             return self.language_specific_derived_holmes_lemma(token, lemma)
 
@@ -1275,7 +1271,7 @@ class LinguisticObjectFactory:
             if index in index_to_lemmas_cache:
                 return index_to_lemmas_cache[index]
             token = doc[index.token_index]
-            if self.semantic_matching_helper.is_entity_search_phrase_token(token, False):
+            if self.semantic_matching_helper.get_entity_placeholder(token) is not None:
                 # False in order to get text rather than lemma
                 index_to_lemmas_cache[index] = token.text, token.text
                 return token.text, token.text
@@ -1711,8 +1707,8 @@ class LinguisticObjectFactory:
                     len(token._.holmes.children) > 0 and
                     token._.holmes.children[0].child_index < 0):
                 tokens_to_match.append(token)
-                if not self.semantic_matching_helper.is_entity_search_phrase_token(
-                        token, phraselet_template is not None):
+                if self.semantic_matching_helper.get_entity_placeholder(
+                        token) is None:
                     if phraselet_template is None and len(token._.holmes.lemma.split()) > 1:
                         working_lexeme = self.semantic_analyzer.vectors_nlp.vocab[token.lemma_]
                     else:
@@ -1817,8 +1813,8 @@ class SemanticMatchingHelper(ABC):
         pass
 
     def __init__(self):
-        self.main_word_matching_strategies: List[WordMatchingStrategy] = []
-        self.additional_word_matching_strategies: List[WordMatchingStrategy] = []
+        self.main_word_matching_strategies: List["WordMatchingStrategy"] = []
+        self.additional_word_matching_strategies: List["WordMatchingStrategy"] = []
         self.local_phraselet_templates = [copy(t) for t in self.phraselet_templates]
         for key, match_implication in self.match_implication_dict.items():
             assert key == match_implication.search_phrase_dependency
@@ -1906,7 +1902,6 @@ class SemanticMatchingHelper(ABC):
             return search_phrase_dependency_label in self.match_implication_dict.keys() and \
                 document_dependency_label in self.match_implication_dict[
                 search_phrase_dependency_label].reverse_document_dependencies
-
 
     def get_entity_placeholder(
             self, search_phrase_token):

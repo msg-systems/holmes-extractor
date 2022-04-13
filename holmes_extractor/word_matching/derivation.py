@@ -157,7 +157,6 @@ class DerivationWordMatchingStrategy(WordMatchingStrategy):
         ):
             search_phrase.add_word_information(
                 search_phrase.root_token._.holmes.derived_lemma,
-                self.WORD_MATCH_TYPE_LABEL,
                 0,
             )
 

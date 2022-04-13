@@ -130,8 +130,7 @@ class Manager:
             analyze_derivational_morphology, perform_coreference_resolution)
         self.structural_matcher = StructuralMatcher(
             self.semantic_matching_helper, embedding_based_matching_on_root_words,
-            analyze_derivational_morphology, perform_coreference_resolution,
-            use_reverse_dependency_matching
+            perform_coreference_resolution, use_reverse_dependency_matching
             )
         self.document_labels_to_worker_queues = {}
         self.search_phrases = []
@@ -160,7 +159,7 @@ class Manager:
             worker_label = ' '.join(('Worker', str(counter)))
             this_worker = Process(
                 target=self.worker.listen, args=(
-                self.structural_matcher, self.overall_similarity_threshold, self.nlp.vocab, model,
+                self.structural_matcher, self.overall_similarity_threshold, self.entity_label_to_vector_dict, self.nlp.vocab, model,
                 SERIALIZED_DOCUMENT_VERSION, input_queue, worker_label),
                 daemon=True)
             self.workers.append(this_worker)
@@ -694,14 +693,14 @@ class Worker:
             serialized_document_version, input_queue, worker_label):
         state = {
             'structural_matcher': structural_matcher,
-            'word_matching_strategies': structural_matcher.semantic_matching_helper.main_word_matching_strategies + structural_matcher.semantic_matching_helper.alternative_word_matching_strategies,
+            'word_matching_strategies': structural_matcher.semantic_matching_helper.main_word_matching_strategies + structural_matcher.semantic_matching_helper.additional_word_matching_strategies,
             'overall_similarity_threshold': overall_similarity_threshold,
             'entity_label_to_vector_dict': entity_label_to_vector_dict,
             'vocab': vocab,
             'model_name': model_name,
             'serialized_document_version': serialized_document_version,
             'document_labels_to_documents': {},
-            'corpus_index_dict': {},
+            'reverse_dict': {},
             'search_phrases': [],
         }
         HolmesBroker.set_extensions()
@@ -727,7 +726,7 @@ class Worker:
                 err_identifier = str(sys.exc_info()[0])
                 reply_queue.put((worker_label, None, err_identifier), timeout=TIMEOUT_SECONDS)
 
-    def load_document(self, state, serialized_doc, document_label, corpus_index_dict):
+    def load_document(self, state, serialized_doc, document_label, reverse_dict):
         doc = Doc(state['vocab']).from_bytes(serialized_doc)
         if doc._.holmes_document_info.model != state['model_name']:
             raise WrongModelDeserializationError('; '.join((
@@ -738,24 +737,24 @@ class Worker:
                 str(state['serialized_document_version']),
                 str(doc._.holmes_document_info.serialized_document_version))))
         state['document_labels_to_documents'][document_label] = doc
-        state['structural_matcher'].semantic_matching_helper.add_to_corpus_index(
-            corpus_index_dict, doc, document_label)
+        state['structural_matcher'].semantic_matching_helper.add_to_reverse_dict(
+            reverse_dict, doc, document_label)
         return doc
 
     def register_serialized_document(self, state, serialized_doc, document_label):
-        self.load_document(state, serialized_doc, document_label, state['corpus_index_dict'])
+        self.load_document(state, serialized_doc, document_label, state['reverse_dict'])
         return None, ' '.join(('Registered document', document_label))
 
     def remove_document(self, state, document_label):
         state['document_labels_to_documents'].pop(document_label)
-        state['corpus_index_dict'] = \
+        state['reverse_dict'] = \
             state['structural_matcher'].semantic_matching_helper.get_corpus_index_removing_document(
-                state['corpus_index_dict'], document_label)
+                state['reverse_dict'], document_label)
         return None, ' '.join(('Removed document', document_label))
 
     def remove_all_documents(self, state):
         state['document_labels_to_documents'] = {}
-        state['corpus_index_dict'] = {}
+        state['reverse_dict'] = {}
         return None, 'Removed all documents'
 
     def get_serialized_document(self, state, label):
@@ -781,7 +780,7 @@ class Worker:
 
     def get_words_to_corpus_frequencies(self, state):
         words_to_corpus_frequencies = {}
-        for word, token_info_tuples in state['corpus_index_dict'].items():
+        for word, token_info_tuples in state['reverse_dict'].items():
             if word in punctuation:
                 continue
             cwps = [corpus_word_position for corpus_word_position, _, _ in token_info_tuples]
@@ -793,11 +792,11 @@ class Worker:
 
     def match(self, state, serialized_doc, search_phrase):
         if serialized_doc is not None:
-            corpus_index_dict = {}
-            doc = self.load_document(state, serialized_doc, '', corpus_index_dict)
+            reverse_dict = {}
+            doc = self.load_document(state, serialized_doc, '', reverse_dict)
             document_labels_to_documents = {'': doc}
         else:
-            corpus_index_dict = state['corpus_index_dict']
+            reverse_dict = state['reverse_dict']
             document_labels_to_documents = state['document_labels_to_documents']
         search_phrases = [search_phrase] if search_phrase is not None \
             else state['search_phrases']
@@ -805,7 +804,7 @@ class Worker:
             matches = state['structural_matcher'].match(
                 word_matching_strategies = state['word_matching_strategies'],
                 document_labels_to_documents=document_labels_to_documents,
-                corpus_index_dict=corpus_index_dict,
+                reverse_dict=reverse_dict,
                 search_phrases=search_phrases,
                 match_depending_on_single_words=None,
                 compare_embeddings_on_root_words=state['structural_matcher'].embedding_based_matching_on_root_words,
@@ -838,7 +837,7 @@ class Worker:
         topic_matcher = TopicMatcher(
             structural_matcher=state['structural_matcher'],
             document_labels_to_documents=state['document_labels_to_documents'],
-            corpus_index_dict=state['corpus_index_dict'],
+            reverse_dict=state['reverse_dict'],
             text_to_match=text_to_match,
             phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
             phraselet_labels_to_search_phrases=phraselet_labels_to_search_phrases,
