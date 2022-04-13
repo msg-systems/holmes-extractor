@@ -1,6 +1,6 @@
-from typing import Optional, List
-from spacy.tokens import Token
-from ..parsing import MultiwordSpan, SemanticMatchingHelper, Subword, Index, SearchPhrase
+from typing import Optional, List, Dict, Tuple
+from spacy.tokens import Token, Doc
+from ..parsing import CorpusWordPosition, MultiwordSpan, ReverseIndexValue, SemanticMatchingHelper, Subword, Index, SearchPhrase
 
 class WordMatchingStrategy:
 
@@ -16,8 +16,23 @@ class WordMatchingStrategy:
     def match_subword(self, search_phrase: SearchPhrase, search_phrase_token: Token, document_token: Token, document_subword: Subword) -> Optional["WordMatch"]:
         pass
 
-    def add_words_matching_search_phrase_root_token(self, search_phrase:SearchPhrase):
+    def add_words_matching_search_phrase_root_token(self, search_phrase:SearchPhrase) -> None:
         pass
+
+    def add_reverse_dict_entries(self, doc:Doc, document_label:str, reverse_index: Dict[str, ReverseIndexValue]) -> None:
+        pass
+
+    @staticmethod
+    def add_reverse_dict_entry(reverse_index: Dict[str, ReverseIndexValue], document_label:str, key_word:str, value_word:str, token_index:int, first_token_index:int, last_token_index: int, subword_index:int, match_type:str) -> None:
+        index = Index(token_index, first_token_index, last_token_index, subword_index)
+        corpus_word_position = CorpusWordPosition(document_label, index)
+        reverse_index_value = ReverseIndexValue(corpus_word_position, value_word, match_type)
+        if key_word in reverse_index.keys():
+            if reverse_index[key_word].corpus_word_position != corpus_word_position:
+                reverse_index[key_word].append(reverse_index_value)
+        else:
+            reverse_index[key_word] = [reverse_index_value]
+
 
 class WordMatch:
     """A match between a searched phrase word and a document word.

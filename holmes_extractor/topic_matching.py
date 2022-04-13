@@ -1,3 +1,9 @@
+from holmes_extractor.word_matching.derivation import DerivationWordMatchingStrategy
+from holmes_extractor.word_matching.direct import DirectWordMatchingStrategy
+from holmes_extractor.word_matching.embedding import EmbeddingWordMatchingStrategy
+from holmes_extractor.word_matching.entity import EntityWordMatchingStrategy
+from holmes_extractor.word_matching.entity_embedding import EntityEmbeddingWordMatchingStrategy
+from holmes_extractor.word_matching.question import QuestionWordMatchingStrategy
 from .parsing import Index, CorpusWordPosition
 
 class TopicMatch:
@@ -86,7 +92,7 @@ class TopicMatcher:
             relation_matching_frequency_threshold,
             embedding_matching_frequency_threshold, sideways_match_extent,
             only_one_result_per_document, number_of_results, document_label_filter,
-            use_frequency_factor):
+            use_frequency_factor, entity_label_to_vector_dict):
         self.structural_matcher = structural_matcher
         self.semantic_matching_helper = structural_matcher.semantic_matching_helper
         self.document_labels_to_documents = document_labels_to_documents
@@ -120,8 +126,16 @@ class TopicMatcher:
 
         process_initial_question_words = initial_question_word_behaviour in ('process', 'exclusive')
 
+        word_matching_strategies = self.semantic_matching_helper.main_word_matching_strategies[:]
+        if overall_similarity_threshold < 1.0:
+            word_matching_strategies.append(EmbeddingWordMatchingStrategy(self.semantic_matching_helper, overall_similarity_threshold, initial_question_word_overall_similarity_threshold if process_initial_question_words else overall_similarity_threshold))
+            word_matching_strategies.append(EntityEmbeddingWordMatchingStrategy(self.semantic_matching_helper, overall_similarity_threshold, initial_question_word_overall_similarity_threshold if process_initial_question_words else overall_similarity_threshold, entity_label_to_vector_dict))
+        if process_initial_question_words:
+            word_matching_strategies.append(QuestionWordMatchingStrategy(self.semantic_matching_helper, overall_similarity_threshold, initial_question_word_overall_similarity_threshold))
+        
         # First get single-word matches
         structural_matches = self.structural_matcher.match(
+            word_matching_strategies=word_matching_strategies,
             document_labels_to_documents=self.document_labels_to_documents,
             corpus_index_dict=self.corpus_index_dict,
             search_phrases=phraselet_labels_to_search_phrases.values(),
@@ -138,6 +152,7 @@ class TopicMatcher:
 
         # Now get normally matched relations
         structural_matches.extend(self.structural_matcher.match(
+            word_matching_strategies=word_matching_strategies,
             document_labels_to_documents=self.document_labels_to_documents,
             corpus_index_dict=self.corpus_index_dict,
             search_phrases=phraselet_labels_to_search_phrases.values(),
@@ -174,6 +189,7 @@ class TopicMatcher:
 
             # Perform reverse matching at selected indexes
             structural_matches.extend(self.structural_matcher.match(
+                word_matching_strategies=word_matching_strategies,
                 document_labels_to_documents=self.document_labels_to_documents,
                 corpus_index_dict=self.corpus_index_dict,
                 search_phrases=phraselet_labels_to_search_phrases.values(),
@@ -193,6 +209,7 @@ class TopicMatcher:
         if len(child_embedding_retry_corpus_word_positions) > 0:
             # Retry normal matching at selected indexes with embedding-based matching on children
             structural_matches.extend(self.structural_matcher.match(
+                word_matching_strategies=word_matching_strategies,
                 document_labels_to_documents=self.document_labels_to_documents,
                 corpus_index_dict=self.corpus_index_dict,
                 search_phrases=phraselet_labels_to_search_phrases.values(),

@@ -1,7 +1,8 @@
-from typing import Optional, List
+from pydoc import Doc
+from typing import Dict, Optional, List
 from spacy.tokens import Token
 from .general import WordMatch, WordMatchingStrategy
-from ..parsing import MultiwordSpan, SearchPhrase
+from ..parsing import MultiwordSpan, ReverseIndexValue, SearchPhrase
 
 
 class EntityWordMatchingStrategy(WordMatchingStrategy):
@@ -65,6 +66,31 @@ class EntityWordMatchingStrategy(WordMatchingStrategy):
             )
         return None
 
+    def add_reverse_dict_entries(
+        self,
+        reverse_dict: Dict[str, ReverseIndexValue],
+        doc: Doc,
+        document_label: str,
+    ) -> None:
+        for token in doc:
+            # parent check is necessary so we only find multiword entities once per
+            # search phrase. sibling_marker_deps applies to siblings which would
+            # otherwise be excluded because the main sibling would normally also match the
+            # entity root word.
+            if len(token.ent_type_) > 0 and (
+                    token.dep_ == 'ROOT' or token.dep_ in self.sibling_marker_deps
+                    or token.ent_type_ != token.head.ent_type_):
+                entity_label = ''.join(('ENTITY', token.ent_type_))
+                self.add_reverse_dict_entry(
+                    reverse_dict,
+                    document_label,
+                    entity_label,
+                    entity_label,
+                    token.i,
+                    None,
+                    self.WORD_MATCH_TYPE_LABEL,
+                )
+
     def _entity_placeholder_matches(
             self, entity_placeholder, document_token):
         return (
@@ -74,3 +100,4 @@ class EntityWordMatchingStrategy(WordMatchingStrategy):
                 document_token.pos_ in self.semantic_matching_helper.noun_pos)
                 # len(document_token._.holmes.lemma.strip()) > 0: in German spaCy sometimes
                 # classifies whitespace as entities.
+

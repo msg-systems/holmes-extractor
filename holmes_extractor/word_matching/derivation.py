@@ -1,12 +1,17 @@
-from typing import Optional, List
+from pydoc import Doc
+from typing import Dict, Optional, List
 from spacy.tokens import Token
 from .general import WordMatch, WordMatchingStrategy
-from ..parsing import MultiwordSpan, Subword, SearchPhrase
+from ..parsing import MultiwordSpan, ReverseIndexValue, Subword, SearchPhrase
 
 
 class DerivationWordMatchingStrategy(WordMatchingStrategy):
 
     WORD_MATCH_TYPE_LABEL = "derivation"
+
+    @staticmethod
+    def _get_explanation(search_phrase_display_word: str) -> str:
+        return "".join(("Has a common stem with ", search_phrase_display_word, "."))
 
     def match_multiwords(
         self,
@@ -156,6 +161,31 @@ class DerivationWordMatchingStrategy(WordMatchingStrategy):
                 0,
             )
 
-    @staticmethod
-    def _get_explanation(search_phrase_display_word: str) -> str:
-        return "".join(("Has a common stem with ", search_phrase_display_word, "."))
+    def add_reverse_dict_entries(
+        self,
+        reverse_dict: Dict[str, ReverseIndexValue],
+        doc: Doc,
+        document_label: str,
+    ) -> None:
+        for token in doc:
+            if token._.holmes.derived_lemma != token._.holmes.lemma:
+                self.add_reverse_dict_entry(
+                    reverse_dict,
+                    document_label,
+                    token._.holmes.derived_lemma.lower(),
+                    token._.holmes.derived_lemma,
+                    token.i,
+                    None,
+                    self.WORD_MATCH_TYPE_LABEL,
+                )
+            for subword in token._.holmes.subwords:
+                if subword.derived_lemma != subword.lemma:
+                    self.add_reverse_dict_entry(
+                        reverse_dict,
+                        document_label,
+                        subword.derived_lemma.lower(),
+                        subword.derived_lemma,
+                        token.i,
+                        subword.index,
+                        self.WORD_MATCH_TYPE_LABEL,
+                    )

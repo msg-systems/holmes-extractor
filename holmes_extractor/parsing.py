@@ -9,6 +9,7 @@ import srsly
 import pkg_resources
 from numpy import dot
 from numpy.linalg import norm
+from holmes_extractor.word_matching.general import WordMatchingStrategy
 from spacy.tokens import Token, Doc
 from .errors import WrongModelDeserializationError, WrongVersionDeserializationError,\
         DocumentTooBigError, SearchPhraseContainsNegationError,\
@@ -155,7 +156,7 @@ class Subword:
 
 @total_ordering
 class Index:
-    """ The position of a word or subword within a document. """
+    """ The position of a multiword, word or subword within a document. """
 
     def __init__(self, token_index, subword_index):
         self.token_index = token_index
@@ -199,6 +200,13 @@ class CorpusWordPosition:
 
     def __str__(self):
         return ':'.join((self.document_label, str(self.index)))
+
+class ReverseIndexValue:
+
+    def __init__(self, corpus_word_position:CorpusWordPosition, document_word:str, match_type: str):
+        self.corpus_word_position = corpus_word_position
+        self.document_word = document_word
+        self.match_type = match_type
 
 class MultiwordSpan:
 
@@ -580,7 +588,7 @@ class SearchPhrase:
         self.treat_as_reverse_only_during_initial_relation_matching = \
             treat_as_reverse_only_during_initial_relation_matching
         self.words_matching_root_token = List[str]
-        self.root_word_to_match_info_dict = Dict[str, Tuple[str, int]]
+        self.root_word_to_match_info_dict = Dict[str, int]
         self.has_single_matchable_word = has_single_matchable_word#len(matchable_token_indexes) == 1
 
     @property
@@ -595,7 +603,7 @@ class SearchPhrase:
         if word not in self.words_matching_root_token:
             self.words_matching_root_token.append(word)
         if not word in self.root_word_to_match_info_dict:
-            self.root_word_to_match_info_dict[word] = (match_type, depth)
+            self.root_word_to_match_info_dict[word] = depth
 
     def pack(self):
         self.serialized_doc = self.doc.to_bytes()
@@ -1400,7 +1408,7 @@ class LinguisticObjectFactory:
             if entity_defined_multiword is not None:
                 for index in indexes:
                     if index == token.i:
-                        token_indexes_to_multiword_lemmas[token.i] = entity_defined_multiword
+                        token_indexes_to_multiword_lemmas[token.i] = entity_defined_multiword.lower()
                     else:
                         token_indexes_within_multiwords_to_ignore.append(index)
         for token in doc:
@@ -1732,19 +1740,7 @@ class LinguisticObjectFactory:
             reverse_only = not phraselet_template.question and (is_reverse_only_parent_lemma or
                 phraselet_template.reverse_only)
 
-        add_word_information(root_token._.holmes.lemma, 'direct', 0)
-        if phraselet_template is None and root_token.lemma_.lower() == \
-                root_token._.holmes.lemma.lower():
-            add_word_information(root_token.text.lower(), 'direct', 0)
-            hyphen_normalized_text = \
-                self.semantic_matching_helper.normalize_hyphens(root_token.text)
-            if root_token.text != hyphen_normalized_text:
-                add_word_information(hyphen_normalized_text.lower(), 'direct', 0)
-        if self.semantic_matching_helper.analyze_derivational_morphology and \
-                root_token._.holmes.derived_lemma is not None:
-            add_word_information(root_token._.holmes.derived_lemma, 'derivation', 0)
-
-        return SearchPhrase(
+        search_phrase = SearchPhrase(
             search_phrase_doc, [token.i for token in tokens_to_match], root_token.i,
             matchable_non_entity_tokens_to_vectors, label, phraselet_template is not None,
             topic_match_phraselet_created_without_matching_tags,
@@ -1753,18 +1749,20 @@ class LinguisticObjectFactory:
             len(tokens_to_match) == 1 and
             not (phraselet_template is not None and phraselet_template.question))
 
+        for word_matching_strategy in self.semantic_matching_helper.main_word_matching_strategies:
+            word_matching_strategy.add_words_matching_search_phrase_root_token(search_phrase)
+        return search_phrase
 
 class SemanticMatchingHelperFactory():
     """Returns the correct *SemanticMatchingHelperFactory* for the language in use.
-        This class must be added to if additional implementations are added for new languages.
     """
 
-    def semantic_matching_helper(self, *, language, analyze_derivational_morphology):
+    def semantic_matching_helper(self, *, language):
         language_specific_rules_module = importlib.import_module(
             '.'.join(('.lang', language, 'language_specific_rules')),
             'holmes_extractor')
         return language_specific_rules_module.\
-            LanguageSpecificSemanticMatchingHelper(analyze_derivational_morphology)
+            LanguageSpecificSemanticMatchingHelper()
 
 class SemanticMatchingHelper(ABC):
     """Abstract *SemanticMatchingHelper* parent class containing language-specific properties and
@@ -1818,9 +1816,10 @@ class SemanticMatchingHelper(ABC):
             initial_question_word_embedding_match_threshold:float) -> bool:
         pass
 
-    def __init__(self, analyze_derivational_morphology):
+    def __init__(self):
+        self.main_word_matching_strategies: List[WordMatchingStrategy] = []
+        self.additional_word_matching_strategies: List[WordMatchingStrategy] = []
         self.local_phraselet_templates = [copy(t) for t in self.phraselet_templates]
-        self.analyze_derivational_morphology = analyze_derivational_morphology
         for key, match_implication in self.match_implication_dict.items():
             assert key == match_implication.search_phrase_dependency
             assert key not in match_implication.document_dependencies
@@ -1875,56 +1874,19 @@ class SemanticMatchingHelper(ABC):
                     return cosine_similarity
         return 0.0
 
-    def add_to_corpus_index(self, corpus_index_dict, parsed_document, document_label):
+    def add_to_reverse_dict(self, reverse_dict: Dict[str, ReverseIndexValue], parsed_document: Doc, document_label: str):
         """ Indexes a parsed document. """
+        for word_matching_strategy in self.main_word_matching_strategies:
+            word_matching_strategy.add_reverse_dict_entries(parsed_document, document_label, reverse_dict)
 
-        def add_dict_entry(dictionary, word, token_index, subword_index, match_type):
-            index = Index(token_index, subword_index)
-            corpus_word_position = CorpusWordPosition(document_label, index)
-            if match_type == 'entity':
-                key_word = word
-            else:
-                key_word = word.lower()
-            if key_word in dictionary.keys():
-                if index not in dictionary[key_word]:
-                    dictionary[key_word].append((
-                        corpus_word_position, word, match_type == 'derivation'))
-            else:
-                dictionary[key_word] = [(corpus_word_position, word, match_type == 'derivation')]
-
-        for token in parsed_document:
-
-            # parent check is necessary so we only find multiword entities once per
-            # search phrase. sibling_marker_deps applies to siblings which would
-            # otherwise be excluded because the main sibling would normally also match the
-            # entity root word.
-            if len(token.ent_type_) > 0 and (
-                    token.dep_ == 'ROOT' or token.dep_ in self.sibling_marker_deps
-                    or token.ent_type_ != token.head.ent_type_):
-                entity_label = ''.join(('ENTITY', token.ent_type_))
-                add_dict_entry(corpus_index_dict, entity_label, token.i, None, 'entity')
-            entity_defined_multiword, _ = \
-                self.get_entity_defined_multiword(token)
-            if entity_defined_multiword is not None:
-                add_dict_entry(
-                    corpus_index_dict, entity_defined_multiword, token.i, None, 'direct')
-            for representation, match_type in self.loop_textual_representations(token):
-                add_dict_entry(
-                    corpus_index_dict, representation, token.i, None, match_type)
-            for subword in token._.holmes.subwords:
-                for representation, match_type in self.loop_textual_representations(subword):
-                    add_dict_entry(
-                        corpus_index_dict, representation, token.i, subword.index,
-                        match_type)
-
-    def get_corpus_index_removing_document(self, corpus_index_dict, document_label):
-        new_corpus_index_dict = {}
-        for entry in corpus_index_dict:
-            new_value = ([(c, w, m) for (c, w, m) in corpus_index_dict[entry] if c.document_label !=
+    def get_reverse_dict_removing_document(self, reverse_dict: Dict[str, ReverseIndexValue], document_label: str) -> Dict[str, ReverseIndexValue]:
+        new_reverse_dict = {}
+        for entry in reverse_dict:
+            new_value = ([v for v in reverse_dict[entry] if v.corpus_document_index.document_label !=
                 document_label])
             if len(new_value) > 0:
-                new_corpus_index_dict[entry] = new_value
-        return new_corpus_index_dict
+                new_reverse_dict[entry] = new_value
+        return new_reverse_dict
 
     def dependency_labels_match(self, *, search_phrase_dependency_label, document_dependency_label,
             inverse_polarity:bool):
@@ -1972,45 +1934,13 @@ class SemanticMatchingHelper(ABC):
         else:
             raise RuntimeError("'obj' must be either a Token or a Subword")
 
-
-    def loop_textual_representations(self, obj):
-        if isinstance(obj, Token):
-            yield obj.text, 'direct'
-            hyphen_normalized_text = self.normalize_hyphens(obj.text)
-            if hyphen_normalized_text != obj.text:
-                yield hyphen_normalized_text, 'direct'
-            if obj._.holmes.lemma != obj.text:
-                yield obj._.holmes.lemma, 'direct'
-            if self.analyze_derivational_morphology and obj._.holmes.derived_lemma is not None:
-                yield obj._.holmes.derived_lemma, 'derivation'
-        elif isinstance(obj, Subword):
-            yield obj.text, 'direct'
-            hyphen_normalized_text = self.normalize_hyphens(obj.text)
-            if hyphen_normalized_text != obj.text:
-                yield hyphen_normalized_text, 'direct'
-            if obj.text != obj.lemma:
-                yield obj.lemma, 'direct'
-            if self.analyze_derivational_morphology and obj.derived_lemma is not None:
-                yield obj.derived_lemma, 'derivation'
-        elif isinstance(obj, MultiwordSpan):
-            yield obj.text, 'direct'
-            hyphen_normalized_text = self.normalize_hyphens(obj.text)
-            if hyphen_normalized_text != obj.text:
-                yield hyphen_normalized_text, 'direct'
-            if obj.text != obj.lemma:
-                yield obj.lemma, 'direct'
-            if obj.lemma != obj.derived_lemma:
-                yield obj.derived_lemma, 'derivation'
-        else:
-            raise RuntimeError(': '.join(('Unsupported type', str(type(obj)))))
-
     def belongs_to_entity_defined_multiword(self, token):
         return token.pos_ in self.entity_defined_multiword_pos and token.ent_type_ in \
                 self.entity_defined_multiword_entity_types
 
     def get_entity_defined_multiword(self, token):
         """ If this token is at the head of a multiword recognized by spaCy named entity processing,
-            returns the multiword string in lower case and the indexes of the tokens that make up
+            returns the multiword string and the indexes of the tokens that make up
             the multiword, otherwise *None, None*.
         """
         if not self.belongs_to_entity_defined_multiword(token) or (
@@ -2031,7 +1961,7 @@ class SemanticMatchingHelper(ABC):
             working_text = ' '.join((working_text, multiword_token.text))
             working_indexes.append(multiword_token.i)
         if len(working_text.split()) > 1:
-            return working_text.strip().lower(), working_indexes
+            return working_text.strip(), working_indexes
         else:
             return None, None
 

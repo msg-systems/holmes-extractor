@@ -7,6 +7,12 @@ import sys
 import os
 import pickle
 import pkg_resources
+from holmes_extractor.word_matching.derivation import DerivationWordMatchingStrategy
+from holmes_extractor.word_matching.direct import DirectWordMatchingStrategy
+from holmes_extractor.word_matching.embedding import EmbeddingWordMatchingStrategy
+from holmes_extractor.word_matching.entity import EntityWordMatchingStrategy
+from holmes_extractor.word_matching.entity_embedding import EntityEmbeddingWordMatchingStrategy
+from holmes_extractor.word_matching.general import WordMatchingStrategy
 import spacy
 import coreferee
 from spacy import Language
@@ -103,9 +109,18 @@ class Manager:
                 'overall_similarity_threshold is 1.0; embedding_based_matching_on_root_words must '\
                 'be False')
         self.analyze_derivational_morphology = analyze_derivational_morphology
+        self.entity_label_to_vector_dict = self.semantic_analyzer.get_entity_label_to_vector_dict() if \
+            self.semantic_analyzer.model_supports_embeddings() else {}
         self.semantic_matching_helper = SemanticMatchingHelperFactory().semantic_matching_helper(
-            language=self.nlp.meta['lang'],
-            analyze_derivational_morphology=analyze_derivational_morphology)
+            language=self.nlp.meta['lang'])
+        self.semantic_matching_helper.main_word_matching_strategies.append(DirectWordMatchingStrategy(self.semantic_matching_helper))
+        if analyze_derivational_morphology:
+            self.semantic_matching_helper.main_word_matching_strategies.append(DerivationWordMatchingStrategy(self.semantic_matching_helper))
+        self.semantic_matching_helper.main_word_matching_strategies.append(EntityWordMatchingStrategy(self.semantic_matching_helper))
+
+        if overall_similarity_threshold < 1.0:
+            self.semantic_matching_helper.additional_word_matching_strategies.append(EmbeddingWordMatchingStrategy(self.semantic_matching_helper, overall_similarity_threshold, overall_similarity_threshold))
+            self.semantic_matching_helper.additional_word_matching_strategies.append(EntityEmbeddingWordMatchingStrategy(self.semantic_matching_helper, overall_similarity_threshold, overall_similarity_threshold, self.entity_label_to_vector_dict))
         self.overall_similarity_threshold = overall_similarity_threshold
         self.perform_coreference_resolution = perform_coreference_resolution
         self.use_reverse_dependency_matching = use_reverse_dependency_matching
@@ -116,9 +131,8 @@ class Manager:
         self.structural_matcher = StructuralMatcher(
             self.semantic_matching_helper, embedding_based_matching_on_root_words,
             analyze_derivational_morphology, perform_coreference_resolution,
-            use_reverse_dependency_matching,
-            self.semantic_analyzer.get_entity_label_to_vector_dict() if
-            self.semantic_analyzer.model_supports_embeddings() else {})
+            use_reverse_dependency_matching
+            )
         self.document_labels_to_worker_queues = {}
         self.search_phrases = []
         HolmesBroker.set_extensions()
@@ -573,7 +587,7 @@ class Manager:
                 relation_matching_frequency_threshold,
                 embedding_matching_frequency_threshold, sideways_match_extent,
                 only_one_result_per_document, number_of_results, document_label_filter,
-                use_frequency_factor), reply_queue), timeout=TIMEOUT_SECONDS)
+                use_frequency_factor, self.analyze_derivational_morphology), reply_queue), timeout=TIMEOUT_SECONDS)
         worker_topic_match_dictss = self.handle_response(reply_queue,
             self.number_of_workers, 'match')
         topic_match_dicts = []
@@ -676,11 +690,13 @@ class Worker:
             worker_label,
             ' - error:'))
 
-    def listen(self, structural_matcher, overall_similarity_threshold, vocab, model_name,
+    def listen(self, structural_matcher, overall_similarity_threshold, entity_label_to_vector_dict, vocab, model_name,
             serialized_document_version, input_queue, worker_label):
         state = {
             'structural_matcher': structural_matcher,
+            'word_matching_strategies': structural_matcher.semantic_matching_helper.main_word_matching_strategies + structural_matcher.semantic_matching_helper.alternative_word_matching_strategies,
             'overall_similarity_threshold': overall_similarity_threshold,
+            'entity_label_to_vector_dict': entity_label_to_vector_dict,
             'vocab': vocab,
             'model_name': model_name,
             'serialized_document_version': serialized_document_version,
@@ -787,12 +803,12 @@ class Worker:
             else state['search_phrases']
         if len(document_labels_to_documents) > 0 and len(search_phrases) > 0:
             matches = state['structural_matcher'].match(
+                word_matching_strategies = state['word_matching_strategies'],
                 document_labels_to_documents=document_labels_to_documents,
                 corpus_index_dict=corpus_index_dict,
                 search_phrases=search_phrases,
                 match_depending_on_single_words=None,
-                compare_embeddings_on_root_words=state['structural_matcher'].\
-                embedding_based_matching_on_root_words,
+                compare_embeddings_on_root_words=state['structural_matcher'].embedding_based_matching_on_root_words,
                 compare_embeddings_on_non_root_words=True,
                 reverse_matching_corpus_word_positions=None,
                 embedding_reverse_matching_corpus_word_positions=None,
@@ -845,7 +861,8 @@ class Worker:
             only_one_result_per_document=only_one_result_per_document,
             number_of_results=number_of_results,
             document_label_filter=document_label_filter,
-            use_frequency_factor=use_frequency_factor)
+            use_frequency_factor=use_frequency_factor,
+            entity_label_to_vector_dict=state['entity_label_to_vector_dict'])
         return topic_matcher.get_topic_match_dictionaries(), \
             'Returned topic match dictionaries'
 

@@ -16,10 +16,10 @@ class EmbeddingWordMatchingStrategy(WordMatchingStrategy):
             "% similar to ", search_phrase_display_word, "."))
 
 
-    def __init__(self, overall_similarity_threshold, initial_question_word_overall_similarity_threshold):
+    def __init__(self, semantic_matching_helper, overall_similarity_threshold, initial_question_word_overall_similarity_threshold):
         self.overall_similarity_threshold = overall_similarity_threshold
         self.initial_question_word_overall_similarity_threshold = initial_question_word_overall_similarity_threshold
-        super().__init__()
+        super().__init__(semantic_matching_helper)
 
     def match_token(
         self,

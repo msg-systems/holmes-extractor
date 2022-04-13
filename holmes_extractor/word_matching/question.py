@@ -14,12 +14,13 @@ class QuestionWordMatchingStrategy(WordMatchingStrategy):
 
     def __init__(
         self,
+        semantic_matching_helper,
         initial_question_word_overall_similarity_threshold,
     ):
         self.initial_question_word_overall_similarity_threshold = (
             initial_question_word_overall_similarity_threshold
         )
-        super().__init__()
+        super().__init__(semantic_matching_helper)
 
     def match_token(
         self,
@@ -28,7 +29,7 @@ class QuestionWordMatchingStrategy(WordMatchingStrategy):
         document_token: Token,
     ) -> Optional[WordMatch]:
 
-        if search_phrase.topic_match_phraselet and search_phrase_token._.holmes.is_initial_question_word:
+        if search_phrase_token._.holmes.is_initial_question_word:
             document_vector = document_token._.holmes.vector
             if document_vector is not None:
                 question_word_matches = self.semantic_matching_helper.question_word_matches(

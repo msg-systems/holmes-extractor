@@ -24,6 +24,7 @@ class EntityEmbeddingWordMatchingStrategy(WordMatchingStrategy):
 
     def __init__(
         self,
+        semantic_matching_helper,
         overall_similarity_threshold,
         initial_question_word_overall_similarity_threshold,
         entity_label_to_vector_dict: Dict[str, Floats1d],
@@ -33,7 +34,7 @@ class EntityEmbeddingWordMatchingStrategy(WordMatchingStrategy):
             initial_question_word_overall_similarity_threshold
         )
         self.entity_label_to_vector_dict = entity_label_to_vector_dict
-        super().__init__()
+        super().__init__(semantic_matching_helper)
 
     def match_multiwords(
         self,
