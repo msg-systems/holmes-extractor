@@ -1959,7 +1959,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = nlp("Informations- und Extraktions-Beurteilung")
         self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Information')
         self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'information')
-        self.assertEqual(doc[0]._.holmes.subwords[0].derived_lemma, None)
+        self.assertEqual(doc[0]._.holmes.subwords[0].derived_lemma, 'information')
         self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
@@ -1974,7 +1974,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
         self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Extraktion')
         self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'extraktion')
-        self.assertEqual(doc[2]._.holmes.subwords[0].derived_lemma, None)
+        self.assertEqual(doc[2]._.holmes.subwords[0].derived_lemma, 'extraktion')
         self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 2)
         self.assertEqual(doc[2]._.holmes.subwords[0].char_start_index, 0)
@@ -2011,7 +2011,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
     def test_derived_lemma_root_word_from_dictionary(self):
         doc = nlp("Der Schuss war laut.")
-        self.assertEqual(doc[1]._.holmes.derived_lemma, None)
+        self.assertEqual(doc[1]._.holmes.derived_lemma, 'schuss')
 
     def test_derived_lemma_ung(self):
         doc = nlp("Eine hohe Regung.")
@@ -2035,7 +2035,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
     def test_derived_lemma_ung_blacklist_direct(self):
         doc = nlp("Der Nibelung.")
-        self.assertEqual(doc[1]._.holmes.derived_lemma, None)
+        self.assertEqual(doc[1]._.holmes.derived_lemma, 'nibelung')
 
     def test_derived_lemma_heit(self):
         doc = nlp("Die ganze Schönheit.")
@@ -2059,7 +2059,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
     def test_derived_lemma_four_letter_ending_ch(self):
         doc = nlp("Das Dach.")
-        self.assertEqual(doc[1]._.holmes.derived_lemma, None)
+        self.assertEqual(doc[1]._.holmes.derived_lemma, 'dach')
 
     def test_derived_lemma_lein_umlaut(self):
         doc = nlp("Das kleine Bäuchlein.")
@@ -2067,11 +2067,11 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
     def test_derived_lemma_chen_5_chars(self):
         doc = nlp("Das kleine Öchen.")
-        self.assertEqual(doc[2]._.holmes.derived_lemma, None)
+        self.assertEqual(doc[2]._.holmes.derived_lemma, 'öchen')
 
     def test_derived_lemma_chen_4_chars(self):
         doc = nlp("Das kleine Chen.")
-        self.assertEqual(doc[2]._.holmes.derived_lemma, None)
+        self.assertEqual(doc[2]._.holmes.derived_lemma, 'chen')
 
     def test_derived_lemma_chen_no_umlaut_change(self):
         doc = nlp("Das kleine Löffelchen.")
@@ -2091,11 +2091,11 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
     def test_derived_lemma_e_with_preceding_vowel(self):
         doc = nlp("Die große Lappalie.")
-        self.assertEqual(doc[2]._.holmes.derived_lemma, None)
+        self.assertEqual(doc[2]._.holmes.derived_lemma, 'lappalie')
 
     def test_derived_lemma_e_1_char(self):
         doc = nlp("Das große E.")
-        self.assertEqual(doc[2]._.holmes.derived_lemma, None)
+        self.assertEqual(doc[2]._.holmes.derived_lemma[0], 'e')
 
     def test_derived_lemma_subword_positive_case(self):
         doc = nlp("Informierensextraktion.")
@@ -2104,7 +2104,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
     def test_derived_lemma_subword_negative_case(self):
         doc = nlp("Elefantenschau.")
-        self.assertEqual(doc[0]._.holmes.subwords[0].derived_lemma, None)
+        self.assertEqual(doc[0]._.holmes.subwords[0].derived_lemma, 'elefant')
 
     def test_derived_lemma_subword_conjunction_first_word(self):
         doc = nlp("Fitness- und Freizeitsjogging.")

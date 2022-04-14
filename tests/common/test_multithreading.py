@@ -1424,7 +1424,7 @@ class MultithreadingTest(unittest.TestCase):
                 self.assertFalse(match["involves_coreference"])
                 self.assertEqual(match["overall_similarity_measure"], "1.0")
                 self.assertEqual(match["index_within_document"], 1)
-                self.assertEqual(match["word_matches"][0]["document_word"], "People")
+                self.assertEqual(match["word_matches"][0]["document_word"], "people")
                 self.assertEqual(
                     match["word_matches"][0]["search_phrase_word"], "people"
                 )
@@ -1493,7 +1493,7 @@ class MultithreadingTest(unittest.TestCase):
                 self.assertFalse(match["involves_coreference"])
                 self.assertEqual(match["overall_similarity_measure"], "1.0")
                 self.assertEqual(match["index_within_document"], 1)
-                self.assertEqual(match["word_matches"][0]["document_word"], "People")
+                self.assertEqual(match["word_matches"][0]["document_word"], "people")
                 self.assertEqual(
                     match["word_matches"][0]["search_phrase_word"], "people"
                 )

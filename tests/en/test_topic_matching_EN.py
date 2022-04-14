@@ -243,7 +243,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                            holmes_manager_coref)
 
     def test_reverse_only_parent_lemma_twoway(self):
-        self._check_equals("The donkey has a roof", "The donkey has a house", 29,
+        self._check_equals("The donkey has a roof", "The donkey has a house", 47,
                            holmes_manager_coref)
 
     def test_reverse_only_parent_lemma_threeway_control(self):

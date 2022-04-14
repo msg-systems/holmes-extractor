@@ -1,3 +1,4 @@
+from typing import Optional
 from string import punctuation
 from spacy.tokens import Token
 from ...parsing import SemanticAnalyzer, SemanticMatchingHelper, MatchImplication,\
@@ -617,7 +618,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
         if (token is None or token.tag_ == 'NN') and lemma.endswith('ung'):
             for word in self._ung_ending_blacklist:
                 if lemma.endswith(word):
-                    return None
+                    return lemma
             if (lemma.endswith('erung') and not lemma.endswith('ierung')) or \
                     lemma.endswith('elung'):
                 return ''.join((lemma[:-3], 'n'))
@@ -1097,9 +1098,11 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             ['FM', 'NE', 'NNE', 'NN'],
             None, reverse_only=False, question=False)]
 
-    def question_word_matches(self, search_phrase_label:str, search_phrase_token:Token,
-            document_token:Token, document_vector, entity_label_to_vector_dict:dict,
+    def question_word_matches(self, search_phrase_token:Token,
+            document_token:Token, document_subword_index: Optional[int], document_vector, entity_label_to_vector_dict:dict,
             initial_question_word_embedding_match_threshold:float) -> bool:
+        if document_subword_index is not None:
+            return search_phrase_token._.holmes.lemma in ('was')
         if search_phrase_token._.holmes.lemma in ('wer', 'wen', 'wem'):
             ent_types = ('PER', 'ORG')
             return document_token.ent_type_ in ent_types or \

@@ -28,7 +28,7 @@ class WordMatchingStrategy:
         corpus_word_position = CorpusWordPosition(document_label, index)
         reverse_index_value = ReverseIndexValue(corpus_word_position, value_word, match_type)
         if key_word in reverse_dict.keys():
-            if not any(riv for riv in reverse_dict[key_word] if riv.corpus_word_position == corpus_word_position):
+            if not any(1 for riv in reverse_dict[key_word] if riv.corpus_word_position == corpus_word_position):
                 reverse_dict[key_word].append(reverse_index_value)
         else:
             reverse_dict[key_word] = [reverse_index_value]
@@ -57,8 +57,6 @@ class WordMatch:
     extracted_word -- the most specific term that corresponded to *document_word* within the
         coreference chain.
     depth -- currently unused (always 0).
-    search_phrase_initial_question_word -- *True* if *search_phrase_token* is an initial question
-        word or governs an initial question word.
     """
 
     def __init__(

@@ -895,7 +895,7 @@ class GermanStructuralMatchingTest(unittest.TestCase):
         self.assertEqual(
             matches[0]['word_matches'][2]['document_subword_containing_token_index'], 0)
         self.assertEqual(
-            matches[0]['word_matches'][2]['document_word'], 'Information')
+            matches[0]['word_matches'][2]['document_word'], 'information')
 
     def test_three_subwords_two_word_conjunction_last_elements_two_one(self):
         matches = self._get_matches(holmes_manager,
@@ -976,7 +976,7 @@ class GermanStructuralMatchingTest(unittest.TestCase):
                                     "Stadtprinz")
         self.assertEqual(len(matches), 1)
         self.assertEqual(matches[0]['word_matches'][0]['document_word'], 'prinz')
-        self.assertEqual(matches[0]['word_matches'][1]['document_word'], 'Stadt')
+        self.assertEqual(matches[0]['word_matches'][1]['document_word'], 'stadt')
 
     def test_embedding_match_on_non_root_subword(self):
         matches = self._get_matches(holmes_manager_with_embeddings,

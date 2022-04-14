@@ -130,7 +130,7 @@ class Manager:
             analyze_derivational_morphology, perform_coreference_resolution)
         self.structural_matcher = StructuralMatcher(
             self.semantic_matching_helper, embedding_based_matching_on_root_words,
-            perform_coreference_resolution, use_reverse_dependency_matching
+            analyze_derivational_morphology, perform_coreference_resolution, use_reverse_dependency_matching
             )
         self.document_labels_to_worker_queues = {}
         self.search_phrases = []
@@ -586,7 +586,7 @@ class Manager:
                 relation_matching_frequency_threshold,
                 embedding_matching_frequency_threshold, sideways_match_extent,
                 only_one_result_per_document, number_of_results, document_label_filter,
-                use_frequency_factor, self.analyze_derivational_morphology), reply_queue), timeout=TIMEOUT_SECONDS)
+                use_frequency_factor), reply_queue), timeout=TIMEOUT_SECONDS)
         worker_topic_match_dictss = self.handle_response(reply_queue,
             self.number_of_workers, 'match')
         topic_match_dicts = []
@@ -748,7 +748,7 @@ class Worker:
     def remove_document(self, state, document_label):
         state['document_labels_to_documents'].pop(document_label)
         state['reverse_dict'] = \
-            state['structural_matcher'].semantic_matching_helper.get_corpus_index_removing_document(
+            state['structural_matcher'].semantic_matching_helper.get_reverse_dict_removing_document(
                 state['reverse_dict'], document_label)
         return None, ' '.join(('Removed document', document_label))
 

@@ -1,3 +1,4 @@
+from typing import Optional
 from spacy.tokens import Token
 from ...parsing import SemanticAnalyzer, SemanticMatchingHelper, MatchImplication,\
     PhraseletTemplate, SemanticDependency
@@ -785,8 +786,8 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
             None, reverse_only=False, question=False)
         ]
 
-    def question_word_matches(self, search_phrase_label:str,
-            search_phrase_token:Token, document_token:Token,
+    def question_word_matches(self,
+            search_phrase_token:Token, document_token:Token, document_subword_index: Optional[int],
             document_vector, entity_label_to_vector_dict:dict,
             initial_question_word_embedding_match_threshold:float) -> bool:
         """ Checks whether *search_phrase_token* is a question word matching *document_token*. """

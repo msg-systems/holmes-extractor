@@ -1,7 +1,7 @@
 from typing import Optional, List
 from spacy.tokens import Token
 from .general import WordMatch, WordMatchingStrategy
-from ..parsing import SearchPhrase
+from ..parsing import SearchPhrase, Subword
 
 
 class QuestionWordMatchingStrategy(WordMatchingStrategy):
@@ -10,16 +10,18 @@ class QuestionWordMatchingStrategy(WordMatchingStrategy):
 
     @staticmethod
     def _get_explanation(search_phrase_display_word: str) -> str:
-        return ''.join(("Matches the question word ", search_phrase_display_word, "."))
+        return ''.join(("Matches the question word ", search_phrase_display_word.upper(), "."))
 
     def __init__(
         self,
         semantic_matching_helper,
         initial_question_word_overall_similarity_threshold,
+        entity_label_to_vector_dict
     ):
         self.initial_question_word_overall_similarity_threshold = (
             initial_question_word_overall_similarity_threshold
         )
+        self.entity_label_to_vector_dict = entity_label_to_vector_dict
         super().__init__(semantic_matching_helper)
 
     def match_token(
@@ -33,13 +35,13 @@ class QuestionWordMatchingStrategy(WordMatchingStrategy):
             document_vector = document_token._.holmes.vector
             if document_vector is not None:
                 question_word_matches = self.semantic_matching_helper.question_word_matches(
-                    search_phrase.label, search_phrase_token, document_token, document_vector,
+                    search_phrase_token, document_token, None, document_vector,
                     self.entity_label_to_vector_dict,
                     self.initial_question_word_overall_similarity_threshold ** len(
                         search_phrase.matchable_non_entity_tokens_to_vectors))
             else:
                 question_word_matches = self.semantic_matching_helper.question_word_matches(
-                    search_phrase.label, search_phrase_token, document_token, None, None, None)
+                    search_phrase_token, document_token, None, None, None, None)
             if question_word_matches:
                 first_document_token_index = last_document_token_index = document_token.i
                 if document_token.pos_ in self.semantic_matching_helper.noun_pos and \
@@ -69,3 +71,37 @@ class QuestionWordMatchingStrategy(WordMatchingStrategy):
                 )
         return None
 
+    def match_subword(
+        self,
+        search_phrase: SearchPhrase,
+        search_phrase_token: Token,
+        document_token: Token,
+        document_subword: Subword,
+    ) -> Optional[WordMatch]:
+
+        if document_subword.is_head: # question words should not match a head subword but the whole word or multiword:
+            return None
+        if search_phrase_token._.holmes.is_initial_question_word:
+            document_vector = document_subword.vector
+            if document_vector is not None:
+                question_word_matches = self.semantic_matching_helper.question_word_matches(
+                    search_phrase_token, document_token, document_subword.index, document_vector,
+                    self.entity_label_to_vector_dict,
+                    self.initial_question_word_overall_similarity_threshold ** len(
+                        search_phrase.matchable_non_entity_tokens_to_vectors))
+            else:
+                question_word_matches = self.semantic_matching_helper.question_word_matches(
+                    search_phrase_token, document_token, document_subword.index, None, None, None)
+            if question_word_matches:
+                return WordMatch(
+                    search_phrase_token=search_phrase_token,
+                    search_phrase_word=search_phrase_token._.holmes.lemma,
+                    document_token=document_token,
+                    first_document_token=document_token,
+                    last_document_token=document_token,
+                    document_subword=document_subword,
+                    document_word=document_subword.lemma,
+                    word_match_type=self.WORD_MATCH_TYPE_LABEL,
+                    explanation=self._get_explanation(document_subword.lemma),
+                )
+        return None

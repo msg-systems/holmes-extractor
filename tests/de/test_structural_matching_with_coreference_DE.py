@@ -43,9 +43,9 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         coref_holmes_manager.parse_and_register_document(
             "Ich sah einen Hund, und er jagte eine Katze.")
         matches = coref_holmes_manager.match()
-        self._check_word_match(matches[0], 0, 3, 'Hund')
+        self._check_word_match(matches[0], 0, 3, 'hund')
         self._check_word_match(matches[0], 1, 7, 'jagen')
-        self._check_word_match(matches[0], 2, 9, 'Katze')
+        self._check_word_match(matches[0], 2, 9, 'katze')
 
     def test_perform_coreference_resolution_false(self):
         nocoref_holmes_manager.remove_all_documents()
@@ -75,8 +75,8 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
             "Ich sah einen Hund und einen Hund, und die jagten eine Katze.")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 2)
-        self._check_word_match(matches[0], 0, 3, 'Hund')
-        self._check_word_match(matches[1], 0, 6, 'Hund')
+        self._check_word_match(matches[0], 0, 3, 'hund')
+        self._check_word_match(matches[1], 0, 6, 'hund')
 
     def test_simple_pronoun_coreference_same_sentence_conjunction_in_antecedent_left_matches(self):
         coref_holmes_manager.remove_all_documents()
@@ -84,7 +84,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
             "Ich sah einen Hund und ein Pferd, und sie jagten eine Katze.")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
-        self._check_word_match(matches[0], 0, 3, 'Hund')
+        self._check_word_match(matches[0], 0, 3, 'hund')
 
     def test_simple_pronoun_coreference_same_sentence_conjunction_in_antecedent_right_matches(self):
         coref_holmes_manager.remove_all_documents()
@@ -92,7 +92,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
             "Ich sah ein Pferd und einen Hund, und die jagten eine Katze.")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
-        self._check_word_match(matches[0], 0, 6, 'Hund')
+        self._check_word_match(matches[0], 0, 6, 'hund')
 
     def test_simple_pronoun_coreference_same_sentence_conjunction_pronouns_both_match(self):
         coref_holmes_manager.remove_all_documents()
@@ -134,9 +134,9 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         coref_holmes_manager.parse_and_register_document(
             "Ich sah eine Katze. Ein Hund jagte sie.")
         matches = coref_holmes_manager.match()
-        self._check_word_match(matches[0], 0, 6, 'Hund')
+        self._check_word_match(matches[0], 0, 6, 'hund')
         self._check_word_match(matches[0], 1, 7, 'jagen')
-        self._check_word_match(matches[0], 2, 3, 'Katze')
+        self._check_word_match(matches[0], 2, 3, 'katze')
 
     def test_simple_pronoun_coreference_diff_sentence_wrong_structure(self):
         coref_holmes_manager.remove_all_documents()
@@ -159,8 +159,8 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
             "Ich sah eine Katze und eine Katze. Ein Hund hat sie gejagt.")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 2)
-        self._check_word_match(matches[0], 2, 3, 'Katze')
-        self._check_word_match(matches[1], 2, 6, 'Katze')
+        self._check_word_match(matches[0], 2, 3, 'katze')
+        self._check_word_match(matches[1], 2, 6, 'katze')
 
     def test_simple_pronoun_coreference_diff_sentence_conjunction_in_antecedent_left_matches(self):
         coref_holmes_manager.remove_all_documents()
@@ -168,7 +168,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
             "Ich sah eine Katze und ein Pferd. Ein Hund hat sie gejagt.")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
-        self._check_word_match(matches[0], 2, 3, 'Katze')
+        self._check_word_match(matches[0], 2, 3, 'katze')
 
     def test_simple_pronoun_coreference_diff_sentence_conjunction_in_antecedent_right_matches(self):
         coref_holmes_manager.remove_all_documents()
@@ -176,7 +176,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
             "Ich sah ein Pferd und eine Katze. Ein Hund hat sie gejagt")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
-        self._check_word_match(matches[0], 2, 6, 'Katze')
+        self._check_word_match(matches[0], 2, 6, 'katze')
 
     def test_pronoun_coreferent_has_dependency_same_sentence(self):
         coref_holmes_manager.remove_all_documents()
@@ -185,7 +185,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
         self._check_word_match(matches[0], 0, 3, 'groß')
-        self._check_word_match(matches[0], 1, 4, 'Pferd')
+        self._check_word_match(matches[0], 1, 4, 'pferd')
 
     def test_pronoun_coreferents_with_dependency_conjunction_same_sentence_both_match(self):
         coref_holmes_manager.remove_all_documents()
@@ -194,9 +194,9 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 2)
         self._check_word_match(matches[0], 0, 3, 'groß')
-        self._check_word_match(matches[0], 1, 4, 'Pferd')
+        self._check_word_match(matches[0], 1, 4, 'pferd')
         self._check_word_match(matches[1], 0, 7, 'groß')
-        self._check_word_match(matches[1], 1, 8, 'Pferd')
+        self._check_word_match(matches[1], 1, 8, 'pferd')
 
     def test_noun_coreferent_has_dependency_same_sentence(self):
         coref_holmes_manager.remove_all_documents()
@@ -205,7 +205,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
         self._check_word_match(matches[0], 0, 3, 'groß')
-        self._check_word_match(matches[0], 1, 8, 'Pferd')
+        self._check_word_match(matches[0], 1, 8, 'pferd')
 
     def test_pronoun_coreferent_has_dependency_three_sentences(self):
         coref_holmes_manager.remove_all_documents()
@@ -214,7 +214,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
         self._check_word_match(matches[0], 0, 12, 'groß')
-        self._check_word_match(matches[0], 1, 3, 'Pferd')
+        self._check_word_match(matches[0], 1, 3, 'pferd')
 
     def test_reflexive_pronoun_coreferent(self):
         coref_holmes_manager.remove_all_documents()
@@ -222,8 +222,8 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
             "Der Gepard jagte sich")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
-        self._check_word_match(matches[0], 0, 1, 'Gepard')
-        self._check_word_match(matches[0], 2, 1, 'Gepard')
+        self._check_word_match(matches[0], 0, 1, 'gepard')
+        self._check_word_match(matches[0], 2, 1, 'gepard')
 
     def test_reflexive_pronoun_coreferents_with_conjunction_same_noun(self):
         coref_holmes_manager.remove_all_documents()
@@ -231,14 +231,14 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
             "Der Gepard und der Gepard jagten sich")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 4)
-        self._check_word_match(matches[0], 0, 1, 'Gepard')
-        self._check_word_match(matches[0], 2, 1, 'Gepard')
-        self._check_word_match(matches[1], 0, 4, 'Gepard')
-        self._check_word_match(matches[1], 2, 1, 'Gepard')
-        self._check_word_match(matches[2], 0, 1, 'Gepard')
-        self._check_word_match(matches[2], 2, 4, 'Gepard')
-        self._check_word_match(matches[3], 0, 4, 'Gepard')
-        self._check_word_match(matches[3], 2, 4, 'Gepard')
+        self._check_word_match(matches[0], 0, 1, 'gepard')
+        self._check_word_match(matches[0], 2, 1, 'gepard')
+        self._check_word_match(matches[1], 0, 4, 'gepard')
+        self._check_word_match(matches[1], 2, 1, 'gepard')
+        self._check_word_match(matches[2], 0, 1, 'gepard')
+        self._check_word_match(matches[2], 2, 4, 'gepard')
+        self._check_word_match(matches[3], 0, 4, 'gepard')
+        self._check_word_match(matches[3], 2, 4, 'gepard')
 
     def test_reflexive_pronoun_coreferents_with_conjunction_diff_noun(self):
         coref_holmes_manager.remove_all_documents()
@@ -246,10 +246,10 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
             "Der Gepard und der Leopard jagten sich")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 2)
-        self._check_word_match(matches[0], 0, 1, 'Gepard')
-        self._check_word_match(matches[0], 2, 1, 'Gepard')
-        self._check_word_match(matches[1], 0, 4, 'Leopard')
-        self._check_word_match(matches[1], 0, 4, 'Leopard')
+        self._check_word_match(matches[0], 0, 1, 'gepard')
+        self._check_word_match(matches[0], 2, 1, 'gepard')
+        self._check_word_match(matches[1], 0, 4, 'leopard')
+        self._check_word_match(matches[1], 0, 4, 'leopard')
 
     def test_repeated_noun(self):
         coref_holmes_manager.remove_all_documents()
@@ -257,7 +257,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
             "Wir sahen einen großes Hund. Der Hund jagte eine Katze")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
-        self._check_word_match(matches[0], 0, 7, 'Hund')
+        self._check_word_match(matches[0], 0, 7, 'hund')
 
     def test_repeated_noun_match_both_mentions(self):
         coref_holmes_manager.remove_all_documents()
@@ -266,9 +266,9 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 2)
         self._check_word_match(matches[0], 0, 3, 'müde')
-        self._check_word_match(matches[0], 1, 4, 'Hund')
+        self._check_word_match(matches[0], 1, 4, 'hund')
         self._check_word_match(matches[1], 0, 3, 'müde')
-        self._check_word_match(matches[1], 1, 7, 'Hund')
+        self._check_word_match(matches[1], 1, 7, 'hund')
 
     def test_mentions_following_structural_match(self):
         coref_holmes_manager.remove_all_documents()
@@ -277,7 +277,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
         self._check_word_match(matches[0], 0, 1, 'groß')
-        self._check_word_match(matches[0], 1, 2, 'Pferd')
+        self._check_word_match(matches[0], 1, 2, 'pferd')
 
     def test_adjective_verb_phrase_as_search_phrase_matches_simple(self):
         coref_holmes_manager.remove_all_documents()

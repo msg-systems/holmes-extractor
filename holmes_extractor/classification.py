@@ -23,6 +23,7 @@ from .ontology import Ontology
 from .parsing import (
     CorpusWordPosition,
     LinguisticObjectFactory,
+    ReverseIndexValue,
     SearchPhrase,
     SemanticAnalyzer,
     SemanticMatchingHelper,
@@ -200,17 +201,18 @@ class SupervisedTopicTrainingUtils:
             this_document_dict: Dict[int, int] = {}
             doc = training_document_labels_to_documents[doc_label]
             document_labels_to_documents = {doc_label: doc}
-            corpus_index_dict: Dict[str, Tuple[CorpusWordPosition, str, str]] = {}
-            semantic_matching_helper.add_to_corpus_index(
-                corpus_index_dict, doc, doc_label
+            reverse_dict: Dict[str, ReverseIndexValue] = {}
+            semantic_matching_helper.add_to_reverse_dict(
+                reverse_dict, doc, doc_label
             )
             for (
                 label,
                 occurrences,
             ) in self.get_labels_to_classification_frequencies_dict(
                 matches=structural_matcher.match(
+                    word_matching_strategies=semantic_matching_helper.main_word_matching_strategies + semantic_matching_helper.additional_word_matching_strategies,
                     document_labels_to_documents=document_labels_to_documents,
-                    corpus_index_dict=corpus_index_dict,
+                    reverse_dict=reverse_dict,
                     search_phrases=phraselet_labels_to_search_phrases.values(),
                     match_depending_on_single_words=None,
                     compare_embeddings_on_root_words=False,
@@ -330,7 +332,7 @@ class SupervisedTopicTrainingBasis:
         self.verbose = verbose
 
         self.training_document_labels_to_documents: Dict[str, Doc] = {}
-        self.corpus_index_dict: Dict[str, Tuple[CorpusWordPosition, str, str]] = {}
+        self.reverse_dict: Dict[str, Tuple[CorpusWordPosition, str, str]] = {}
         self.training_documents_labels_to_classifications_dict: Dict[str, str] = {}
         self.additional_classification_labels: Set[str] = set()
         self.classification_implication_dict: Dict[str, List[str]] = {}
@@ -377,8 +379,8 @@ class SupervisedTopicTrainingBasis:
         if self.verbose:
             print("Registering document", label)
         self.training_document_labels_to_documents[label] = doc
-        self.semantic_matching_helper.add_to_corpus_index(
-            self.corpus_index_dict, doc, label
+        self.semantic_matching_helper.add_to_reverse_dict(
+            self.reverse_dict, doc, label
         )
         self.linguistic_object_factory.add_phraselets_to_dict(
             doc,
@@ -434,8 +436,9 @@ class SupervisedTopicTrainingBasis:
             Dict[str, Dict[str, int]],
             self.utils.get_labels_to_classification_frequencies_dict(  # type:ignore[assignment]
                 matches=self.structural_matcher.match(
+                    word_matching_strategies=self.semantic_matching_helper.main_word_matching_strategies + self.semantic_matching_helper.additional_word_matching_strategies,
                     document_labels_to_documents=self.training_document_labels_to_documents,
-                    corpus_index_dict=self.corpus_index_dict,
+                    reverse_dict=self.reverse_dict,
                     search_phrases=search_phrases,
                     match_depending_on_single_words=None,
                     compare_embeddings_on_root_words=False,

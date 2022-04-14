@@ -11,7 +11,7 @@ class EntityWordMatchingStrategy(WordMatchingStrategy):
 
     @staticmethod
     def _get_explanation(search_phrase_display_word: str) -> str:
-        return ''.join(("Has an entity label matching ", search_phrase_display_word, "."))
+        return ''.join(("Has an entity label matching ", search_phrase_display_word.upper(), "."))
 
     def match_multiwords(
         self,

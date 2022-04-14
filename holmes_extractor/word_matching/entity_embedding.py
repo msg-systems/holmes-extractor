@@ -17,7 +17,7 @@ class EntityEmbeddingWordMatchingStrategy(WordMatchingStrategy):
                 "Has an entity label that is ",
                 printable_similarity,
                 "% similar to the word embedding corresponding to ",
-                search_phrase_display_word,
+                search_phrase_display_word.upper(),
                 ".",
             )
         )
@@ -54,23 +54,22 @@ class EntityEmbeddingWordMatchingStrategy(WordMatchingStrategy):
             search_phrase_vector = search_phrase.matchable_non_entity_tokens_to_vectors[
                 search_phrase_token.i
             ]
-            if search_phrase_vector is None or not self.embedding_matching_permitted(
+            if search_phrase_vector is None or not self.semantic_matching_helper.embedding_matching_permitted(
                 document_token
             ):
                 return None
             for document_multiword in document_multiwords:
                 if document_token.ent_type_ != "" and all(
-                    document_token.doc[i].ent_type_
+                    document_token.doc[i].ent_type_ == document_token.ent_type_
                     for i in document_multiword.token_indexes
-                    == document_token.ent_type_
                 ):
                     potential_word_match = self._check_for_word_match(
                         search_phrase=search_phrase,
                         search_phrase_token=search_phrase_token,
                         search_phrase_vector=search_phrase_vector,
                         document_token=document_token,
-                        first_document_token=document_token,
-                        last_document_token=document_token,
+                        first_document_token=document_token.doc[document_multiword.token_indexes[0]],
+                        last_document_token=document_token.doc[document_multiword.token_indexes[-1]],
                     )
                     if potential_word_match is not None:
                         return potential_word_match
@@ -94,7 +93,7 @@ class EntityEmbeddingWordMatchingStrategy(WordMatchingStrategy):
             search_phrase_vector = search_phrase.matchable_non_entity_tokens_to_vectors[
                 search_phrase_token.i
             ]
-            if search_phrase_vector is None or not self.embedding_matching_permitted(
+            if search_phrase_vector is None or not self.semantic_matching_helper.embedding_matching_permitted(
                 document_token
             ):
                 return None
@@ -120,7 +119,7 @@ class EntityEmbeddingWordMatchingStrategy(WordMatchingStrategy):
         last_document_token: Token,
     ) -> Optional[WordMatch]:
         if (
-            search_phrase.root_token._.holmes.has_initial_question_word_in_phrase
+            (search_phrase_token._.holmes.is_initial_question_word or search_phrase_token._.holmes.has_initial_question_word_in_phrase)
             and self.initial_question_word_overall_similarity_threshold is not None
         ):
             working_overall_similarity_threshold = (
@@ -132,13 +131,13 @@ class EntityEmbeddingWordMatchingStrategy(WordMatchingStrategy):
             search_phrase.matchable_non_entity_tokens_to_vectors
         )
 
-        similarity = self.semantic_matching_helper.token_matches_ent_type(
+        similarity_measure = self.semantic_matching_helper.token_matches_ent_type(
             search_phrase_vector,
             self.entity_label_to_vector_dict,
-            (document_token.ent_type_),
+            (document_token.ent_type_,),
             single_token_similarity_threshold,
         )
-        if similarity > 0:
+        if similarity_measure > 0:
             if (
                 not search_phrase.topic_match_phraselet
                 and len(search_phrase_token._.holmes.lemma.split()) > 1
@@ -146,7 +145,7 @@ class EntityEmbeddingWordMatchingStrategy(WordMatchingStrategy):
                 search_phrase_display_word = search_phrase_token.lemma_
             else:
                 search_phrase_display_word = search_phrase_token._.holmes.lemma
-            return WordMatch(
+            word_match = WordMatch(
                 search_phrase_token=search_phrase_token,
                 search_phrase_word=search_phrase_display_word,
                 document_token=document_token,
@@ -156,7 +155,9 @@ class EntityEmbeddingWordMatchingStrategy(WordMatchingStrategy):
                 document_word=document_token.lemma_,
                 word_match_type=self.WORD_MATCH_TYPE_LABEL,
                 explanation=self._get_explanation(
-                    similarity, search_phrase_display_word
+                    similarity_measure, search_phrase_display_word
                 ),
             )
+            word_match.similarity_measure = similarity_measure
+            return word_match
         return None

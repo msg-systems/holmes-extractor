@@ -1,4 +1,4 @@
-from typing import List, Dict, Tuple
+from typing import List, Dict, Optional
 import math
 import pickle
 import importlib
@@ -209,11 +209,12 @@ class ReverseIndexValue:
 
 class MultiwordSpan:
 
-    def __init__(self, text, hyphen_normalized_text, lemma, derived_lemma, token_indexes):
+    def __init__(self, text, hyphen_normalized_lemma, lemma, derived_lemma, token_indexes):
         """Args:
 
         text -- the raw text representation of the multiword span
         lemma - the lemma representation of the multiword span
+        hyphen_normalized_lemma -- a hyphen-normalized representation of *lemmaÜ
         derived_lemma - the lemma representation with individual words that have derived
             lemmas replaced by those derived lemmas
         token_indexes -- a list of token indexes that make up the multiword span
@@ -222,8 +223,8 @@ class MultiwordSpan:
         self.lemma = lemma
         self.derived_lemma = derived_lemma
         self.direct_matching_reprs = [lemma]
-        if hyphen_normalized_text != text:
-            self.direct_matching_reprs.append(hyphen_normalized_text)
+        if hyphen_normalized_lemma != lemma:
+            self.direct_matching_reprs.append(hyphen_normalized_lemma)
         if lemma != text:
             self.direct_matching_reprs.append(text)
         if derived_lemma != lemma:
@@ -455,6 +456,7 @@ class PhraseletInfo:
         label -- the phraselet label, e.g. 'predicate-patient: open-door'
         template_label -- the value of 'PhraseletTemplate.label', e.g. 'predicate-patient'
         parent_lemma -- the parent lemma, or the lemma for single-word phraselets.
+        parent_hyphen_normalized_lemma -- a hyphen-normalized version of *parent_lemma*-
         parent_derived_lemma -- the parent derived lemma, or the derived lemma for single-word
             phraselets.
         parent_pos -- the part of speech tag of the token that supplied the parent word.
@@ -463,6 +465,7 @@ class PhraseletInfo:
         parent_is_initial_question_word -- 'True' or 'False'
         parent_has_initial_question_word_in_phrase -- 'True' or 'False'
         child_lemma -- the child lemma, or 'None' for single-word phraselets.
+        child_hyphen_normalized_lemma -- a hyphen-normalized version of *child_lemma*-
         child_derived_lemma -- the child derived lemma, or 'None' for single-word phraselets.
         child_pos -- the part of speech tag of the token that supplied the child word, or 'None'
             for single-word phraselets.
@@ -481,9 +484,9 @@ class PhraseletInfo:
     """
 
     def __init__(
-            self, label, template_label, parent_lemma, parent_derived_lemma,
+            self, label, template_label, parent_lemma, parent_hyphen_normalized_lemma, parent_derived_lemma,
             parent_pos, parent_ent_type, parent_is_initial_question_word,
-            parent_has_initial_question_word_in_phrase, child_lemma, child_derived_lemma,
+            parent_has_initial_question_word_in_phrase, child_lemma, child_hyphen_normalized_lemma, child_derived_lemma,
             child_pos, child_ent_type, child_is_initial_question_word,
             child_has_initial_question_word_in_phrase, created_without_matching_tags,
             reverse_only_parent_lemma, frequency_factor, parent_frequency_factor,
@@ -492,6 +495,14 @@ class PhraseletInfo:
         self.template_label = template_label
 
         self.parent_lemma = parent_lemma
+        self.parent_direct_matching_reprs = [parent_lemma]
+        if parent_lemma != parent_hyphen_normalized_lemma:
+            self.parent_direct_matching_reprs.append(parent_hyphen_normalized_lemma)
+        if parent_lemma != parent_derived_lemma:
+            self.parent_derivation_matching_reprs = [parent_derived_lemma]
+            self.parent_derivation_matching_reprs.extend(self.parent_direct_matching_reprs)
+        else:
+            self.parent_derivation_matching_reprs = None
         self.parent_derived_lemma = parent_derived_lemma
         self.parent_pos = parent_pos
         self.parent_ent_type = parent_ent_type
@@ -499,6 +510,18 @@ class PhraseletInfo:
         self.parent_has_initial_question_word_in_phrase = parent_has_initial_question_word_in_phrase
         self.child_lemma = child_lemma
         self.child_derived_lemma = child_derived_lemma
+        if self.child_lemma is not None:
+            self.child_direct_matching_reprs = [child_lemma]
+            if child_lemma != child_hyphen_normalized_lemma:
+                self.child_direct_matching_reprs.append(child_hyphen_normalized_lemma)
+            if child_lemma != child_derived_lemma:
+                self.child_derivation_matching_reprs = [child_derived_lemma]
+                self.child_derivation_matching_reprs.extend(self.child_direct_matching_reprs)
+            else:
+                self.child_derivation_matching_reprs = None
+        else:
+            self.child_direct_matching_reprs = None
+            self.child_derivation_matching_reprs = None
         self.child_pos = child_pos
         self.child_ent_type = child_ent_type
         self.child_is_initial_question_word = child_is_initial_question_word
@@ -508,6 +531,17 @@ class PhraseletInfo:
         self.frequency_factor = frequency_factor
         self.parent_frequency_factor = parent_frequency_factor
         self.child_frequency_factor = child_frequency_factor
+        self.hash = hash((
+            self.label, self.template_label, self.parent_lemma, self.parent_derived_lemma,
+            parent_hyphen_normalized_lemma,
+            self.parent_pos, self.parent_ent_type, self.parent_is_initial_question_word,
+            self.parent_has_initial_question_word_in_phrase, self.child_lemma,
+            self.child_derived_lemma, self.child_pos, self.child_ent_type,
+            child_hyphen_normalized_lemma,
+            self.child_is_initial_question_word, self.child_has_initial_question_word_in_phrase,
+            self.created_without_matching_tags, self.reverse_only_parent_lemma,
+            str(self.frequency_factor), str(self.parent_frequency_factor),
+            str(self.child_frequency_factor)))
 
     def __eq__(self, other):
         return isinstance(other, PhraseletInfo) and \
@@ -515,6 +549,8 @@ class PhraseletInfo:
             self.template_label == other.template_label and \
             self.parent_lemma == other.parent_lemma and \
             self.parent_derived_lemma == other.parent_derived_lemma and \
+            self.parent_direct_matching_reprs == other.parent_direct_matching_reprs and \
+            self.parent_derivation_matching_reprs == other.parent_derivation_matching_reprs and \
             self.parent_pos == other.parent_pos and \
             self.parent_ent_type == other.parent_ent_type and \
             self.parent_is_initial_question_word == other.parent_is_initial_question_word and \
@@ -522,6 +558,8 @@ class PhraseletInfo:
             other.parent_has_initial_question_word_in_phrase and \
             self.child_lemma == other.child_lemma and \
             self.child_derived_lemma == other.child_derived_lemma and \
+            self.child_direct_matching_reprs == other.child_direct_matching_reprs and \
+            self.child_derivation_matching_reprs == other.child_derivation_matching_reprs and \
             self.child_pos == other.child_pos and \
             self.child_ent_type == other.child_ent_type and \
             self.child_is_initial_question_word == other.child_is_initial_question_word and \
@@ -534,15 +572,7 @@ class PhraseletInfo:
             str(self.child_frequency_factor) == str(other.child_frequency_factor)
 
     def __hash__(self):
-        return hash((
-            self.label, self.template_label, self.parent_lemma, self.parent_derived_lemma,
-            self.parent_pos, self.parent_ent_type, self.parent_is_initial_question_word,
-            self.parent_has_initial_question_word_in_phrase, self.child_lemma,
-            self.child_derived_lemma, self.child_pos, self.child_ent_type,
-            self.child_is_initial_question_word, self.child_has_initial_question_word_in_phrase,
-            self.created_without_matching_tags, self.reverse_only_parent_lemma,
-            str(self.frequency_factor), str(self.parent_frequency_factor),
-            str(self.child_frequency_factor)))
+        return self.hash
 
 class SearchPhrase:
 
@@ -770,9 +800,9 @@ class SemanticAnalyzer(ABC):
             lemma = self.holmes_lemma(token)
             derived_lemma = self.derived_holmes_lemma(token, lemma)
             direct_matching_reprs = [lemma]
-            hyphen_normalized_text = self.normalize_hyphens(token.text)
-            if token.text != hyphen_normalized_text:
-                direct_matching_reprs.append(hyphen_normalized_text)
+            hyphen_normalized_lemma = self.normalize_hyphens(lemma)
+            if lemma != hyphen_normalized_lemma:
+                direct_matching_reprs.append(hyphen_normalized_lemma)
             if token.text != lemma:
                 direct_matching_reprs.append(token.text)
             if derived_lemma != lemma:
@@ -1163,7 +1193,7 @@ class SemanticAnalyzer(ABC):
         pointer = token.left_edge.i
         while pointer <= token.right_edge.i:
             working_text = ''
-            working_hyphen_normalized_text = ''
+            working_hyphen_normalized_lemma = ''
             working_lemma = ''
             working_derived_lemma = ''
             working_tokens = []
@@ -1173,7 +1203,7 @@ class SemanticAnalyzer(ABC):
                     token.doc[inner_pointer].text == '-'):
                 if token.doc[inner_pointer].text != '-':
                     working_text = ' '.join((working_text, token.doc[inner_pointer].text))
-                    working_hyphen_normalized_text = ' '.join((working_hyphen_normalized_text, self.normalize_hyphens(token.doc[inner_pointer].text)))
+                    working_hyphen_normalized_lemma = ' '.join((working_hyphen_normalized_lemma, self.normalize_hyphens(token.doc[inner_pointer]._.holmes.lemma)))
                     working_lemma = ' '.join((
                         working_lemma, token.doc[inner_pointer]._.holmes.lemma))
                     this_token_derived_lemma = token.doc[inner_pointer]._.holmes.derived_lemma
@@ -1183,7 +1213,7 @@ class SemanticAnalyzer(ABC):
                 inner_pointer += 1
             if pointer + 1 < inner_pointer and token in working_tokens:
                 return_list.append(MultiwordSpan(
-                    working_text.strip(), working_hyphen_normalized_text.strip(), working_lemma.strip(), working_derived_lemma.strip(),
+                    working_text.strip(), working_hyphen_normalized_lemma.strip(), working_lemma.strip(), working_derived_lemma.strip(),
                     [t.i for t in working_tokens]))
             pointer += 1
         return return_list if len(return_list) > 0 else None
@@ -1280,13 +1310,13 @@ class LinguisticObjectFactory:
                 lemma = token._.holmes.subwords[index.subword_index].lemma
                 if self.analyze_derivational_morphology:
                     derived_lemma = token._.holmes.subwords[index.subword_index].\
-                        lemma_or_derived_lemma()
+                        derived_lemma
                 else:
                     derived_lemma = lemma
             else:
                 lemma = token._.holmes.lemma
                 if self.analyze_derivational_morphology:
-                    derived_lemma = token._.holmes.lemma_or_derived_lemma()
+                    derived_lemma = token._.holmes.derived_lemma
                 else:
                     derived_lemma = lemma
             index_to_lemmas_cache[index] = lemma, derived_lemma
@@ -1333,12 +1363,17 @@ class LinguisticObjectFactory:
                 if child_lemma is not None:
                     child_frequency_factor = get_frequency_factor_for_pole(False)
                     frequency_factor *= child_frequency_factor
+            parent_hyphen_normalized_lemma = self.semantic_analyzer.normalize_hyphens(parent_lemma)
+            if child_lemma is not None:
+                child_hyphen_normalized_lemma = self.semantic_analyzer.normalize_hyphens(child_lemma)
+            else:
+                child_hyphen_normalized_lemma = None
             if phraselet_label not in phraselet_labels_to_phraselet_infos:
                 phraselet_labels_to_phraselet_infos[phraselet_label] = PhraseletInfo(
-                    phraselet_label, phraselet_template.label, parent_lemma,
+                    phraselet_label, phraselet_template.label, parent_lemma, parent_hyphen_normalized_lemma,
                     parent_derived_lemma, parent_pos, parent_ent_type,
                     parent_is_initial_question_word, parent_has_initial_question_word_in_phrase,
-                    child_lemma, child_derived_lemma, child_pos, child_ent_type,
+                    child_lemma, child_hyphen_normalized_lemma, child_derived_lemma, child_pos, child_ent_type,
                     child_is_initial_question_word, child_has_initial_question_word_in_phrase,
                     created_without_matching_tags, is_reverse_only_parent_lemma, frequency_factor,
                     parent_frequency_factor, child_frequency_factor)
@@ -1372,7 +1407,7 @@ class LinguisticObjectFactory:
                     phraselet_label = ''.join((phraselet_template.label, ': ', derived_lemma))
                     if derived_lemma not in stop_lemmas and derived_lemma != 'ENTITYNOUN':
                         # ENTITYNOUN has to be excluded as single word although it is still
-                        # permitted as the child of a relation phraselet template
+                        # permitted within relation phraselet templates
                         add_new_phraselet_info(
                             phraselet_label, phraselet_template, not checking_tags,
                             None, lemma, derived_lemma, token.pos_, token.ent_type_,
@@ -1569,10 +1604,14 @@ class LinguisticObjectFactory:
                     phraselet_doc = phraselet_template.template_doc.copy()
                     phraselet_doc[phraselet_template.parent_index]._.holmes.lemma = \
                         phraselet_info.parent_lemma
+                    phraselet_doc[phraselet_template.parent_index]._.holmes.direct_matching_reprs = \
+                        phraselet_info.parent_direct_matching_reprs
                     phraselet_doc[phraselet_template.parent_index]._.holmes.derived_lemma = \
                         phraselet_info.parent_derived_lemma
+                    phraselet_doc[phraselet_template.parent_index]._.holmes.derivation_matching_reprs = \
+                        phraselet_info.parent_derivation_matching_reprs
                     phraselet_doc[phraselet_template.parent_index]._.holmes.ent_type = \
-                        phraselet_info.parent_ent_type
+                        phraselet_info.parent_ent_type                    
                     phraselet_doc[phraselet_template.parent_index]._.holmes.\
                         is_initial_question_word = \
                         phraselet_info.parent_is_initial_question_word
@@ -1582,8 +1621,12 @@ class LinguisticObjectFactory:
                     if phraselet_info.child_lemma is not None:
                         phraselet_doc[phraselet_template.child_index]._.holmes.lemma = \
                             phraselet_info.child_lemma
+                        phraselet_doc[phraselet_template.child_index]._.holmes.direct_matching_reprs = \
+                            phraselet_info.child_direct_matching_reprs
                         phraselet_doc[phraselet_template.child_index]._.holmes.derived_lemma = \
                             phraselet_info.child_derived_lemma
+                        phraselet_doc[phraselet_template.child_index]._.holmes.derivation_matching_reprs = \
+                            phraselet_info.child_derivation_matching_reprs
                         phraselet_doc[phraselet_template.child_index]._.holmes.ent_type = \
                             phraselet_info.child_ent_type
                         phraselet_doc[phraselet_template.child_index]._.holmes.\
@@ -1596,11 +1639,11 @@ class LinguisticObjectFactory:
                         'topic match phraselet', phraselet_doc,
                         create_phraselet_label(phraselet_info), phraselet_template,
                         phraselet_info.created_without_matching_tags,
-                        reverse_matching_frequency_threshold is not None and
+                        (reverse_matching_frequency_threshold is not None and
                         phraselet_info.parent_frequency_factor <
                         reverse_matching_frequency_threshold and
                         phraselet_info.child_lemma is not None and not
-                        phraselet_template.question,
+                        phraselet_template.question) or phraselet_info.parent_lemma == 'ENTITYNOUN',
                         phraselet_info.reverse_only_parent_lemma,
                         True)
             raise RuntimeError(''.join((
@@ -1806,8 +1849,8 @@ class SemanticMatchingHelper(ABC):
     question_answer_final_blacklist_deps = NotImplemented
 
     @abstractmethod
-    def question_word_matches(self, search_phrase_label:str, search_phrase_token:Token,
-            document_token:Token, document_vector, entity_label_to_vector_dict:dict,
+    def question_word_matches(self, search_phrase_token:Token,
+            document_token:Token, document_subword_index: Optional[int], document_vector, entity_label_to_vector_dict:dict,
             initial_question_word_embedding_match_threshold:float) -> bool:
         pass
 
@@ -1877,7 +1920,7 @@ class SemanticMatchingHelper(ABC):
     def get_reverse_dict_removing_document(self, reverse_dict: Dict[str, ReverseIndexValue], document_label: str) -> Dict[str, ReverseIndexValue]:
         new_reverse_dict = {}
         for entry in reverse_dict:
-            new_value = ([v for v in reverse_dict[entry] if v.corpus_document_index.document_label !=
+            new_value = ([riv for riv in reverse_dict[entry] if riv.corpus_word_position.document_label !=
                 document_label])
             if len(new_value) > 0:
                 new_reverse_dict[entry] = new_value

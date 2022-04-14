@@ -15,7 +15,7 @@ class DirectWordMatchingStrategy(WordMatchingStrategy):
 
     @staticmethod
     def _get_explanation(search_phrase_display_word: str) -> str:
-        return "".join(("Matches ", search_phrase_display_word, " directly."))
+        return "".join(("Matches ", search_phrase_display_word.upper(), " directly."))
 
     def match_multiwords(
         self,
@@ -34,7 +34,7 @@ class DirectWordMatchingStrategy(WordMatchingStrategy):
                 for document_representation in multiword.direct_matching_reprs:
                     if search_phrase_representation == document_representation:
                         search_phrase_display_word = (
-                            search_phrase_token._.holmes.lemma.upper()
+                            search_phrase_token._.holmes.lemma
                         )
                         return WordMatch(
                             search_phrase_token=search_phrase_token,
@@ -70,7 +70,7 @@ class DirectWordMatchingStrategy(WordMatchingStrategy):
             ) in document_token._.holmes.direct_matching_reprs:
                 if search_phrase_representation == document_representation:
                     search_phrase_display_word = (
-                        search_phrase_token._.holmes.lemma.upper()
+                        search_phrase_token._.holmes.lemma
                     )
                     return WordMatch(
                         search_phrase_token=search_phrase_token,
@@ -99,7 +99,7 @@ class DirectWordMatchingStrategy(WordMatchingStrategy):
             for document_representation in document_subword.direct_matching_reprs:
                 if search_phrase_representation == document_representation:
                     search_phrase_display_word = (
-                        search_phrase_token._.holmes.lemma.upper()
+                        search_phrase_token._.holmes.lemma
                     )
                     return WordMatch(
                         search_phrase_token=search_phrase_token,
@@ -128,7 +128,6 @@ class DirectWordMatchingStrategy(WordMatchingStrategy):
     ) -> None:
         for token in doc:
             for representation in token._.holmes.direct_matching_reprs:
-            
                 self.add_reverse_dict_entry(
                     reverse_dict,
                     document_label,

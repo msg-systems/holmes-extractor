@@ -11,7 +11,7 @@ class DerivationWordMatchingStrategy(WordMatchingStrategy):
 
     @staticmethod
     def _get_explanation(search_phrase_display_word: str) -> str:
-        return "".join(("Has a common stem with ", search_phrase_display_word, "."))
+        return "".join(("Has a common stem with ", search_phrase_display_word.upper(), "."))
 
     def match_multiwords(
         self,
@@ -44,7 +44,7 @@ class DerivationWordMatchingStrategy(WordMatchingStrategy):
                 for document_representation in document_reprs:
                     if search_phrase_representation == document_representation:
                         search_phrase_display_word = (
-                            search_phrase_token._.holmes.lemma.upper()
+                            search_phrase_token._.holmes.lemma
                         )
                         return WordMatch(
                             search_phrase_token=search_phrase_token,
@@ -92,7 +92,7 @@ class DerivationWordMatchingStrategy(WordMatchingStrategy):
             for document_representation in document_reprs:
                 if search_phrase_representation == document_representation:
                     search_phrase_display_word = (
-                        search_phrase_token._.holmes.lemma.upper()
+                        search_phrase_token._.holmes.lemma
                     )
                     return WordMatch(
                         search_phrase_token=search_phrase_token,
@@ -129,13 +129,13 @@ class DerivationWordMatchingStrategy(WordMatchingStrategy):
         if document_subword.derivation_matching_reprs is not None:
             document_reprs = document_subword.derivation_matching_reprs
         else:
-            document_reprs = document_subword.holmes.direct_matching_reprs
+            document_reprs = document_subword.direct_matching_reprs
 
         for search_phrase_representation in search_phrase_reprs:
             for document_representation in document_reprs:
                 if search_phrase_representation == document_representation:
                     search_phrase_display_word = (
-                        search_phrase_token._.holmes.lemma.upper()
+                        search_phrase_token._.holmes.lemma
                     )
                     return WordMatch(
                         search_phrase_token=search_phrase_token,

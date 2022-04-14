@@ -49,7 +49,7 @@ class GermanTopicMatchingTest(unittest.TestCase):
                            holmes_manager, word_embedding_match_threshold=0.42)
 
     def test_reverse_only_parent_lemma_aux_twoway(self):
-        self._check_equals("Der Esel hat ein Dach", "Der Esel hat ein Haus", 29,
+        self._check_equals("Der Esel hat ein Dach", "Der Esel hat ein Haus", 48,
                            holmes_manager, word_embedding_match_threshold=0.42)
 
     def test_reverse_only_parent_lemma_aux_auxiliary_threeway(self):
@@ -57,7 +57,7 @@ class GermanTopicMatchingTest(unittest.TestCase):
                            holmes_manager, word_embedding_match_threshold=0.42)
 
     def test_reverse_only_parent_lemma_aux_auxiliary_twoway(self):
-        self._check_equals("Der Esel hat ein Dach", "Der Esel wird ein Haus haben", 29,
+        self._check_equals("Der Esel hat ein Dach", "Der Esel wird ein Haus haben", 47,
                            holmes_manager, word_embedding_match_threshold=0.42)
 
     def test_reverse_only_parent_lemma_aux_modal_threeway(self):
@@ -65,7 +65,7 @@ class GermanTopicMatchingTest(unittest.TestCase):
                            holmes_manager, word_embedding_match_threshold=0.42)
 
     def test_reverse_only_parent_lemma_aux_modal_twoway(self):
-        self._check_equals("Der Esel hat ein Dach", "Der Esel soll ein Haus haben", 29,
+        self._check_equals("Der Esel hat ein Dach", "Der Esel soll ein Haus haben", 47,
                            holmes_manager, word_embedding_match_threshold=0.42)
 
     def test_reverse_only_parent_lemma_verb_threeway(self):
@@ -73,7 +73,7 @@ class GermanTopicMatchingTest(unittest.TestCase):
                            holmes_manager, word_embedding_match_threshold=0.42)
 
     def test_reverse_only_parent_lemma_verb_twoway(self):
-        self._check_equals("Der Esel macht ein Dach", "Der Esel macht ein Haus", 29,
+        self._check_equals("Der Esel macht ein Dach", "Der Esel macht ein Haus", 48,
                            holmes_manager, word_embedding_match_threshold=0.42)
 
     def test_reverse_only_parent_lemma_threeway_control(self):
