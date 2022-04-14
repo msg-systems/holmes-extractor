@@ -131,7 +131,6 @@ class Subword:
         self.derived_lemma = derived_lemma
         if derived_lemma != lemma:
             self.derivation_matching_reprs = [derived_lemma]
-            self.derivation_matching_reprs.extend(self.direct_matching_reprs)
         else:
             self.derivation_matching_reprs = None
         self.vector = vector
@@ -229,7 +228,6 @@ class MultiwordSpan:
             self.direct_matching_reprs.append(text)
         if derived_lemma != lemma:
             self.derivation_matching_reprs = [derived_lemma]
-            self.derivation_matching_reprs.extend(self.direct_matching_reprs)
         else:
             self.derivation_matching_reprs = None
         self.token_indexes = token_indexes
@@ -493,35 +491,16 @@ class PhraseletInfo:
             child_frequency_factor):
         self.label = label
         self.template_label = template_label
-
         self.parent_lemma = parent_lemma
-        self.parent_direct_matching_reprs = [parent_lemma]
-        if parent_lemma != parent_hyphen_normalized_lemma:
-            self.parent_direct_matching_reprs.append(parent_hyphen_normalized_lemma)
-        if parent_lemma != parent_derived_lemma:
-            self.parent_derivation_matching_reprs = [parent_derived_lemma]
-            self.parent_derivation_matching_reprs.extend(self.parent_direct_matching_reprs)
-        else:
-            self.parent_derivation_matching_reprs = None
+        self.parent_hyphen_normalized_lemma = parent_hyphen_normalized_lemma
         self.parent_derived_lemma = parent_derived_lemma
         self.parent_pos = parent_pos
         self.parent_ent_type = parent_ent_type
         self.parent_is_initial_question_word = parent_is_initial_question_word
         self.parent_has_initial_question_word_in_phrase = parent_has_initial_question_word_in_phrase
         self.child_lemma = child_lemma
+        self.child_hyphen_normalized_lemma = child_hyphen_normalized_lemma
         self.child_derived_lemma = child_derived_lemma
-        if self.child_lemma is not None:
-            self.child_direct_matching_reprs = [child_lemma]
-            if child_lemma != child_hyphen_normalized_lemma:
-                self.child_direct_matching_reprs.append(child_hyphen_normalized_lemma)
-            if child_lemma != child_derived_lemma:
-                self.child_derivation_matching_reprs = [child_derived_lemma]
-                self.child_derivation_matching_reprs.extend(self.child_direct_matching_reprs)
-            else:
-                self.child_derivation_matching_reprs = None
-        else:
-            self.child_direct_matching_reprs = None
-            self.child_derivation_matching_reprs = None
         self.child_pos = child_pos
         self.child_ent_type = child_ent_type
         self.child_is_initial_question_word = child_is_initial_question_word
@@ -531,35 +510,46 @@ class PhraseletInfo:
         self.frequency_factor = frequency_factor
         self.parent_frequency_factor = parent_frequency_factor
         self.child_frequency_factor = child_frequency_factor
-        self.hash = hash((
-            self.label, self.template_label, self.parent_lemma, self.parent_derived_lemma,
-            parent_hyphen_normalized_lemma,
-            self.parent_pos, self.parent_ent_type, self.parent_is_initial_question_word,
-            self.parent_has_initial_question_word_in_phrase, self.child_lemma,
-            self.child_derived_lemma, self.child_pos, self.child_ent_type,
-            child_hyphen_normalized_lemma,
-            self.child_is_initial_question_word, self.child_has_initial_question_word_in_phrase,
-            self.created_without_matching_tags, self.reverse_only_parent_lemma,
-            str(self.frequency_factor), str(self.parent_frequency_factor),
-            str(self.child_frequency_factor)))
+        self.set_parent_reprs()
+        self.set_child_reprs()
 
+    def set_parent_reprs(self):
+        self.parent_direct_matching_reprs = [self.parent_lemma]
+        if self.parent_lemma != self.parent_hyphen_normalized_lemma:
+            self.parent_direct_matching_reprs.append(self.parent_hyphen_normalized_lemma)
+        if self.parent_lemma != self.parent_derived_lemma:
+            self.parent_derivation_matching_reprs = [self.parent_derived_lemma]
+        else:
+            self.parent_derivation_matching_reprs = None
+
+    def set_child_reprs(self):
+        if self.child_lemma is not None:
+            self.child_direct_matching_reprs = [self.child_lemma]
+            if self.child_lemma != self.child_hyphen_normalized_lemma:
+                self.child_direct_matching_reprs.append(self.child_hyphen_normalized_lemma)
+            if self.child_lemma != self.child_derived_lemma:
+                self.child_derivation_matching_reprs = [self.child_derived_lemma]
+            else:
+                self.child_derivation_matching_reprs = None
+        else:
+            self.child_direct_matching_reprs = None
+            self.child_derivation_matching_reprs = None
+        
     def __eq__(self, other):
         return isinstance(other, PhraseletInfo) and \
             self.label == other.label and \
             self.template_label == other.template_label and \
             self.parent_lemma == other.parent_lemma and \
+            self.parent_hyphen_normalized_lemma == other.parent_hyphen_normalized_lemma and \
             self.parent_derived_lemma == other.parent_derived_lemma and \
-            self.parent_direct_matching_reprs == other.parent_direct_matching_reprs and \
-            self.parent_derivation_matching_reprs == other.parent_derivation_matching_reprs and \
             self.parent_pos == other.parent_pos and \
             self.parent_ent_type == other.parent_ent_type and \
             self.parent_is_initial_question_word == other.parent_is_initial_question_word and \
             self.parent_has_initial_question_word_in_phrase == \
             other.parent_has_initial_question_word_in_phrase and \
             self.child_lemma == other.child_lemma and \
+            self.child_hyphen_normalized_lemma == other.child_hyphen_normalized_lemma and \
             self.child_derived_lemma == other.child_derived_lemma and \
-            self.child_direct_matching_reprs == other.child_direct_matching_reprs and \
-            self.child_derivation_matching_reprs == other.child_derivation_matching_reprs and \
             self.child_pos == other.child_pos and \
             self.child_ent_type == other.child_ent_type and \
             self.child_is_initial_question_word == other.child_is_initial_question_word and \
@@ -572,7 +562,17 @@ class PhraseletInfo:
             str(self.child_frequency_factor) == str(other.child_frequency_factor)
 
     def __hash__(self):
-        return self.hash
+        return hash((
+            self.label, self.template_label, self.parent_lemma, self.parent_derived_lemma,
+            self.parent_hyphen_normalized_lemma,
+            self.parent_pos, self.parent_ent_type, self.parent_is_initial_question_word,
+            self.parent_has_initial_question_word_in_phrase, self.child_lemma,
+            self.child_derived_lemma, self.child_pos, self.child_ent_type,
+            self.child_hyphen_normalized_lemma,
+            self.child_is_initial_question_word, self.child_has_initial_question_word_in_phrase,
+            self.created_without_matching_tags, self.reverse_only_parent_lemma,
+            str(self.frequency_factor), str(self.parent_frequency_factor),
+            str(self.child_frequency_factor)))
 
 class SearchPhrase:
 
@@ -807,7 +807,6 @@ class SemanticAnalyzer(ABC):
                 direct_matching_reprs.append(token.text)
             if derived_lemma != lemma:
                 derivation_matching_reprs = [derived_lemma]
-                derivation_matching_reprs.extend(direct_matching_reprs)
             else:
                 derivation_matching_reprs = None
             lexeme = self.vectors_nlp.vocab[token.lemma_ if len(lemma.split()) > 1 else lemma]
@@ -1383,12 +1382,16 @@ class LinguisticObjectFactory:
                         existing_phraselet.parent_lemma, existing_phraselet.parent_pos,
                         parent_lemma, parent_pos):
                     existing_phraselet.parent_lemma = parent_lemma
+                    existing_phraselet.parent_hyphen_normalized_lemma = parent_hyphen_normalized_lemma
                     existing_phraselet.parent_pos = parent_pos
+                    existing_phraselet.set_parent_reprs()
                 if lemma_replacement_indicated(
                         existing_phraselet.child_lemma, existing_phraselet.child_pos, child_lemma,
                         child_pos):
                     existing_phraselet.child_lemma = child_lemma
+                    existing_phraselet.child_hyphen_normalized_lemma = child_hyphen_normalized_lemma
                     existing_phraselet.child_pos = child_pos
+                    existing_phraselet.set_child_reprs()
 
         def process_single_word_phraselet_templates(
                 token, subword_index, checking_tags, token_indexes_to_multiword_lemmas):

@@ -310,6 +310,10 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self._check_equals("A car with an ENTITYNOUN", "A vehicle with Richard Hudson", 5,
                            holmes_manager_coref)
 
+    def test_multiword_matching_with_hyphen_normalization(self):
+        self._check_equals("Richard Hudson speaks", "Richard-Hudson speaks",
+                           34, holmes_manager_coref)
+
     def test_relation_matching_suppressed(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document("A dog chases a cat. A dog sees a cat. A dog sees a cat. A person was chasing a person. A person chased a person.")

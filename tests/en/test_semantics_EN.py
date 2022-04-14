@@ -857,6 +857,14 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[3]._.holmes.string_representation_of_parents(),
                          '0:pobjp; 1:pobj')
 
+    def test_direct_matching_reprs_only_lemma(self):
+        doc = nlp("dog")
+        self.assertEqual(doc[0]._.holmes.direct_matching_reprs, ['dog'])
+
+    def test_direct_matching_reprs_text_and_lemma(self):
+        doc = nlp("dogs")
+        self.assertEqual(doc[0]._.holmes.direct_matching_reprs, ['dog', 'dogs'])
+
     def test_derived_lemma_from_dictionary(self):
         doc = nlp("A long imprisonment.")
         self.assertEqual(doc[2]._.holmes.derived_lemma, 'imprison')
@@ -924,6 +932,14 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
     def test_derived_lemma_and_lemma_identical(self):
         doc = nlp("vehicle.")
         self.assertEqual(doc[0]._.holmes.derived_lemma, 'vehicle')
+
+    def test_derivation_matching_reprs_only_lemma(self):
+        doc = nlp("dog")
+        self.assertEqual(doc[0]._.holmes.derivation_matching_reprs, None)
+
+    def test_derivation_matching_reprs_text_and_lemma(self):
+        doc = nlp("happiness")
+        self.assertEqual(doc[0]._.holmes.derivation_matching_reprs, ['happy'])
 
     def test_formerly_problematic_sentence_no_exception_thrown(self):
         nlp(

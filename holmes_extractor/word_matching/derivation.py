@@ -28,19 +28,19 @@ class DerivationWordMatchingStrategy(WordMatchingStrategy):
         ):
             return None
 
-        if search_phrase_token._.holmes.derivation_matching_reprs is not None:
-            search_phrase_reprs = search_phrase_token._.holmes.derivation_matching_reprs
-        else:
-            search_phrase_reprs = search_phrase_token._.holmes.direct_matching_reprs
+        for multiword in document_multiwords:
 
-        for (
-            search_phrase_representation
-        ) in search_phrase_token._.holmes.direct_matching_reprs:
-            for multiword in document_multiwords:
-                if multiword.derivation_matching_reprs is not None:
-                    document_reprs = multiword.derivation_matching_reprs
-                else:
-                    document_reprs = multiword.direct_matching_reprs
+            search_phrase_reprs = []
+            document_reprs = []
+
+            if (search_phrase_token._.holmes.derivation_matching_reprs is not None):
+                search_phrase_reprs.extend(search_phrase_token._.holmes.derivation_matching_reprs)
+                document_reprs.extend(multiword.direct_matching_reprs)
+            if (multiword.derivation_matching_reprs is not None):
+                document_reprs.extend(multiword.derivation_matching_reprs)
+                search_phrase_reprs.extend(search_phrase_token._.holmes.direct_matching_reprs)
+
+            for search_phrase_representation in search_phrase_reprs:
                 for document_representation in document_reprs:
                     if search_phrase_representation == document_representation:
                         search_phrase_display_word = (
@@ -72,21 +72,15 @@ class DerivationWordMatchingStrategy(WordMatchingStrategy):
         document_token: Token,
     ) -> Optional[WordMatch]:
 
-        if (
-            search_phrase_token._.holmes.derivation_matching_reprs is None
-            and document_token._.holmes.derivation_matching_reprs is None
-        ):
-            return None
+        search_phrase_reprs = []
+        document_reprs = []
 
-        if search_phrase_token._.holmes.derivation_matching_reprs is not None:
-            search_phrase_reprs = search_phrase_token._.holmes.derivation_matching_reprs
-        else:
-            search_phrase_reprs = search_phrase_token._.holmes.direct_matching_reprs
-
-        if document_token._.holmes.derivation_matching_reprs is not None:
-            document_reprs = document_token._.holmes.derivation_matching_reprs
-        else:
-            document_reprs = document_token._.holmes.direct_matching_reprs
+        if (search_phrase_token._.holmes.derivation_matching_reprs is not None):
+            search_phrase_reprs.extend(search_phrase_token._.holmes.derivation_matching_reprs)
+            document_reprs.extend(document_token._.holmes.direct_matching_reprs)
+        if (document_token._.holmes.derivation_matching_reprs is not None):
+            document_reprs.extend(document_token._.holmes.derivation_matching_reprs)
+            search_phrase_reprs.extend(search_phrase_token._.holmes.direct_matching_reprs)
 
         for search_phrase_representation in search_phrase_reprs:
             for document_representation in document_reprs:
@@ -115,21 +109,15 @@ class DerivationWordMatchingStrategy(WordMatchingStrategy):
         document_subword: Subword,
     ) -> Optional[WordMatch]:
 
-        if (
-            search_phrase_token._.holmes.derivation_matching_reprs is None
-            and document_subword.derivation_matching_reprs is None
-        ):
-            return None
+        search_phrase_reprs = []
+        document_reprs = []
 
-        if search_phrase_token._.holmes.derivation_matching_reprs is not None:
-            search_phrase_reprs = search_phrase_token._.holmes.derivation_matching_reprs
-        else:
-            search_phrase_reprs = search_phrase_token._.holmes.direct_matching_reprs
-
-        if document_subword.derivation_matching_reprs is not None:
-            document_reprs = document_subword.derivation_matching_reprs
-        else:
-            document_reprs = document_subword.direct_matching_reprs
+        if (search_phrase_token._.holmes.derivation_matching_reprs is not None):
+            search_phrase_reprs.extend(search_phrase_token._.holmes.derivation_matching_reprs)
+            document_reprs.extend(document_subword.direct_matching_reprs)
+        if (document_subword.derivation_matching_reprs is not None):
+            document_reprs.extend(document_subword.derivation_matching_reprs)
+            search_phrase_reprs.extend(search_phrase_token._.holmes.direct_matching_reprs)
 
         for search_phrase_representation in search_phrase_reprs:
             for document_representation in document_reprs:

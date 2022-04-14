@@ -19,7 +19,7 @@ symmetric_ontology_nocoref_holmes_manager = holmes.Manager(model='en_core_web_tr
                                                            number_of_workers=1)
 no_ontology_coref_holmes_manager = holmes.Manager(model='en_core_web_trf',
                                                   perform_coreference_resolution=True,
-                                                  number_of_workers=True)
+                                                  number_of_workers=1)
 
 
 class EnglishPhraseletProductionTest(unittest.TestCase):
@@ -395,6 +395,30 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                            ['governor-adjective: mimi momo-big', 'noun-noun: mimi momo-richard',
                             'word: mimi momo', 'word: richard', 'word: big'], False, True)
 
+    def test_matching_reprs(self):
+        dict = self._get_phraselet_dict(no_ontology_coref_holmes_manager,
+                                        "The sun shone. They had an anonymous discussion.")
+        word_phraselet_1 = dict['word: sun']
+        self.assertEqual(word_phraselet_1.parent_direct_matching_reprs, ['sun'])
+        self.assertEqual(word_phraselet_1.parent_derivation_matching_reprs, None)
+        self.assertEqual(word_phraselet_1.child_direct_matching_reprs, None)
+        self.assertEqual(word_phraselet_1.child_derivation_matching_reprs, None)
+        word_phraselet_2 = dict['word: discuss']
+        self.assertEqual(word_phraselet_2.parent_direct_matching_reprs, ['discussion'])
+        self.assertEqual(word_phraselet_2.parent_derivation_matching_reprs, ['discuss'])
+        self.assertEqual(word_phraselet_2.child_direct_matching_reprs, None)
+        self.assertEqual(word_phraselet_2.child_derivation_matching_reprs, None)
+        relation_phraselet_1 = dict['predicate-actor: shine-sun']
+        self.assertEqual(relation_phraselet_1.parent_direct_matching_reprs, ['shine'])
+        self.assertEqual(relation_phraselet_1.parent_derivation_matching_reprs, None)
+        self.assertEqual(relation_phraselet_1.child_direct_matching_reprs, ['sun'])
+        self.assertEqual(relation_phraselet_1.child_derivation_matching_reprs, None)
+        relation_phraselet_2 = dict['governor-adjective: discuss-anonymity']
+        self.assertEqual(relation_phraselet_2.parent_direct_matching_reprs, ['discussion'])
+        self.assertEqual(relation_phraselet_2.parent_derivation_matching_reprs, ['discuss'])
+        self.assertEqual(relation_phraselet_2.child_direct_matching_reprs, ['anonymous'])
+        self.assertEqual(relation_phraselet_2.child_derivation_matching_reprs, ['anonymity'])        
+
     def test_noun_lemmas_preferred_noun_lemma_first(self):
         dict = self._get_phraselet_dict(no_ontology_coref_holmes_manager,
                                         "They discussed anonymity. They wanted to use anonymous.")
@@ -653,3 +677,72 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
         self.assertEqual(dict['predicate-actor: come-richard'].child_ent_type, 'PERSON')
         self.assertEqual(dict['governor-adjective: richard-big'].parent_ent_type, 'PERSON')
         self.assertEqual(dict['governor-adjective: richard-big'].child_ent_type, '')
+
+    def test_parent_lemma_replacement(self):
+        ontology_holmes_manager.remove_all_search_phrases()
+        ontology_holmes_manager.parse_and_register_document("They discussed loudly", '1')
+        doc = ontology_holmes_manager.get_document('1')
+        phraselet_labels_to_phraselet_infos = {}
+        ontology_holmes_manager.linguistic_object_factory.add_phraselets_to_dict(doc,
+                                                          phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
+                                                          replace_with_hypernym_ancestors=False,
+                                                          match_all_words=False,
+                                                          ignore_relation_phraselets=False,
+                                                          include_reverse_only=False,
+                                                          stop_lemmas=[],
+                                                          stop_tags=[],
+                                                          reverse_only_parent_lemmas=[],
+                                                          words_to_corpus_frequencies=None,
+                                                          maximum_corpus_frequency=None,
+                                                          process_initial_question_words=False)
+        self.assertEqual(phraselet_labels_to_phraselet_infos['governor-adjective: discuss-loud'].parent_lemma, 'discuss')
+        ontology_holmes_manager.parse_and_register_document("A loud discussion", '2')
+        doc = ontology_holmes_manager.get_document('2')
+        ontology_holmes_manager.linguistic_object_factory.add_phraselets_to_dict(doc,
+                                                          phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
+                                                          replace_with_hypernym_ancestors=False,
+                                                          match_all_words=False,
+                                                          ignore_relation_phraselets=False,
+                                                          include_reverse_only=False,
+                                                          stop_lemmas=[],
+                                                          stop_tags=[],
+                                                          reverse_only_parent_lemmas=[],
+                                                          words_to_corpus_frequencies=None,
+                                                          maximum_corpus_frequency=None,
+                                                          process_initial_question_words=False)
+        self.assertEqual(phraselet_labels_to_phraselet_infos['governor-adjective: discuss-loud'].parent_lemma, 'discussion')
+        
+    def test_child_lemma_replacement(self):
+        ontology_holmes_manager.remove_all_search_phrases()
+        ontology_holmes_manager.parse_and_register_document("They started to discuss", '3')
+        doc = ontology_holmes_manager.get_document('3')
+        phraselet_labels_to_phraselet_infos = {}
+        ontology_holmes_manager.linguistic_object_factory.add_phraselets_to_dict(doc,
+                                                          phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
+                                                          replace_with_hypernym_ancestors=False,
+                                                          match_all_words=False,
+                                                          ignore_relation_phraselets=False,
+                                                          include_reverse_only=False,
+                                                          stop_lemmas=[],
+                                                          stop_tags=[],
+                                                          reverse_only_parent_lemmas=[],
+                                                          words_to_corpus_frequencies=None,
+                                                          maximum_corpus_frequency=None,
+                                                          process_initial_question_words=False)
+        self.assertEqual(phraselet_labels_to_phraselet_infos['predicate-patient: start-discuss'].child_lemma, 'discuss')
+        ontology_holmes_manager.parse_and_register_document("They started a discussion", '4')
+        doc = ontology_holmes_manager.get_document('4')
+        ontology_holmes_manager.linguistic_object_factory.add_phraselets_to_dict(doc,
+                                                          phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
+                                                          replace_with_hypernym_ancestors=False,
+                                                          match_all_words=False,
+                                                          ignore_relation_phraselets=False,
+                                                          include_reverse_only=False,
+                                                          stop_lemmas=[],
+                                                          stop_tags=[],
+                                                          reverse_only_parent_lemmas=[],
+                                                          words_to_corpus_frequencies=None,
+                                                          maximum_corpus_frequency=None,
+                                                          process_initial_question_words=False)
+        self.assertEqual(phraselet_labels_to_phraselet_infos['predicate-patient: start-discuss'].child_lemma, 'discussion')
+        

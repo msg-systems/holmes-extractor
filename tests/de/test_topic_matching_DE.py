@@ -25,6 +25,9 @@ class GermanTopicMatchingTest(unittest.TestCase):
     def test_direct_matching(self):
         self._check_equals("Eine Pflanze wächst", "Eine Pflanze wächst", 34)
 
+    def test_direct_matching_with_hyphen_normalization(self):
+        self._check_equals("Ein Grünhaus steht", "Ein Grün-Haus steht", 34)
+
     def test_direct_matching_nonsense_word(self):
         self._check_equals("Ein Gegwghg wächst", "Ein Gegwghg wächst", 34)
 
