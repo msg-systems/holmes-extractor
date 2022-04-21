@@ -16,10 +16,10 @@ class EmbeddingWordMatchingStrategy(WordMatchingStrategy):
             "% similar to ", search_phrase_display_word.upper(), "."))
 
 
-    def __init__(self, semantic_matching_helper, overall_similarity_threshold, initial_question_word_overall_similarity_threshold):
+    def __init__(self, semantic_matching_helper, perform_coreference_resolution, overall_similarity_threshold, initial_question_word_overall_similarity_threshold):
         self.overall_similarity_threshold = overall_similarity_threshold
         self.initial_question_word_overall_similarity_threshold = initial_question_word_overall_similarity_threshold
-        super().__init__(semantic_matching_helper)
+        super().__init__(semantic_matching_helper, perform_coreference_resolution)
 
     def match_token(
         self,
@@ -61,6 +61,7 @@ class EmbeddingWordMatchingStrategy(WordMatchingStrategy):
                         document_subword=None,
                         document_word=document_token.lemma_,
                         word_match_type=self.WORD_MATCH_TYPE_LABEL,
+                        extracted_word=self.get_extracted_word_for_token(document_token, document_token._.holmes.lemma),
                         explanation=self._get_explanation(similarity_measure, search_phrase_display_word),
                     )
                     word_match.similarity_measure = similarity_measure

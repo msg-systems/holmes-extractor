@@ -86,7 +86,7 @@ class TopicMatcher:
             reverse_only_relation_score, single_word_score, single_word_any_tag_score,
             initial_question_word_answer_score, initial_question_word_behaviour,
             different_match_cutoff_score, overlapping_relation_multiplier, embedding_penalty,
-            relation_matching_frequency_threshold,
+            ontology_penalty, relation_matching_frequency_threshold,
             embedding_matching_frequency_threshold, sideways_match_extent,
             only_one_result_per_document, number_of_results, document_label_filter,
             use_frequency_factor, entity_label_to_vector_dict):
@@ -110,6 +110,7 @@ class TopicMatcher:
         self.different_match_cutoff_score = different_match_cutoff_score
         self.overlapping_relation_multiplier = overlapping_relation_multiplier
         self.embedding_penalty = embedding_penalty
+        self.ontology_penalty = ontology_penalty
         self.relation_matching_frequency_threshold = relation_matching_frequency_threshold
         self.relation_matching_frequency_threshold = \
             relation_matching_frequency_threshold
@@ -125,10 +126,10 @@ class TopicMatcher:
 
         word_matching_strategies = self.semantic_matching_helper.main_word_matching_strategies[:]
         if overall_similarity_threshold < 1.0 or (process_initial_question_words and initial_question_word_overall_similarity_threshold < 1.0):
-            word_matching_strategies.append(EmbeddingWordMatchingStrategy(self.semantic_matching_helper, overall_similarity_threshold, initial_question_word_overall_similarity_threshold if process_initial_question_words else overall_similarity_threshold))
-            word_matching_strategies.append(EntityEmbeddingWordMatchingStrategy(self.semantic_matching_helper, overall_similarity_threshold, initial_question_word_overall_similarity_threshold if process_initial_question_words else overall_similarity_threshold, entity_label_to_vector_dict))
+            word_matching_strategies.append(EmbeddingWordMatchingStrategy(self.semantic_matching_helper, structural_matcher.perform_coreference_resolution, overall_similarity_threshold, initial_question_word_overall_similarity_threshold if process_initial_question_words else overall_similarity_threshold))
+            word_matching_strategies.append(EntityEmbeddingWordMatchingStrategy(self.semantic_matching_helper, structural_matcher.perform_coreference_resolution, overall_similarity_threshold, initial_question_word_overall_similarity_threshold if process_initial_question_words else overall_similarity_threshold, entity_label_to_vector_dict))
         if process_initial_question_words:
-            word_matching_strategies.append(QuestionWordMatchingStrategy(self.semantic_matching_helper, initial_question_word_overall_similarity_threshold, entity_label_to_vector_dict))
+            word_matching_strategies.append(QuestionWordMatchingStrategy(self.semantic_matching_helper, structural_matcher.perform_coreference_resolution, initial_question_word_overall_similarity_threshold, entity_label_to_vector_dict))
         
         # First get single-word matches
         structural_matches = self.structural_matcher.match(
@@ -667,6 +668,9 @@ class TopicMatcher:
             overall_similarity_measure = float(match.overall_similarity_measure)
             if overall_similarity_measure < 1.0:
                 this_match_score *= self.embedding_penalty * overall_similarity_measure
+            for word_match in (word_match for word_match in match.word_matches \
+                    if word_match.word_match_type == 'ontology'):
+                this_match_score *= (self.ontology_penalty ** (abs(word_match.depth) + 1))
             if match.search_phrase_label in phraselet_labels_to_phraselet_activation_trackers:
                 phraselet_activation_tracker = phraselet_labels_to_phraselet_activation_trackers[
                     match.search_phrase_label]

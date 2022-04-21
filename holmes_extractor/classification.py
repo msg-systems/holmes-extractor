@@ -883,7 +883,11 @@ class SupervisedTopicClassifier:
                     )
                 )
             )
+        self.structural_matcher.ontology = model.structural_matcher.ontology
+        self.linguistic_object_factory.ontology = model.structural_matcher.ontology
         self.semantic_matching_helper = self.structural_matcher.semantic_matching_helper
+        self.semantic_matching_helper.ontology = model.structural_matcher.ontology
+        self.semantic_matching_helper.ontology_reverse_derivational_dict = self.linguistic_object_factory.get_ontology_reverse_derivational_dict()
         self.phraselet_labels_to_search_phrases = (
             self.linguistic_object_factory.create_search_phrases_from_phraselet_infos(
                 model.phraselet_infos

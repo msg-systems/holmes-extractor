@@ -11,7 +11,9 @@ class DerivationWordMatchingStrategy(WordMatchingStrategy):
 
     @staticmethod
     def _get_explanation(search_phrase_display_word: str) -> str:
-        return "".join(("Has a common stem with ", search_phrase_display_word.upper(), "."))
+        return "".join(
+            ("Has a common stem with ", search_phrase_display_word.upper(), ".")
+        )
 
     def match_multiwords(
         self,
@@ -33,19 +35,21 @@ class DerivationWordMatchingStrategy(WordMatchingStrategy):
             search_phrase_reprs = []
             document_reprs = []
 
-            if (search_phrase_token._.holmes.derivation_matching_reprs is not None):
-                search_phrase_reprs.extend(search_phrase_token._.holmes.derivation_matching_reprs)
+            if search_phrase_token._.holmes.derivation_matching_reprs is not None:
+                search_phrase_reprs.extend(
+                    search_phrase_token._.holmes.derivation_matching_reprs
+                )
                 document_reprs.extend(multiword.direct_matching_reprs)
-            if (multiword.derivation_matching_reprs is not None):
+            if multiword.derivation_matching_reprs is not None:
                 document_reprs.extend(multiword.derivation_matching_reprs)
-                search_phrase_reprs.extend(search_phrase_token._.holmes.direct_matching_reprs)
+                search_phrase_reprs.extend(
+                    search_phrase_token._.holmes.direct_matching_reprs
+                )
 
             for search_phrase_representation in search_phrase_reprs:
                 for document_representation in document_reprs:
                     if search_phrase_representation == document_representation:
-                        search_phrase_display_word = (
-                            search_phrase_token._.holmes.lemma
-                        )
+                        search_phrase_display_word = search_phrase_token._.holmes.lemma
                         return WordMatch(
                             search_phrase_token=search_phrase_token,
                             search_phrase_word=search_phrase_representation,
@@ -75,19 +79,21 @@ class DerivationWordMatchingStrategy(WordMatchingStrategy):
         search_phrase_reprs = []
         document_reprs = []
 
-        if (search_phrase_token._.holmes.derivation_matching_reprs is not None):
-            search_phrase_reprs.extend(search_phrase_token._.holmes.derivation_matching_reprs)
+        if search_phrase_token._.holmes.derivation_matching_reprs is not None:
+            search_phrase_reprs.extend(
+                search_phrase_token._.holmes.derivation_matching_reprs
+            )
             document_reprs.extend(document_token._.holmes.direct_matching_reprs)
-        if (document_token._.holmes.derivation_matching_reprs is not None):
+        if document_token._.holmes.derivation_matching_reprs is not None:
             document_reprs.extend(document_token._.holmes.derivation_matching_reprs)
-            search_phrase_reprs.extend(search_phrase_token._.holmes.direct_matching_reprs)
+            search_phrase_reprs.extend(
+                search_phrase_token._.holmes.direct_matching_reprs
+            )
 
         for search_phrase_representation in search_phrase_reprs:
             for document_representation in document_reprs:
                 if search_phrase_representation == document_representation:
-                    search_phrase_display_word = (
-                        search_phrase_token._.holmes.lemma
-                    )
+                    search_phrase_display_word = search_phrase_token._.holmes.lemma
                     return WordMatch(
                         search_phrase_token=search_phrase_token,
                         search_phrase_word=search_phrase_representation,
@@ -97,6 +103,7 @@ class DerivationWordMatchingStrategy(WordMatchingStrategy):
                         document_subword=None,
                         document_word=document_representation,
                         word_match_type=self.WORD_MATCH_TYPE_LABEL,
+                        extracted_word = self.get_extracted_word_for_token(document_token, document_representation),
                         explanation=self._get_explanation(search_phrase_display_word),
                     )
         return None
@@ -112,19 +119,21 @@ class DerivationWordMatchingStrategy(WordMatchingStrategy):
         search_phrase_reprs = []
         document_reprs = []
 
-        if (search_phrase_token._.holmes.derivation_matching_reprs is not None):
-            search_phrase_reprs.extend(search_phrase_token._.holmes.derivation_matching_reprs)
+        if search_phrase_token._.holmes.derivation_matching_reprs is not None:
+            search_phrase_reprs.extend(
+                search_phrase_token._.holmes.derivation_matching_reprs
+            )
             document_reprs.extend(document_subword.direct_matching_reprs)
-        if (document_subword.derivation_matching_reprs is not None):
+        if document_subword.derivation_matching_reprs is not None:
             document_reprs.extend(document_subword.derivation_matching_reprs)
-            search_phrase_reprs.extend(search_phrase_token._.holmes.direct_matching_reprs)
+            search_phrase_reprs.extend(
+                search_phrase_token._.holmes.direct_matching_reprs
+            )
 
         for search_phrase_representation in search_phrase_reprs:
             for document_representation in document_reprs:
                 if search_phrase_representation == document_representation:
-                    search_phrase_display_word = (
-                        search_phrase_token._.holmes.lemma
-                    )
+                    search_phrase_display_word = search_phrase_token._.holmes.lemma
                     return WordMatch(
                         search_phrase_token=search_phrase_token,
                         search_phrase_word=search_phrase_representation,
@@ -145,7 +154,6 @@ class DerivationWordMatchingStrategy(WordMatchingStrategy):
         ):
             search_phrase.add_word_information(
                 search_phrase.root_token._.holmes.derived_lemma,
-                0,
             )
 
     def add_reverse_dict_entries(

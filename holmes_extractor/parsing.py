@@ -9,6 +9,7 @@ import srsly
 import pkg_resources
 from numpy import dot
 from numpy.linalg import norm
+from holmes_extractor.ontology import Ontology
 from spacy.tokens import Token, Doc
 from .errors import WrongModelDeserializationError, WrongVersionDeserializationError,\
         DocumentTooBigError, SearchPhraseContainsNegationError,\
@@ -274,6 +275,7 @@ class HolmesDictionary:
 
     index -- the index of the token
     lemma -- the value returned from *._.holmes.lemma* for the token.
+    hyphen_normalized_lemma -- a hyphen-normalized version of *lemma*.
     derived_lemma -- the value returned from *._.holmes.derived_lemma for the token; where relevant,
         another lemma with which *lemma* is derivationally related and which can also be useful for
         matching in some usecases; otherwise the same value as *._.holmes.lemma*.
@@ -290,9 +292,10 @@ class HolmesDictionary:
         vector for the lexeme.
     """
 
-    def __init__(self, index, lemma, derived_lemma, direct_matching_reprs, derivation_matching_reprs, vector):
+    def __init__(self, index, lemma, hyphen_normalized_lemma, derived_lemma, direct_matching_reprs, derivation_matching_reprs, vector):
         self.index = index
         self.lemma = lemma
+        self.hyphen_normalized_lemma = hyphen_normalized_lemma
         self.derived_lemma = derived_lemma
         self.direct_matching_reprs = direct_matching_reprs
         self.derivation_matching_reprs = derivation_matching_reprs
@@ -617,7 +620,6 @@ class SearchPhrase:
         self.treat_as_reverse_only_during_initial_relation_matching = \
             treat_as_reverse_only_during_initial_relation_matching
         self.words_matching_root_token: List[str] = []
-        self.root_word_to_match_info_dict: Dict[str, int] = {}
         self.has_single_matchable_word = has_single_matchable_word#len(matchable_token_indexes) == 1
 
     @property
@@ -628,11 +630,9 @@ class SearchPhrase:
     def root_token(self):
         return self.doc[self.root_token_index]
 
-    def add_word_information(self, word:str, depth:int):
+    def add_word_information(self, word:str):
         if word not in self.words_matching_root_token:
             self.words_matching_root_token.append(word)
-        if word not in self.root_word_to_match_info_dict:
-            self.root_word_to_match_info_dict[word] = depth
 
     def pack(self):
         self.serialized_doc = self.doc.to_bytes()
@@ -811,7 +811,7 @@ class SemanticAnalyzer(ABC):
                 derivation_matching_reprs = None
             lexeme = self.vectors_nlp.vocab[token.lemma_ if len(lemma.split()) > 1 else lemma]
             vector = lexeme.vector if lexeme.has_vector and lexeme.vector_norm > 0 else None
-            token._.set('holmes', HolmesDictionary(token.i, lemma, derived_lemma, direct_matching_reprs, 
+            token._.set('holmes', HolmesDictionary(token.i, lemma, hyphen_normalized_lemma, derived_lemma, direct_matching_reprs, 
                 derivation_matching_reprs, vector))
         for token in spacy_doc:
             self.set_negation(token)
@@ -917,6 +917,14 @@ class SemanticAnalyzer(ABC):
 
     def is_interrogative_pronoun(self, token:Token):
         return token.tag_ in self.interrogative_pronoun_tags
+
+    def potential_multiword_derived_holmes_lemma(self, lemma):
+        return_words = []
+        for word in lemma.split():
+            derived_word = self.derived_holmes_lemma(None, word)
+            return_words.append(derived_word if derived_word is not None else word)
+        return " ".join(return_words)
+
 
     def derived_holmes_lemma(self, token, lemma):
         if lemma in self.derivational_dictionary:
@@ -1202,7 +1210,7 @@ class SemanticAnalyzer(ABC):
                     token.doc[inner_pointer].text == '-'):
                 if token.doc[inner_pointer].text != '-':
                     working_text = ' '.join((working_text, token.doc[inner_pointer].text))
-                    working_hyphen_normalized_lemma = ' '.join((working_hyphen_normalized_lemma, self.normalize_hyphens(token.doc[inner_pointer]._.holmes.lemma)))
+                    working_hyphen_normalized_lemma = ' '.join((working_hyphen_normalized_lemma, token.doc[inner_pointer]._.holmes.hyphen_normalized_lemma))
                     working_lemma = ' '.join((
                         working_lemma, token.doc[inner_pointer]._.holmes.lemma))
                     this_token_derived_lemma = token.doc[inner_pointer]._.holmes.derived_lemma
@@ -1226,13 +1234,59 @@ class SemanticAnalyzer(ABC):
     def normalize_hyphens(self, word):
         pass
 
+    def update_ontology(self, ontology: Ontology):
+        """During structural matching, a lemma or derived lemma matches any words in the ontology
+            that yield the same word as their derived lemmas. This method generates a dictionary
+            from derived lemmas to ontology words that yield them to facilitate such matching.
+        """
+        for entries in ontology.match_dict.values():
+            for entry in entries:
+                entry.repr = self.potential_multiword_derived_holmes_lemma(entry.repr)
+        for key in ontology.match_dict.copy():
+            derived_key = self.potential_multiword_derived_holmes_lemma(key)
+            if derived_key not in ontology.match_dict:
+                ontology.match_dict[derived_key] = ontology.match_dict[key]
+        ontology.refresh_words()
+
+    def get_ontology_reverse_derivational_dict(self, ontology):
+        """During structural matching, a lemma or derived lemma matches any words in the ontology
+            that yield the same word as their derived lemmas. This method generates a dictionary
+            from derived lemmas to ontology words that yield them to facilitate such matching.
+        """
+        ontology_reverse_derivational_dict = {}
+        for ontology_word in ontology.words:
+            derived_lemmas = []
+            normalized_ontology_word = \
+                self.normalize_hyphens(ontology_word)
+            for textual_word in normalized_ontology_word.split():
+                derived_lemma = self.derived_holmes_lemma(
+                    None, textual_word.lower())
+                if derived_lemma is None:
+                    derived_lemma = textual_word
+                derived_lemmas.append(derived_lemma)
+            derived_ontology_word = ' '.join(derived_lemmas)
+            if derived_ontology_word != ontology_word:
+                if derived_ontology_word in ontology_reverse_derivational_dict:
+                    ontology_reverse_derivational_dict[derived_ontology_word].append(
+                        ontology_word)
+                else:
+                    ontology_reverse_derivational_dict[derived_ontology_word] = [ontology_word]
+        # sort entry lists to ensure deterministic behaviour
+        for derived_ontology_word in ontology_reverse_derivational_dict:
+            ontology_reverse_derivational_dict[derived_ontology_word] = \
+                sorted(ontology_reverse_derivational_dict[derived_ontology_word])
+        return ontology_reverse_derivational_dict
+
+
+
 class LinguisticObjectFactory:
     """ Factory for search phrases and topic matching phraselets. """
 
     def __init__(
             self, semantic_analyzer, semantic_matching_helper, 
             overall_similarity_threshold, embedding_based_matching_on_root_words,
-            analyze_derivational_morphology, perform_coreference_resolution):
+            analyze_derivational_morphology, perform_coreference_resolution, ontology,
+            ontology_reverse_derivational_dict):
         """Args:
 
         semantic_analyzer -- the *SemanticAnalyzer* object to use
@@ -1248,6 +1302,8 @@ class LinguisticObjectFactory:
         analyze_derivational_morphology -- *True* if matching should be attempted between different
             words from the same word family. Defaults to *True*.
         perform_coreference_resolution -- *True* if coreference resolution should be performed.
+        ontology -- an *Ontology* object, or *None* if no ontology is in use.
+        ontology_reverse_derivational_dict ...
         """
         self.semantic_analyzer = semantic_analyzer
         self.semantic_matching_helper = semantic_matching_helper
@@ -1255,6 +1311,9 @@ class LinguisticObjectFactory:
         self.embedding_based_matching_on_root_words = embedding_based_matching_on_root_words
         self.analyze_derivational_morphology = analyze_derivational_morphology
         self.perform_coreference_resolution = perform_coreference_resolution
+        self.ontology = ontology
+        self.ontology_reverse_derivational_dict = ontology_reverse_derivational_dict
+        
 
     def add_phraselets_to_dict(
             self, doc, *, phraselet_labels_to_phraselet_infos,
@@ -1288,7 +1347,6 @@ class LinguisticObjectFactory:
         process_initial_question_words -- *True* if interrogative pronouns are permitted within
             phraselets.
         """
-
         index_to_lemmas_cache = {}
         def get_lemmas_from_index(index):
             """ Returns the lemma and the derived lemma. Phraselets form a special case where
@@ -1308,8 +1366,7 @@ class LinguisticObjectFactory:
             if index.is_subword():
                 lemma = token._.holmes.subwords[index.subword_index].lemma
                 if self.analyze_derivational_morphology:
-                    derived_lemma = token._.holmes.subwords[index.subword_index].\
-                        derived_lemma
+                    derived_lemma = token._.holmes.subwords[index.subword_index].derived_lemma
                 else:
                     derived_lemma = lemma
             else:
@@ -1318,7 +1375,20 @@ class LinguisticObjectFactory:
                     derived_lemma = token._.holmes.derived_lemma
                 else:
                     derived_lemma = lemma
+            if self.ontology is not None and not self.ontology.contains_word(lemma):
+                    if self.ontology.contains_word(token.text.lower()):
+                        lemma = derived_lemma = token.text.lower()
+                    # ontology contains text but not lemma, so return text
+            if self.ontology is not None and self.analyze_derivational_morphology and derived_lemma in self.ontology_reverse_derivational_dict:
+                derived_lemma = self.ontology_reverse_derivational_dict[derived_lemma][0]
             index_to_lemmas_cache[index] = lemma, derived_lemma
+            return lemma, derived_lemma
+
+        def replace_lemmas_with_most_general_ancestor(lemma, derived_lemma):
+            new_derived_lemma = self.ontology.get_most_general_hypernym_ancestor(
+                derived_lemma).lower()
+            if derived_lemma != new_derived_lemma:
+                lemma = derived_lemma = new_derived_lemma
             return lemma, derived_lemma
 
         def lemma_replacement_indicated(existing_lemma, existing_pos, new_lemma, new_pos):
@@ -1344,6 +1414,11 @@ class LinguisticObjectFactory:
                 original_word_set = {parent_lemma, parent_derived_lemma} if parent else \
                     {child_lemma, child_derived_lemma}
                 word_set = original_word_set.copy()
+                if self.ontology is not None:
+                    for word in original_word_set:
+                        for entry in \
+                                self.ontology.get_matching_entries(word):
+                            word_set.add(entry.repr)
                 frequencies = []
                 for word in word_set:
                     if word in words_to_corpus_frequencies:
@@ -1394,7 +1469,7 @@ class LinguisticObjectFactory:
                     existing_phraselet.set_child_reprs()
 
         def process_single_word_phraselet_templates(
-                token, subword_index, checking_tags, token_indexes_to_multiword_lemmas):
+                token, subword_index, checking_tags, token_indexes_to_multiwords):
             for phraselet_template in (
                     phraselet_template for phraselet_template in
                     self.semantic_matching_helper.local_phraselet_templates if
@@ -1403,10 +1478,13 @@ class LinguisticObjectFactory:
                         # see note below for explanation
                 if (not checking_tags or token.tag_ in phraselet_template.parent_tags) and \
                         token.tag_ not in stop_tags:
-                    if token.i in token_indexes_to_multiword_lemmas and not match_all_words:
-                        lemma = derived_lemma = token_indexes_to_multiword_lemmas[token.i]
+                    if token.i in token_indexes_to_multiwords and not match_all_words:
+                        lemma = derived_lemma = token_indexes_to_multiwords[token.i]
                     else:
                         lemma, derived_lemma = get_lemmas_from_index(Index(token.i, subword_index))
+                    if self.ontology is not None and replace_with_hypernym_ancestors:
+                        lemma, derived_lemma = replace_lemmas_with_most_general_ancestor(
+                            lemma, derived_lemma)
                     phraselet_label = ''.join((phraselet_template.label, ': ', derived_lemma))
                     if derived_lemma not in stop_lemmas and derived_lemma != 'ENTITYNOUN':
                         # ENTITYNOUN has to be excluded as single word although it is still
@@ -1434,22 +1512,34 @@ class LinguisticObjectFactory:
                         subword.containing_token_index != token.i]) > 0:
                     index_list.remove(index)
 
-        token_indexes_to_multiword_lemmas = {}
+        token_indexes_to_multiwords = {}
         token_indexes_within_multiwords_to_ignore = []
         for token in (token for token in doc if len(token._.holmes.lemma.split()) == 1):
-            entity_defined_multiword, indexes = \
-                self.semantic_matching_helper.get_entity_defined_multiword(token)
-            if entity_defined_multiword is not None:
-                for index in indexes:
-                    if index == token.i:
-                        token_indexes_to_multiword_lemmas[token.i] = entity_defined_multiword.lower()
-                    else:
-                        token_indexes_within_multiwords_to_ignore.append(index)
+            odm = None
+            if self.ontology is not None:
+                odm = self.semantic_matching_helper.get_ontology_defined_multiword(token, self.ontology)
+                if odm is not None:
+                    for index in odm.token_indexes:
+                        if index == token.i:
+                            multiword_to_use = odm.text.lower()
+                            if multiword_to_use in self.ontology_reverse_derivational_dict:
+                                multiword_to_use = self.ontology_reverse_derivational_dict[multiword_to_use][0]
+                            token_indexes_to_multiwords[index] = multiword_to_use
+                        else:
+                            token_indexes_within_multiwords_to_ignore.append(index)            
+            if odm is None:
+                edm = self.semantic_matching_helper.get_entity_defined_multiword(token)
+                if edm is not None:
+                    for index in edm.token_indexes:
+                        if index == token.i:
+                            token_indexes_to_multiwords[index] = edm.text
+                        else:
+                            token_indexes_within_multiwords_to_ignore.append(index)
         for token in doc:
             if token.i in token_indexes_within_multiwords_to_ignore:
                 if match_all_words:
                     process_single_word_phraselet_templates(
-                        token, None, False, token_indexes_to_multiword_lemmas)
+                        token, None, False, token_indexes_to_multiwords)
                 continue
             if len([
                     subword for subword in token._.holmes.subwords if
@@ -1457,13 +1547,13 @@ class LinguisticObjectFactory:
                 # whole single words involved in subword conjunction should not be included as
                 # these are partial words including hyphens.
                 process_single_word_phraselet_templates(
-                    token, None, not match_all_words, token_indexes_to_multiword_lemmas)
+                    token, None, not match_all_words, token_indexes_to_multiwords)
             if match_all_words:
                 for subword in (
                         subword for subword in token._.holmes.subwords if
                         token.i == subword.containing_token_index):
                     process_single_word_phraselet_templates(
-                        token, subword.index, False, token_indexes_to_multiword_lemmas)
+                        token, subword.index, False, token_indexes_to_multiwords)
             if ignore_relation_phraselets:
                 continue
             if self.perform_coreference_resolution:
@@ -1501,17 +1591,26 @@ class LinguisticObjectFactory:
                                     (doc[child.token_index]._.holmes.is_matchable or
                                     (process_initial_question_words and
                                     doc[child.token_index]._.holmes.is_initial_question_word)):
-                                if parent.token_index in token_indexes_to_multiword_lemmas:
+                                if parent.token_index in token_indexes_to_multiwords:
                                     parent_lemma = parent_derived_lemma = \
-                                        token_indexes_to_multiword_lemmas[parent.token_index]
+                                        token_indexes_to_multiwords[parent.token_index]
                                 else:
                                     parent_lemma, parent_derived_lemma = \
                                         get_lemmas_from_index(parent)
-                                if child.token_index in token_indexes_to_multiword_lemmas:
+                                if self.ontology is not None and replace_with_hypernym_ancestors:
+                                    parent_lemma, parent_derived_lemma = \
+                                        replace_lemmas_with_most_general_ancestor(
+                                            parent_lemma, parent_derived_lemma)
+                                if child.token_index in token_indexes_to_multiwords:
                                     child_lemma = child_derived_lemma = \
-                                        token_indexes_to_multiword_lemmas[child.token_index]
+                                        token_indexes_to_multiwords[child.token_index]
                                 else:
-                                    child_lemma, child_derived_lemma = get_lemmas_from_index(child)
+                                    child_lemma, child_derived_lemma = \
+                                        get_lemmas_from_index(child)
+                                if self.ontology is not None and replace_with_hypernym_ancestors:
+                                    child_lemma, child_derived_lemma = \
+                                        replace_lemmas_with_most_general_ancestor(
+                                            child_lemma, child_derived_lemma)
                                 phraselet_label = ''.join((
                                     phraselet_template.label, ': ', parent_derived_lemma,
                                     '-', child_derived_lemma))
@@ -1563,8 +1662,16 @@ class LinguisticObjectFactory:
                         token.tag_ in phraselet_template.parent_tags):
                     parent_lemma, parent_derived_lemma = get_lemmas_from_index(Index(
                         token.i, parent_subword_index))
+                    if self.ontology is not None and replace_with_hypernym_ancestors:
+                        parent_lemma, parent_derived_lemma = \
+                            replace_lemmas_with_most_general_ancestor(
+                                parent_lemma, parent_derived_lemma)
                     child_lemma, child_derived_lemma = get_lemmas_from_index(Index(
                         token.i, child_subword_index))
+                    if self.ontology is not None and replace_with_hypernym_ancestors:
+                        child_lemma, child_derived_lemma = \
+                                replace_lemmas_with_most_general_ancestor(
+                                    child_lemma, child_derived_lemma)
                     phraselet_label = ''.join((
                         phraselet_template.label, ': ', parent_derived_lemma, '-',
                         child_derived_lemma))
@@ -1579,7 +1686,7 @@ class LinguisticObjectFactory:
         if len(phraselet_labels_to_phraselet_infos) == 0 and not match_all_words:
             for token in doc:
                 process_single_word_phraselet_templates(
-                    token, None, False, token_indexes_to_multiword_lemmas)
+                    token, None, False, token_indexes_to_multiwords)
 
     def create_search_phrases_from_phraselet_infos(self, phraselet_infos,
             reverse_matching_frequency_threshold=None):
@@ -1737,7 +1844,23 @@ class LinguisticObjectFactory:
         root_tokens = []
         tokens_to_match = []
         matchable_non_entity_tokens_to_vectors = {}
+        token_indexes_within_multiwords_to_ignore = []
+        if self.ontology is not None and self.analyze_derivational_morphology and phraselet_template is None:
+            for token in search_phrase_doc:
+                odm = self.semantic_matching_helper.get_ontology_defined_multiword(token, self.ontology)
+                if odm is not None:
+                    for index in odm.token_indexes:
+                        if index == token.i:
+                            token._.holmes.lemma = odm.lemma
+                            token._.holmes.derived_lemma = odm.derived_lemma
+                            token._.holmes.direct_matching_reprs = odm.direct_matching_reprs
+                            token._.holmes.derivation_matching_reprs = odm.derivation_matching_reprs
+                        else:
+                            token_indexes_within_multiwords_to_ignore.append(index)
+            
         for token in search_phrase_doc:
+            if token.i in token_indexes_within_multiwords_to_ignore:
+                continue
             # check whether grammatical token
             if phraselet_template is not None and phraselet_template.parent_index != token.i and \
                     phraselet_template.child_index != token.i:
@@ -1793,6 +1916,7 @@ class LinguisticObjectFactory:
         for word_matching_strategy in self.semantic_matching_helper.main_word_matching_strategies:
             word_matching_strategy.add_words_matching_search_phrase_root_token(search_phrase)
         return search_phrase
+
 
 class SemanticMatchingHelperFactory():
     """Returns the correct *SemanticMatchingHelperFactory* for the language in use.
@@ -1980,30 +2104,41 @@ class SemanticMatchingHelper(ABC):
 
     def get_entity_defined_multiword(self, token):
         """ If this token is at the head of a multiword recognized by spaCy named entity processing,
-            returns the multiword string and the indexes of the tokens that make up
-            the multiword, otherwise *None, None*.
+            returns the multiword span, otherwise *None*.
         """
         if not self.belongs_to_entity_defined_multiword(token) or (
                 token.dep_ != 'ROOT' and self.belongs_to_entity_defined_multiword(token.head)) or \
                 token.ent_type_ == '' or token.left_edge.i == token.right_edge.i:
-            return None, None
+            return None
         working_ent = token.ent_type_
-        working_text = ''
+        working_texts = []
         working_indexes = []
         for counter in range(token.left_edge.i, token.right_edge.i +1):
             multiword_token = token.doc[counter]
             if not self.belongs_to_entity_defined_multiword(multiword_token) or \
                     multiword_token.ent_type_ != working_ent:
-                if working_text != '':
-                    return None, None
+                if len(working_texts) > 0:
+                    return None
                 else:
                     continue
-            working_text = ' '.join((working_text, multiword_token.text))
+            working_texts.append(multiword_token.text.lower())
             working_indexes.append(multiword_token.i)
-        if len(working_text.split()) > 1:
-            return working_text.strip(), working_indexes
+        if len(working_texts) > 1:
+            return MultiwordSpan(' '.join(working_texts), None, None, None, working_indexes)
         else:
-            return None, None
+            return None
+
+    def get_ontology_defined_multiword(self, token, ontology):
+        if token._.holmes.multiword_spans is None:
+            return None
+        for multiword_span in token._.holmes.multiword_spans:
+            reprs = multiword_span.direct_matching_reprs[:]
+            if multiword_span.derivation_matching_reprs is not None:
+                reprs.extend(multiword_span.derivation_matching_reprs)
+            for repr in reprs:
+                if ontology.contains_multiword(repr):
+                    return multiword_span
+        return None
 
     def get_dependent_phrase(self, token, subword):
         """Return the dependent phrase of a token, with an optional subword reference. Used in
@@ -2025,3 +2160,4 @@ class SemanticMatchingHelper(ABC):
                 return_string = ' '.join((return_string, token.doc[pointer].text))
             if token.right_edge.i <= pointer:
                 return return_string
+

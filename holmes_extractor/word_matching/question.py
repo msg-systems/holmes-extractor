@@ -15,6 +15,7 @@ class QuestionWordMatchingStrategy(WordMatchingStrategy):
     def __init__(
         self,
         semantic_matching_helper,
+        perform_coreference_resolution,
         initial_question_word_overall_similarity_threshold,
         entity_label_to_vector_dict
     ):
@@ -22,7 +23,7 @@ class QuestionWordMatchingStrategy(WordMatchingStrategy):
             initial_question_word_overall_similarity_threshold
         )
         self.entity_label_to_vector_dict = entity_label_to_vector_dict
-        super().__init__(semantic_matching_helper)
+        super().__init__(semantic_matching_helper, perform_coreference_resolution)
 
     def match_token(
         self,

@@ -13,6 +13,7 @@ from holmes_extractor.word_matching.embedding import EmbeddingWordMatchingStrate
 from holmes_extractor.word_matching.entity import EntityWordMatchingStrategy
 from holmes_extractor.word_matching.entity_embedding import EntityEmbeddingWordMatchingStrategy
 from holmes_extractor.word_matching.general import WordMatchingStrategy
+from holmes_extractor.word_matching.ontology import OntologyWordMatchingStrategy
 import spacy
 import coreferee
 from spacy import Language
@@ -72,6 +73,7 @@ class Manager:
         matching should be attempted on search-phrase root tokens, which has a considerable
         performance hit. Defaults to *False*. Note that this parameter is not relevant for topic
         matching.
+    ontology -- an *Ontology* object. Defaults to *None* (no ontology).
     analyze_derivational_morphology -- *True* if matching should be attempted between different
         words from the same word family. Defaults to *True*.
     perform_coreference_resolution -- *True* if coreference resolution should be taken into account
@@ -87,7 +89,7 @@ class Manager:
 
     def __init__(
             self, model:str, *, overall_similarity_threshold:float=1.0,
-            embedding_based_matching_on_root_words:bool=False, 
+            embedding_based_matching_on_root_words:bool=False, ontology=None,
             analyze_derivational_morphology:bool=True, perform_coreference_resolution:bool=True,
             use_reverse_dependency_matching:bool=True, number_of_workers:int=None,
             verbose:bool=False):
@@ -111,23 +113,32 @@ class Manager:
         self.analyze_derivational_morphology = analyze_derivational_morphology
         self.entity_label_to_vector_dict = self.semantic_analyzer.get_entity_label_to_vector_dict() if \
             self.semantic_analyzer.model_supports_embeddings() else {}
+        self.perform_coreference_resolution = perform_coreference_resolution
         self.semantic_matching_helper = SemanticMatchingHelperFactory().semantic_matching_helper(
             language=self.nlp.meta['lang'])
-        self.semantic_matching_helper.main_word_matching_strategies.append(DirectWordMatchingStrategy(self.semantic_matching_helper))
+        if analyze_derivational_morphology and ontology is not None:
+            ontology_reverse_derivational_dict = self.semantic_analyzer.get_ontology_reverse_derivational_dict(ontology)
+        else:
+            ontology_reverse_derivational_dict = None
+        self.semantic_matching_helper.main_word_matching_strategies.append(DirectWordMatchingStrategy(self.semantic_matching_helper, self.perform_coreference_resolution))
         if analyze_derivational_morphology:
-            self.semantic_matching_helper.main_word_matching_strategies.append(DerivationWordMatchingStrategy(self.semantic_matching_helper))
-        self.semantic_matching_helper.main_word_matching_strategies.append(EntityWordMatchingStrategy(self.semantic_matching_helper))
-
+            self.semantic_matching_helper.main_word_matching_strategies.append(DerivationWordMatchingStrategy(self.semantic_matching_helper, self.perform_coreference_resolution))
+        self.semantic_matching_helper.main_word_matching_strategies.append(EntityWordMatchingStrategy(self.semantic_matching_helper, self.perform_coreference_resolution))
+        if ontology is not None:
+            if analyze_derivational_morphology:
+                self.semantic_analyzer.update_ontology(ontology)
+            self.semantic_matching_helper.main_word_matching_strategies.append(OntologyWordMatchingStrategy(self.semantic_matching_helper, self.perform_coreference_resolution, ontology, analyze_derivational_morphology, ontology_reverse_derivational_dict
+            ))
         if overall_similarity_threshold < 1.0:
-            self.semantic_matching_helper.additional_word_matching_strategies.append(EmbeddingWordMatchingStrategy(self.semantic_matching_helper, overall_similarity_threshold, overall_similarity_threshold))
-            self.semantic_matching_helper.additional_word_matching_strategies.append(EntityEmbeddingWordMatchingStrategy(self.semantic_matching_helper, overall_similarity_threshold, overall_similarity_threshold, self.entity_label_to_vector_dict))
+            self.semantic_matching_helper.additional_word_matching_strategies.append(EmbeddingWordMatchingStrategy(self.semantic_matching_helper, self.perform_coreference_resolution, overall_similarity_threshold, overall_similarity_threshold))
+            self.semantic_matching_helper.additional_word_matching_strategies.append(EntityEmbeddingWordMatchingStrategy(self.semantic_matching_helper, self.perform_coreference_resolution, overall_similarity_threshold, overall_similarity_threshold, self.entity_label_to_vector_dict))
+
         self.overall_similarity_threshold = overall_similarity_threshold
-        self.perform_coreference_resolution = perform_coreference_resolution
         self.use_reverse_dependency_matching = use_reverse_dependency_matching
         self.linguistic_object_factory = LinguisticObjectFactory(
             self.semantic_analyzer, self.semantic_matching_helper,
             overall_similarity_threshold, embedding_based_matching_on_root_words,
-            analyze_derivational_morphology, perform_coreference_resolution)
+            analyze_derivational_morphology, perform_coreference_resolution, ontology, ontology_reverse_derivational_dict)
         self.structural_matcher = StructuralMatcher(
             self.semantic_matching_helper, embedding_based_matching_on_root_words,
             analyze_derivational_morphology, perform_coreference_resolution, use_reverse_dependency_matching
@@ -460,6 +471,7 @@ class Manager:
             initial_question_word_answer_score:int=600,
             initial_question_word_behaviour:str='process', different_match_cutoff_score:int=15,
             overlapping_relation_multiplier:float=1.5, embedding_penalty:float=0.6,
+            ontology_penalty: float=0.9,
             relation_matching_frequency_threshold:float=0.25,
             embedding_matching_frequency_threshold:float=0.5,
             sideways_match_extent:int=100, only_one_result_per_document:bool=False,
@@ -503,6 +515,11 @@ class Manager:
         embedding_penalty -- a value between 0 and 1 with which scores are multiplied when the
             match involved an embedding. The result is additionally multiplied by the overall
             similarity measure of the match.
+        ontology_penalty -- a value between 0 and 1 with which scores are multiplied for each
+            word match within a match that involved the ontology. For each such word match,
+            the score is multiplied by the value (abs(depth) + 1) times, so that the penalty is
+            higher for hyponyms and hypernyms than for synonyms and increases with the
+            depth distance.
         relation_matching_frequency_threshold -- the frequency threshold above which single
             word matches are used as the basis for attempting relation matches.
         embedding_matching_frequency_threshold -- the frequency threshold above which single
@@ -583,7 +600,7 @@ class Manager:
                 single_word_any_tag_score, initial_question_word_answer_score,
                 initial_question_word_behaviour, different_match_cutoff_score,
                 overlapping_relation_multiplier, embedding_penalty,
-                relation_matching_frequency_threshold,
+                ontology_penalty, relation_matching_frequency_threshold,
                 embedding_matching_frequency_threshold, sideways_match_extent,
                 only_one_result_per_document, number_of_results, document_label_filter,
                 use_frequency_factor), reply_queue), timeout=TIMEOUT_SECONDS)
@@ -826,7 +843,7 @@ class Worker:
             reverse_only_relation_score, single_word_score, single_word_any_tag_score,
             initial_question_word_answer_score, initial_question_word_behaviour,
             different_match_cutoff_score, overlapping_relation_multiplier, embedding_penalty,
-            relation_matching_frequency_threshold,
+            ontology_penalty, relation_matching_frequency_threshold,
             embedding_matching_frequency_threshold,
             sideways_match_extent, only_one_result_per_document, number_of_results,
             document_label_filter, use_frequency_factor):
@@ -854,6 +871,7 @@ class Worker:
             different_match_cutoff_score=different_match_cutoff_score,
             overlapping_relation_multiplier=overlapping_relation_multiplier,
             embedding_penalty=embedding_penalty,
+            ontology_penalty=ontology_penalty,
             relation_matching_frequency_threshold=relation_matching_frequency_threshold,
             embedding_matching_frequency_threshold=embedding_matching_frequency_threshold,
             sideways_match_extent=sideways_match_extent,

@@ -6,16 +6,19 @@ script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join(
     (script_directory, 'test_ontology.owl')))
 ontology_holmes_manager = holmes.Manager(model='en_core_web_trf',
-                                         perform_coreference_resolution=False, 
+                                         perform_coreference_resolution=False,
+                                         ontology=ontology,
                                          number_of_workers=1)
 ontology_holmes_manager_adm_false = holmes.Manager(model='en_core_web_trf',
-                                                   perform_coreference_resolution=False, 
+                                                   perform_coreference_resolution=False,
+                                                   ontology=ontology,
                                                    analyze_derivational_morphology=False,
                                                    number_of_workers=1)
 symmetric_ontology = holmes.Ontology(os.sep.join((script_directory, 'test_ontology.owl')),
                                      symmetric_matching=True)
 symmetric_ontology_nocoref_holmes_manager = holmes.Manager(model='en_core_web_trf',
                                                            perform_coreference_resolution=False,
+                                                           ontology=symmetric_ontology,
                                                            number_of_workers=1)
 no_ontology_coref_holmes_manager = holmes.Manager(model='en_core_web_trf',
                                                   perform_coreference_resolution=True,
@@ -50,14 +53,14 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                          len(phraselet_labels))
 
     def _get_phraselet_dict(self, manager, text_to_match, words_to_corpus_frequencies=None,
-        maximum_corpus_frequency=None):
+        maximum_corpus_frequency=None, match_all_words=True):
         manager.remove_all_search_phrases()
         doc = manager.semantic_analyzer.parse(text_to_match)
         phraselet_labels_to_phraselet_infos = {}
         manager.linguistic_object_factory.add_phraselets_to_dict(doc,
                                                           phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
                                                           replace_with_hypernym_ancestors=False,
-                                                          match_all_words=True,
+                                                          match_all_words=match_all_words,
                                                           ignore_relation_phraselets=False,
                                                           include_reverse_only=True,
                                                           stop_lemmas=manager.semantic_matching_helper.topic_matching_phraselet_stop_lemmas,
@@ -69,59 +72,59 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                                                           process_initial_question_words=False)
         return phraselet_labels_to_phraselet_infos
 
-    @unittest.skip("No ontology functionality")
+    
     def test_verb_subject_no_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "A plant grows",
                            ['predicate-actor: grow-plant', 'word: plant'])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_phrasal_verb_subject_no_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "A plant grows up quickly",
                            ['governor-adjective: grow up-quick', 'predicate-actor: grow up-plant',
                             'word: plant'])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_phrasal_verb_subject_no_entry_in_ontology_adm_false(self):
         self._check_equals(ontology_holmes_manager_adm_false, "A plant grows up quickly",
                            ['governor-adjective: grow up-quickly', 'predicate-actor: grow up-plant',
                             'word: plant'])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_verb_direct_object_no_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "A plant is grown",
                            ['predicate-passivesubject: grow-plant', 'word: plant'])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_verb_indirect_object_no_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "Somebody gives something to a plant",
                            ['predicate-recipient: gift-plant', 'word: plant'])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_noun_adjective_no_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "A healthy plant",
                            ['governor-adjective: plant-healthy', 'word: plant'])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_verb_adverb_no_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "They sailed rapidly",
                            ['governor-adjective: sail-rapid'])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_verb_adverb_no_entry_in_ontology_adm_false(self):
         self._check_equals(ontology_holmes_manager_adm_false, "They sailed rapidly",
                            ['governor-adjective: sail-rapidly'])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_noun_noun_no_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "A hobby plant",
                            ['noun-noun: plant-hobby', 'word: plant', 'word: hobby'])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_possessor_possessed_no_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "A gardener's plant",
                            ['word-ofword: plant-gardener', 'word: plant', 'word: gardener'])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_combined_no_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager,
                            "A gardener's healthy hobby plant grows in the sun",
@@ -130,130 +133,130 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                             'prepgovernor-noun: grow-sun', 'word: plant', 'word: hobby', 'word: gardener',
                             'word: sun'])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_class_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "A dog progresses",
                            ['predicate-actor: progress-animal', 'word: animal'])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_multiword_class_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "A big cat creature",
                            ['governor-adjective: animal-big', 'word: animal'])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_individual_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "Fido progresses",
                            ['predicate-actor: progress-animal', 'word: animal'])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_multiword_individual_entry_in_ontology(self):
         self._check_equals(ontology_holmes_manager, "Mimi Momo progresses",
                            ['predicate-actor: progress-animal', 'word: animal'])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_class_entry_in_ontology_no_hypernym_replacement(self):
         self._check_equals(ontology_holmes_manager, "A dog progresses",
                            ['predicate-actor: progress-dog', 'word: dog'], False)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_multiword_class_entry_in_ontology_no_hypernym_replacement(self):
         self._check_equals(ontology_holmes_manager, "A big cat creature",
                            ['governor-adjective: cat creature-big', 'word: cat creature'], False)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_individual_entry_in_ontology_no_hypernym_replacement(self):
         self._check_equals(ontology_holmes_manager, "Fido progresses",
                            ['predicate-actor: progress-fido', 'word: fido'], False)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_multiword_individual_entry_in_ontology_no_hypernym_replacement(self):
         self._check_equals(ontology_holmes_manager, "Mimi Momo progresses",
                            ['predicate-actor: progress-mimi momo', 'word: mimi momo'], False)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_multiword_in_ontology_no_hypernym(self):
         self._check_equals(ontology_holmes_manager, "School gear progresses",
                            ['predicate-actor: progress-school gear', 'word: school gear'])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_multiword_not_in_ontology(self):
         self._check_equals(ontology_holmes_manager,
                            "Information extraction progresses with information",
                            ['predicate-actor: progress-extract', 'noun-noun: extract-inform',
                             'prepgovernor-noun: progress-inform', 'word: inform', 'word: extract'])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_multiword_not_in_ontology_analyze_derivational_morphology_false(self):
         self._check_equals(ontology_holmes_manager_adm_false,
                            "Information extraction progresses with information",
                            ['predicate-actor: progress-extraction', 'noun-noun: extraction-information',
                             'prepgovernor-noun: progress-information', 'word: information', 'word: extraction'])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_text_in_ontology_lemma_not_in_ontology(self):
         self._check_equals(ontology_holmes_manager,
                            "He saw rainbows",
                            ['predicate-patient: see-arc', 'word: arc'])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_text_in_ontology_lemma_not_in_ontology_no_hypernym_replacement(self):
         self._check_equals(ontology_holmes_manager,
                            "He saw rainbows",
                            ['predicate-patient: see-rainbows', 'word: rainbows'], False)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_class_entry_in_ontology_symmetric_ontology(self):
         self._check_equals(symmetric_ontology_nocoref_holmes_manager, "A dog progresses",
                            ['predicate-actor: progress-animal', 'word: animal'])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_multiword_class_entry_in_ontology_symmetric_ontology(self):
         self._check_equals(symmetric_ontology_nocoref_holmes_manager, "A big cat creature",
                            ['governor-adjective: animal-big', 'word: animal'])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_individual_entry_in_ontology_symmetric_ontology(self):
         self._check_equals(symmetric_ontology_nocoref_holmes_manager, "Fido progresses",
                            ['predicate-actor: progress-animal', 'word: animal'])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_multiword_individual_entry_in_ontology_symmetric_ontology(self):
         self._check_equals(symmetric_ontology_nocoref_holmes_manager, "Mimi Momo progresses",
                            ['predicate-actor: progress-animal', 'word: animal'])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_class_entry_in_ontology_no_hypernym_replacement_symmetric_ontology(self):
         self._check_equals(symmetric_ontology_nocoref_holmes_manager, "A dog progresses",
                            ['predicate-actor: progress-dog', 'word: dog'], False)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_multiword_class_entry_in_ontology_no_hypernym_replacement_symmetric_ontology(self):
         self._check_equals(symmetric_ontology_nocoref_holmes_manager, "A big cat creature",
                            ['governor-adjective: cat creature-big', 'word: cat creature'], False)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_individual_entry_in_ontology_no_hypernym_replacement_symmetric_ontology(self):
         self._check_equals(symmetric_ontology_nocoref_holmes_manager, "Fido progresses",
                            ['predicate-actor: progress-fido', 'word: fido'], False)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_multiword_individual_entry_in_ontology_no_hypernym_replacement_symm_ontology(self):
         self._check_equals(symmetric_ontology_nocoref_holmes_manager, "Mimi Momo progresses",
                            ['predicate-actor: progress-mimi momo', 'word: mimi momo'], False)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_multiword_not_in_ontology_symmetric_ontology(self):
         self._check_equals(symmetric_ontology_nocoref_holmes_manager, "Information extraction progresses",
                            ['predicate-actor: progress-extract', 'noun-noun: extract-inform',
                             'word: inform', 'word: extract'])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_text_in_ontology_lemma_not_in_ontology_symmetric_ontology(self):
         self._check_equals(symmetric_ontology_nocoref_holmes_manager,
                            "He saw rainbows",
                            ['predicate-patient: see-arc', 'word: arc'])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_text_in_ontology_lemma_not_in_ontology_no_hypernym_replacement_symm_ontology(self):
         self._check_equals(symmetric_ontology_nocoref_holmes_manager,
                            "He saw rainbows",
@@ -381,19 +384,25 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
                            ['governor-adjective: richard paul hudson-big',
                             'word: richard', 'word: paul', 'word: hudson', 'word: big'], False, True)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_ontology_defined_multiword_match_all_words_with_adjective(self):
         self._check_equals(ontology_holmes_manager,
                            "The big Mimi Momo",
                            ['governor-adjective: mimi momo-big',
-                            'word: mimi momo', 'word: big'], False, True)
+                            'word: mimi', 'word: momo', 'word: big'], False, True)
 
-    @unittest.skip("No ontology functionality")
+    
+    def test_ontology_and_entity_defined_multiword_match_all_words_with_adjective(self):
+        self._check_equals(ontology_holmes_manager,
+                           "The big Richard Mimi Momo",
+                           ['governor-adjective: mimi momo-big', 'noun-noun: mimi momo-richard',
+                            'word: mimi', 'word: momo', 'word: richard', 'word: big'], False, True)
+
     def test_ontology_and_entity_defined_multiword_not_match_all_words_with_adjective(self):
         self._check_equals(ontology_holmes_manager,
                            "The big Richard Mimi Momo",
                            ['governor-adjective: mimi momo-big', 'noun-noun: mimi momo-richard',
-                            'word: mimi momo', 'word: richard', 'word: big'], False, True)
+                            'word: mimi momo', 'word: richard'], False, False)
 
     def test_matching_reprs(self):
         dict = self._get_phraselet_dict(no_ontology_coref_holmes_manager,
@@ -513,7 +522,7 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
         self.assertEqual(relation_phraselet.child_lemma, 'behaviour')
         self.assertEqual(relation_phraselet.child_derived_lemma, 'behave')
 
-    @unittest.skip("No ontology functionality")
+    
     def test_reverse_derived_lemmas_in_ontology_one_lemma_1(self):
         dict = self._get_phraselet_dict(ontology_holmes_manager,
                                         "He ate moodily")
@@ -526,7 +535,7 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
         self.assertEqual(relation_phraselet.child_lemma, 'moodily')
         self.assertEqual(relation_phraselet.child_derived_lemma, 'moodiness')
 
-    @unittest.skip("No ontology functionality")
+    
     def test_reverse_derived_lemmas_in_ontology_one_lemma_2(self):
         dict = self._get_phraselet_dict(ontology_holmes_manager,
                                         "He offended the cat")
@@ -575,10 +584,21 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
         self.assertEqual(word_phraselet.parent_lemma, 'offense')
         self.assertEqual(word_phraselet.parent_derived_lemma, 'offence')
 
-    @unittest.skip("No ontology functionality")
-    def test_reverse_derived_lemmas_in_ontology_multiword(self):
+    
+    def test_reverse_derived_lemmas_in_ontology_multiword_match_all_words(self):
         dict = self._get_phraselet_dict(ontology_holmes_manager,
                                         "He used a waste horse")
+        self.assertTrue('word: waste' in dict)
+        self.assertTrue('word: horse' in dict)
+        relation_phraselet = dict['predicate-patient: use-wastage horse']
+        self.assertEqual(relation_phraselet.child_lemma, 'wastage horse')
+        self.assertEqual(
+            relation_phraselet.child_derived_lemma, 'wastage horse')
+
+
+    def test_reverse_derived_lemmas_in_ontology_multiword_not_match_all_words(self):
+        dict = self._get_phraselet_dict(ontology_holmes_manager,
+                                        "He used a waste horse", match_all_words=False)
         self.assertFalse('word: waste horse' in dict)
         self.assertFalse('predicate-patient: use-waste horse' in dict)
         word_phraselet = dict['word: wastage horse']
@@ -589,7 +609,8 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
         self.assertEqual(
             relation_phraselet.child_derived_lemma, 'wastage horse')
 
-    @unittest.skip("No ontology functionality")
+
+    
     def test_frequency_factors_small(self):
         dict = self._get_phraselet_dict(ontology_holmes_manager,
                                         "The dog chased the cat",
@@ -605,7 +626,7 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
         chase_cat_phraselet = dict['predicate-patient: chasing-cat']
         self.assertEqual(str(chase_cat_phraselet.frequency_factor), '1.0')
 
-    @unittest.skip("No ontology functionality")
+    
     def test_frequency_factors_small_with_small_mcf(self):
         dict = self._get_phraselet_dict(ontology_holmes_manager,
                                         "The dog chased the cat",
@@ -621,7 +642,7 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
         chase_cat_phraselet = dict['predicate-patient: chasing-cat']
         self.assertEqual(str(chase_cat_phraselet.frequency_factor), '1.0')
 
-    @unittest.skip("No ontology functionality")
+    
     def test_frequency_factors_large(self):
         dict = self._get_phraselet_dict(ontology_holmes_manager,
                                         "The dog chased the cat",
@@ -637,7 +658,7 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
         chase_cat_phraselet = dict['predicate-patient: chasing-cat']
         self.assertEqual(str(chase_cat_phraselet.frequency_factor), '0.044005662088831145')
 
-    @unittest.skip("No ontology functionality")
+    
     def test_frequency_factors_large_with_ontology_match(self):
         dict = self._get_phraselet_dict(ontology_holmes_manager,
                                         "The dog chased the cat",
@@ -653,7 +674,7 @@ class EnglishPhraseletProductionTest(unittest.TestCase):
         chase_cat_phraselet = dict['predicate-patient: chasing-cat']
         self.assertEqual(str(chase_cat_phraselet.frequency_factor), '0.044005662088831145')
 
-    @unittest.skip("No ontology functionality")
+    
     def test_frequency_factors_very_large(self):
         dict = self._get_phraselet_dict(ontology_holmes_manager,
                                         "The dog chased the cat",

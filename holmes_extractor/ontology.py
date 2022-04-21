@@ -2,11 +2,32 @@ import urllib
 from itertools import chain
 import rdflib
 
+class Entry:
+    """Args:
+
+    word -- the entry word.
+    depth -- depth -- the number of hyponym relationships linking this entry and the
+        search phrase word in whose dictionary this entry exists.
+    is_individual -- *True* if this entry is an individual, *False* if it is a hyponym
+        or synonym.
+    """
+    def __init__(self, word, depth, is_individual):
+        self.word = word
+        self.repr = word.lower()
+        self.depth = depth
+        self.is_individual = is_individual
+
+    def __eq__(self, other):
+        if not isinstance(other, Entry):
+            return False
+        return self.word == other.word
+
+    def __hash__(self):
+        return hash(self.word)
+
 class Ontology:
     """Loads information from an existing ontology and manages ontology matching.
-    Currently used solely for linking classifications in the supervised document
-    classification use case.
-
+   
     The ontology must follow the W3C OWL 2 standard. Search phrase words are matched
     to hyponyms, synonyms and individuals from within documents being searched.
 
@@ -50,30 +71,16 @@ class Ontology:
         self.owl_type_link = owl_type_link
         self.owl_synonym_type = owl_synonym_type
         self.owl_hyponym_type = owl_hyponym_type
-        self.words, self._multiwords = self.get_words()
         self.match_dict = {}
         self.symmetric_matching = symmetric_matching
         self.populate_dictionary()
-
-    class Entry:
-        """Args:
-
-        word -- the entry word.
-        depth -- depth -- the number of hyponym relationships linking this entry and the
-            search phrase word in whose dictionary this entry exists.
-        is_individual -- *True* if this entry is an individual, *False* if it is a hyponym
-            or synonym.
-        """
-        def __init__(self, word, depth, is_individual):
-            self.word = word
-            self.depth = depth
-            self.is_individual = is_individual
+        self.refresh_words()
 
     def populate_dictionary(self):
         """Generates the dictionary from search phrase words to matching document words."""
 
         for class_id, _, _ in self.get_classes():
-            entry_word = self.get_entry_word(class_id).lower()
+            entry_word = self.get_entry_word(class_id)
             if entry_word in self.match_dict:
                 entry_set = self.match_dict[entry_word]
             else:
@@ -82,7 +89,7 @@ class Ontology:
                 entry_set, entry_word, class_id, set(), 0, False, False,
                 self.symmetric_matching)
         for class_id, _, _ in self.get_individuals():
-            entry_word = self.get_entry_word(class_id).lower()
+            entry_word = self.get_entry_word(class_id)
             if entry_word in self.match_dict:
                 entry_set = self.match_dict[entry_word]
             else:
@@ -91,47 +98,34 @@ class Ontology:
                 entry_set, entry_word, class_id, set(), 0, True, False,
                 self.symmetric_matching)
 
-    def contains(self, word):
-        """Returns whether or not a word is present in the loaded ontology."""
+    def contains_word(self, word):
+        """Returns whether or not a multiword is present in the loaded ontology."""
         return word.lower() in self.words
 
     def contains_multiword(self, multiword):
         """Returns whether or not a multiword is present in the loaded ontology."""
         return multiword.lower() in self._multiwords
 
-    def matches(self, search_phrase_word, candidate_word):
-        """Returns whether or not *candidate_word* matches *search_phrase_word*.
+    def matches(self, search_phrase_word, candidate_words):
+        """Returns whether or not any of *candidate_words* matches *search_phrase_word*.
 
         Matching is defined as *candidate_word* being a hyponym, synonym or individual instance
         of *search_phrase_word*. Where *symmetric_matching==True*, matching also encompasses
         *search_phrase_word* being a hyponym of *candidate_word*."""
-        if search_phrase_word.lower() in self.match_dict.keys():
+        if search_phrase_word.lower() in self.match_dict:
             for entry in self.match_dict[search_phrase_word.lower()]:
-                if entry.word.lower() == candidate_word.lower():
-                    return entry
+                for candidate_word in candidate_words:
+                    if entry.repr == candidate_word.lower():
+                        return entry
         return None
 
-    def get_words_matching(self, search_phrase_word):
-        """Returns the synonyms, hyponyms and individual instances of *search_phrase_word*,
-            as well as the hypernyms where *symmetric_matching==True*.
+    def get_matching_entries(self, search_phrase_word):
+        """Returns entries for the synonyms, hyponyms and individual instances of
+            *search_phrase_word*, as well as the hypernyms where *symmetric_matching==True*.
             All words are set to lower case.
         """
-        if search_phrase_word.lower() in self.match_dict.keys():
-            return set(map(
-                lambda entry: entry.word.lower(), self.match_dict[search_phrase_word.lower()]))
-        else:
-            return []
-
-    def get_words_matching_and_depths(self, search_phrase_word):
-        """Returns tuples containing the synonyms, hyponyms and individual instances of
-            *search_phrase_word*, as well as the hypernyms where *symmetric_matching==True*, and
-            the corresponding depths.
-            All words are set to lower case.
-        """
-        if search_phrase_word.lower() in self.match_dict.keys():
-            return set(map(
-                lambda entry: (entry.word.lower(), entry.depth),
-                self.match_dict[search_phrase_word.lower()]))
+        if search_phrase_word.lower() in self.match_dict:
+            return self.match_dict[search_phrase_word.lower()]
         else:
             return []
 
@@ -147,17 +141,17 @@ class Ontology:
             None, rdflib.term.URIRef(self.owl_type_link),
             rdflib.term.URIRef(self.owl_individual_type)))
 
-    def get_words(self):
-        """Finds all words in the loaded ontology and returns multiwords in a separate list."""
-        words = []
-        multiwords = []
-        for class_id, _, _ in chain(
-                self.get_classes(), self.get_individuals()):
-            entry_word = self.get_entry_word(class_id)
-            words.append(entry_word.lower())
-            if ' ' in entry_word:
-                multiwords.append(entry_word.lower())
-        return words, multiwords
+    def refresh_words(self):
+        self.words = []
+        self._multiwords = []
+        for key in self.match_dict:
+            self.words.append(key)
+            if ' ' in key:
+                self._multiwords.append(key)
+            for value in self.match_dict[key]:
+                self.words.append(value.repr)
+                if ' ' in value.repr:
+                    self._multiwords.append(value.repr)
 
     def recursive_add_to_dict(
             self, entry_set, word, working_entry_url, visited, depth, is_individual, is_hypernym,
@@ -181,9 +175,9 @@ class Ontology:
         """
         if working_entry_url not in visited:
             visited.add(working_entry_url)
-            working_entry_word = self.get_entry_word(working_entry_url)
+            working_entry_word = self.get_entry_word(working_entry_url, lc=False)
             if word.lower() != working_entry_word.lower():
-                entry_set.add(self.Entry(working_entry_word, depth, is_individual))
+                entry_set.add(Entry(working_entry_word, depth, is_individual))
             if not is_hypernym: # prevent recursive traversal of adjacent branches
                 for entry, _, _ in self._graph.triples((
                         None, rdflib.term.URIRef(self.owl_hyponym_type), working_entry_url)):
@@ -215,12 +209,15 @@ class Ontology:
                 # setting depth to a negative value ensures the hypernym
                 # can never qualify as being equally or more specific than the original match.
 
-    def get_entry_word(self, class_id):
+    def get_entry_word(self, class_id, *, lc=True):
         """Converts an OWL URL into an entry word
 
         The fragment is retrieved from the URL and underscores are replaced with spaces.
         """
-        return str(urllib.parse.urlparse(class_id).fragment).replace('_', ' ')
+        entry_word = str(urllib.parse.urlparse(class_id).fragment).replace('_', ' ')
+        if lc:
+            entry_word = entry_word.lower()
+        return entry_word
 
     def get_most_general_hypernym_ancestor(self, word):
         """Returns the most general hypernym ancestor of 'word', one of the most general ancestors
@@ -231,14 +228,14 @@ class Ontology:
         matching_set = set()
         for clazz in (
                 clazz for clazz, t, m in self.get_classes() if
-                self.get_entry_word(clazz).lower() == word.lower()):
+                self.get_entry_word(clazz) == word.lower()):
             this_class_set = set()
             self.recursive_add_to_dict(
                 this_class_set, word, clazz, set(), 0, False, False, True)
             matching_set |= this_class_set
         for individual in (
                 individual for individual, t, m in self.get_individuals() if
-                self.get_entry_word(individual).lower() == word.lower()):
+                self.get_entry_word(individual) == word.lower()):
             this_individual_set = set()
             self.recursive_add_to_dict(
                 this_individual_set, word, individual, set(), 0, True, False, True)

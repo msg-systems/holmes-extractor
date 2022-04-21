@@ -81,6 +81,7 @@ class DirectWordMatchingStrategy(WordMatchingStrategy):
                         document_subword=None,
                         document_word=document_representation,
                         word_match_type=self.WORD_MATCH_TYPE_LABEL,
+                        extracted_word=self.get_extracted_word_for_token(document_token, document_representation),
                         explanation=self._get_explanation(search_phrase_display_word),
                     )
         return None
@@ -118,7 +119,7 @@ class DirectWordMatchingStrategy(WordMatchingStrategy):
         self, search_phrase: SearchPhrase
     ) -> None:
         for word in search_phrase.root_token._.holmes.direct_matching_reprs:
-            search_phrase.add_word_information(word, 0)
+            search_phrase.add_word_information(word)
 
     def add_reverse_dict_entries(
         self,
@@ -148,15 +149,15 @@ class DirectWordMatchingStrategy(WordMatchingStrategy):
                         subword.index,
                         self.WORD_MATCH_TYPE_LABEL,
                     )
-            entity_defined_multiword, _ = (
+            entity_defined_multiword = (
                 self.semantic_matching_helper.get_entity_defined_multiword(token)
             )
             if entity_defined_multiword is not None:
                 self.add_reverse_dict_entry(
                     reverse_dict,
                     document_label,
-                    entity_defined_multiword.lower(),
-                    entity_defined_multiword,
+                    entity_defined_multiword.text.lower(),
+                    entity_defined_multiword.text,
                     token.i,
                     None,
                     self.WORD_MATCH_TYPE_LABEL,

@@ -322,7 +322,6 @@ class StructuralMatcher:
         potential_word_match.structurally_matched_document_token = structurally_matched_document_token
         potential_word_match.is_negated = document_token._.holmes.is_negated
         potential_word_match.is_uncertain = is_uncertain or document_token._.holmes.is_uncertain
-        potential_word_match.structurally_matched_document_token = structurally_matched_document_token
         if potential_word_match.first_document_token.i != potential_word_match.last_document_token.i: # multiword
             for working_token_index in range(potential_word_match.first_document_token.i, potential_word_match.last_document_token.i + 1):
                 search_phrase_and_document_visited_table[search_phrase_token.i].add(Index(working_token_index, None))
@@ -388,33 +387,6 @@ class StructuralMatcher:
                     new_word_matches.extend(relevant_word_matches)
             return new_word_matches
 
-        def revise_extracted_words_based_on_coreference_resolution(word_matches):
-            """ When coreference resolution is active, there may be a more specific piece of
-            information elsewhere in the coreference chain of a token that has been matched, in
-            which case this piece of information should be recorded in *word_match.extracted_word*.
-            """
-
-            for word_match in (
-                    word_match for word_match in word_matches
-                    if word_match.word_match_type in ('direct', 'derivation')
-                    and word_match.document_subword is None and
-                    word_match.document_token._.holmes.most_specific_coreferring_term_index
-                    is not None):
-                most_specific_document_token = word_match.document_token.doc[
-                    word_match.document_token._.holmes.most_specific_coreferring_term_index]
-                if word_match.document_token._.holmes.lemma != \
-                        most_specific_document_token._.holmes.lemma:
-                    for multiword_span in \
-                            self.semantic_matching_helper.multiword_spans_with_head_token(
-                            word_match.document_token.doc[
-                            word_match.document_token._.holmes.
-                            most_specific_coreferring_term_index]):
-                        word_match.extracted_word = multiword_span.text
-                        break
-                    else:
-                        word_match.extracted_word = most_specific_document_token.text
-
-            return word_matches
 
         def match_already_contains_structurally_matched_document_token(
                 match, document_token, document_subword_index):
@@ -680,9 +652,6 @@ class StructuralMatcher:
                 existing_minimal_match_cwps = []
                 for word_matching_root_token in search_phrase.words_matching_root_token:
                     if word_matching_root_token in reverse_dict:
-                        depth = \
-                                search_phrase.root_word_to_match_info_dict[
-                                    word_matching_root_token]
                         for reverse_index_value in \
                                 reverse_dict[word_matching_root_token]:
                             cwp = reverse_index_value.corpus_word_position
@@ -701,11 +670,11 @@ class StructuralMatcher:
                                 search_phrase.reverse_only)
                             minimal_match.index_within_document = index.token_index
                             if len(word_matching_root_token.split()) > 1:
-                                for word_matching_strategy in word_matching_strategies:
-                                    if doc[index.token_index]._.holmes.multiword_spans is not None:
+                                if doc[index.token_index]._.holmes.multiword_spans is not None:
+                                    for word_matching_strategy in word_matching_strategies:
                                         potential_word_match = word_matching_strategy.match_multiwords(search_phrase, search_phrase.root_token, doc[index.token_index],  doc[index.token_index]._.holmes.multiword_spans)
                                         if potential_word_match is not None:
-                                            potential_word_match.depth = depth
+                                            potential_word_match.structurally_matched_document_token = doc[index.token_index]
                                             minimal_match.word_matches.append(potential_word_match)
                                             break
                             if len(minimal_match.word_matches) == 0:
@@ -714,14 +683,12 @@ class StructuralMatcher:
                                     for word_matching_strategy in word_matching_strategies:
                                         potential_word_match = word_matching_strategy.match_subword(search_phrase, search_phrase.root_token, doc[index.token_index], subword)
                                         if potential_word_match is not None:
-                                            potential_word_match.depth = depth
                                             minimal_match.word_matches.append(potential_word_match)
                                             break
                                 else:
                                     for word_matching_strategy in word_matching_strategies:
                                         potential_word_match = word_matching_strategy.match_token(search_phrase, search_phrase.root_token, doc[index.token_index])
                                         if potential_word_match is not None:
-                                            potential_word_match.depth = depth
                                             minimal_match.word_matches.append(potential_word_match)
                                             break
                                 
