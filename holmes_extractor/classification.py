@@ -891,9 +891,10 @@ class SupervisedTopicClassifier:
                 )
             )
         self.linguistic_object_factory.ontology = model.structural_matching_ontology
-        self.linguistic_object_factory.ontology_reverse_derivational_dict = self.semantic_analyzer.get_ontology_reverse_derivational_dict(model.structural_matching_ontology)
         self.semantic_matching_helper = self.structural_matcher.semantic_matching_helper
-        self.semantic_matching_helper.ontology_word_matching_strategies = [OntologyWordMatchingStrategy(self.semantic_matching_helper, perform_coreference_resolution=self.structural_matcher.perform_coreference_resolution, ontology=model.structural_matching_ontology, analyze_derivational_morphology=model.analyze_derivational_morphology, ontology_reverse_derivational_dict=self.linguistic_object_factory.ontology_reverse_derivational_dict
+        if model.structural_matching_ontology is not None:
+            self.linguistic_object_factory.ontology_reverse_derivational_dict = self.semantic_analyzer.get_ontology_reverse_derivational_dict(model.structural_matching_ontology)
+            self.semantic_matching_helper.ontology_word_matching_strategies = [OntologyWordMatchingStrategy(self.semantic_matching_helper, perform_coreference_resolution=self.structural_matcher.perform_coreference_resolution, ontology=model.structural_matching_ontology, analyze_derivational_morphology=model.analyze_derivational_morphology, ontology_reverse_derivational_dict=self.linguistic_object_factory.ontology_reverse_derivational_dict
         )]
         self.phraselet_labels_to_search_phrases = (
             self.linguistic_object_factory.create_search_phrases_from_phraselet_infos(

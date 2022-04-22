@@ -10,7 +10,7 @@ NUMBER_OF_THREADS = 50
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join((script_directory, "test_ontology.owl")))
 manager = holmes.Manager(
-    "en_core_web_trf",
+    "en_core_web_trf", ontology=ontology,
     overall_similarity_threshold=0.90,
     number_of_workers=2,
 )
@@ -48,7 +48,6 @@ def get_first_key_in_dict(dictionary: OrderedDict) -> str:
     return list(dictionary.keys())[0]
 
 for i in range(10):
-    pass # No ontology functionality
     trainer = sttb.train(
         minimum_occurrences=0,
         cv_threshold=0,
@@ -114,7 +113,7 @@ class MultithreadingTest(unittest.TestCase):
             output.append(get_first_key_in_dict(stc.parse_and_classify(document)))
         queue.put(output)
 
-    @unittest.skip("No ontology functionality")
+
     def test_multithreading_matching_against_documents_general(self):
         self._inner_match_against_documents(
             "A gnu is chased",
@@ -551,7 +550,7 @@ class MultithreadingTest(unittest.TestCase):
             ],
         )
 
-    @unittest.skip("No ontology functionality")
+
     def test_multithreading_matching_against_documents_coreference(self):
         self._inner_match_against_documents(
             "A donkey chases",
@@ -765,7 +764,7 @@ class MultithreadingTest(unittest.TestCase):
             ],
         )
 
-    @unittest.skip("No ontology functionality")
+
     def test_multithreading_matching_against_documents_ontology_matching(self):
         self._inner_match_against_documents(
             "A horse",
@@ -806,7 +805,7 @@ class MultithreadingTest(unittest.TestCase):
             ],
         )
 
-    @unittest.skip("No ontology functionality")
+
     def test_multithreading_matching_against_search_phrases_general(self):
         self._inner_match_against_search_phrases(
             "The hungry lion chased the angry gnu.",
@@ -1299,14 +1298,14 @@ class MultithreadingTest(unittest.TestCase):
                             "structurally_matched_document_token_index": 6,
                             "document_subword_index": None,
                             "document_subword_containing_token_index": None,
-                            "document_word": "Richard Hudson",
+                            "document_word": "richard hudson",
                             "document_phrase": "Richard Hudson",
                             "match_type": "entity",
                             "negated": False,
                             "uncertain": False,
                             "similarity_measure": "1.0",
                             "involves_coreference": False,
-                            "extracted_word": "Richard Hudson",
+                            "extracted_word": "richard hudson",
                             "depth": 0,
                             "explanation": "Has an entity label matching ENTITYPERSON.",
                         },
@@ -1315,7 +1314,7 @@ class MultithreadingTest(unittest.TestCase):
             ],
         )
 
-    @unittest.skip("No ontology functionality")
+
     def test_multithreading_matching_against_search_phrases_ontology_matching(self):
         self._inner_match_against_search_phrases(
             "I saw a foal.",
@@ -1356,7 +1355,7 @@ class MultithreadingTest(unittest.TestCase):
             ],
         )
 
-    @unittest.skip("No ontology functionality")
+
     def test_multithreading_supervised_document_classification(self):
 
         self._inner_classify(

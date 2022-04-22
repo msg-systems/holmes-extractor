@@ -5,7 +5,7 @@ import os
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join(
     (script_directory, 'test_ontology.owl')))
-holmes_manager = holmes.Manager('de_core_news_lg',
+holmes_manager = holmes.Manager('de_core_news_lg', ontology=ontology,
                                  number_of_workers=1)
 
 class GermanTopicMatchingTest(unittest.TestCase):
@@ -131,7 +131,7 @@ class GermanTopicMatchingTest(unittest.TestCase):
 
     def test_multiword_in_text_to_search_and_in_document_not_root(self):
         self._check_equals("Richard Paul Hudson kam",
-                           "Ich sah Richard Paul Hudson", 19,
+                           "Ich sah Richard Paul Hudson", 10,
                            holmes_manager)
 
     def test_multiword_in_text_to_search_single_word_in_document_not_root(self):
@@ -146,7 +146,7 @@ class GermanTopicMatchingTest(unittest.TestCase):
 
     def test_multiword_in_text_to_search_and_in_document_root(self):
         self._check_equals("der müde Richard Paul Hudson",
-                           "Ich sah Richard Paul Hudson", 19,
+                           "Ich sah Richard Paul Hudson", 10,
                            holmes_manager)
 
     def test_multiword_in_text_to_search_single_word_in_document_root(self):
@@ -227,25 +227,25 @@ class GermanTopicMatchingTest(unittest.TestCase):
         self._check_equals("Extraktion von Information und Löwen",
                            "Informationsextraktion von Löwen", 87)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_word_with_subwords_matches_single_word_linked_via_ontology(self):
         self._check_equals("Komputerlinguistik",
                            "Linguistik", 9,
                            holmes_manager)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_word_with_subwords_matches_single_word_linked_via_ontology_control(self):
         self._check_equals("Theorielinguistik",
                            "Linguistik", 5,
                            holmes_manager)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_single_word_matches_word_with_subwords_linked_via_ontology(self):
         self._check_equals("Linguistik",
                            "Komputerlinguistik", 9,
                            holmes_manager)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_single_word_matches_word_with_subwords_linked_via_ontology_control(self):
         self._check_equals("Linguistik",
                            "Theorielinguistik", 10,

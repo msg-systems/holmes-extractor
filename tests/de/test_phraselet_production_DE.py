@@ -5,7 +5,7 @@ import os
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join(
     (script_directory, 'test_ontology.owl')))
-holmes_manager = holmes.Manager('de_core_news_lg', number_of_workers=1)
+holmes_manager = holmes.Manager('de_core_news_lg', ontology=ontology, number_of_workers=1)
 
 
 class GermanPhraseletProductionTest(unittest.TestCase):
@@ -251,7 +251,6 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                             'prep-noun: aus-datum'], False,
                            True)
 
-    @unittest.skip("No ontology functionality")
     def test_subwords_replace_with_hypernym_ancestors_is_false(self):
         self._check_equals("Der Informationsmonitor war groß",
                            ['noun-dependent: informationsmonitor-groß',
@@ -259,7 +258,7 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                             'noun-dependent: monitor-groß',
                             'intcompound: monitor-information'], replace_with_hypernym_ancestors=False)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_subwords_replace_with_hypernym_ancestors_is_true_not_match_all_words(self):
         self._check_equals("Der Informationsmonitor war groß",
                            ['noun-dependent: informationsmonitor-groß',
@@ -267,7 +266,7 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                             'noun-dependent: hardware-groß',
                             'intcompound: hardware-information'], replace_with_hypernym_ancestors=True)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_subwords_replace_with_hypernym_ancestors_is_true_match_all_words(self):
         self._check_equals("Der Informationsmonitor war groß",
                            ['noun-dependent: informationsmonitor-groß',
@@ -479,14 +478,14 @@ class GermanPhraseletProductionTest(unittest.TestCase):
         self.assertEqual(relation_phraselet.child_derived_lemma, 'information')
 
 
-    @unittest.skip("No ontology functionality")
+    
     def test_intcompound_when_word_in_ontology(self):
         dict = self._get_phraselet_dict(holmes_manager,
                                         "Sprachwissenschaft.")
         self.assertEqual(set(dict.keys()), {'word: sprachwissenschaft', 'word: sprach',
                                             'word: wissenschaft', 'intcompound: wissenschaft-sprach'})
 
-    @unittest.skip("No ontology functionality")
+    
     def test_intcompound_when_reverse_derived_lemma_in_ontology(self):
         dict = self._get_phraselet_dict(holmes_manager,
                                         "Sammelabflug.")

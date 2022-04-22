@@ -5,7 +5,7 @@ import os
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join(
     (script_directory, 'test_ontology.owl')))
-coref_holmes_manager = holmes.Manager(model='de_core_news_lg',
+coref_holmes_manager = holmes.Manager(model='de_core_news_lg', ontology=ontology,
                                       number_of_workers=2)
 coref_holmes_manager.register_search_phrase("Ein Hund jagt eine Katze")
 coref_holmes_manager.register_search_phrase("Ein großes Pferd jagt eine Katze")
@@ -22,13 +22,13 @@ coref_holmes_manager.register_search_phrase("Jemand liebt einen Elefanten")
 coref_holmes_manager.register_search_phrase("Jemand folgt einem Elefanten der Vergangenheit")
 coref_holmes_manager.register_search_phrase("Ein verkaufter Urlaub")
 coref_holmes_manager.register_search_phrase("Eine große Firma hat Probleme")
-nocoref_holmes_manager = holmes.Manager(model='de_core_news_lg',
+nocoref_holmes_manager = holmes.Manager(model='de_core_news_lg', ontology=ontology,
                                         perform_coreference_resolution=False,
                                         number_of_workers=1)
 nocoref_holmes_manager.register_search_phrase("Ein Hund jagt eine Katze")
 
 
-class CoreferenceEnglishMatchingTest(unittest.TestCase):
+class CoreferenceGermanMatchingTest(unittest.TestCase):
 
     def _check_word_match(self, match, word_match_index, document_token_index, extracted_word,
         subword_index=None):
@@ -100,8 +100,8 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
             "Ich redete mit Peter Müller und Jana Müller, während er und sie Versicherung brauchten.")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 2)
-        self._check_word_match(matches[0], 0, 4, 'Peter Müller')
-        self._check_word_match(matches[1], 0, 7, 'Jana Müller')
+        self._check_word_match(matches[0], 0, 4, 'peter müller')
+        self._check_word_match(matches[1], 0, 7, 'jana müller')
 
     def test_simple_pronoun_coreference_same_sentence_conjunction_lefthand_is_pronoun(self):
         coref_holmes_manager.remove_all_documents()
@@ -109,8 +109,8 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
             "Ich redete mit Peter Müller, während er und Jana Müller Versicherung brauchten.")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 2)
-        self._check_word_match(matches[0], 0, 4, 'Peter Müller')
-        self._check_word_match(matches[1], 0, 10, 'Jana Müller')
+        self._check_word_match(matches[0], 0, 4, 'peter müller')
+        self._check_word_match(matches[1], 0, 10, 'jana müller')
 
     def test_simple_pronoun_coreference_same_sentence_conjunction_righthand_is_pronoun(self):
         coref_holmes_manager.remove_all_documents()
@@ -118,8 +118,8 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
             "I redete mit Jana Müller, während Peter Müller und sie Versicherung brauchten.")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 2)
-        self._check_word_match(matches[0], 0, 8, 'Peter Müller')
-        self._check_word_match(matches[1], 0, 4, 'Jana Müller')
+        self._check_word_match(matches[0], 0, 8, 'peter müller')
+        self._check_word_match(matches[1], 0, 4, 'jana müller')
 
     def test_simple_pronoun_coreference_same_sentence_conjunction_righthand_noun_not_match(self):
         coref_holmes_manager.remove_all_documents()
@@ -127,7 +127,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
             "Ich redete mit Peter Müller, während er und ein Pferd Versicherung brauchten.")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
-        self._check_word_match(matches[0], 0, 4, 'Peter Müller')
+        self._check_word_match(matches[0], 0, 4, 'peter müller')
 
     def test_simple_pronoun_coreference_diff_sentence(self):
         coref_holmes_manager.remove_all_documents()
@@ -346,20 +346,20 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         self._check_word_match(matches[0], 1, 3, 'urlaub', 1)
         self._check_word_match(matches[1], 1, 6, 'urlaub', 1)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_different_extracted_word_not_in_ontology_with_pronoun(self):
         coref_holmes_manager.remove_all_documents()
         coref_holmes_manager.parse_and_register_document(
             "Wir besprachen Peters GmbH. Die große Firma hatte Schwierigkeiten. Sie hatte Probleme.")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
-        self._check_word_match(matches[0], 1, 6, 'Peters')
+        self._check_word_match(matches[0], 1, 6, 'peters')
 
-    @unittest.skip("No ontology functionality")
+    
     def test_different_extracted_word_not_in_ontology_without_pronoun(self):
         coref_holmes_manager.remove_all_documents()
         coref_holmes_manager.parse_and_register_document(
             "Wir besprachen Peters GmbH. Die große Firma hatte Probleme.")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
-        self._check_word_match(matches[0], 1, 6, 'Peters')
+        self._check_word_match(matches[0], 1, 6, 'peters')

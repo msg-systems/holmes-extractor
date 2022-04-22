@@ -5,7 +5,7 @@ import os
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join(
     (script_directory, 'test_ontology.owl')))
-holmes_manager = holmes.Manager(model='de_core_news_lg',
+holmes_manager = holmes.Manager(model='de_core_news_lg', ontology=ontology,
     number_of_workers=2)
 holmes_manager.register_search_phrase("Ein Hund jagt eine Katze")
 holmes_manager.register_search_phrase("Ein Hund jagt einen Bären")
@@ -985,19 +985,19 @@ class GermanStructuralMatchingTest(unittest.TestCase):
         self.assertEqual(matches[0]['word_matches'][0]['document_word'], 'abdankung')
         self.assertEqual(matches[0]['word_matches'][1]['document_word'], 'prinz')
 
-    @unittest.skip("No ontology functionality")
+    
     def test_ontology_matching_with_subwords(self):
         matches = self._get_matches(holmes_manager,
                                     "Die Literaturlinguistik")
         self.assertEqual(len(matches), 1)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_ontology_matching_with_whole_word_containing_subwords(self):
         matches = self._get_matches(holmes_manager,
                                     "Die Sprachwissenschaft")
         self.assertEqual(len(matches), 1)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_ontology_matching_with_whole_word_and_subword(self):
         matches = self._get_matches(holmes_manager,
                                     "Die Komputerlinguistik")

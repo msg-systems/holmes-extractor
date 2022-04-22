@@ -39,11 +39,11 @@ class WordMatchingStrategy:
         if self.perform_coreference_resolution and token._.holmes.most_specific_coreferring_term_index is not None:
             most_specific_token = token.doc[token._.holmes.most_specific_coreferring_term_index]
             if token._.holmes.lemma != most_specific_token._.holmes.lemma:
-                for multiword_span in most_specific_token._.holmes.multiword_spans:
-                    extracted_word = multiword_span.text
-                    break
-                else:
-                    extracted_word = most_specific_token.text.lower()
+                if most_specific_token._.holmes.multiword_spans is not None:
+                    for multiword_span in most_specific_token._.holmes.multiword_spans:
+                        extracted_word = multiword_span.text
+                        return extracted_word
+                extracted_word = most_specific_token.text.lower()
         return extracted_word
 
 

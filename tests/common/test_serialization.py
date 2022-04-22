@@ -95,11 +95,11 @@ class SerializationTest(unittest.TestCase):
         old_doc = german_holmes_manager.get_document('bo')
         new_doc = german_holmes_manager.get_document(
             'bo2')
-        self.assertEqual(old_doc[0]._.holmes.subwords[0].text, 'Bundes')
+        self.assertEqual(old_doc[0]._.holmes.subwords[0].text, 'bundes')
         self.assertEqual(old_doc[0]._.holmes.subwords[0].lemma, 'bund')
         self.assertEqual(old_doc[0]._.holmes.subwords[1].text, 'oberbehörde')
         self.assertEqual(old_doc[0]._.holmes.subwords[1].lemma, 'oberbehörde')
-        self.assertEqual(new_doc[0]._.holmes.subwords[0].text, 'Bundes')
+        self.assertEqual(new_doc[0]._.holmes.subwords[0].text, 'bundes')
         self.assertEqual(new_doc[0]._.holmes.subwords[0].lemma, 'bund')
         self.assertEqual(new_doc[0]._.holmes.subwords[1].text, 'oberbehörde')
         self.assertEqual(new_doc[0]._.holmes.subwords[1].lemma, 'oberbehörde')

@@ -780,7 +780,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = nlp("Telefaxnummer.")
         self.assertEqual(len(doc[0]._.holmes.subwords), 2)
 
-        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Telefax')
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'telefax')
         self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'telefax')
         self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
@@ -796,7 +796,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = nlp("Widerrufsbelehrung")
         self.assertEqual(len(doc[0]._.holmes.subwords), 2)
 
-        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Widerruf')
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'widerruf')
         self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'widerruf')
         self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
@@ -835,7 +835,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
             "Widerrufsbelehrung und die widerrufsbelehrung waren interessant")
         self.assertEqual(len(doc[0]._.holmes.subwords), 2)
 
-        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Widerruf')
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'widerruf')
         self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'widerruf')
         self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
@@ -866,7 +866,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = nlp("Inhaltsverzeichnisanlage")
         self.assertEqual(len(doc[0]._.holmes.subwords), 3)
 
-        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Inhalt')
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'inhalt')
         self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'inhalt')
         self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
@@ -889,7 +889,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = nlp("Finanzdienstleistungsaufsicht")
         self.assertEqual(len(doc[0]._.holmes.subwords), 4)
 
-        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Finanz')
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'finanz')
         self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'finanz')
         self.assertEqual(doc[0]._.holmes.subwords[1].text, 'dienst')
         self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'dienst')
@@ -903,7 +903,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = nlp("Verbraucherstreitbeilegungsgesetzes")
         self.assertEqual(len(doc[0]._.holmes.subwords), 4)
 
-        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Verbraucher')
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'verbraucher')
         self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'verbraucher')
         self.assertEqual(doc[0]._.holmes.subwords[1].text, 'streit')
         self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'streit')
@@ -917,7 +917,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = nlp("Bundesoberbehörde")
         self.assertEqual(len(doc[0]._.holmes.subwords), 2)
 
-        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Bundes')
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'bundes')
         self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'bund')
         self.assertEqual(doc[0]._.holmes.subwords[1].text, 'oberbehörde')
         self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'oberbehörde')
@@ -927,7 +927,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = nlp("Vorversicherung")
         self.assertEqual(len(doc[0]._.holmes.subwords), 2)
 
-        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Vor')
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'vor')
         self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'vor')
         self.assertEqual(doc[0]._.holmes.subwords[1].text, 'versicherung')
         self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'versicherung')
@@ -952,11 +952,11 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         doc = nlp("WiderrufsbelehrungWiderrufsrecht.")
         self.assertEqual(len(doc[0]._.holmes.subwords), 4)
 
-        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Widerruf')
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'widerruf')
         self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'widerruf')
         self.assertEqual(doc[0]._.holmes.subwords[1].text, 'belehrung')
         self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'belehrung')
-        self.assertEqual(doc[0]._.holmes.subwords[2].text, 'Widerruf')
+        self.assertEqual(doc[0]._.holmes.subwords[2].text, 'widerruf')
         self.assertEqual(doc[0]._.holmes.subwords[2].lemma, 'widerruf')
         self.assertEqual(doc[0]._.holmes.subwords[3].text, 'recht')
         self.assertEqual(doc[0]._.holmes.subwords[3].lemma, 'recht')
@@ -989,7 +989,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
     def test_subword_conjunction_two_words_single_subwords_first_word_hyphenated(self):
 
         doc = nlp("Die Haupt- und Seiteneingänge")
-        self.assertEqual(doc[1]._.holmes.subwords[0].text, 'Haupt')
+        self.assertEqual(doc[1]._.holmes.subwords[0].text, 'haupt')
         self.assertEqual(doc[1]._.holmes.subwords[0].lemma, 'haupt')
         self.assertEqual(doc[1]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[1]._.holmes.subwords[0].containing_token_index, 1)
@@ -1001,7 +1001,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[1]._.holmes.subwords[1].containing_token_index, 3)
         self.assertEqual(doc[1]._.holmes.subwords[1].char_start_index, 6)
 
-        self.assertEqual(doc[3]._.holmes.subwords[0].text, 'Seiten')
+        self.assertEqual(doc[3]._.holmes.subwords[0].text, 'seiten')
         self.assertEqual(doc[3]._.holmes.subwords[0].lemma, 'seite')
         self.assertEqual(doc[3]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[3]._.holmes.subwords[0].containing_token_index, 3)
@@ -1017,7 +1017,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
         doc = nlp(
             "Die Haupt- und Seiteneingänge. Die Haupt- und Seiteneingänge")
-        self.assertEqual(doc[6]._.holmes.subwords[0].text, 'Haupt')
+        self.assertEqual(doc[6]._.holmes.subwords[0].text, 'haupt')
         self.assertEqual(doc[6]._.holmes.subwords[0].lemma, 'haupt')
         self.assertEqual(doc[6]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[6]._.holmes.subwords[0].containing_token_index, 6)
@@ -1029,7 +1029,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[6]._.holmes.subwords[1].containing_token_index, 8)
         self.assertEqual(doc[6]._.holmes.subwords[1].char_start_index, 6)
 
-        self.assertEqual(doc[8]._.holmes.subwords[0].text, 'Seiten')
+        self.assertEqual(doc[8]._.holmes.subwords[0].text, 'seiten')
         self.assertEqual(doc[8]._.holmes.subwords[0].lemma, 'seite')
         self.assertEqual(doc[8]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[8]._.holmes.subwords[0].containing_token_index, 8)
@@ -1044,7 +1044,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
     def test_subword_conjunction_three_words_single_subwords_first_word_hyphenated(self):
 
         doc = nlp("Die Haupt-, Neben- und Seiteneingänge")
-        self.assertEqual(doc[1]._.holmes.subwords[0].text, 'Haupt')
+        self.assertEqual(doc[1]._.holmes.subwords[0].text, 'haupt')
         self.assertEqual(doc[1]._.holmes.subwords[0].lemma, 'haupt')
         self.assertEqual(doc[1]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[1]._.holmes.subwords[0].containing_token_index, 1)
@@ -1056,7 +1056,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[1]._.holmes.subwords[1].containing_token_index, 5)
         self.assertEqual(doc[1]._.holmes.subwords[1].char_start_index, 6)
 
-        self.assertEqual(doc[3]._.holmes.subwords[0].text, 'Neben')
+        self.assertEqual(doc[3]._.holmes.subwords[0].text, 'neben')
         self.assertEqual(doc[3]._.holmes.subwords[0].lemma, 'neben')
         self.assertEqual(doc[3]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[3]._.holmes.subwords[0].containing_token_index, 3)
@@ -1068,7 +1068,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[3]._.holmes.subwords[1].containing_token_index, 5)
         self.assertEqual(doc[3]._.holmes.subwords[1].char_start_index, 6)
 
-        self.assertEqual(doc[5]._.holmes.subwords[0].text, 'Seiten')
+        self.assertEqual(doc[5]._.holmes.subwords[0].text, 'seiten')
         self.assertEqual(doc[5]._.holmes.subwords[0].lemma, 'seite')
         self.assertEqual(doc[5]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[5]._.holmes.subwords[0].containing_token_index, 5)
@@ -1083,7 +1083,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
     def test_subword_conjunction_two_words_multiple_subwords_first_word_hyphenated(self):
 
         doc = nlp("Die Haupt- und Seiteneingangsbeschränkungen")
-        self.assertEqual(doc[1]._.holmes.subwords[0].text, 'Haupt')
+        self.assertEqual(doc[1]._.holmes.subwords[0].text, 'haupt')
         self.assertEqual(doc[1]._.holmes.subwords[0].lemma, 'haupt')
         self.assertEqual(doc[1]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[1]._.holmes.subwords[0].containing_token_index, 1)
@@ -1101,7 +1101,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[1]._.holmes.subwords[2].containing_token_index, 3)
         self.assertEqual(doc[1]._.holmes.subwords[2].char_start_index, 14)
 
-        self.assertEqual(doc[3]._.holmes.subwords[0].text, 'Seiten')
+        self.assertEqual(doc[3]._.holmes.subwords[0].text, 'seiten')
         self.assertEqual(doc[3]._.holmes.subwords[0].lemma, 'seite')
         self.assertEqual(doc[3]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[3]._.holmes.subwords[0].containing_token_index, 3)
@@ -1123,7 +1123,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
         doc = nlp(
             "Die Haupt-, Neben- und Seiteneingangsbeschränkungen")
-        self.assertEqual(doc[1]._.holmes.subwords[0].text, 'Haupt')
+        self.assertEqual(doc[1]._.holmes.subwords[0].text, 'haupt')
         self.assertEqual(doc[1]._.holmes.subwords[0].lemma, 'haupt')
         self.assertEqual(doc[1]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[1]._.holmes.subwords[0].containing_token_index, 1)
@@ -1141,7 +1141,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[1]._.holmes.subwords[2].containing_token_index, 5)
         self.assertEqual(doc[1]._.holmes.subwords[2].char_start_index, 14)
 
-        self.assertEqual(doc[3]._.holmes.subwords[0].text, 'Neben')
+        self.assertEqual(doc[3]._.holmes.subwords[0].text, 'neben')
         self.assertEqual(doc[3]._.holmes.subwords[0].lemma, 'neben')
         self.assertEqual(doc[3]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[3]._.holmes.subwords[0].containing_token_index, 3)
@@ -1159,7 +1159,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[3]._.holmes.subwords[2].containing_token_index, 5)
         self.assertEqual(doc[3]._.holmes.subwords[2].char_start_index, 14)
 
-        self.assertEqual(doc[5]._.holmes.subwords[0].text, 'Seiten')
+        self.assertEqual(doc[5]._.holmes.subwords[0].text, 'seiten')
         self.assertEqual(doc[5]._.holmes.subwords[0].lemma, 'seite')
         self.assertEqual(doc[5]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[5]._.holmes.subwords[0].containing_token_index, 5)
@@ -1207,7 +1207,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
     def test_subword_conjunction_two_words_single_subwords_last_word_hyphenated(self):
 
         doc = nlp("Verkehrslenkung und -überwachung")
-        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Verkehr')
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'verkehr')
         self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'verkehr')
         self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
@@ -1219,7 +1219,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 8)
 
-        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Verkehr')
+        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'verkehr')
         self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'verkehr')
         self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 0)
@@ -1234,7 +1234,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
     def test_subword_conjunction_three_words_single_subwords_last_word_hyphenated(self):
 
         doc = nlp("Verkehrslenkung, -überwachung und -betrachtung")
-        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Verkehr')
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'verkehr')
         self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'verkehr')
         self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
@@ -1246,7 +1246,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 8)
 
-        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Verkehr')
+        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'verkehr')
         self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'verkehr')
         self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 0)
@@ -1258,7 +1258,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[2]._.holmes.subwords[1].containing_token_index, 2)
         self.assertEqual(doc[2]._.holmes.subwords[1].char_start_index, 1)
 
-        self.assertEqual(doc[4]._.holmes.subwords[0].text, 'Verkehr')
+        self.assertEqual(doc[4]._.holmes.subwords[0].text, 'verkehr')
         self.assertEqual(doc[4]._.holmes.subwords[0].lemma, 'verkehr')
         self.assertEqual(doc[4]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[4]._.holmes.subwords[0].containing_token_index, 0)
@@ -1274,7 +1274,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
         doc = nlp(
             "Verkehrskontrolllenkung und -überwachungsprinzipien")
-        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Verkehr')
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'verkehr')
         self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'verkehr')
         self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
@@ -1292,7 +1292,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[0]._.holmes.subwords[2].containing_token_index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[2].char_start_index, 16)
 
-        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Verkehr')
+        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'verkehr')
         self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'verkehr')
         self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 0)
@@ -1320,7 +1320,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
         doc = nlp(
             "Verkehrskontrolllenkung, -überwachungsprinzipien und -betrachtung")
-        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Verkehr')
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'verkehr')
         self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'verkehr')
         self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
@@ -1338,7 +1338,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[0]._.holmes.subwords[2].containing_token_index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[2].char_start_index, 16)
 
-        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Verkehr')
+        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'verkehr')
         self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'verkehr')
         self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 0)
@@ -1362,7 +1362,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[2]._.holmes.subwords[3].containing_token_index, 2)
         self.assertEqual(doc[2]._.holmes.subwords[3].char_start_index, 13)
 
-        self.assertEqual(doc[4]._.holmes.subwords[0].text, 'Verkehr')
+        self.assertEqual(doc[4]._.holmes.subwords[0].text, 'verkehr')
         self.assertEqual(doc[4]._.holmes.subwords[0].lemma, 'verkehr')
         self.assertEqual(doc[4]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[4]._.holmes.subwords[0].containing_token_index, 0)
@@ -1383,7 +1383,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
     def test_subword_conjunction_two_words_single_subwords_first_and_last_words_hyphenated(self):
 
         doc = nlp("Textilgroß- und -einzelhandel")
-        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Textil')
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'textil')
         self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'textil')
         self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
@@ -1401,7 +1401,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[0]._.holmes.subwords[2].containing_token_index, 2)
         self.assertEqual(doc[0]._.holmes.subwords[2].char_start_index, 7)
 
-        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Textil')
+        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'textil')
         self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'textil')
         self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 0)
@@ -1422,7 +1422,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
     def test_subword_conjunction_two_words_multiple_subwords_first_and_last_words_hyphenated(self):
 
         doc = nlp("Feintextilgroß- und -einzeldetailhandel")
-        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Fein')
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'fein')
         self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'fein')
         self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
@@ -1452,7 +1452,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[0]._.holmes.subwords[4].containing_token_index, 2)
         self.assertEqual(doc[0]._.holmes.subwords[4].char_start_index, 13)
 
-        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Fein')
+        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'fein')
         self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'fein')
         self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 0)
@@ -1485,7 +1485,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
     def test_subword_conjunction_three_words_single_subwords_first_and_last_words_hyphenated(self):
 
         doc = nlp("Textilgroß-, -klein- und -einzelhandel")
-        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Textil')
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'textil')
         self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'textil')
         self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
@@ -1503,7 +1503,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[0]._.holmes.subwords[2].containing_token_index, 4)
         self.assertEqual(doc[0]._.holmes.subwords[2].char_start_index, 7)
 
-        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Textil')
+        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'textil')
         self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'textil')
         self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 0)
@@ -1521,7 +1521,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[2]._.holmes.subwords[2].containing_token_index, 4)
         self.assertEqual(doc[2]._.holmes.subwords[2].char_start_index, 7)
 
-        self.assertEqual(doc[4]._.holmes.subwords[0].text, 'Textil')
+        self.assertEqual(doc[4]._.holmes.subwords[0].text, 'textil')
         self.assertEqual(doc[4]._.holmes.subwords[0].lemma, 'textil')
         self.assertEqual(doc[4]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[4]._.holmes.subwords[0].containing_token_index, 0)
@@ -1543,7 +1543,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
         doc = nlp(
             "Feintextilgroß-, -klein-, -mittel- und -einzeldetailhandel")
-        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Fein')
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'fein')
         self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'fein')
         self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
@@ -1607,7 +1607,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(
             doc[0]._.holmes.subwords[4].governing_dependency_label, None)
 
-        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Fein')
+        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'fein')
         self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'fein')
         self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 0)
@@ -1673,7 +1673,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
 
         self.assertTrue(doc[2]._.holmes.is_matchable)
 
-        self.assertEqual(doc[4]._.holmes.subwords[0].text, 'Fein')
+        self.assertEqual(doc[4]._.holmes.subwords[0].text, 'fein')
         self.assertEqual(doc[4]._.holmes.subwords[0].lemma, 'fein')
         self.assertEqual(doc[4]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[4]._.holmes.subwords[0].containing_token_index, 0)
@@ -1737,7 +1737,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(
             doc[4]._.holmes.subwords[4].governing_dependency_label, None)
 
-        self.assertEqual(doc[6]._.holmes.subwords[0].text, 'Fein')
+        self.assertEqual(doc[6]._.holmes.subwords[0].text, 'fein')
         self.assertEqual(doc[6]._.holmes.subwords[0].lemma, 'fein')
         self.assertEqual(doc[6]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[6]._.holmes.subwords[0].containing_token_index, 0)
@@ -1804,7 +1804,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
     def test_inner_hyphens_single_word(self):
 
         doc = nlp("Mozart-Symphonien")
-        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Mozart')
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'mozart')
         self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'mozart')
         self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
@@ -1816,7 +1816,7 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(
             doc[0]._.holmes.subwords[0].governing_dependency_label, 'intcompound')
 
-        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'Symphonien')
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'symphonien')
         self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'symphonie')
         self.assertEqual(doc[0]._.holmes.subwords[1].index, 1)
         self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 0)
@@ -1832,13 +1832,13 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
     def test_inner_hyphens_single_word_fugen_s(self):
 
         doc = nlp("Informations-Extraktion")
-        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Information')
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'information')
         self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'information')
         self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
 
-        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'Extraktion')
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'extraktion')
         self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'extraktion')
         self.assertEqual(doc[0]._.holmes.subwords[1].index, 1)
         self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 0)
@@ -1864,25 +1864,25 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
     def test_inner_hyphens_last_word_hyphenated(self):
 
         doc = nlp("Mozart-Symphonien und -Sonaten")
-        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Mozart')
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'mozart')
         self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'mozart')
         self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
 
-        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'Symphonien')
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'symphonien')
         self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'symphonie')
         self.assertEqual(doc[0]._.holmes.subwords[1].index, 1)
         self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 7)
 
-        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Mozart')
+        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'mozart')
         self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'mozart')
         self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 0)
         self.assertEqual(doc[2]._.holmes.subwords[0].char_start_index, 0)
 
-        self.assertEqual(doc[2]._.holmes.subwords[1].text, 'Sonaten')
+        self.assertEqual(doc[2]._.holmes.subwords[1].text, 'sonaten')
         self.assertEqual(doc[2]._.holmes.subwords[1].lemma, 'sonaten')
         self.assertEqual(doc[2]._.holmes.subwords[1].index, 1)
         self.assertEqual(doc[2]._.holmes.subwords[1].containing_token_index, 2)
@@ -1891,19 +1891,19 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
     def test_inner_hyphens_last_word_hyphenated_fugen_s(self):
 
         doc = nlp("Informations-Extraktion und -beurteilung")
-        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Information')
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'information')
         self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'information')
         self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
 
-        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'Extraktion')
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'extraktion')
         self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'extraktion')
         self.assertEqual(doc[0]._.holmes.subwords[1].index, 1)
         self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 13)
 
-        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Information')
+        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'information')
         self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'information')
         self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 0)
@@ -1918,37 +1918,37 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
     def test_inner_hyphens_first_word_hyphenated(self):
 
         doc = nlp("Mozart-, Mahler- und Wagner-Symphonien")
-        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Mozart')
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'mozart')
         self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'mozart')
         self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
 
-        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'Symphonien')
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'symphonien')
         self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'symphonie')
         self.assertEqual(doc[0]._.holmes.subwords[1].index, 1)
         self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 4)
         self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 7)
 
-        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Mahler')
+        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'mahler')
         self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'mahler')
         self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 2)
         self.assertEqual(doc[2]._.holmes.subwords[0].char_start_index, 0)
 
-        self.assertEqual(doc[2]._.holmes.subwords[1].text, 'Symphonien')
+        self.assertEqual(doc[2]._.holmes.subwords[1].text, 'symphonien')
         self.assertEqual(doc[2]._.holmes.subwords[1].lemma, 'symphonie')
         self.assertEqual(doc[2]._.holmes.subwords[1].index, 1)
         self.assertEqual(doc[2]._.holmes.subwords[1].containing_token_index, 4)
         self.assertEqual(doc[2]._.holmes.subwords[1].char_start_index, 7)
 
-        self.assertEqual(doc[4]._.holmes.subwords[0].text, 'Wagner')
+        self.assertEqual(doc[4]._.holmes.subwords[0].text, 'wagner')
         self.assertEqual(doc[4]._.holmes.subwords[0].lemma, 'wagner')
         self.assertEqual(doc[4]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[4]._.holmes.subwords[0].containing_token_index, 4)
         self.assertEqual(doc[4]._.holmes.subwords[0].char_start_index, 0)
 
-        self.assertEqual(doc[4]._.holmes.subwords[1].text, 'Symphonien')
+        self.assertEqual(doc[4]._.holmes.subwords[1].text, 'symphonien')
         self.assertEqual(doc[4]._.holmes.subwords[1].lemma, 'symphonie')
         self.assertEqual(doc[4]._.holmes.subwords[1].index, 1)
         self.assertEqual(doc[4]._.holmes.subwords[1].containing_token_index, 4)
@@ -1957,14 +1957,14 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
     def test_inner_hyphens_first_word_hyphenated_fugen_s(self):
 
         doc = nlp("Informations- und Extraktions-Beurteilung")
-        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'Information')
+        self.assertEqual(doc[0]._.holmes.subwords[0].text, 'information')
         self.assertEqual(doc[0]._.holmes.subwords[0].lemma, 'information')
         self.assertEqual(doc[0]._.holmes.subwords[0].derived_lemma, 'information')
         self.assertEqual(doc[0]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].containing_token_index, 0)
         self.assertEqual(doc[0]._.holmes.subwords[0].char_start_index, 0)
 
-        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'Beurteilung')
+        self.assertEqual(doc[0]._.holmes.subwords[1].text, 'beurteilung')
         self.assertEqual(doc[0]._.holmes.subwords[1].lemma, 'beurteilung')
         self.assertEqual(
             doc[0]._.holmes.subwords[1].derived_lemma, 'beurteilen')
@@ -1972,14 +1972,14 @@ class GermanSemanticAnalyzerTest(unittest.TestCase):
         self.assertEqual(doc[0]._.holmes.subwords[1].containing_token_index, 2)
         self.assertEqual(doc[0]._.holmes.subwords[1].char_start_index, 12)
 
-        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'Extraktion')
+        self.assertEqual(doc[2]._.holmes.subwords[0].text, 'extraktion')
         self.assertEqual(doc[2]._.holmes.subwords[0].lemma, 'extraktion')
         self.assertEqual(doc[2]._.holmes.subwords[0].derived_lemma, 'extraktion')
         self.assertEqual(doc[2]._.holmes.subwords[0].index, 0)
         self.assertEqual(doc[2]._.holmes.subwords[0].containing_token_index, 2)
         self.assertEqual(doc[2]._.holmes.subwords[0].char_start_index, 0)
 
-        self.assertEqual(doc[2]._.holmes.subwords[1].text, 'Beurteilung')
+        self.assertEqual(doc[2]._.holmes.subwords[1].text, 'beurteilung')
         self.assertEqual(doc[2]._.holmes.subwords[1].lemma, 'beurteilung')
         self.assertEqual(
             doc[2]._.holmes.subwords[1].derived_lemma, 'beurteilen')

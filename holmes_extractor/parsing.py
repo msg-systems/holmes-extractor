@@ -1861,6 +1861,7 @@ class LinguisticObjectFactory:
             
         for token in search_phrase_doc:
             if token.i in token_indexes_within_multiwords_to_ignore:
+                token._.holmes.is_matchable = False
                 continue
             # check whether grammatical token
             if phraselet_template is not None and phraselet_template.parent_index != token.i and \
