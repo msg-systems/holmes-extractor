@@ -178,7 +178,6 @@ class GermanSupervisedTopicClassificationTest(unittest.TestCase):
         sttb.parse_and_register_training_document("schnell", 'Dummy')
         sttb.prepare()
         freq = sttb.labels_to_classification_frequencies
-        print(freq)
         self.assertEqual(
             freq['intcompound: extraktion-information'], {'Tiere': 1})
         self.assertEqual(freq['intcompound: maßnahm-extraktion'], {'Tiere': 1})
@@ -318,7 +317,6 @@ class GermanSupervisedTopicClassificationTest(unittest.TestCase):
                 [{20: 1, 12: 1, 2: 1, 3: 1, 18: 1}, {20: 1, 15: 1, 10: 1, 11: 1, 21: 1}, {19: 1, 16: 1, 0: 1, 13: 1, 1: 1, 6: 1, 7: 1, 17: 1}, {17: 1, 14: 1, 4: 1, 5: 1, 16: 1}, {17: 1, 14: 1, 8: 1, 9: 1, 18: 1}],
                 trainer.occurrence_dicts)
         else:
-            print(trainer.occurrence_dicts)
             self.assertEqual(
                 [{20: 1, 12: 1, 2: 1, 3: 1, 18: 1}, {20: 1, 15: 1, 10: 1, 11: 1, 21: 1}, {19: 1, 16: 1, 0: 1, 13: 1, 1: 1, 6: 1, 7: 1, 17: 1}, {17: 2, 14: 1, 4: 1, 5: 1, 16: 1}, {17: 1, 14: 1, 8: 1, 9: 1, 18: 1}],
                 trainer.occurrence_dicts)
@@ -379,7 +377,6 @@ class GermanSupervisedTopicClassificationTest(unittest.TestCase):
         sttb.prepare()
         trainer = sttb.train(minimum_occurrences=0,
                              cv_threshold=0, hidden_layer_sizes=[])
-        print(trainer._hidden_layer_sizes)
         self.assertEqual(trainer._hidden_layer_sizes, [5, 4, 3])
 
     def test_filtering(self):

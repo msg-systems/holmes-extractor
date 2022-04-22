@@ -8,6 +8,7 @@ ontology = holmes.Ontology(os.sep.join((script_directory, "test_ontology.owl")))
 holmes_manager = holmes.Manager(
     "en_core_web_trf",
     perform_coreference_resolution=True,
+    ontology=ontology,
     number_of_workers=1,
 )
 no_ontology_holmes_manager = holmes.Manager(
@@ -16,6 +17,7 @@ no_ontology_holmes_manager = holmes.Manager(
 no_coref_holmes_manager = holmes.Manager(
     "en_core_web_trf",
     perform_coreference_resolution=False,
+    ontology=ontology,
     number_of_workers=1,
 )
 
@@ -25,7 +27,6 @@ def get_first_key_in_dict(dictionary: OrderedDict) -> str:
 
 
 class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
-    @unittest.skip("No ontology functionality")
     def test_get_labels_to_classification_frequencies_direct_matching(self):
         sttb = holmes_manager.get_supervised_topic_training_basis(one_hot=False)
         sttb.parse_and_register_training_document("A lion chases a tiger", "animals")
@@ -41,7 +42,6 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
         self.assertEqual(freq["word: lion"], {"animals": 1})
         self.assertEqual(freq["word: tiger"], {"animals": 1})
 
-    @unittest.skip("No ontology functionality")
     def test_get_labels_to_classification_frequencies_ontology_matching(self):
         sttb = holmes_manager.get_supervised_topic_training_basis(one_hot=False)
         sttb.parse_and_register_training_document("A dog chases a cat", "animals")
@@ -56,7 +56,6 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
         )
         self.assertEqual(freq["word: animal"], {"animals": 2})
 
-    @unittest.skip("No ontology functionality")
     def test_get_labels_to_classification_frequencies_ontology_multiword_matching(self):
         sttb = holmes_manager.get_supervised_topic_training_basis(one_hot=False)
         sttb.parse_and_register_training_document(
@@ -165,7 +164,6 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
             "predicate-patient: use-building/predicate-patient: use-building" in freq
         )
 
-    @unittest.skip("No ontology functionality")
     def test_one_hot(self):
         sttb1 = no_coref_holmes_manager.get_supervised_topic_training_basis(
             one_hot=False
@@ -224,7 +222,6 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
         )
         self.assertEqual(freq2["word: animal"], {"animals": 2, "animals2": 2})
 
-    @unittest.skip("No ontology functionality")
     def test_multiple_document_classes(self):
         sttb = holmes_manager.get_supervised_topic_training_basis(one_hot=False)
         sttb.parse_and_register_training_document("A dog chases a cat", "animals")
@@ -244,11 +241,10 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
             freq["predicate-actor: chasing-animal/predicate-patient: chasing-animal"],
             {"animals": 4},
         )
-        self.assertEqual(freq["word: animal"], {"animals": 8, "gym": 1})
+        self.assertEqual(freq["word: animal"], {"animals": 8, "gym": 2})
         self.assertEqual(freq["word: gymnast"], {"gym": 2})
         self.assertEqual(freq["word: gymnastics equipment"], {"animals": 2, "gym": 2})
 
-    @unittest.skip("No ontology functionality")
     def test_whole_scenario_with_classification_ontology(self):
         sttb = holmes_manager.get_supervised_topic_training_basis(
             classification_ontology=ontology, one_hot=False
@@ -278,7 +274,7 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
             sttb.classifications,
         )
         # With so little training data, the NN does not consistently learn correctly
-        for i in range(10):
+        for i in range(20):
             trainer = sttb.train(
                 minimum_occurrences=0,
                 cv_threshold=0,
@@ -294,7 +290,7 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
                 == "animal"
             ):
                 break
-            if i == 10:
+            if i == 20:
                 self.assertTrue(
                     get_first_key_in_dict(stc.parse_and_classify("You are a robot."))
                     == "computers"
@@ -359,7 +355,6 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
             stc2.parse_and_classify("My name is Charles and I like sewing.")
         )
 
-    @unittest.skip("No ontology functionality")
     def test_whole_scenario_with_classification_ontology_and_match_all_words(self):
         sttb = holmes_manager.get_supervised_topic_training_basis(
             classification_ontology=ontology, match_all_words=True, one_hot=False
@@ -389,7 +384,7 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
             sttb.classifications,
         )
         # With so little training data, the NN does not consistently learn correctly
-        for i in range(10):
+        for i in range(20):
             trainer = sttb.train(
                 minimum_occurrences=0,
                 cv_threshold=0,
@@ -405,7 +400,7 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
                 == "animal"
             ):
                 break
-            if i == 10:
+            if i == 20:
                 self.assertTrue(
                     get_first_key_in_dict(stc.parse_and_classify("You are a robot."))
                     == "computers"
@@ -422,13 +417,15 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
                 "word: animal",
                 "word: computer",
                 "word: lead",
+                "word: mimi",
+                "word: momo",
                 "word: on",
                 "word: robot",
             ],
             list(trainer.sorted_label_dict.keys()),
         )
         self.assertEqual(
-            [{1: 1}, {1: 1}, {0: 1, 1: 1, 3: 1, 4: 1}, {1: 1}, {1: 1}, {2: 1}, {5: 1}],
+            [{1: 1}, {1: 1}, {0: 1, 1: 1, 3: 1, 6: 1}, {1: 1, 4: 1, 5: 1}, {1: 1}, {2: 1}, {7: 1}],
             trainer.occurrence_dicts,
         )
         self.assertEqual(
@@ -443,7 +440,7 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
             ],
             trainer.output_matrix.tolist(),
         )
-        self.assertEqual([6, 6, 6], trainer._hidden_layer_sizes)
+        self.assertEqual([8, 7, 7], trainer._hidden_layer_sizes)
         self.assertIsNone(
             stc.parse_and_classify("My name is Charles and I like sewing.")
         )
@@ -457,6 +454,8 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
                 "word: animal",
                 "word: computer",
                 "word: lead",
+                "word: mimi",
+                "word: momo",
                 "word: on",
                 "word: robot",
             ],
@@ -473,7 +472,6 @@ class EnglishSupervisedTopicClassificationTest(unittest.TestCase):
             stc2.parse_and_classify("My name is Charles and I like sewing.")
         )
 
-    @unittest.skip("No ontology functionality")
     def test_filtering(self):
         sttb = holmes_manager.get_supervised_topic_training_basis()
         sttb.parse_and_register_training_document("A dog chases a cat", "animals")

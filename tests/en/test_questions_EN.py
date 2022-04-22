@@ -6,7 +6,7 @@ import os
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join((script_directory, 'test_ontology.owl')),
                            symmetric_matching=True)
-manager = holmes.Manager(model='en_core_web_trf', 
+manager = holmes.Manager(model='en_core_web_trf', ontology=ontology,
                                       number_of_workers=1)
 
 class EnglishInitialQuestionsTest(unittest.TestCase):
@@ -96,11 +96,9 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
     def test_governed_interrogative_pronoun_matching_derivation_control(self):
         self._check_equals('A performance by the boys is important', 'The boys performed', 39, None, None)
 
-    @unittest.skip("No ontology functionality")
     def test_governed_interrogative_pronoun_matching_ontology(self):
         self._check_equals('Which animal woke up?', 'The cat woke up', 45, 0, 7)
 
-    @unittest.skip("No ontology functionality")
     def test_governed_interrogative_pronoun_matching_ontology_control(self):
         self._check_equals('An animal woke up', 'The cat woke up', 29, None, None)
 

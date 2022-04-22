@@ -360,7 +360,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                     lemma = lemmatization_doc[counter*2].lemma_.lower()
                     derived_lemma = self.derived_holmes_lemma(None, lemma)
                     working_subwords.append(Subword(
-                        token.i, index, text, lemma, derived_lemma, self.get_vector(lemma),
+                        token.i, index, text.lower(), lemma, derived_lemma, self.get_vector(lemma),
                         possible_subword.char_start_index, None, None, None, None))
                     index += 1
                 if token._.holmes.lemma[-1] == '-':
@@ -390,7 +390,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                                     lemma = last_sibling_lemmatization_doc[counter*2].lemma_.lower()
                                     derived_lemma = self.derived_holmes_lemma(None, lemma)
                                     working_subwords.append(Subword(
-                                        last_sibling.i, index, text, lemma, derived_lemma,
+                                        last_sibling.i, index, text.lower(), lemma, derived_lemma,
                                         self.get_vector(lemma),
                                         last_sibling_possible_subword.char_start_index,
                                         None, None, None, None))
@@ -413,7 +413,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                         working_subword = working_subwords[counter]
                         token._.holmes.subwords.append(Subword(
                             working_subword.containing_token_index,
-                            working_subword.index, working_subword.text, working_subword.lemma,
+                            working_subword.index, working_subword.text.lower(), working_subword.lemma,
                             working_subword.derived_lemma, self.get_vector(working_subword.lemma),
                             working_subword.char_start_index,
                             dependent_index, dependency_label, governor_index,

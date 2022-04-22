@@ -127,11 +127,11 @@ class Manager:
         if ontology is not None:
             if analyze_derivational_morphology:
                 self.semantic_analyzer.update_ontology(ontology)
-            self.semantic_matching_helper.main_word_matching_strategies.append(OntologyWordMatchingStrategy(self.semantic_matching_helper, self.perform_coreference_resolution, ontology, analyze_derivational_morphology, ontology_reverse_derivational_dict
+            self.semantic_matching_helper.ontology_word_matching_strategies.append(OntologyWordMatchingStrategy(self.semantic_matching_helper, self.perform_coreference_resolution, ontology, analyze_derivational_morphology, ontology_reverse_derivational_dict
             ))
         if overall_similarity_threshold < 1.0:
-            self.semantic_matching_helper.additional_word_matching_strategies.append(EmbeddingWordMatchingStrategy(self.semantic_matching_helper, self.perform_coreference_resolution, overall_similarity_threshold, overall_similarity_threshold))
-            self.semantic_matching_helper.additional_word_matching_strategies.append(EntityEmbeddingWordMatchingStrategy(self.semantic_matching_helper, self.perform_coreference_resolution, overall_similarity_threshold, overall_similarity_threshold, self.entity_label_to_vector_dict))
+            self.semantic_matching_helper.embedding_word_matching_strategies.append(EmbeddingWordMatchingStrategy(self.semantic_matching_helper, self.perform_coreference_resolution, overall_similarity_threshold, overall_similarity_threshold))
+            self.semantic_matching_helper.embedding_word_matching_strategies.append(EntityEmbeddingWordMatchingStrategy(self.semantic_matching_helper, self.perform_coreference_resolution, overall_similarity_threshold, overall_similarity_threshold, self.entity_label_to_vector_dict))
 
         self.overall_similarity_threshold = overall_similarity_threshold
         self.use_reverse_dependency_matching = use_reverse_dependency_matching
@@ -710,7 +710,7 @@ class Worker:
             serialized_document_version, input_queue, worker_label):
         state = {
             'structural_matcher': structural_matcher,
-            'word_matching_strategies': structural_matcher.semantic_matching_helper.main_word_matching_strategies + structural_matcher.semantic_matching_helper.additional_word_matching_strategies,
+            'word_matching_strategies': structural_matcher.semantic_matching_helper.main_word_matching_strategies + structural_matcher.semantic_matching_helper.ontology_word_matching_strategies + structural_matcher.semantic_matching_helper.embedding_word_matching_strategies,
             'overall_similarity_threshold': overall_similarity_threshold,
             'entity_label_to_vector_dict': entity_label_to_vector_dict,
             'vocab': vocab,

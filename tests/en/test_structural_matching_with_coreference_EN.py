@@ -128,8 +128,8 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         )
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 2)
-        self._check_word_match(matches[0], 0, 4, "Peter Jones")
-        self._check_word_match(matches[1], 0, 7, "Jane Jones")
+        self._check_word_match(matches[0], 0, 4, "peter jones")
+        self._check_word_match(matches[1], 0, 7, "jane jones")
 
     def test_simple_pronoun_coreference_same_sentence_conjunction_lefthand_is_pronoun(
         self,
@@ -140,8 +140,8 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         )
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 2)
-        self._check_word_match(matches[0], 0, 4, "Peter Jones")
-        self._check_word_match(matches[1], 0, 10, "Jane Jones")
+        self._check_word_match(matches[0], 0, 4, "peter jones")
+        self._check_word_match(matches[1], 0, 10, "jane jones")
 
     def test_simple_pronoun_coreference_same_sentence_conjunction_righthand_is_pronoun(
         self,
@@ -152,8 +152,8 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         )
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 2)
-        self._check_word_match(matches[0], 0, 8, "Peter Jones")
-        self._check_word_match(matches[1], 0, 4, "Jane Jones")
+        self._check_word_match(matches[0], 0, 8, "peter jones")
+        self._check_word_match(matches[1], 0, 4, "jane jones")
 
     def test_simple_pronoun_coreference_same_sentence_conjunction_lefthand_noun_not_match(
         self,
@@ -164,7 +164,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         )
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
-        self._check_word_match(matches[0], 0, 3, "Jane")
+        self._check_word_match(matches[0], 0, 3, "jane")
 
     def test_simple_pronoun_coreference_same_sentence_conjunction_righthand_noun_not_match(
         self,
@@ -175,7 +175,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         )
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
-        self._check_word_match(matches[0], 0, 4, "Peter Jones")
+        self._check_word_match(matches[0], 0, 4, "peter jones")
 
     def test_simple_pronoun_coreference_diff_sentence(self):
         coref_holmes_manager.remove_all_documents()
@@ -247,8 +247,8 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         )
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 2)
-        self._check_word_match(matches[0], 0, 4, "Peter Jones")
-        self._check_word_match(matches[1], 0, 7, "Jane Jones")
+        self._check_word_match(matches[0], 0, 4, "peter jones")
+        self._check_word_match(matches[1], 0, 7, "jane jones")
 
     def test_simple_pronoun_coreference_diff_sentence_conjunction_lefthand_is_pronoun(
         self,
@@ -259,8 +259,8 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         )
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 2)
-        self._check_word_match(matches[0], 0, 4, "Peter Jones")
-        self._check_word_match(matches[1], 0, 9, "Jane Jones")
+        self._check_word_match(matches[0], 0, 4, "peter jones")
+        self._check_word_match(matches[1], 0, 9, "jane jones")
 
     def test_simple_pronoun_coreference_diff_sentence_conjunction_righthand_is_pronoun(
         self,
@@ -271,8 +271,8 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         )
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 2)
-        self._check_word_match(matches[0], 0, 8, "Peter Jones")
-        self._check_word_match(matches[1], 0, 4, "Jane Jones")
+        self._check_word_match(matches[0], 0, 8, "peter jones")
+        self._check_word_match(matches[1], 0, 4, "jane jones")
 
     def test_simple_pronoun_coreference_diff_sentence_conjunction_lefthand_noun_not_match(
         self,
@@ -283,7 +283,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         )
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
-        self._check_word_match(matches[0], 0, 4, "Jane Jones")
+        self._check_word_match(matches[0], 0, 4, "jane jones")
 
     def test_simple_pronoun_coreference_diff_sentence_conjunction_righthand_noun_not_match(
         self,
@@ -294,7 +294,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         )
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
-        self._check_word_match(matches[0], 0, 4, "Peter Jones")
+        self._check_word_match(matches[0], 0, 4, "peter jones")
 
     def test_pronoun_coreferent_has_dependency_same_sentence(self):
         coref_holmes_manager.remove_all_documents()
@@ -696,7 +696,7 @@ class CoreferenceEnglishMatchingTest(unittest.TestCase):
         coref_holmes_manager.debug_document()
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
-        self._check_word_match(matches[0], 1, 7, "Peters plc")
+        self._check_word_match(matches[0], 1, 7, "peters plc")
 
     def test_repeated_noun(self):
         coref_holmes_manager.remove_all_documents()

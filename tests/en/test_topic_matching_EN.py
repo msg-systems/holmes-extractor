@@ -8,6 +8,7 @@ ontology = holmes.Ontology(os.sep.join((script_directory, 'test_ontology.owl')),
                            symmetric_matching=True)
 holmes_manager_coref = holmes.Manager(model='en_core_web_trf',
                                       perform_coreference_resolution=True,
+                                      ontology=ontology,
                                       number_of_workers=2)
 ontology_for_sm_tests = holmes.Ontology(os.sep.join((script_directory, 'test_ontology.owl')))
 
@@ -114,87 +115,87 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self._check_equals("My friend visited ENTITYNOUN", "Peter visited a city. Word. word.", 25,
                            holmes_manager_coref)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_ontology_matching_synonym(self):
         self._check_equals("I saw an pussy", "Somebody saw a cat", 31,
                            holmes_manager_coref)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_ontology_matching_synonym_frequency_factor(self):
         self._check_equals("I saw an pussy", "Somebody saw a cat. A cat. A cat.", 14,
                            holmes_manager_coref)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_ontology_matching_synonym_frequency_factor_different_ontology_words(self):
         self._check_equals("I saw an pussy", "Somebody saw a cat. A kitten. A cat.", 31,
                            holmes_manager_coref)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_ontology_matching_hyponym_depth_1(self):
         self._check_equals("I saw an animal", "Somebody saw a cat", 28,
                            holmes_manager_coref)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_ontology_matching_hyponym_depth_1_frequency_factor(self):
         self._check_equals("I saw an animal", "Somebody saw a cat. An cat. A cat.", 13,
                            holmes_manager_coref)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_ontology_matching_hyponym_depth_1_frequency_factor_different_ontology_words(self):
         self._check_equals("I saw an animal", "Somebody saw a cat. An kitten. A cat.", 28,
                            holmes_manager_coref)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_ontology_matching_hyponym_depth_2(self):
         self._check_equals("I saw an animal", "Somebody saw a kitten", 26,
                            holmes_manager_coref)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_ontology_matching_hypernym_depth_1(self):
         self._check_equals("I saw an cat", "Somebody saw an animal", 28,
                            holmes_manager_coref)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_ontology_matching_hypernym_depth_2(self):
         self._check_equals("I saw a kitten", "Somebody saw an animal", 26,
                            holmes_manager_coref)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_ontology_matching_both_poles(self):
         self._check_equals("A cat opens something", "An animal takes something out", 27,
                            holmes_manager_coref)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_ontology_matching_multiword_in_document(self):
         self._check_equals("I saw an animal", "Somebody saw Mimi Momo", 26,
                            holmes_manager_coref)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_ontology_matching_multiword_in_document_frequency_factor(self):
         self._check_equals("I saw an animal", "Somebody saw Mimi Momo. Mimi Momo. Mimi Momo.", 12,
                            holmes_manager_coref)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_ontology_matching_multiword_in_document_frequency_factor_control(self):
         self._check_equals("I saw an animal", "Somebody saw Mimi Momo. Momo. Momo.", 26,
                            holmes_manager_coref)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_ontology_matching_multiword_in_search_text(self):
         self._check_equals("I saw Mimi Momo", "Somebody saw an animal", 26,
                            holmes_manager_coref)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_ontology_matching_word_only(self):
         self._check_equals("I saw an animal", "Somebody chased a cat", 8,
                            holmes_manager_coref)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_ontology_matching_word_only_multiword_in_document(self):
         self._check_equals("I saw an animal", "Somebody chased Mimi Momo", 7,
                            holmes_manager_coref)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_ontology_matching_word_only_multiword_in_search_text(self):
         self._check_equals("I saw Mimi Momo", "Somebody chased an animal", 7,
                            holmes_manager_coref)
@@ -564,7 +565,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     def test_multiword_in_text_to_search_and_in_document_not_root(self):
         self._check_equals("Richard Paul Hudson came",
-                           "I saw Richard Paul Hudson", 19,
+                           "I saw Richard Paul Hudson", 10,
                            holmes_manager_coref)
 
     def test_multiword_in_text_to_search_single_word_in_document_not_root(self):
@@ -579,12 +580,12 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     def test_multiword_in_text_to_search_multiword_in_document_with_coref_not_root(self):
         self._check_equals("Richard Paul Hudson came",
-                           "I saw Richard Paul Hudson. He came", 44,
+                           "I saw Richard Paul Hudson. He came", 34,
                            holmes_manager_coref)
 
     def test_multiword_in_text_to_search_multiword_in_document_with_noun_coref_not_root(self):
         self._check_equals("Richard Paul Hudson came",
-                           "I saw Richard Paul Hudson. Hudson came", 48,
+                           "I saw Richard Paul Hudson. Hudson came", 39,
                            holmes_manager_coref)
 
     def test_multiword_in_text_to_search_single_in_document_with_coref_not_root(self):
@@ -594,7 +595,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     def test_multiword_in_text_to_search_and_in_document_root(self):
         self._check_equals("the tired Richard Paul Hudson",
-                           "I saw Richard Paul Hudson", 19,
+                           "I saw Richard Paul Hudson", 10,
                            holmes_manager_coref)
 
     def test_multiword_in_text_to_search_single_word_in_document_root(self):
@@ -609,7 +610,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     def test_multiword_in_text_to_search_multiword_in_document_with_coref_root(self):
         self._check_equals("the tired Richard Paul Hudson",
-                           "I saw Richard Paul Hudson. He came", 19,
+                           "I saw Richard Paul Hudson. He came", 10,
                            holmes_manager_coref)
 
     def test_multiword_in_text_to_search_single_in_document_with_coref_root(self):
@@ -619,22 +620,22 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     def test_multiword_in_text_to_search_and_in_document_not_root_match_on_embeddings(self):
         self._check_equals("Richard Paul Hudson came",
-                           "I saw Richard Paul Hudson", 19,
+                           "I saw Richard Paul Hudson", 10,
                            holmes_manager_coref)
 
     def test_multiword_in_text_to_search_and_in_document_root_match_on_embeddings(self):
         self._check_equals("the tired Richard Paul Hudson",
-                           "I saw Richard Paul Hudson", 19,
+                           "I saw Richard Paul Hudson", 10,
                            holmes_manager_coref)
 
     def test_multiword_in_text_to_search_and_in_document_not_root_no_embeddings(self):
         self._check_equals("Richard Paul Hudson came",
-                           "I saw Richard Paul Hudson", 19,
+                           "I saw Richard Paul Hudson", 10,
                            holmes_manager_coref)
 
     def test_multiword_in_text_to_search_and_in_document_root_no_embeddings(self):
         self._check_equals("the tired Richard Paul Hudson",
-                           "I saw Richard Paul Hudson", 19,
+                           "I saw Richard Paul Hudson", 10,
                            holmes_manager_coref)
 
     def test_matches_in_opposite_directions(self):
@@ -692,61 +693,61 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                            "He decided information", 34,
                            holmes_manager_coref)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_derived_forms_matched_by_ontology_1(self):
         self._check_equals("An invitation to a politician",
                            "He explained to a politician", 35,
                            holmes_manager_coref)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_derived_forms_matched_by_ontology_2(self):
         self._check_equals("He explained to a politician",
                            "An invitation to a politician", 31,
                            holmes_manager_coref)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_derived_multiword_child_also_matched_by_ontology_1(self):
         self._check_equals("He used a waste horse",
                            "He used a wastage horse", 34,
                            holmes_manager_coref)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_derived_multiword_child_also_matched_by_ontology_2(self):
         self._check_equals("He used a wastage horse",
-                           "He used a waste horse", 32,
+                           "He used a waste horse", 33,
                            holmes_manager_coref)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_derived_multiword_child_also_matched_by_ontology_3(self):
         self._check_equals("He used a waste horse",
                            "He used gymnastics equipment", 26,
                            holmes_manager_coref)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_derived_multiword_child_also_matched_by_ontology_4(self):
         self._check_equals("He used gymnastics equipment",
                            "He used a waste horse", 26,
                            holmes_manager_coref)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_derived_multiword_parent_also_matched_by_ontology_1(self):
         self._check_equals("A big waste horse",
                            "A big wastage horse", 34,
                            holmes_manager_coref)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_derived_multiword_parent_also_matched_by_ontology_2(self):
         self._check_equals("A big wastage horse",
-                           "A big waste horse", 32,
+                           "A big waste horse", 34,
                            holmes_manager_coref)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_derived_multiword_parent_also_matched_by_ontology_3(self):
         self._check_equals("A big waste horse",
                            "A big gymnastics equipment", 26,
                            holmes_manager_coref)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_derived_multiword_parent_also_matched_by_ontology_4(self):
         self._check_equals("A big gymnastics equipment",
                            "A big waste horse", 26,
@@ -919,7 +920,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             holmes_manager_coref.topic_match_documents_against(
                 "Richard Paul Hudson was coming")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'Richard Paul Hudson came home', 'text_to_match': 'Richard Paul Hudson was coming', 'rank': '1', 'index_within_document': 3, 'subword_index': None, 'start_index': 0, 'end_index': 3, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 29, 'score': 408.0, 'word_infos': [[0, 19, 'relation', False, 'Matches RICHARD PAUL HUDSON directly.'], [20, 24, 'relation', True, 'Matches COME directly.']], 'answers': []}])
+                         [{'document_label': '', 'text': 'Richard Paul Hudson came home', 'text_to_match': 'Richard Paul Hudson was coming', 'rank': '1', 'index_within_document': 3, 'subword_index': None, 'start_index': 0, 'end_index': 3, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 29, 'score': 369.3333333333333, 'word_infos': [[0, 19, 'relation', False, 'Matches RICHARD PAUL HUDSON directly.'], [20, 24, 'relation', True, 'Matches COME directly.']], 'answers': []}])
 
     def test_dictionaries_with_multiword_alone(self):
         holmes_manager_coref.remove_all_documents()
@@ -929,7 +930,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             holmes_manager_coref.topic_match_documents_against(
                 "Richard Paul Hudson")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'Richard Paul Hudson', 'text_to_match': 'Richard Paul Hudson', 'rank': '1', 'index_within_document': 2, 'subword_index': None, 'start_index': 0, 'end_index': 2, 'sentences_start_index': 0, 'sentences_end_index': 2, 'sentences_character_start_index': 0, 'sentences_character_end_index': 19, 'score': 89.2, 'word_infos': [[0, 19, 'single', True, 'Matches RICHARD PAUL HUDSON directly.']], 'answers': []}])
+                         [{'document_label': '', 'text': 'Richard Paul Hudson', 'text_to_match': 'Richard Paul Hudson', 'rank': '1', 'index_within_document': 2, 'subword_index': None, 'start_index': 0, 'end_index': 2, 'sentences_start_index': 0, 'sentences_end_index': 2, 'sentences_character_start_index': 0, 'sentences_character_end_index': 19, 'score': 50, 'word_infos': [[0, 19, 'single', True, 'Matches RICHARD PAUL HUDSON directly.']], 'answers': []}])
 
     def test_dictionaries_with_multiword_alone_and_entity_token_in_text_to_match(self):
         holmes_manager_coref.remove_all_documents()
@@ -941,7 +942,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self.assertEqual(topic_match_dictionaries,
                          [{'document_label': '', 'text': 'Richard Paul Hudson', 'text_to_match': 'ENTITYPERSON', 'rank': '1', 'index_within_document': 2, 'subword_index': None, 'start_index': 0, 'end_index': 2, 'sentences_start_index': 0, 'sentences_end_index': 2, 'sentences_character_start_index': 0, 'sentences_character_end_index': 19, 'score': 50.0, 'word_infos': [[0, 19, 'single', True, 'Has an entity label matching ENTITYPERSON.']], 'answers': []}])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_dictionaries_with_multiword_as_single_word_and_relation(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.remove_all_search_phrases()
@@ -951,7 +952,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             holmes_manager_coref.topic_match_documents_against(
                 "Somebody gives a present to Harry")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'Can somebody give Harry Potter his present', 'text_to_match': 'Somebody gives a present to Harry', 'rank': '1', 'index_within_document': 6, 'subword_index': None, 'start_index': 2, 'end_index': 6, 'sentences_start_index': 0, 'sentences_end_index': 6, 'sentences_character_start_index': 0, 'sentences_character_end_index': 42, 'score': 926.3511111111111, 'word_infos': [[13, 17, 'overlapping_relation', False, 'Matches GIVE directly.'], [18, 30, 'overlapping_relation', False, 'Is a synonym of HARRY in the ontology.'], [35, 42, 'overlapping_relation', True, 'Matches PRESENT directly.']], 'answers': []}])
+                         [{'document_label': '', 'text': 'Can somebody give Harry Potter his present', 'text_to_match': 'Somebody gives a present to Harry', 'rank': '1', 'index_within_document': 6, 'subword_index': None, 'start_index': 2, 'end_index': 6, 'sentences_start_index': 0, 'sentences_end_index': 6, 'sentences_character_start_index': 0, 'sentences_character_end_index': 42, 'score': 922.1333333333332, 'word_infos': [[13, 17, 'overlapping_relation', False, 'Matches GIVE directly.'], [18, 30, 'overlapping_relation', False, 'Is a synonym of HARRY in the ontology.'], [35, 42, 'overlapping_relation', True, 'Matches PRESENT directly.']], 'answers': []}])
 
     def test_result_ordering_by_match_length_different_documents_1(self):
         holmes_manager_coref.remove_all_documents()
@@ -1029,7 +1030,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 "The dog chased the cat", document_label_filter="X")
         self.assertEqual(len(topic_match_dictionaries), 0)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_adjective_describing_ontology_multiword_with_topic_match_dictionaries(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.remove_all_search_phrases()
@@ -1050,9 +1051,9 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             holmes_manager_coref.topic_match_documents_against(
                 "A big Richard Paul Hudson")
         self.assertEqual(topic_match_dictionaries,
-                        [{'document_label': '', 'text': 'A big Richard Paul Hudson', 'text_to_match': 'A big Richard Paul Hudson', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 408.4, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [6, 25, 'relation', True, 'Matches RICHARD PAUL HUDSON directly.']], 'answers': []}])
+                        [{'document_label': '', 'text': 'A big Richard Paul Hudson', 'text_to_match': 'A big Richard Paul Hudson', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 369.2, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [6, 25, 'relation', True, 'Matches RICHARD PAUL HUDSON directly.']], 'answers': []}])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_adjective_describing_double_multiword_with_topic_match_dictionaries_1(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.remove_all_search_phrases()
@@ -1064,7 +1065,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self.assertEqual(topic_match_dictionaries,
                          [{'document_label': '', 'text': 'A big Richard Mimi Momo', 'text_to_match': 'A big Richard Mimi Momo', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 23, 'score': 1017.8666666666667, 'word_infos': [[2, 5, 'overlapping_relation', False, 'Matches BIG directly.'], [6, 13, 'overlapping_relation', False, 'Matches RICHARD directly.'], [14, 23, 'overlapping_relation', True, 'Matches MIMI MOMO directly.']], 'answers': []}])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_adjective_describing_double_multiword_with_topic_match_dictionaries_2(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.remove_all_search_phrases()
@@ -1076,7 +1077,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self.assertEqual(topic_match_dictionaries,
                           [{'document_label': '', 'text': 'A big Richard Mimi Momo', 'text_to_match': 'A big Mimi Momo', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 23, 'score': 369.2, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [14, 23, 'relation', True, 'Matches MIMI MOMO directly.']], 'answers': []}])
 
-    @unittest.skip("No ontology functionality")
+    
     def test_adjective_describing_double_multiword_with_topic_match_dictionaries_3(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.remove_all_search_phrases()
@@ -1086,7 +1087,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             holmes_manager_coref.topic_match_documents_against(
                 "A big Momo")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'A big Richard Mimi Momo', 'text_to_match': 'A big Momo', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 23, 'score': 319.2, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [19, 23, 'relation', True, 'Matches MOMO directly.']], 'answers': []}])
+                         [{'document_label': '', 'text': 'A big Richard Mimi Momo', 'text_to_match': 'A big Momo', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 23, 'score': 369.2, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [19, 23, 'relation', True, 'Matches MOMO directly.']], 'answers': []}])
 
     def test_different_match_cutoff_score_low(self):
         holmes_manager_coref.remove_all_documents()
@@ -1141,7 +1142,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                 "A dog")
         self.assertEqual(len(topic_matches), 1)
 
-    @unittest.skip("No ontology functionality")
+    
     def test_one_worker_frequency_factor(self):
         m = holmes.Manager('en_core_web_sm', ontology=ontology_for_sm_tests,
             number_of_workers=1)
@@ -1159,10 +1160,10 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             single_word_any_tag_score=2,
             different_match_cutoff_score=5,
             relation_matching_frequency_threshold=0.2),
-            [{'document_label': 'exact', 'text': 'The dog chased the animal', 'text_to_match': 'A dog chases an animal', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 17.654017250803907, 'word_infos': [[4, 7, 'overlapping_relation', False, 'Matches DOG directly.'], [8, 14, 'overlapping_relation', False, 'Matches CHASE directly.'], [19, 25, 'overlapping_relation', True, 'Matches ANIMAL directly.']], 'answers': []}, {'document_label': 'specific', 'text': 'I saw a dog. It was chasing a cat', 'text_to_match': 'A dog chases an animal', 'rank': '2', 'index_within_document': 9, 'subword_index': None, 'start_index': 3, 'end_index': 9, 'sentences_start_index': 0, 'sentences_end_index': 9, 'sentences_character_start_index': 0, 'sentences_character_end_index': 33, 'score': 14.777271168442839, 'word_infos': [[8, 11, 'overlapping_relation', False, 'Matches DOG directly.'], [20, 27, 'overlapping_relation', False, 'Is a synonym of CHASE in the ontology.'], [30, 33, 'overlapping_relation', True, 'Is a child of ANIMAL in the ontology.']], 'answers': []}, {'document_label': 'exact-reversed', 'text': 'The animal chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3=', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 8.083873269940398, 'word_infos': [[4, 10, 'single', False, 'Matches ANIMAL directly.'], [11, 17, 'relation', False, 'Matches CHASE directly.'], [22, 25, 'relation', True, 'Is a child of ANIMAL in the ontology.']], 'answers': []}, {'document_label': 'specific-reversed', 'text': 'The cat chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3=', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 22, 'score': 7.731063509742494, 'word_infos': [[4, 7, 'single', False, 'Is a child of ANIMAL in the ontology.'], [8, 14, 'relation', False, 'Matches CHASE directly.'], [19, 22, 'relation', True, 'Is a child of ANIMAL in the ontology.']], 'answers': []}])
+            [{'document_label': 'exact', 'text': 'The dog chased the animal', 'text_to_match': 'A dog chases an animal', 'rank': '1=', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 17.654017250803907, 'word_infos': [[4, 7, 'overlapping_relation', False, 'Matches DOG directly.'], [8, 14, 'overlapping_relation', False, 'Matches CHASE directly.'], [19, 25, 'overlapping_relation', True, 'Matches ANIMAL directly.']], 'answers': []}, {'document_label': 'specific', 'text': 'I saw a dog. It was chasing a cat', 'text_to_match': 'A dog chases an animal', 'rank': '1=', 'index_within_document': 9, 'subword_index': None, 'start_index': 3, 'end_index': 9, 'sentences_start_index': 0, 'sentences_end_index': 9, 'sentences_character_start_index': 0, 'sentences_character_end_index': 33, 'score': 15.963706826344412, 'word_infos': [[8, 11, 'overlapping_relation', False, 'Matches DOG directly.'], [20, 27, 'overlapping_relation', False, 'Matches CHASE directly.'], [30, 33, 'overlapping_relation', True, 'Is a child of ANIMAL in the ontology.']], 'answers': []}, {'document_label': 'exact-reversed', 'text': 'The animal chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3=', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 8.083873269940398, 'word_infos': [[4, 10, 'single', False, 'Matches ANIMAL directly.'], [11, 17, 'relation', False, 'Matches CHASE directly.'], [22, 25, 'relation', True, 'Is a child of ANIMAL in the ontology.']], 'answers': []}, {'document_label': 'specific-reversed', 'text': 'The cat chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3=', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 22, 'score': 7.731063509742494, 'word_infos': [[4, 7, 'single', False, 'Is a child of ANIMAL in the ontology.'], [8, 14, 'relation', False, 'Matches CHASE directly.'], [19, 22, 'relation', True, 'Is a child of ANIMAL in the ontology.']], 'answers': []}])
         m.close()
 
-    @unittest.skip("No ontology functionality")
+    
     def test_two_workers_frequency_factor_control(self):
         m = holmes.Manager('en_core_web_sm', ontology=ontology_for_sm_tests, number_of_workers=2)
         m.parse_and_register_document("I saw a dog. It was chasing a cat", 'specific')
@@ -1179,10 +1180,10 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             single_word_any_tag_score=2,
             different_match_cutoff_score=5,
             relation_matching_frequency_threshold=0.2),
-            [{'document_label': 'exact', 'text': 'The dog chased the animal', 'text_to_match': 'A dog chases an animal', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 17.654017250803907, 'word_infos': [[4, 7, 'overlapping_relation', False, 'Matches DOG directly.'], [8, 14, 'overlapping_relation', False, 'Matches CHASE directly.'], [19, 25, 'overlapping_relation', True, 'Matches ANIMAL directly.']], 'answers': []}, {'document_label': 'specific', 'text': 'I saw a dog. It was chasing a cat', 'text_to_match': 'A dog chases an animal', 'rank': '2', 'index_within_document': 9, 'subword_index': None, 'start_index': 3, 'end_index': 9, 'sentences_start_index': 0, 'sentences_end_index': 9, 'sentences_character_start_index': 0, 'sentences_character_end_index': 33, 'score': 14.777271168442839, 'word_infos': [[8, 11, 'overlapping_relation', False, 'Matches DOG directly.'], [20, 27, 'overlapping_relation', False, 'Is a synonym of CHASE in the ontology.'], [30, 33, 'overlapping_relation', True, 'Is a child of ANIMAL in the ontology.']], 'answers': []}, {'document_label': 'exact-reversed', 'text': 'The animal chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3=', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 8.083873269940398, 'word_infos': [[4, 10, 'single', False, 'Matches ANIMAL directly.'], [11, 17, 'relation', False, 'Matches CHASE directly.'], [22, 25, 'relation', True, 'Is a child of ANIMAL in the ontology.']], 'answers': []}, {'document_label': 'specific-reversed', 'text': 'The cat chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3=', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 22, 'score': 7.731063509742494, 'word_infos': [[4, 7, 'single', False, 'Is a child of ANIMAL in the ontology.'], [8, 14, 'relation', False, 'Matches CHASE directly.'], [19, 22, 'relation', True, 'Is a child of ANIMAL in the ontology.']], 'answers': []}])
+            [{'document_label': 'exact', 'text': 'The dog chased the animal', 'text_to_match': 'A dog chases an animal', 'rank': '1=', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 17.654017250803907, 'word_infos': [[4, 7, 'overlapping_relation', False, 'Matches DOG directly.'], [8, 14, 'overlapping_relation', False, 'Matches CHASE directly.'], [19, 25, 'overlapping_relation', True, 'Matches ANIMAL directly.']], 'answers': []}, {'document_label': 'specific', 'text': 'I saw a dog. It was chasing a cat', 'text_to_match': 'A dog chases an animal', 'rank': '1=', 'index_within_document': 9, 'subword_index': None, 'start_index': 3, 'end_index': 9, 'sentences_start_index': 0, 'sentences_end_index': 9, 'sentences_character_start_index': 0, 'sentences_character_end_index': 33, 'score': 15.963706826344412, 'word_infos': [[8, 11, 'overlapping_relation', False, 'Matches DOG directly.'], [20, 27, 'overlapping_relation', False, 'Matches CHASE directly.'], [30, 33, 'overlapping_relation', True, 'Is a child of ANIMAL in the ontology.']], 'answers': []}, {'document_label': 'exact-reversed', 'text': 'The animal chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3=', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 8.083873269940398, 'word_infos': [[4, 10, 'single', False, 'Matches ANIMAL directly.'], [11, 17, 'relation', False, 'Matches CHASE directly.'], [22, 25, 'relation', True, 'Is a child of ANIMAL in the ontology.']], 'answers': []}, {'document_label': 'specific-reversed', 'text': 'The cat chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3=', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 22, 'score': 7.731063509742494, 'word_infos': [[4, 7, 'single', False, 'Is a child of ANIMAL in the ontology.'], [8, 14, 'relation', False, 'Matches CHASE directly.'], [19, 22, 'relation', True, 'Is a child of ANIMAL in the ontology.']], 'answers': []}])
         m.close()
 
-    @unittest.skip("No ontology functionality")
+    
     def test_number_of_results(self):
         m = holmes.Manager('en_core_web_sm', ontology=ontology_for_sm_tests,
             number_of_workers=2)
@@ -1200,10 +1201,10 @@ class EnglishTopicMatchingTest(unittest.TestCase):
             single_word_any_tag_score=2,
             different_match_cutoff_score=5,
             relation_matching_frequency_threshold=0.2),
-            [{'document_label': 'exact', 'text': 'The dog chased the animal', 'text_to_match': 'A dog chases an animal', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 17.654017250803907, 'word_infos': [[4, 7, 'overlapping_relation', False, 'Matches DOG directly.'], [8, 14, 'overlapping_relation', False, 'Matches CHASE directly.'], [19, 25, 'overlapping_relation', True, 'Matches ANIMAL directly.']], 'answers': []}, {'document_label': 'specific', 'text': 'I saw a dog. It was chasing a cat', 'text_to_match': 'A dog chases an animal', 'rank': '2', 'index_within_document': 9, 'subword_index': None, 'start_index': 3, 'end_index': 9, 'sentences_start_index': 0, 'sentences_end_index': 9, 'sentences_character_start_index': 0, 'sentences_character_end_index': 33, 'score': 14.777271168442839, 'word_infos': [[8, 11, 'overlapping_relation', False, 'Matches DOG directly.'], [20, 27, 'overlapping_relation', False, 'Is a synonym of CHASE in the ontology.'], [30, 33, 'overlapping_relation', True, 'Is a child of ANIMAL in the ontology.']], 'answers': []}, {'document_label': 'exact-reversed', 'text': 'The animal chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 8.083873269940398, 'word_infos': [[4, 10, 'single', False, 'Matches ANIMAL directly.'], [11, 17, 'relation', False, 'Matches CHASE directly.'], [22, 25, 'relation', True, 'Is a child of ANIMAL in the ontology.']], 'answers': []}], )
+            [{'document_label': 'exact', 'text': 'The dog chased the animal', 'text_to_match': 'A dog chases an animal', 'rank': '1=', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 17.654017250803907, 'word_infos': [[4, 7, 'overlapping_relation', False, 'Matches DOG directly.'], [8, 14, 'overlapping_relation', False, 'Matches CHASE directly.'], [19, 25, 'overlapping_relation', True, 'Matches ANIMAL directly.']], 'answers': []}, {'document_label': 'specific', 'text': 'I saw a dog. It was chasing a cat', 'text_to_match': 'A dog chases an animal', 'rank': '1=', 'index_within_document': 9, 'subword_index': None, 'start_index': 3, 'end_index': 9, 'sentences_start_index': 0, 'sentences_end_index': 9, 'sentences_character_start_index': 0, 'sentences_character_end_index': 33, 'score': 15.963706826344412, 'word_infos': [[8, 11, 'overlapping_relation', False, 'Matches DOG directly.'], [20, 27, 'overlapping_relation', False, 'Matches CHASE directly.'], [30, 33, 'overlapping_relation', True, 'Is a child of ANIMAL in the ontology.']], 'answers': []}, {'document_label': 'exact-reversed', 'text': 'The animal chased the dog', 'text_to_match': 'A dog chases an animal', 'rank': '3', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 8.083873269940398, 'word_infos': [[4, 10, 'single', False, 'Matches ANIMAL directly.'], [11, 17, 'relation', False, 'Matches CHASE directly.'], [22, 25, 'relation', True, 'Is a child of ANIMAL in the ontology.']], 'answers': []}] )
         m.close()
 
-    @unittest.skip("No ontology functionality")
+    
     def test_multithreading_filtering_with_topic_match_dictionaries(self):
         m = holmes.Manager('en_core_web_sm', number_of_workers=2,
                                           ontology=ontology_for_sm_tests)
@@ -1234,7 +1235,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self.assertEqual(len(topic_match_dictionaries), 0)
         m.close()
 
-    @unittest.skip("No ontology functionality")
+    
     def test_different_match_cutoff_score_high_2(self):
         m = holmes.Manager('en_core_web_sm', number_of_workers=2,
                                           ontology=ontology_for_sm_tests)
@@ -1245,7 +1246,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         self.assertEqual(len(topic_match_dictionaries), 2)
         m.close()
 
-    @unittest.skip("No ontology functionality")
+    
     def test_different_match_cutoff_score_control_2(self):
         m = holmes.Manager('en_core_web_sm', number_of_workers=2,
                                           ontology=ontology_for_sm_tests)

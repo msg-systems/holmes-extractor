@@ -219,14 +219,15 @@ class MultiwordSpan:
             lemmas replaced by those derived lemmas
         token_indexes -- a list of token indexes that make up the multiword span
         """
+        text = text
         self.text = text
         self.lemma = lemma
         self.derived_lemma = derived_lemma
         self.direct_matching_reprs = [lemma]
         if hyphen_normalized_lemma != lemma:
             self.direct_matching_reprs.append(hyphen_normalized_lemma)
-        if lemma != text:
-            self.direct_matching_reprs.append(text)
+        if lemma != text.lower():
+            self.direct_matching_reprs.append(text.lower())
         if derived_lemma != lemma:
             self.derivation_matching_reprs = [derived_lemma]
         else:
@@ -803,8 +804,8 @@ class SemanticAnalyzer(ABC):
             hyphen_normalized_lemma = self.normalize_hyphens(lemma)
             if lemma != hyphen_normalized_lemma:
                 direct_matching_reprs.append(hyphen_normalized_lemma)
-            if token.text != lemma:
-                direct_matching_reprs.append(token.text)
+            if token.text.lower() != lemma:
+                direct_matching_reprs.append(token.text.lower())
             if derived_lemma != lemma:
                 derivation_matching_reprs = [derived_lemma]
             else:
@@ -1220,7 +1221,7 @@ class SemanticAnalyzer(ABC):
                 inner_pointer += 1
             if pointer + 1 < inner_pointer and token in working_tokens:
                 return_list.append(MultiwordSpan(
-                    working_text.strip(), working_hyphen_normalized_lemma.strip(), working_lemma.strip(), working_derived_lemma.strip(),
+                    working_text.strip().lower(), working_hyphen_normalized_lemma.strip(), working_lemma.strip(), working_derived_lemma.strip(),
                     [t.i for t in working_tokens]))
             pointer += 1
         return return_list if len(return_list) > 0 else None
@@ -1532,7 +1533,7 @@ class LinguisticObjectFactory:
                 if edm is not None:
                     for index in edm.token_indexes:
                         if index == token.i:
-                            token_indexes_to_multiwords[index] = edm.text
+                            token_indexes_to_multiwords[index] = edm.text.lower()
                         else:
                             token_indexes_within_multiwords_to_ignore.append(index)
         for token in doc:
@@ -1913,8 +1914,10 @@ class LinguisticObjectFactory:
             reverse_only, treat_as_reverse_only_during_initial_relation_matching,
             len(tokens_to_match) == 1 and
             not (phraselet_template is not None and phraselet_template.question))
-        for word_matching_strategy in self.semantic_matching_helper.main_word_matching_strategies:
+        for word_matching_strategy in self.semantic_matching_helper.main_word_matching_strategies + self.semantic_matching_helper.ontology_word_matching_strategies:
             word_matching_strategy.add_words_matching_search_phrase_root_token(search_phrase)
+        search_phrase.words_matching_root_token.sort(key = lambda word: 0-len(word))
+        # process longer entries first so that multiwords are considered before their constituent parts
         return search_phrase
 
 
@@ -1982,8 +1985,6 @@ class SemanticMatchingHelper(ABC):
         pass
 
     def __init__(self):
-        self.main_word_matching_strategies: List["WordMatchingStrategy"] = []
-        self.additional_word_matching_strategies: List["WordMatchingStrategy"] = []
         self.local_phraselet_templates = [copy(t) for t in self.phraselet_templates]
         for key, match_implication in self.match_implication_dict.items():
             assert key == match_implication.search_phrase_dependency
@@ -1993,6 +1994,10 @@ class SemanticMatchingHelper(ABC):
             assert key not in match_implication.reverse_document_dependencies
             assert len([dep for dep in match_implication.reverse_document_dependencies
                 if match_implication.reverse_document_dependencies.count(dep) > 1]) == 0
+        self.main_word_matching_strategies: List["WordMatchingStrategy"] = []
+        self.ontology_word_matching_strategies: List["WordMatchingStrategy"] = []
+        self.embedding_word_matching_strategies: List["WordMatchingStrategy"] = []
+        
 
     def get_subtree_list_for_question_answer(self, token:Token):
         """ Returns the part of the subtree of a token that has matched a question word
@@ -2041,7 +2046,7 @@ class SemanticMatchingHelper(ABC):
 
     def add_to_reverse_dict(self, reverse_dict: Dict[str, ReverseIndexValue], parsed_document: Doc, document_label: str):
         """ Indexes a parsed document. """
-        for word_matching_strategy in self.main_word_matching_strategies:
+        for word_matching_strategy in self.main_word_matching_strategies + self.ontology_word_matching_strategies:
             word_matching_strategy.add_reverse_dict_entries(reverse_dict, parsed_document, document_label)
 
     def get_reverse_dict_removing_document(self, reverse_dict: Dict[str, ReverseIndexValue], document_label: str) -> Dict[str, ReverseIndexValue]:
@@ -2121,10 +2126,11 @@ class SemanticMatchingHelper(ABC):
                     return None
                 else:
                     continue
-            working_texts.append(multiword_token.text.lower())
+            working_texts.append(multiword_token.text)
             working_indexes.append(multiword_token.i)
         if len(working_texts) > 1:
-            return MultiwordSpan(' '.join(working_texts), None, None, None, working_indexes)
+            multiword_text = ' '.join(working_texts)
+            return MultiwordSpan(multiword_text, None, multiword_text, None, working_indexes)
         else:
             return None
 

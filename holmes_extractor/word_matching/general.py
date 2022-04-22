@@ -1,10 +1,10 @@
 from typing import Optional, List, Dict, Tuple
 from spacy.tokens import Token, Doc
-from ..parsing import CorpusWordPosition, MultiwordSpan, ReverseIndexValue, SemanticMatchingHelper, Subword, Index, SearchPhrase
+from ..parsing import CorpusWordPosition, MultiwordSpan, ReverseIndexValue, Subword, Index, SearchPhrase
 
 class WordMatchingStrategy:
 
-    def __init__(self, semantic_matching_helper: SemanticMatchingHelper, perform_coreference_resolution: bool):
+    def __init__(self, semantic_matching_helper, perform_coreference_resolution: bool):
         self.semantic_matching_helper = semantic_matching_helper
         self.perform_coreference_resolution = perform_coreference_resolution
 
@@ -43,7 +43,7 @@ class WordMatchingStrategy:
                     extracted_word = multiword_span.text
                     break
                 else:
-                    extracted_word = most_specific_token.text
+                    extracted_word = most_specific_token.text.lower()
         return extracted_word
 
 

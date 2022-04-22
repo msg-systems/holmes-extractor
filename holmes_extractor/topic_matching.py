@@ -124,7 +124,7 @@ class TopicMatcher:
 
         process_initial_question_words = initial_question_word_behaviour in ('process', 'exclusive')
 
-        word_matching_strategies = self.semantic_matching_helper.main_word_matching_strategies[:]
+        word_matching_strategies = (self.semantic_matching_helper.main_word_matching_strategies + self.semantic_matching_helper.ontology_word_matching_strategies)[:]
         if overall_similarity_threshold < 1.0 or (process_initial_question_words and initial_question_word_overall_similarity_threshold < 1.0):
             word_matching_strategies.append(EmbeddingWordMatchingStrategy(self.semantic_matching_helper, structural_matcher.perform_coreference_resolution, overall_similarity_threshold, initial_question_word_overall_similarity_threshold if process_initial_question_words else overall_similarity_threshold))
             word_matching_strategies.append(EntityEmbeddingWordMatchingStrategy(self.semantic_matching_helper, structural_matcher.perform_coreference_resolution, overall_similarity_threshold, initial_question_word_overall_similarity_threshold if process_initial_question_words else overall_similarity_threshold, entity_label_to_vector_dict))
@@ -239,6 +239,7 @@ class TopicMatcher:
                 match.from_single_word_phraselet))
         position_sorted_structural_matches = self.remove_duplicates(
             position_sorted_structural_matches)
+        position_sorted_structural_matches = self.remove_single_word_matches_made_superfluous_by_multiword_matches(position_sorted_structural_matches)
 
         # Read through the documents measuring the activation based on where
         # in the document structural matches were found
@@ -523,6 +524,27 @@ class TopicMatcher:
             return False
         return True
 
+    def remove_single_word_matches_made_superfluous_by_multiword_matches(self, matches):
+        indexes_to_remove = set()
+        for counter, match in enumerate(matches):
+            match_word_match = match.word_matches[0]
+            if match.from_single_word_phraselet and match_word_match.first_document_token != match_word_match.last_document_token:
+                for inner_counter in range(counter + 1, len(matches)):
+                    if matches[inner_counter].from_single_word_phraselet:
+                        inner_match = matches[inner_counter]
+                        inner_match_word_match = inner_match.word_matches[0]
+                        if inner_match_word_match.first_document_token > match_word_match.last_document_token or inner_match_word_match.first_document_token != inner_match_word_match.last_document_token:
+                            break
+                        indexes_to_remove.add(inner_counter)
+                for inner_counter in range(counter - 1, -1, -1):
+                    if matches[inner_counter].from_single_word_phraselet:
+                        inner_match = matches[inner_counter]
+                        inner_match_word_match = inner_match.word_matches[0]
+                        if inner_match_word_match.last_document_token < match_word_match.first_document_token or inner_match_word_match.first_document_token != inner_match_word_match.last_document_token:
+                            break
+                        indexes_to_remove.add(inner_counter)    
+        return [m for i, m in enumerate(matches) if i not in indexes_to_remove]
+
     def remove_duplicates(self, matches):
         # Situations where the same document tokens have been matched by multiple phraselets
         matches_to_return = []
@@ -535,6 +557,9 @@ class TopicMatcher:
             for counter in range(1, len(matches)):
                 this_match = matches[counter]
                 previous_match = matches[counter-1]
+                if this_match.document_label != previous_match.document_label:
+                    matches_to_return.append(this_match)
+                    continue
                 if this_match.index_within_document == previous_match.index_within_document:
                     if previous_match.from_single_word_phraselet and \
                             previous_match.get_subword_index() is None:
@@ -546,9 +571,7 @@ class TopicMatcher:
                         # This match is against a subword where the whole word has also been
                         # matched, so reject it
                         continue
-                if this_match.document_label != previous_match.document_label:
-                    matches_to_return.append(this_match)
-                elif len(this_match.word_matches) != len(previous_match.word_matches):
+                if len(this_match.word_matches) != len(previous_match.word_matches):
                     matches_to_return.append(this_match)
                 else:
                     this_word_matches_indexes = [
@@ -671,6 +694,7 @@ class TopicMatcher:
             for word_match in (word_match for word_match in match.word_matches \
                     if word_match.word_match_type == 'ontology'):
                 this_match_score *= (self.ontology_penalty ** (abs(word_match.depth) + 1))
+                
             if match.search_phrase_label in phraselet_labels_to_phraselet_activation_trackers:
                 phraselet_activation_tracker = phraselet_labels_to_phraselet_activation_trackers[
                     match.search_phrase_label]

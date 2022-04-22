@@ -60,7 +60,7 @@ class EntityWordMatchingStrategy(WordMatchingStrategy):
                 first_document_token=document_token,
                 last_document_token=document_token,
                 document_subword=None,
-                document_word=document_token.text,
+                document_word=document_token.text.lower(),
                 word_match_type=self.WORD_MATCH_TYPE_LABEL,
                 explanation=self._get_explanation(entity_placeholder),
             )
