@@ -197,7 +197,7 @@ class OntologyWordMatchingStrategy(WordMatchingStrategy):
                         )
 
     def _get_reprs(self, repr_bearer: Union[HolmesDictionary, Subword, MultiwordSpan]):
-        reprs = repr_bearer.direct_matching_reprs[:]
         if self.analyze_derivational_morphology and repr_bearer.derivation_matching_reprs is not None:
-            reprs.extend(repr_bearer.derivation_matching_reprs)
-        return reprs
+            return repr_bearer.derivation_matching_reprs
+        else:
+            return repr_bearer.direct_matching_reprs

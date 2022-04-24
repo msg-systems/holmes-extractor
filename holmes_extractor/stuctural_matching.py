@@ -1,9 +1,9 @@
-from typing import List
+from typing import List, Dict, Set
 import copy
 import sys
 from spacy.tokens import Token
 from .parsing import Index
-from holmes_extractor.word_matching.general import WordMatchingStrategy
+from holmes_extractor.word_matching.general import WordMatch, WordMatchingStrategy
 
 
 
@@ -125,200 +125,229 @@ class StructuralMatcher:
                 if potential_word_match is not None:
                     break
             else:
-                return False
+                return None
         else:
             for word_matching_strategy in word_matching_strategies:
                 potential_word_match = word_matching_strategy.match_subword(search_phrase, search_phrase_token, document_token, document_token._.holmes.subwords[document_subword_index])
                 if potential_word_match is not None:
                     break
             else:
-                return False
+                return None
 
-        for dependency in (
-                dependency for dependency in search_phrase_token._.holmes.children
-                if dependency.child_token(search_phrase_token.doc)._.holmes.is_matchable or
-                (search_phrase.topic_match_phraselet and process_initial_question_words and
-                dependency.child_token(
-                search_phrase_token.doc)._.holmes.is_initial_question_word)):
-            at_least_one_document_dependency_tried = False
-            at_least_one_document_dependency_matched = False
-            # Loop through this token and any tokens linked to it by coreference
-            parents = [Index(document_token.i, document_subword_index)]
-            if self.perform_coreference_resolution and (document_subword_index is None or
-                    document_token._.holmes.subwords[document_subword_index].is_head):
-                parents.extend([
-                    Index(token_index, None) for token_index in
-                    document_token._.holmes.token_and_coreference_chain_indexes
-                    if token_index != document_token.i])
-            for working_document_parent_index in parents:
-                working_document_child_indexes = []
-                document_parent_token = document_token.doc[
-                    working_document_parent_index.token_index]
-                if not working_document_parent_index.is_subword() or \
-                        document_parent_token._.holmes.subwords[
-                        working_document_parent_index.subword_index].is_head:
-                        # is_head: e.g. 'Polizeiinformation über Kriminelle' should match
-                        # 'Information über Kriminelle'
+        if not search_phrase.has_single_matchable_word:
+            for dependency in (
+                    dependency for dependency in search_phrase_token._.holmes.children
+                    if dependency.child_token(search_phrase_token.doc)._.holmes.is_matchable or
+                    (search_phrase.topic_match_phraselet and process_initial_question_words and
+                    dependency.child_token(
+                    search_phrase_token.doc)._.holmes.is_initial_question_word)):
+                structurally_matched_document_tokens_to_word_matches: Dict[Token, List[WordMatch]] = {}
+                at_least_one_document_dependency_tried = False
+                at_least_one_document_dependency_matched = False
+                # Loop through this token and any tokens linked to it by coreference
+                parents = [Index(document_token.i, document_subword_index)]
+                if self.perform_coreference_resolution and (document_subword_index is None or
+                        document_token._.holmes.subwords[document_subword_index].is_head):
+                    parents.extend([
+                        Index(token_index, None) for token_index in
+                        document_token._.holmes.token_and_coreference_chain_indexes
+                        if token_index != document_token.i])
+                for working_document_parent_index in parents:
+                    working_document_child_indexes = []
+                    document_parent_token = document_token.doc[
+                        working_document_parent_index.token_index]
+                    if not working_document_parent_index.is_subword() or \
+                            document_parent_token._.holmes.subwords[
+                            working_document_parent_index.subword_index].is_head:
+                            # is_head: e.g. 'Polizeiinformation über Kriminelle' should match
+                            # 'Information über Kriminelle'
 
-                    # inverse_polarity_boolean: *True* in the special case where the
-                    # dependency has been matched backwards
-                    document_dependencies_to_inverse_polarity_booleans = {
-                        document_dependency: False for document_dependency in
-                        document_parent_token._.holmes.children if
-                        self.semantic_matching_helper.dependency_labels_match(
-                        search_phrase_dependency_label=dependency.label,
-                        document_dependency_label=document_dependency.label,
-                        inverse_polarity=False)}
-                    document_dependencies_to_inverse_polarity_booleans.update({
-                        document_dependency: True for document_dependency in
-                        document_parent_token._.holmes.parents if
-                        self.use_reverse_dependency_matching and
-                        self.semantic_matching_helper.dependency_labels_match(
-                        search_phrase_dependency_label=dependency.label,
-                        document_dependency_label=document_dependency.label,
-                        inverse_polarity=True)})
-                    for document_dependency, inverse_polarity in \
-                            document_dependencies_to_inverse_polarity_booleans.items():
-                        if not inverse_polarity:
-                            document_child = document_dependency.child_token(document_token.doc)
-                        else:
-                            document_child = \
-                                document_dependency.parent_token(document_token.doc)
-                        if self.perform_coreference_resolution:
-                            # wherever a dependency is found, loop through any tokens linked
-                            # to the child by coreference
-                            working_document_child_indexes = [
-                                Index(token_index, None) for token_index in
-                                document_child._.holmes.token_and_coreference_chain_indexes
-                                if document_token.doc[token_index].pos_ != 'PRON' or not
-                                document_token.doc[token_index]._.holmes.\
-                                is_involved_in_coreference()]
-                                    # otherwise where matching starts with a noun and there is
-                                    # a dependency pointing back to the noun, matching will be
-                                    # attempted against the pronoun only and will then fail.
-                        elif not inverse_polarity:
-                            working_document_child_indexes = \
-                                [Index(document_dependency.child_index, None)]
-                        else:
-                            working_document_child_indexes = \
-                                [Index(document_dependency.parent_index, None)]
-                        # Where a dependency points to an entire word that has subwords, check
-                        # the head subword as well as the entire word
-                        for working_document_child_index in \
-                                working_document_child_indexes.copy():
-                            working_document_child = \
-                                document_token.doc[working_document_child_index.token_index]
-                            for subword in (
-                                    subword for subword in
-                                    working_document_child._.holmes.subwords
-                                    if subword.is_head):
-                                working_document_child_indexes.append(Index(
-                                    working_document_child.i, subword.index))
-                        # Loop through the dependencies from each token
-                        for working_document_child_index in (
-                                working_index for working_index
-                                in working_document_child_indexes):
-                            at_least_one_document_dependency_tried = True
-                            if search_phrase.question_phraselet and \
-                                    document[
-                                    working_document_parent_index.token_index] in \
-                                    self.semantic_matching_helper.\
-                                    get_subtree_list_for_question_answer(
-                                    document[
-                                    working_document_child_index.token_index]):
-                                continue
-                            if working_document_child_index in \
-                                    search_phrase_and_document_visited_table[
-                                    dependency.child_index] or \
-                                    self.match_recursively(
+                        # inverse_polarity_boolean: *True* in the special case where the
+                        # dependency has been matched backwards
+                        document_dependencies_to_inverse_polarity_booleans = {
+                            document_dependency: False for document_dependency in
+                            document_parent_token._.holmes.children if
+                            self.semantic_matching_helper.dependency_labels_match(
+                            search_phrase_dependency_label=dependency.label,
+                            document_dependency_label=document_dependency.label,
+                            inverse_polarity=False)}
+                        document_dependencies_to_inverse_polarity_booleans.update({
+                            document_dependency: True for document_dependency in
+                            document_parent_token._.holmes.parents if
+                            self.use_reverse_dependency_matching and
+                            self.semantic_matching_helper.dependency_labels_match(
+                            search_phrase_dependency_label=dependency.label,
+                            document_dependency_label=document_dependency.label,
+                            inverse_polarity=True)})
+                        for document_dependency, inverse_polarity in \
+                                document_dependencies_to_inverse_polarity_booleans.items():
+                            if not inverse_polarity:
+                                document_child = document_dependency.child_token(document_token.doc)
+                            else:
+                                document_child = \
+                                    document_dependency.parent_token(document_token.doc)
+                            if self.perform_coreference_resolution:
+                                # wherever a dependency is found, loop through any tokens linked
+                                # to the child by coreference
+                                working_document_child_indexes = [
+                                    Index(token_index, None) for token_index in
+                                    document_child._.holmes.token_and_coreference_chain_indexes
+                                    if document_token.doc[token_index].pos_ != 'PRON' or not
+                                    document_token.doc[token_index]._.holmes.\
+                                    is_involved_in_coreference()]
+                                        # otherwise where matching starts with a noun and there is
+                                        # a dependency pointing back to the noun, matching will be
+                                        # attempted against the pronoun only and will then fail.
+                            elif not inverse_polarity:
+                                working_document_child_indexes = \
+                                    [Index(document_dependency.child_index, None)]
+                            else:
+                                working_document_child_indexes = \
+                                    [Index(document_dependency.parent_index, None)]
+                            # Where a dependency points to an entire word that has subwords, check
+                            # the head subword as well as the entire word
+                            for working_document_child_index in \
+                                    working_document_child_indexes.copy():
+                                working_document_child = \
+                                    document_token.doc[working_document_child_index.token_index]
+                                for subword in (
+                                        subword for subword in
+                                        working_document_child._.holmes.subwords
+                                        if subword.is_head):
+                                    working_document_child_indexes.append(Index(
+                                        working_document_child.i, subword.index))
+                            # Loop through the dependencies from each token
+                            for working_document_child_index in working_document_child_indexes:
+                                at_least_one_document_dependency_tried = True
+                                if search_phrase.question_phraselet and \
+                                        document[
+                                        working_document_parent_index.token_index] in \
+                                        self.semantic_matching_helper.\
+                                        get_subtree_list_for_question_answer(
+                                        document[
+                                        working_document_child_index.token_index]):
+                                    continue
+                                if working_document_child_index in \
+                                        search_phrase_and_document_visited_table[
+                                        dependency.child_index]:
+                                    at_least_one_document_dependency_matched = True
+                                    continue
+                                child_word_match = self.match_recursively(
+                                        word_matching_strategies=word_matching_strategies,
+                                        search_phrase=search_phrase,
+                                        search_phrase_token=dependency.child_token(
+                                            search_phrase_token.doc),
+                                        document=document,
+                                        document_token=document[
+                                            working_document_child_index.token_index],
+                                        document_subword_index=
+                                        working_document_child_index.subword_index,
+                                        search_phrase_tokens_to_word_matches=
+                                        search_phrase_tokens_to_word_matches,
+                                        search_phrase_and_document_visited_table=
+                                        search_phrase_and_document_visited_table,
+                                        is_uncertain=(
+                                            (document_dependency.is_uncertain and not
+                                            dependency.is_uncertain) or inverse_polarity),
+                                        structurally_matched_document_token=document_child,
+                                        compare_embeddings_on_non_root_words=
+                                        compare_embeddings_on_non_root_words,
+                                        process_initial_question_words=process_initial_question_words)
+                                if child_word_match is not None:
+                                    at_least_one_document_dependency_matched = True
+                                    if document_subword_index is None:
+                                        if document_child in structurally_matched_document_tokens_to_word_matches:
+                                            structurally_matched_document_tokens_to_word_matches[document_child].append(child_word_match)
+                                        else:
+                                            structurally_matched_document_tokens_to_word_matches[document_child] = [child_word_match]
+                    if working_document_parent_index.is_subword():
+                        # examine relationship to dependent subword in the same word
+                        document_parent_subword = document_token.doc[
+                            working_document_parent_index.token_index]._.holmes.\
+                            subwords[working_document_parent_index.subword_index]
+                        if document_parent_subword.dependent_index is not None and \
+                                self.semantic_matching_helper.dependency_labels_match(
+                                    search_phrase_dependency_label=dependency.label,
+                                    document_dependency_label=
+                                    document_parent_subword.dependency_label,
+                                    inverse_polarity=False):
+                            if self.match_recursively(
                                     word_matching_strategies=word_matching_strategies,
                                     search_phrase=search_phrase,
                                     search_phrase_token=dependency.child_token(
                                         search_phrase_token.doc),
                                     document=document,
-                                    document_token=document[
-                                        working_document_child_index.token_index],
+                                    document_token=document_token,
                                     document_subword_index=
-                                    working_document_child_index.subword_index,
+                                    document_parent_subword.dependent_index,
                                     search_phrase_tokens_to_word_matches=
                                     search_phrase_tokens_to_word_matches,
                                     search_phrase_and_document_visited_table=
                                     search_phrase_and_document_visited_table,
-                                    is_uncertain=(
-                                        (document_dependency.is_uncertain and not
-                                        dependency.is_uncertain) or inverse_polarity),
-                                    structurally_matched_document_token=document_child,
+                                    is_uncertain=False,
+                                    structurally_matched_document_token=document_token,
                                     compare_embeddings_on_non_root_words=
                                     compare_embeddings_on_non_root_words,
-                                    process_initial_question_words=process_initial_question_words):
+                                    process_initial_question_words=process_initial_question_words) is not None:
                                 at_least_one_document_dependency_matched = True
-                if working_document_parent_index.is_subword():
-                    # examine relationship to dependent subword in the same word
-                    document_parent_subword = document_token.doc[
-                        working_document_parent_index.token_index]._.holmes.\
-                        subwords[working_document_parent_index.subword_index]
-                    if document_parent_subword.dependent_index is not None and \
-                            self.semantic_matching_helper.dependency_labels_match(
-                                search_phrase_dependency_label=dependency.label,
-                                document_dependency_label=
-                                document_parent_subword.dependency_label,
-                                inverse_polarity=False):
-                        if self.match_recursively(
-                                word_matching_strategies=word_matching_strategies,
-                                search_phrase=search_phrase,
-                                search_phrase_token=dependency.child_token(
-                                    search_phrase_token.doc),
-                                document=document,
-                                document_token=document_token,
-                                document_subword_index=
-                                document_parent_subword.dependent_index,
-                                search_phrase_tokens_to_word_matches=
-                                search_phrase_tokens_to_word_matches,
-                                search_phrase_and_document_visited_table=
-                                search_phrase_and_document_visited_table,
-                                is_uncertain=False,
-                                structurally_matched_document_token=document_token,
-                                compare_embeddings_on_non_root_words=
-                                compare_embeddings_on_non_root_words,
-                                process_initial_question_words=process_initial_question_words):
-                            at_least_one_document_dependency_matched = True
-                    # examine relationship to governing subword in the same word
-                    document_child_subword = document_token.doc[
-                        working_document_parent_index.token_index]._.holmes.\
-                        subwords[working_document_parent_index.subword_index]
-                    if document_child_subword.governor_index is not None and \
-                            self.use_reverse_dependency_matching and \
-                            self.semantic_matching_helper.dependency_labels_match(
-                                search_phrase_dependency_label=dependency.label,
-                                document_dependency_label=
-                                document_parent_subword.governing_dependency_label,
-                                inverse_polarity=True):
-                        at_least_one_document_dependency_tried = True
-                        if self.match_recursively(
-                                word_matching_strategies=word_matching_strategies,
-                                search_phrase=search_phrase,
-                                search_phrase_token=dependency.child_token(
-                                    search_phrase_token.doc),
-                                document=document,
-                                document_token=document_token,
-                                document_subword_index=
-                                document_parent_subword.governor_index,
-                                search_phrase_tokens_to_word_matches=
-                                search_phrase_tokens_to_word_matches,
-                                search_phrase_and_document_visited_table=
-                                search_phrase_and_document_visited_table,
-                                is_uncertain=False,
-                                structurally_matched_document_token=document_token,
-                                compare_embeddings_on_non_root_words=
-                                compare_embeddings_on_non_root_words,
-                                process_initial_question_words=process_initial_question_words):
-                            at_least_one_document_dependency_matched = True
-            if at_least_one_document_dependency_tried and not \
-                    at_least_one_document_dependency_matched:
-                    # it is already clear that the search phrase has not matched, so
-                    # there is no point in pursuing things any further
-                return False
+                        # examine relationship to governing subword in the same word
+                        document_child_subword = document_token.doc[
+                            working_document_parent_index.token_index]._.holmes.\
+                            subwords[working_document_parent_index.subword_index]
+                        if document_child_subword.governor_index is not None and \
+                                self.use_reverse_dependency_matching and \
+                                self.semantic_matching_helper.dependency_labels_match(
+                                    search_phrase_dependency_label=dependency.label,
+                                    document_dependency_label=
+                                    document_parent_subword.governing_dependency_label,
+                                    inverse_polarity=True):
+                            at_least_one_document_dependency_tried = True
+                            if self.match_recursively(
+                                    word_matching_strategies=word_matching_strategies,
+                                    search_phrase=search_phrase,
+                                    search_phrase_token=dependency.child_token(
+                                        search_phrase_token.doc),
+                                    document=document,
+                                    document_token=document_token,
+                                    document_subword_index=
+                                    document_parent_subword.governor_index,
+                                    search_phrase_tokens_to_word_matches=
+                                    search_phrase_tokens_to_word_matches,
+                                    search_phrase_and_document_visited_table=
+                                    search_phrase_and_document_visited_table,
+                                    is_uncertain=False,
+                                    structurally_matched_document_token=document_token,
+                                    compare_embeddings_on_non_root_words=
+                                    compare_embeddings_on_non_root_words,
+                                    process_initial_question_words=process_initial_question_words) is not None:
+                                at_least_one_document_dependency_matched = True
+                if at_least_one_document_dependency_tried and not \
+                        at_least_one_document_dependency_matched:
+                        # it is already clear that the search phrase has not matched, so
+                        # there is no point in pursuing things any further
+                    return None
+                if self.perform_coreference_resolution:
+                    """ When coreference resolution is active, additional word matches are sometimes
+                        returned that are filtered out here.
+                     """
+                    for word_matches in structurally_matched_document_tokens_to_word_matches.values():
+                        if len(word_matches) == 1:
+                            continue
+                        coreference_lists: List[List[WordMatch]] = []
+                        for word_match in word_matches:
+                            if word_match not in word_matches:
+                                continue
+                            coreference_indices = [m.root_index for c in word_match.document_token._.coref_chains for m in c]
+                            coreference_lists.append([wm for wm in word_matches if wm.document_token.i in coreference_indices])
+                            word_matches = [wm for wm in word_matches if wm.document_token.i not in coreference_indices]
+                        for coreference_list in coreference_lists:
+                            if len(coreference_list) > 1:
+                                coreference_list.sort(key= lambda word_match: (abs(word_match.document_token.i - word_match.structurally_matched_document_token.i), word_match.document_token.i > word_match.structurally_matched_document_token.i))
+                                for word_match in coreference_list[1:]:
+                                    search_phrase_tokens_to_word_matches[word_match.search_phrase_token.i].remove(word_match)
+                        
         # store the word match
+
         potential_word_match.structurally_matched_document_token = structurally_matched_document_token
         potential_word_match.is_negated = document_token._.holmes.is_negated
         potential_word_match.is_uncertain = is_uncertain or document_token._.holmes.is_uncertain
@@ -326,67 +355,12 @@ class StructuralMatcher:
             for working_token_index in range(potential_word_match.first_document_token.i, potential_word_match.last_document_token.i + 1):
                 search_phrase_and_document_visited_table[search_phrase_token.i].add(Index(working_token_index, None))
         search_phrase_tokens_to_word_matches[search_phrase_token.i].append(potential_word_match)
-        return True
+        return potential_word_match
 
     def build_matches(
             self, *, search_phrase, search_phrase_tokens_to_word_matches, document_label,
             overall_similarity_threshold, initial_question_word_overall_similarity_threshold):
         """Investigate possible matches when recursion is complete."""
-
-        def mention_root_or_token_index(token):
-            if len(token._.coref_chains) == 0:
-                return token.i
-            for mention in (m for m in token._.coref_chains[0].mentions if token.i in
-                    m.token_indexes):
-                return mention.root_index
-
-        def filter_word_matches_based_on_coreference_resolution(word_matches):
-            """ When coreference resolution is active, additional matches are sometimes
-                returned that are filtered out again using this method.
-            """
-            structural_indexes_to_word_matches = {}
-            # Find the structurally matching document tokens for this list of word matches
-            for word_match in word_matches:
-                structural_index = \
-                    mention_root_or_token_index(word_match.structurally_matched_document_token)
-                if structural_index in structural_indexes_to_word_matches.keys():
-                    structural_indexes_to_word_matches[structural_index].append(word_match)
-                else:
-                    structural_indexes_to_word_matches[structural_index] = [word_match]
-            new_word_matches = []
-            for structural_index in structural_indexes_to_word_matches:
-                # For each structural token, find the best matching coreference mention
-                relevant_word_matches = structural_indexes_to_word_matches[structural_index]
-                structurally_matched_document_token = \
-                    relevant_word_matches[0].document_token.doc[structural_index]
-                already_added_document_token_indexes = set()
-                if structurally_matched_document_token._.holmes.is_involved_in_coreference():
-                    working_index = -1
-                    for relevant_word_match in relevant_word_matches:
-                        this_index = mention_root_or_token_index(relevant_word_match.document_token)
-                        # The best mention should be as close to the structural
-                        # index as possible; if they are the same distance, the preceding mention
-                        # wins.
-                        if working_index == -1 or (
-                                abs(structural_index - this_index) <
-                                abs(structural_index - working_index)) or \
-                                ((abs(structural_index - this_index) ==
-                                abs(structural_index - working_index)) and
-                                this_index < working_index):
-                            working_index = this_index
-                    # Filter out any matches from mentions other than the best mention
-                    for relevant_word_match in relevant_word_matches:
-                        if working_index == \
-                                mention_root_or_token_index(relevant_word_match.document_token) \
-                                and relevant_word_match.document_token.i not in \
-                                already_added_document_token_indexes:
-                            already_added_document_token_indexes.add(
-                                relevant_word_match.document_token.i)
-                            new_word_matches.append(relevant_word_match)
-                else:
-                    new_word_matches.extend(relevant_word_matches)
-            return new_word_matches
-
 
         def match_already_contains_structurally_matched_document_token(
                 match, document_token, document_subword_index):
@@ -465,9 +439,6 @@ class StructuralMatcher:
                 # if there is any search phrase token without a matching document token,
                 # we have no match and can return
                 return []
-            if self.perform_coreference_resolution:
-                word_matches = filter_word_matches_based_on_coreference_resolution(word_matches)
-            # handle any conjunction by distributing the matches amongst separate match objects
             working_matches = []
             for word_match in word_matches:
                 for match in matches:
@@ -555,7 +526,7 @@ class StructuralMatcher:
         # corresponds to the search phrase token with its index and contains the Index objects
         # for the document words for which a match to that search phrase token has been attempted.
         search_phrase_and_document_visited_table = [set() for token in search_phrase.doc]
-        self.match_recursively(
+        if self.match_recursively(
             word_matching_strategies=word_matching_strategies,
             search_phrase=search_phrase,
             search_phrase_token=search_phrase.root_token,
@@ -568,15 +539,15 @@ class StructuralMatcher:
             structurally_matched_document_token=document_token,
             compare_embeddings_on_non_root_words=compare_embeddings_on_non_root_words,
             process_initial_question_words=process_initial_question_words,
-        )
-        working_matches = self.build_matches(
-            search_phrase=search_phrase,
-            search_phrase_tokens_to_word_matches=search_phrase_tokens_to_word_matches,
-            document_label=document_label,
-            overall_similarity_threshold=overall_similarity_threshold,
-            initial_question_word_overall_similarity_threshold=
-            initial_question_word_overall_similarity_threshold)
-        matches_to_return.extend(working_matches)
+        ) is not None:
+            working_matches = self.build_matches(
+                search_phrase=search_phrase,
+                search_phrase_tokens_to_word_matches=search_phrase_tokens_to_word_matches,
+                document_label=document_label,
+                overall_similarity_threshold=overall_similarity_threshold,
+                initial_question_word_overall_similarity_threshold=
+                initial_question_word_overall_similarity_threshold)
+            matches_to_return.extend(working_matches)
         return matches_to_return
 
     def match(
@@ -643,65 +614,6 @@ class StructuralMatcher:
             if not match_specific_indexes and (search_phrase.reverse_only or \
                     search_phrase.treat_as_reverse_only_during_initial_relation_matching):
                 continue
-            if search_phrase.has_single_matchable_word and \
-                    not compare_embeddings_on_root_words and \
-                    self.semantic_matching_helper.get_entity_placeholder(
-                        search_phrase.root_token) is None:
-                # We are only matching a single word without embedding, so to improve
-                # performance we avoid entering the subgraph matching code.
-                existing_minimal_match_cwps = []
-                for word_matching_root_token in search_phrase.words_matching_root_token:
-                    if word_matching_root_token in reverse_dict:
-                        for reverse_index_value in \
-                                reverse_dict[word_matching_root_token]:
-                            cwp = reverse_index_value.corpus_word_position
-                            if filter_out(cwp.document_label):
-                                continue
-                            if cwp in existing_minimal_match_cwps:
-                                continue
-                            document_label = cwp.document_label
-                            index = cwp.index
-                            doc = document_labels_to_documents[document_label]
-                            token = doc[index.token_index]
-                            minimal_match = Match(
-                                search_phrase.label, search_phrase.doc_text, document_label,
-                                True, search_phrase.
-                                topic_match_phraselet_created_without_matching_tags,
-                                search_phrase.reverse_only)
-                            minimal_match.index_within_document = index.token_index
-                            if len(word_matching_root_token.split()) > 1:
-                                if doc[index.token_index]._.holmes.multiword_spans is not None:
-                                    for word_matching_strategy in word_matching_strategies:
-                                        potential_word_match = word_matching_strategy.match_multiwords(search_phrase, search_phrase.root_token, doc[index.token_index],  doc[index.token_index]._.holmes.multiword_spans)
-                                        if potential_word_match is not None:
-                                            potential_word_match.structurally_matched_document_token = doc[index.token_index]
-                                            minimal_match.word_matches.append(potential_word_match)
-                                            break
-                            if len(minimal_match.word_matches) == 0:
-                                if index.is_subword():
-                                    subword = token._.holmes.subwords[index.subword_index]
-                                    for word_matching_strategy in word_matching_strategies:
-                                        potential_word_match = word_matching_strategy.match_subword(search_phrase, search_phrase.root_token, doc[index.token_index], subword)
-                                        if potential_word_match is not None:
-                                            minimal_match.word_matches.append(potential_word_match)
-                                            break
-                                else:
-                                    for word_matching_strategy in word_matching_strategies:
-                                        potential_word_match = word_matching_strategy.match_token(search_phrase, search_phrase.root_token, doc[index.token_index])
-                                        if potential_word_match is not None:
-                                            minimal_match.word_matches.append(potential_word_match)
-                                            break
-                                
-                                if token._.holmes.is_negated:
-                                    minimal_match.is_negated = True
-                                    if len(minimal_match.word_matches) == 1:
-                                        minimal_match.word_matches[0].is_negated = True
-                                if len(minimal_match.word_matches) == 1:
-                                    minimal_match.word_matches[0].structurally_matched_document_token = token
-                            existing_minimal_match_cwps.append(cwp)
-                            matches.append(minimal_match)
-                continue
-            direct_matching_corpus_word_positions = []
             if self.semantic_matching_helper.get_entity_placeholder(
                     search_phrase.root_token) == "ENTITYNOUN": 
                 for document_label, doc in document_labels_to_documents.items():
@@ -715,6 +627,7 @@ class StructuralMatcher:
                                     initial_question_word_overall_similarity_threshold,
                                     process_initial_question_words))
                 continue
+            direct_matching_corpus_word_positions = []
             matched_corpus_word_positions = set()
             entity_label = self.semantic_matching_helper.get_entity_placeholder(search_phrase.root_token)
             if entity_label is not None:
