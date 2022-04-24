@@ -167,7 +167,7 @@ class DerivationWordMatchingStrategy(WordMatchingStrategy):
                 self.add_reverse_dict_entry(
                     reverse_dict,
                     document_label,
-                    token._.holmes.derived_lemma.low,
+                    token._.holmes.derived_lemma.lower(),
                     token._.holmes.derived_lemma,
                     token.i,
                     None,

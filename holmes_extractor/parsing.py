@@ -1370,16 +1370,16 @@ class LinguisticObjectFactory:
                     derived_lemma = token._.holmes.subwords[index.subword_index].derived_lemma
                 else:
                     derived_lemma = lemma
+                if self.ontology is not None and not self.ontology.contains_word(lemma) and self.ontology.contains_word(token._.holmes.subwords[index.subword_index].text.lower()):
+                        lemma = derived_lemma = token._.holmes.subwords[index.subword_index].text.lower()
             else:
                 lemma = token._.holmes.lemma
                 if self.analyze_derivational_morphology:
                     derived_lemma = token._.holmes.derived_lemma
                 else:
                     derived_lemma = lemma
-            if self.ontology is not None and not self.ontology.contains_word(lemma):
-                    if self.ontology.contains_word(token.text.lower()):
+                if self.ontology is not None and not self.ontology.contains_word(lemma) and self.ontology.contains_word(token.text.lower()):
                         lemma = derived_lemma = token.text.lower()
-                    # ontology contains text but not lemma, so return text
             if self.ontology is not None and self.analyze_derivational_morphology and derived_lemma in self.ontology_reverse_derivational_dict:
                 derived_lemma = self.ontology_reverse_derivational_dict[derived_lemma][0]
             index_to_lemmas_cache[index] = lemma, derived_lemma
