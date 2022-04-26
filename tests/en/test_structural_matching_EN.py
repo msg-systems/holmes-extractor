@@ -637,9 +637,9 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
     def test_adjective_verb_phrase_as_search_phrase_matches_compound(self):
         matches = self._get_matches(
             nocoref_holmes_manager,
-            "The holiday and the holiday were very hard and hard to book and to book",
+            "The holiday and the holiday were very hard to book and to book",
         )
-        self.assertEqual(len(matches), 8)
+        self.assertEqual(len(matches), 4)
         for match in matches:
             self.assertFalse(match["uncertain"])
 
