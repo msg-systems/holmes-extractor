@@ -1,7 +1,13 @@
-from typing import List, Dict, Set, Optional
+from typing import List, Dict, Set, Sequence, Optional
 import sys
 from spacy.tokens import Doc, Token
-from .parsing import CorpusWordPosition, Index, ReverseIndexValue, SearchPhrase, SemanticMatchingHelper
+from .parsing import (
+    CorpusWordPosition,
+    Index,
+    ReverseIndexValue,
+    SearchPhrase,
+    SemanticMatchingHelper,
+)
 from holmes_extractor.word_matching.general import WordMatch, WordMatchingStrategy
 
 
@@ -53,7 +59,7 @@ class Match:
         self.overall_similarity_measure = 1.0
 
     @property
-    def involves_coreference(self):
+    def involves_coreference(self) -> bool:
         for word_match in self.word_matches:
             if word_match.involves_coreference:
                 return True
@@ -75,7 +81,7 @@ class Match:
         match_to_return.overall_similarity_measure = self.overall_similarity_measure
         return match_to_return
 
-    def get_subword_index(self):
+    def get_subword_index(self) -> Optional[int]:
         """Returns the subword index of the root token."""
         for word_match in self.word_matches:
             if word_match.search_phrase_token.dep_ == "ROOT":
@@ -86,7 +92,7 @@ class Match:
             "No word match with search phrase token with root dependency"
         )
 
-    def get_subword_index_for_sorting(self):
+    def get_subword_index_for_sorting(self) -> int:
         """Returns *-1* rather than *None* in the absence of a subword."""
         subword_index = self.get_subword_index()
         return subword_index if subword_index is not None else -1
@@ -139,8 +145,8 @@ class StructuralMatcher:
         process_initial_question_words: bool,
         overall_similarity_threshold: float,
         initial_question_word_overall_similarity_threshold: float,
-        document_label_filter:Optional[str]=None
-    ):
+        document_label_filter: Optional[str] = None
+    ) -> List[Match]:
         """Finds and returns matches between search phrases and documents.
         match_depending_on_single_words -- 'True' to match only single word search phrases,
             'False' to match only non-single-word search phrases and 'None' to match both.
@@ -239,9 +245,7 @@ class StructuralMatcher:
                             or cwp in embedding_reverse_matching_cwps
                             and not cwp.index.is_subword()
                         ]
-                    matched_cwps.update(
-                        entity_matching_cwps
-                    )
+                    matched_cwps.update(entity_matching_cwps)
             else:
                 for word_matching_root_token in search_phrase.words_matching_root_token:
                     if word_matching_root_token in reverse_dict.keys():
@@ -254,12 +258,9 @@ class StructuralMatcher:
                                 cwp
                                 for cwp in direct_matching_cwps
                                 if cwp in reverse_matching_cwps
-                                or cwp
-                                in embedding_reverse_matching_cwps
+                                or cwp in embedding_reverse_matching_cwps
                             ]
-                        matched_cwps.update(
-                            direct_matching_cwps
-                        )
+                        matched_cwps.update(direct_matching_cwps)
             if (
                 compare_embeddings_on_root_words
                 and self.semantic_matching_helper.get_entity_placeholder(
@@ -293,8 +294,7 @@ class StructuralMatcher:
                             corpus_word_positions_to_match = [
                                 cwp
                                 for cwp in corpus_word_positions_to_match
-                                if cwp
-                                in embedding_reverse_matching_cwps
+                                if cwp in embedding_reverse_matching_cwps
                                 and cwp not in direct_matching_cwps
                             ]
                             if len(corpus_word_positions_to_match) == 0:
@@ -347,9 +347,7 @@ class StructuralMatcher:
                                 search_phrase.matchable_non_entity_tokens_to_vectors
                             )
                             if similarity_measure >= single_token_similarity_threshold:
-                                matched_cwps.update(
-                                    corpus_word_positions_to_match
-                                )
+                                matched_cwps.update(corpus_word_positions_to_match)
                                 working_cwps_to_match_for_cache.update(
                                     corpus_word_positions_to_match
                                 )
@@ -360,7 +358,9 @@ class StructuralMatcher:
                 if (
                     document_label_filter is not None
                     and corpus_word_position.document_label is not None
-                    and not corpus_word_position.document_label.startswith(document_label_filter)
+                    and not corpus_word_position.document_label.startswith(
+                        document_label_filter
+                    )
                 ):
                     continue
                 doc = document_labels_to_documents[corpus_word_position.document_label]
@@ -387,15 +387,15 @@ class StructuralMatcher:
 
     def get_matches_starting_at_root_word_match(
         self,
-        word_matching_strategies,
-        search_phrase,
-        document,
-        document_token,
-        document_subword_index,
-        document_label,
-        compare_embeddings_on_non_root_words,
-        process_initial_question_words,
-    ):
+        word_matching_strategies: List[WordMatchingStrategy],
+        search_phrase: SearchPhrase,
+        document: Doc,
+        document_token: Token,
+        document_subword_index: int,
+        document_label: str,
+        compare_embeddings_on_non_root_words: bool,
+        process_initial_question_words: bool,
+    ) -> List[Match]:
         """Begin recursive matching where a search phrase root token has matched a document
         token.
         """
@@ -465,13 +465,15 @@ class StructuralMatcher:
             matches.append(match)
         return matches
 
-    def subword_containing_token_is_within_match(self, word_match, other_word_matches):
-        """ Where subwords are involved in conjunction, subwords whose meaning is distributed
-            among multiple words are modelled as belonging to each of those words even if they
-            only occur once in the document text. This method is used to filter out duplicate
-            matches: wherever a potential match contains a subword A that is expressed on another word,
-            it checks that the match also contains at least one subword B that is expressed on the 
-            word where A is modelled.
+    def subword_containing_token_is_within_match(
+        self, word_match: WordMatch, other_word_matches: Sequence[WordMatch]
+    ) -> bool:
+        """Where subwords are involved in conjunction, subwords whose meaning is distributed
+        among multiple words are modelled as belonging to each of those words even if they
+        only occur once in the document text. This method is used to filter out duplicate
+        matches: wherever a potential match contains a subword A that is expressed on another word,
+        it checks that the match also contains at least one subword B that is expressed on the
+        word where A is modelled.
         """
         for other_word_match in other_word_matches:
             if (
@@ -496,7 +498,7 @@ class StructuralMatcher:
         structurally_matched_document_token: Token,
         compare_embeddings_on_non_root_words: bool,
         process_initial_question_words: bool
-    ):
+    ) -> Optional[List[Dict[Token, WordMatch]]]:
         """Called whenever matching is attempted between a search phrase token and a document
         token."""
         index = Index(document_token.i, document_subword_index)
@@ -550,7 +552,9 @@ class StructuralMatcher:
                     )._.holmes.is_initial_question_word
                 )
             ):
-                search_phrase_child_token = dependency.child_token(search_phrase_token.doc)
+                search_phrase_child_token = dependency.child_token(
+                    search_phrase_token.doc
+                )
                 this_dependency_word_match_dicts = []
                 # Loop through this token and any tokens linked to it by coreference
                 working_document_parent_indexes = [
@@ -776,23 +780,20 @@ class StructuralMatcher:
                                     word_match_dicts
                                 )
                 if len(this_dependency_word_match_dicts) == 0:
-                    # it is already clear that the search phrase has not matched, so
-                    # there is no point in pursuing things any further
                     return None
-                if len(this_dependency_word_match_dicts) > 0:
-                    new_word_match_dicts_to_return = []
-                    for dependency_word_match_dict in this_dependency_word_match_dicts:
-                        for existing_word_match_dict in (
-                            w.copy() for w in word_match_dicts_to_return
-                        ):
-                            merged_word_match_dict = self.merge_word_match_dicts(
-                                existing_word_match_dict, dependency_word_match_dict
+                new_word_match_dicts_to_return = []
+                for dependency_word_match_dict in this_dependency_word_match_dicts:
+                    for existing_word_match_dict in (
+                        w.copy() for w in word_match_dicts_to_return
+                    ):
+                        merged_word_match_dict = self.merge_word_match_dicts(
+                            existing_word_match_dict, dependency_word_match_dict
+                        )
+                        if merged_word_match_dict is not None:
+                            new_word_match_dicts_to_return.append(
+                                merged_word_match_dict
                             )
-                            if merged_word_match_dict is not None:
-                                new_word_match_dicts_to_return.append(
-                                    merged_word_match_dict
-                                )
-                    word_match_dicts_to_return = new_word_match_dicts_to_return
+                word_match_dicts_to_return = new_word_match_dicts_to_return
         potential_word_match.structurally_matched_document_token = (
             structurally_matched_document_token
         )
@@ -805,6 +806,9 @@ class StructuralMatcher:
     def merge_word_match_dicts(
         self, existing_word_match_dict, dependency_word_match_dict
     ):
+        """Where the search phrase tokens form a closed net, we need to filter out
+        document subgraph matches where the net structure is open.
+        """
         for key in dependency_word_match_dict:
             if key not in existing_word_match_dict:
                 existing_word_match_dict[key] = dependency_word_match_dict[key]
@@ -815,8 +819,7 @@ class StructuralMatcher:
                 return None
         return existing_word_match_dict
 
-
-    def build_match_dictionaries(self, matches):
+    def build_match_dictionaries(self, matches: List[Match]) -> List[Dict]:
         """Builds and returns a sorted list of match dictionaries."""
         match_dicts = []
         for match in matches:
@@ -824,17 +827,14 @@ class StructuralMatcher:
             latest_sentence_index = -1
             for word_match in match.word_matches:
                 sentence_index = word_match.document_token.sent.start
-                if sentence_index < earliest_sentence_index:
-                    earliest_sentence_index = sentence_index
-                if sentence_index > latest_sentence_index:
-                    latest_sentence_index = sentence_index
+                earliest_sentence_index = min(sentence_index, earliest_sentence_index)
+                latest_sentence_index = max(sentence_index, latest_sentence_index)
             sentences_string = " ".join(
                 sentence.text.strip()
                 for sentence in match.word_matches[0].document_token.doc.sents
                 if sentence.start >= earliest_sentence_index
                 and sentence.start <= latest_sentence_index
             )
-
             match_dict = {
                 "search_phrase_label": match.search_phrase_label,
                 "search_phrase_text": match.search_phrase_text,
