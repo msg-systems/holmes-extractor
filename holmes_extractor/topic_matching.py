@@ -140,8 +140,8 @@ class TopicMatcher:
             match_depending_on_single_words=True,
             compare_embeddings_on_root_words=False,
             compare_embeddings_on_non_root_words=False,
-            reverse_matching_corpus_word_positions=None,
-            embedding_reverse_matching_corpus_word_positions=None,
+            reverse_matching_cwps=None,
+            embedding_reverse_matching_cwps=None,
             process_initial_question_words=process_initial_question_words,
             overall_similarity_threshold=overall_similarity_threshold,
             initial_question_word_overall_similarity_threshold=
@@ -157,8 +157,8 @@ class TopicMatcher:
             match_depending_on_single_words=False,
             compare_embeddings_on_root_words=False,
             compare_embeddings_on_non_root_words=False,
-            reverse_matching_corpus_word_positions=None,
-            embedding_reverse_matching_corpus_word_positions=None,
+            reverse_matching_cwps=None,
+            embedding_reverse_matching_cwps=None,
             process_initial_question_words=process_initial_question_words,
             overall_similarity_threshold=overall_similarity_threshold,
             initial_question_word_overall_similarity_threshold=
@@ -194,9 +194,9 @@ class TopicMatcher:
                 match_depending_on_single_words=False,
                 compare_embeddings_on_root_words=True,
                 compare_embeddings_on_non_root_words=False,
-                reverse_matching_corpus_word_positions=
+                reverse_matching_cwps=
                 parent_direct_retry_corpus_word_positions,
-                embedding_reverse_matching_corpus_word_positions=
+                embedding_reverse_matching_cwps=
                 parent_embedding_retry_corpus_word_positions,
                 process_initial_question_words=process_initial_question_words,
                 overall_similarity_threshold=overall_similarity_threshold,
@@ -214,8 +214,8 @@ class TopicMatcher:
                 match_depending_on_single_words=False,
                 compare_embeddings_on_root_words=False,
                 compare_embeddings_on_non_root_words=True,
-                reverse_matching_corpus_word_positions=None,
-                embedding_reverse_matching_corpus_word_positions=
+                reverse_matching_cwps=None,
+                embedding_reverse_matching_cwps=
                 child_embedding_retry_corpus_word_positions,
                 process_initial_question_words=process_initial_question_words,
                 overall_similarity_threshold=overall_similarity_threshold,

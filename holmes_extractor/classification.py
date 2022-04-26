@@ -19,7 +19,7 @@ from .errors import (
     NoPhraseletsAfterFilteringError,
     IncompatibleAnalyzeDerivationalMorphologyDeserializationError,
 )
-from .stuctural_matching import Match, StructuralMatcher
+from .structural_matching import Match, StructuralMatcher
 from .ontology import Ontology
 from .parsing import (
     CorpusWordPosition,
@@ -219,8 +219,8 @@ class SupervisedTopicTrainingUtils:
                     match_depending_on_single_words=None,
                     compare_embeddings_on_root_words=False,
                     compare_embeddings_on_non_root_words=True,
-                    reverse_matching_corpus_word_positions=None,
-                    embedding_reverse_matching_corpus_word_positions=None,
+                    reverse_matching_cwps=None,
+                    embedding_reverse_matching_cwps=None,
                     process_initial_question_words=False,
                     overall_similarity_threshold=overall_similarity_threshold,
                     initial_question_word_overall_similarity_threshold=1.0,
@@ -445,8 +445,8 @@ class SupervisedTopicTrainingBasis:
                     match_depending_on_single_words=None,
                     compare_embeddings_on_root_words=False,
                     compare_embeddings_on_non_root_words=True,
-                    reverse_matching_corpus_word_positions=None,
-                    embedding_reverse_matching_corpus_word_positions=None,
+                    reverse_matching_cwps=None,
+                    embedding_reverse_matching_cwps=None,
                     process_initial_question_words=False,
                     overall_similarity_threshold=self.overall_similarity_threshold,
                     initial_question_word_overall_similarity_threshold=1.0,

@@ -127,7 +127,7 @@ class MultithreadingTest(unittest.TestCase):
                     "negated": False,
                     "uncertain": False,
                     "involves_coreference": False,
-                    "overall_similarity_measure": "1.0",
+                    "overall_similarity_measure": 1.0,
                     "word_matches": [
                         {
                             "search_phrase_token_index": 1,
@@ -143,7 +143,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "gnu",
                             "depth": 0,
@@ -163,7 +163,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "chase",
                             "depth": 0,
@@ -180,7 +180,7 @@ class MultithreadingTest(unittest.TestCase):
                     "negated": False,
                     "uncertain": False,
                     "involves_coreference": False,
-                    "overall_similarity_measure": "1.0",
+                    "overall_similarity_measure": 1.0,
                     "word_matches": [
                         {
                             "search_phrase_token_index": 1,
@@ -196,7 +196,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "gnu",
                             "depth": 0,
@@ -216,7 +216,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "chase",
                             "depth": 0,
@@ -233,7 +233,7 @@ class MultithreadingTest(unittest.TestCase):
                     "negated": False,
                     "uncertain": False,
                     "involves_coreference": False,
-                    "overall_similarity_measure": "1.0",
+                    "overall_similarity_measure": 1.0,
                     "word_matches": [
                         {
                             "search_phrase_token_index": 1,
@@ -249,7 +249,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "gnu",
                             "depth": 0,
@@ -269,7 +269,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "chase",
                             "depth": 0,
@@ -286,7 +286,7 @@ class MultithreadingTest(unittest.TestCase):
                     "negated": False,
                     "uncertain": False,
                     "involves_coreference": False,
-                    "overall_similarity_measure": "1.0",
+                    "overall_similarity_measure": 1.0,
                     "word_matches": [
                         {
                             "search_phrase_token_index": 1,
@@ -302,7 +302,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "gnu",
                             "depth": 0,
@@ -322,7 +322,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "chase",
                             "depth": 0,
@@ -344,7 +344,7 @@ class MultithreadingTest(unittest.TestCase):
                     "negated": False,
                     "uncertain": False,
                     "involves_coreference": False,
-                    "overall_similarity_measure": "1.0",
+                    "overall_similarity_measure": 1.0,
                     "word_matches": [
                         {
                             "search_phrase_token_index": 1,
@@ -360,7 +360,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "angry",
                             "depth": 0,
@@ -380,7 +380,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "gnu",
                             "depth": 0,
@@ -397,7 +397,7 @@ class MultithreadingTest(unittest.TestCase):
                     "negated": False,
                     "uncertain": False,
                     "involves_coreference": False,
-                    "overall_similarity_measure": "1.0",
+                    "overall_similarity_measure": 1.0,
                     "word_matches": [
                         {
                             "search_phrase_token_index": 1,
@@ -413,7 +413,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "angry",
                             "depth": 0,
@@ -433,7 +433,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "gnu",
                             "depth": 0,
@@ -450,7 +450,7 @@ class MultithreadingTest(unittest.TestCase):
                     "negated": False,
                     "uncertain": False,
                     "involves_coreference": False,
-                    "overall_similarity_measure": "1.0",
+                    "overall_similarity_measure": 1.0,
                     "word_matches": [
                         {
                             "search_phrase_token_index": 1,
@@ -466,7 +466,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "angry",
                             "depth": 0,
@@ -486,7 +486,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "gnu",
                             "depth": 0,
@@ -503,7 +503,7 @@ class MultithreadingTest(unittest.TestCase):
                     "negated": False,
                     "uncertain": False,
                     "involves_coreference": False,
-                    "overall_similarity_measure": "1.0",
+                    "overall_similarity_measure": 1.0,
                     "word_matches": [
                         {
                             "search_phrase_token_index": 1,
@@ -519,7 +519,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "angry",
                             "depth": 0,
@@ -539,7 +539,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "gnu",
                             "depth": 0,
@@ -564,7 +564,7 @@ class MultithreadingTest(unittest.TestCase):
                     "negated": False,
                     "uncertain": False,
                     "involves_coreference": True,
-                    "overall_similarity_measure": "1.0",
+                    "overall_similarity_measure": 1.0,
                     "word_matches": [
                         {
                             "search_phrase_token_index": 1,
@@ -580,7 +580,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": True,
                             "extracted_word": "donkey",
                             "depth": 0,
@@ -600,7 +600,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "chase",
                             "depth": 0,
@@ -624,7 +624,7 @@ class MultithreadingTest(unittest.TestCase):
                     "negated": False,
                     "uncertain": False,
                     "involves_coreference": False,
-                    "overall_similarity_measure": "1.0",
+                    "overall_similarity_measure": 1.0,
                     "word_matches": [
                         {
                             "search_phrase_token_index": 1,
@@ -640,7 +640,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "tiger",
                             "depth": 0,
@@ -660,7 +660,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "chase",
                             "depth": 0,
@@ -680,7 +680,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "gnu",
                             "depth": 0,
@@ -733,7 +733,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "chase",
                             "depth": 0,
@@ -753,7 +753,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "gnu",
                             "depth": 0,
@@ -778,7 +778,7 @@ class MultithreadingTest(unittest.TestCase):
                     "negated": False,
                     "uncertain": False,
                     "involves_coreference": False,
-                    "overall_similarity_measure": "1.0",
+                    "overall_similarity_measure": 1.0,
                     "word_matches": [
                         {
                             "search_phrase_token_index": 1,
@@ -794,7 +794,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "ontology",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "foal",
                             "depth": 1,
@@ -819,7 +819,7 @@ class MultithreadingTest(unittest.TestCase):
                     "negated": False,
                     "uncertain": False,
                     "involves_coreference": False,
-                    "overall_similarity_measure": "1.0",
+                    "overall_similarity_measure": 1.0,
                     "word_matches": [
                         {
                             "search_phrase_token_index": 1,
@@ -835,7 +835,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "gnu",
                             "depth": 0,
@@ -855,7 +855,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "chase",
                             "depth": 0,
@@ -872,7 +872,7 @@ class MultithreadingTest(unittest.TestCase):
                     "negated": False,
                     "uncertain": False,
                     "involves_coreference": False,
-                    "overall_similarity_measure": "1.0",
+                    "overall_similarity_measure": 1.0,
                     "word_matches": [
                         {
                             "search_phrase_token_index": 1,
@@ -888,7 +888,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "angry",
                             "depth": 0,
@@ -908,7 +908,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "gnu",
                             "depth": 0,
@@ -930,7 +930,7 @@ class MultithreadingTest(unittest.TestCase):
                     "negated": False,
                     "uncertain": False,
                     "involves_coreference": False,
-                    "overall_similarity_measure": "1.0",
+                    "overall_similarity_measure": 1.0,
                     "word_matches": [
                         {
                             "search_phrase_token_index": 1,
@@ -946,7 +946,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "gnu",
                             "depth": 0,
@@ -966,7 +966,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "chase",
                             "depth": 0,
@@ -983,7 +983,7 @@ class MultithreadingTest(unittest.TestCase):
                     "negated": False,
                     "uncertain": False,
                     "involves_coreference": False,
-                    "overall_similarity_measure": "1.0",
+                    "overall_similarity_measure": 1.0,
                     "word_matches": [
                         {
                             "search_phrase_token_index": 1,
@@ -999,7 +999,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "tiger",
                             "depth": 0,
@@ -1019,7 +1019,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "chase",
                             "depth": 0,
@@ -1036,7 +1036,7 @@ class MultithreadingTest(unittest.TestCase):
                     "negated": False,
                     "uncertain": False,
                     "involves_coreference": False,
-                    "overall_similarity_measure": "1.0",
+                    "overall_similarity_measure": 1.0,
                     "word_matches": [
                         {
                             "search_phrase_token_index": 1,
@@ -1052,7 +1052,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "angry",
                             "depth": 0,
@@ -1072,7 +1072,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "gnu",
                             "depth": 0,
@@ -1094,7 +1094,7 @@ class MultithreadingTest(unittest.TestCase):
                     "negated": False,
                     "uncertain": False,
                     "involves_coreference": False,
-                    "overall_similarity_measure": "1.0",
+                    "overall_similarity_measure": 1.0,
                     "word_matches": [
                         {
                             "search_phrase_token_index": 1,
@@ -1110,7 +1110,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "gnu",
                             "depth": 0,
@@ -1130,7 +1130,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "chase",
                             "depth": 0,
@@ -1147,7 +1147,7 @@ class MultithreadingTest(unittest.TestCase):
                     "negated": False,
                     "uncertain": False,
                     "involves_coreference": False,
-                    "overall_similarity_measure": "1.0",
+                    "overall_similarity_measure": 1.0,
                     "word_matches": [
                         {
                             "search_phrase_token_index": 1,
@@ -1163,7 +1163,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "angry",
                             "depth": 0,
@@ -1183,7 +1183,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "gnu",
                             "depth": 0,
@@ -1207,7 +1207,7 @@ class MultithreadingTest(unittest.TestCase):
                     "negated": False,
                     "uncertain": False,
                     "involves_coreference": False,
-                    "overall_similarity_measure": "1.0",
+                    "overall_similarity_measure": 1.0,
                     "word_matches": [
                         {
                             "search_phrase_token_index": 1,
@@ -1223,7 +1223,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "discuss",
                             "depth": 0,
@@ -1243,7 +1243,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "various",
                             "depth": 0,
@@ -1263,7 +1263,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "thing",
                             "depth": 0,
@@ -1283,7 +1283,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "direct",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "with",
                             "depth": 0,
@@ -1303,7 +1303,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "entity",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "richard hudson",
                             "depth": 0,
@@ -1328,7 +1328,7 @@ class MultithreadingTest(unittest.TestCase):
                     "negated": False,
                     "uncertain": False,
                     "involves_coreference": False,
-                    "overall_similarity_measure": "1.0",
+                    "overall_similarity_measure": 1.0,
                     "word_matches": [
                         {
                             "search_phrase_token_index": 1,
@@ -1344,7 +1344,7 @@ class MultithreadingTest(unittest.TestCase):
                             "match_type": "ontology",
                             "negated": False,
                             "uncertain": False,
-                            "similarity_measure": "1.0",
+                            "similarity_measure": 1.0,
                             "involves_coreference": False,
                             "extracted_word": "foal",
                             "depth": 1,
@@ -1421,7 +1421,7 @@ class MultithreadingTest(unittest.TestCase):
                 self.assertFalse(match["negated"])
                 self.assertFalse(match["uncertain"])
                 self.assertFalse(match["involves_coreference"])
-                self.assertEqual(match["overall_similarity_measure"], "1.0")
+                self.assertEqual(match["overall_similarity_measure"], 1.0)
                 self.assertEqual(match["index_within_document"], 1)
                 self.assertEqual(match["word_matches"][0]["document_word"], "people")
                 self.assertEqual(
@@ -1490,7 +1490,7 @@ class MultithreadingTest(unittest.TestCase):
                 self.assertFalse(match["negated"])
                 self.assertFalse(match["uncertain"])
                 self.assertFalse(match["involves_coreference"])
-                self.assertEqual(match["overall_similarity_measure"], "1.0")
+                self.assertEqual(match["overall_similarity_measure"], 1.0)
                 self.assertEqual(match["index_within_document"], 1)
                 self.assertEqual(match["word_matches"][0]["document_word"], "people")
                 self.assertEqual(

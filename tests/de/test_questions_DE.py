@@ -62,7 +62,7 @@ class GermanInitialQuestionsTest(unittest.TestCase):
         manager.remove_all_documents()
         manager.parse_and_register_document("Das ist ein Haus.", 'q')
         topic_matches = manager.topic_match_documents_against("Was ist das?")
-        self.assertEqual(topic_matches, [{'document_label': 'q', 'text': 'Das ist ein Haus.', 'text_to_match': 'Was ist das?', 'rank': '1', 'index_within_document': 1, 'subword_index': None, 'start_index': 0, 'end_index': 3, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 17, 'score': 620.0, 'word_infos': [[0, 3, 'relation', False, 'Matches the question word WAS.'], [4, 7, 'relation', True, 'Matches SEIN directly.'], [12, 16, 'relation', False, 'Matches the question word WAS.']], 'answers': [[0, 3], [8, 16]]}])
+        self.assertEqual(topic_matches, [{'document_label': 'q', 'text': 'Das ist ein Haus.', 'text_to_match': 'Was ist das?', 'rank': '1', 'index_within_document': 1, 'subword_index': None, 'start_index': 1, 'end_index': 3, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 17, 'score': 620.0, 'word_infos': [[4, 7, 'relation', True, 'Matches SEIN directly.'], [12, 16, 'relation', False, 'Matches the question word WAS.']], 'answers': [[8, 16]]}])
 
     def test_check_wer_positive_case(self):
         self._check_equals('Wer schaute in die Sonne?', 'Die Person schaute in die Sonne', 127, 0, 10)
