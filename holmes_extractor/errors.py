@@ -50,3 +50,6 @@ class EmbeddingThresholdLessThanRelationThresholdError(HolmesError):
 
 class IncompatibleAnalyzeDerivationalMorphologyDeserializationError(HolmesError):
     pass
+
+class MultiprocessingParsingNotSupportedError(HolmesError):
+    pass

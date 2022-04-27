@@ -1,4 +1,4 @@
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Tuple
 import math
 import pickle
 import importlib
@@ -7,12 +7,10 @@ from copy import copy
 from functools import total_ordering
 import srsly
 import pkg_resources
-from numpy import dot
-from numpy.linalg import norm
+from thinc.api import get_current_ops
 from holmes_extractor.ontology import Ontology
 from spacy.tokens import Token, Doc
-from .errors import WrongModelDeserializationError, WrongVersionDeserializationError,\
-        DocumentTooBigError, SearchPhraseContainsNegationError,\
+from .errors import DocumentTooBigError, SearchPhraseContainsNegationError,\
         SearchPhraseContainsConjunctionError, SearchPhraseWithoutMatchableWordsError,\
         SearchPhraseContainsMultipleClausesError, SearchPhraseContainsCoreferringPronounError
 
@@ -666,55 +664,55 @@ class SemanticAnalyzer(ABC):
     implementation where they can be illustrated with direct examples.
     """
 
-    language_name = NotImplemented
+    language_name: str = NotImplemented
 
-    noun_pos = NotImplemented
+    noun_pos: List[str] = NotImplemented
 
-    predicate_head_pos = NotImplemented
+    predicate_head_pos: List[str] = NotImplemented
 
-    matchable_pos = NotImplemented
+    matchable_pos: List[str] = NotImplemented
 
-    adjectival_predicate_head_pos = NotImplemented
+    adjectival_predicate_head_pos: List[str] = NotImplemented
 
-    adjectival_predicate_subject_pos = NotImplemented
+    adjectival_predicate_subject_pos: List[str] = NotImplemented
 
-    adjectival_predicate_subject_dep = NotImplemented
+    adjectival_predicate_subject_dep: str = NotImplemented
 
-    adjectival_predicate_predicate_dep = NotImplemented
+    adjectival_predicate_predicate_dep: str = NotImplemented
 
-    adjectival_predicate_predicate_pos = NotImplemented
+    adjectival_predicate_predicate_pos: str = NotImplemented
 
-    modifier_dep = NotImplemented
+    modifier_dep: str = NotImplemented
 
-    spacy_noun_to_preposition_dep = NotImplemented
+    spacy_noun_to_preposition_dep: str = NotImplemented
 
-    spacy_verb_to_preposition_dep = NotImplemented
+    spacy_verb_to_preposition_dep: str = NotImplemented
 
-    holmes_noun_to_preposition_dep = NotImplemented
+    holmes_noun_to_preposition_dep: str = NotImplemented
 
-    holmes_verb_to_preposition_dep = NotImplemented
+    holmes_verb_to_preposition_dep: str = NotImplemented
 
-    conjunction_deps = NotImplemented
+    conjunction_deps: List[str] = NotImplemented
 
-    interrogative_pronoun_tags = NotImplemented
+    interrogative_pronoun_tags: List[str] = NotImplemented
 
-    semantic_dependency_excluded_tags = NotImplemented
+    semantic_dependency_excluded_tags: List[str] = NotImplemented
 
-    generic_pronoun_lemmas = NotImplemented
+    generic_pronoun_lemmas: List[str] = NotImplemented
 
-    or_lemma = NotImplemented
+    or_lemma: str = NotImplemented
 
-    mark_child_dependencies_copied_to_siblings_as_uncertain = NotImplemented
+    mark_child_dependencies_copied_to_siblings_as_uncertain: bool = NotImplemented
 
-    maximum_mentions_in_coreference_chain = NotImplemented
+    maximum_mentions_in_coreference_chain:int = NotImplemented
 
-    maximum_word_distance_in_coreference_chain = NotImplemented
+    maximum_word_distance_in_coreference_chain:int = NotImplemented
 
-    sibling_marker_deps = NotImplemented
+    sibling_marker_deps:List[str] = NotImplemented
 
-    entity_labels_to_corresponding_lexemes = NotImplemented
+    entity_labels_to_corresponding_lexemes:Dict[str, str] = NotImplemented
 
-    whose_lemma = NotImplemented
+    whose_lemma:str = NotImplemented
 
     @abstractmethod
     def add_subwords(self, token, subword_cache):
@@ -1938,39 +1936,39 @@ class SemanticMatchingHelper(ABC):
         examples.
     """
 
-    noun_pos = NotImplemented
+    noun_pos: List[str] = NotImplemented
 
-    permissible_embedding_pos = NotImplemented
+    permissible_embedding_pos: List[str] = NotImplemented
 
-    noun_kernel_dep = NotImplemented
+    noun_kernel_dep: List[str] = NotImplemented
 
-    minimum_embedding_match_word_length = NotImplemented
+    minimum_embedding_match_word_length: int = NotImplemented
 
-    topic_matching_phraselet_stop_lemmas = NotImplemented
+    topic_matching_phraselet_stop_lemmas: List[str] = NotImplemented
 
-    topic_matching_reverse_only_parent_lemmas = NotImplemented
+    topic_matching_reverse_only_parent_lemmas: List[Tuple[str, str]] = NotImplemented
 
-    topic_matching_phraselet_stop_tags = NotImplemented
+    topic_matching_phraselet_stop_tags: List[str] = NotImplemented
 
-    supervised_document_classification_phraselet_stop_lemmas = NotImplemented
+    supervised_document_classification_phraselet_stop_lemmas: List[str] = NotImplemented
 
-    match_implication_dict = NotImplemented
+    preferred_phraselet_pos: List[str] = NotImplemented
 
-    phraselet_templates = NotImplemented
+    entity_defined_multiword_pos: List[str] = NotImplemented
 
-    preferred_phraselet_pos = NotImplemented
+    entity_defined_multiword_entity_types: List[str] = NotImplemented
 
-    entity_defined_multiword_pos = NotImplemented
+    sibling_marker_deps: List[str] = NotImplemented
 
-    entity_defined_multiword_entity_types = NotImplemented
+    preposition_deps: List[str] = NotImplemented
 
-    sibling_marker_deps = NotImplemented
+    question_answer_blacklist_deps: List[str] = NotImplemented
 
-    preposition_deps = NotImplemented
+    question_answer_final_blacklist_deps: List[Optional[str]] = NotImplemented
 
-    question_answer_blacklist_deps = NotImplemented
+    match_implication_dict: Dict[str, MatchImplication] = NotImplemented
 
-    question_answer_final_blacklist_deps = NotImplemented
+    phraselet_templates: List[PhraseletTemplate] = NotImplemented
 
     @abstractmethod
     def question_word_matches(self, search_phrase_token:Token,
@@ -2012,7 +2010,8 @@ class SemanticMatchingHelper(ABC):
         return list_to_return
 
     def cosine_similarity(self, vector1, vector2):
-        return dot (vector1,vector2) / (norm(vector1) * norm(vector2))
+        ops = get_current_ops()
+        return ops.xp.dot (vector1,vector2) / (ops.xp.linalg.norm(vector1) * ops.xp.linalg.norm(vector2))
 
     def token_matches_ent_type(self, token_vector, entity_label_to_vector_dict:dict,
             entity_labels:tuple, initial_question_word_embedding_match_threshold:float) -> float:
@@ -2038,12 +2037,12 @@ class SemanticMatchingHelper(ABC):
                     return cosine_similarity
         return 0.0
 
-    def add_to_reverse_dict(self, reverse_dict: Dict[str, CorpusWordPosition], parsed_document: Doc, document_label: str):
+    def add_to_reverse_dict(self, reverse_dict: Dict[str, List[CorpusWordPosition]], parsed_document: Doc, document_label: str):
         """ Indexes a parsed document. """
         for word_matching_strategy in self.main_word_matching_strategies + self.ontology_word_matching_strategies:
             word_matching_strategy.add_reverse_dict_entries(reverse_dict, parsed_document, document_label)
 
-    def get_reverse_dict_removing_document(self, reverse_dict: Dict[str, CorpusWordPosition], document_label: str) -> Dict[str, CorpusWordPosition]:
+    def get_reverse_dict_removing_document(self, reverse_dict: Dict[str, List[CorpusWordPosition]], document_label: str) -> Dict[str, List[CorpusWordPosition]]:
         new_reverse_dict = {}
         for entry in reverse_dict:
             new_value = ([cwp for cwp in reverse_dict[entry] if cwp.document_label != document_label])

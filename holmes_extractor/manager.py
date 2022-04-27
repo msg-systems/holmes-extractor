@@ -1,3 +1,4 @@
+from typing import List, Dict, Optional
 from multiprocessing import Process, Queue, Manager as MultiprocessingManager, cpu_count
 from threading import Lock
 from string import punctuation
@@ -7,13 +8,6 @@ import sys
 import os
 import pickle
 import pkg_resources
-from holmes_extractor.word_matching.derivation import DerivationWordMatchingStrategy
-from holmes_extractor.word_matching.direct import DirectWordMatchingStrategy
-from holmes_extractor.word_matching.embedding import EmbeddingWordMatchingStrategy
-from holmes_extractor.word_matching.entity import EntityWordMatchingStrategy
-from holmes_extractor.word_matching.entity_embedding import EntityEmbeddingWordMatchingStrategy
-from holmes_extractor.word_matching.general import WordMatchingStrategy
-from holmes_extractor.word_matching.ontology import OntologyWordMatchingStrategy
 import spacy
 import coreferee
 from spacy import Language
@@ -27,6 +21,13 @@ from .parsing import SemanticAnalyzerFactory, SemanticAnalyzer, SemanticMatching
 from .classification import SupervisedTopicTrainingBasis, SupervisedTopicClassifier
 from .topic_matching import TopicMatcher, TopicMatchDictionaryOrderer
 from .consoles import HolmesConsoles
+from .word_matching.derivation import DerivationWordMatchingStrategy
+from .word_matching.direct import DirectWordMatchingStrategy
+from .word_matching.embedding import EmbeddingWordMatchingStrategy
+from .word_matching.entity import EntityWordMatchingStrategy
+from .word_matching.entity_embedding import EntityEmbeddingWordMatchingStrategy
+from .word_matching.general import WordMatchingStrategy
+from .word_matching.ontology import OntologyWordMatchingStrategy
 
 TIMEOUT_SECONDS = 180
 
@@ -143,8 +144,8 @@ class Manager:
             self.semantic_matching_helper, embedding_based_matching_on_root_words,
             analyze_derivational_morphology, perform_coreference_resolution, use_reverse_dependency_matching
             )
-        self.document_labels_to_worker_queues = {}
-        self.search_phrases = []
+        self.document_labels_to_worker_queues: Dict[str, int] = {}
+        self.search_phrases: List[SearchPhrase] = []
         HolmesBroker.set_extensions()
         for phraselet_template in self.semantic_matching_helper.local_phraselet_templates:
             phraselet_template.template_doc = self.semantic_analyzer.parse(
@@ -161,11 +162,11 @@ class Manager:
         self.workers = []
         self.input_queues = []
         self.word_dictionaries_need_rebuilding = False
-        self.words_to_corpus_frequencies = {}
+        self.words_to_corpus_frequencies: Dict[str, int] = {}
         self.maximum_corpus_frequency = 0
 
         for counter in range(0, self.number_of_workers):
-            input_queue = Queue()
+            input_queue: Queue = Queue()
             self.input_queues.append(input_queue)
             worker_label = ' '.join(('Worker', str(counter)))
             this_worker = Process(
@@ -206,7 +207,7 @@ class Manager:
                 '. Please examine the output from the worker processes to identify the problem.')))
         return return_values
 
-    def register_serialized_documents(self, document_dictionary:dict[str, Doc]) -> None:
+    def register_serialized_documents(self, document_dictionary:dict[str, bytes]) -> None:
         """Parameters:
 
         document_dictionary -- a dictionary from labels to serialized documents.
@@ -222,7 +223,7 @@ class Manager:
                     self.word_dictionaries_need_rebuilding = True
                     self.input_queues[worker_queue_number].put((
                         self.worker.register_serialized_document,
-                        (serialized_doc, label), reply_queue), TIMEOUT_SECONDS)
+                        (serialized_doc, label), reply_queue), timeout=TIMEOUT_SECONDS)
         self.handle_response(reply_queue, len(document_dictionary), 'register_serialized_documents')
 
     def register_serialized_document(self, serialized_document:bytes, label:str) -> None:
@@ -279,7 +280,7 @@ class Manager:
             unsorted_labels = self.document_labels_to_worker_queues.keys()
         return sorted(unsorted_labels)
 
-    def serialize_document(self, label:str) -> bytes:
+    def serialize_document(self, label:str) -> Optional[bytes]:
         """Returns a serialized representation of a Holmes document that can be persisted to
             a file. If *label* is not the label of a registered document, *None* is returned
             instead.
@@ -292,12 +293,12 @@ class Manager:
         with self.lock:
             if label in self.document_labels_to_worker_queues:
                 self.input_queues[self.document_labels_to_worker_queues[label]].put((
-                    self.worker.get_serialized_document, (label,), reply_queue), TIMEOUT_SECONDS)
+                    self.worker.get_serialized_document, (label,), reply_queue), timeout=TIMEOUT_SECONDS)
             else:
                 return None
         return self.handle_response(reply_queue, 1, 'serialize_document')[0]
 
-    def get_document(self, label:str='') -> Doc:
+    def get_document(self, label:str='') -> Optional[Doc]:
         """Returns a Holmes document. If *label* is not the label of a registered document, *None*
             is returned instead.
 

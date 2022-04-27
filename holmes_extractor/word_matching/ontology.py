@@ -174,7 +174,7 @@ class OntologyWordMatchingStrategy(WordMatchingStrategy):
 
     def add_reverse_dict_entries(
         self,
-        reverse_dict: Dict[str, CorpusWordPosition],
+        reverse_dict: Dict[str, List[CorpusWordPosition]],
         doc: Doc,
         document_label: str,
     ) -> None:
@@ -204,7 +204,7 @@ class OntologyWordMatchingStrategy(WordMatchingStrategy):
                             None,
                         )
 
-    def _get_reprs(self, repr_bearer: Union[HolmesDictionary, Subword, MultiwordSpan]):
+    def _get_reprs(self, repr_bearer: Union[HolmesDictionary, Subword, MultiwordSpan]) -> List[str]:
         if (
             self.analyze_derivational_morphology
             and repr_bearer.derivation_matching_reprs is not None

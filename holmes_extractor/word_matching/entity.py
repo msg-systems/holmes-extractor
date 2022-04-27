@@ -79,7 +79,7 @@ class EntityWordMatchingStrategy(WordMatchingStrategy):
 
     def add_reverse_dict_entries(
         self,
-        reverse_dict: Dict[str, CorpusWordPosition],
+        reverse_dict: Dict[str, List[CorpusWordPosition]],
         doc: Doc,
         document_label: str,
     ) -> None:

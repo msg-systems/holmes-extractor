@@ -57,14 +57,14 @@ class WordMatchingStrategy:
         pass
 
     def add_reverse_dict_entries(
-        self, doc: Doc, document_label: str, reverse_dict: Dict[str, CorpusWordPosition]
+        self, doc: Doc, document_label: str, reverse_dict: Dict[str, List[CorpusWordPosition]]
     ) -> None:
         """Determines words that match each token within a document and adds corresponding entries to the reverse dictionary."""
         pass
 
     @staticmethod
     def add_reverse_dict_entry(
-        reverse_dict: Dict[str, CorpusWordPosition],
+        reverse_dict: Dict[str, List[CorpusWordPosition]],
         key_word: str,
         document_label: str,
         token_index: int,

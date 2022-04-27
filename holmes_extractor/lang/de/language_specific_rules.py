@@ -8,15 +8,15 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
 
     language_name = 'German'
 
-    noun_pos = ('NOUN', 'PROPN', 'ADJ')
+    noun_pos = ['NOUN', 'PROPN', 'ADJ']
 
-    matchable_pos = ('ADJ', 'ADP', 'ADV', 'NOUN', 'NUM', 'PROPN', 'VERB', 'AUX', 'X', 'INTJ')
+    matchable_pos = ['ADJ', 'ADP', 'ADV', 'NOUN', 'NUM', 'PROPN', 'VERB', 'AUX', 'X', 'INTJ']
 
-    predicate_head_pos = ('VERB', 'AUX')
+    predicate_head_pos = ['VERB', 'AUX']
 
-    adjectival_predicate_head_pos = ('AUX')
+    adjectival_predicate_head_pos = ['AUX']
 
-    adjectival_predicate_subject_pos = ('NOUN', 'PROPN', 'PRON')
+    adjectival_predicate_subject_pos = ['NOUN', 'PROPN', 'PRON']
 
     adjectival_predicate_subject_dep = 'sb'
 
@@ -34,13 +34,13 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
 
     holmes_verb_to_preposition_dep = 'moposs'
 
-    conjunction_deps = ('cj', 'cd', 'punct', 'app')
+    conjunction_deps = ['cj', 'cd', 'punct', 'app']
 
-    interrogative_pronoun_tags = ('PWAT', 'PWAV', 'PWS')
+    interrogative_pronoun_tags = ['PWAT', 'PWAV', 'PWS']
 
-    semantic_dependency_excluded_tags = ('ART')
+    semantic_dependency_excluded_tags = ['ART']
 
-    generic_pronoun_lemmas = ('jemand', 'etwas')
+    generic_pronoun_lemmas = ['jemand', 'etwas']
 
     or_lemma = 'oder'
 
@@ -50,7 +50,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
 
     maximum_word_distance_in_coreference_chain = 300
 
-    sibling_marker_deps = ('cj', 'app')
+    sibling_marker_deps = ['cj', 'app']
 
     entity_labels_to_corresponding_lexemes = {
         'PER': 'person',
@@ -927,37 +927,37 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
 
 class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
 
-    noun_pos = ('NOUN', 'PROPN', 'ADJ')
+    noun_pos = ['NOUN', 'PROPN', 'ADJ']
 
-    preposition_deps = ('prep')
+    preposition_deps = ['prep']
 
-    permissible_embedding_pos = ('NOUN', 'PROPN', 'ADJ', 'ADV')
+    permissible_embedding_pos = ['NOUN', 'PROPN', 'ADJ', 'ADV']
 
-    noun_kernel_dep = ('nk', 'pnc')
+    noun_kernel_dep = ['nk', 'pnc']
 
     minimum_embedding_match_word_length = 4
 
-    topic_matching_phraselet_stop_lemmas = ('dann', 'danach', 'so', 'ich', 'mein')
+    topic_matching_phraselet_stop_lemmas = ['dann', 'danach', 'so', 'ich', 'mein']
 
-    topic_matching_reverse_only_parent_lemmas = (
+    topic_matching_reverse_only_parent_lemmas = [
         ('sein', 'AUX'), ('werden', 'AUX'), ('haben', 'AUX'), ('sagen', 'VERB'),
-        ('machen', 'VERB'), ('tun', 'VERB'), ('haben', 'VERB'), ('werden', 'VERB'))
+        ('machen', 'VERB'), ('tun', 'VERB'), ('haben', 'VERB'), ('werden', 'VERB')]
 
-    topic_matching_phraselet_stop_tags = ('PPER', 'PDS', 'PRF')
+    topic_matching_phraselet_stop_tags = ['PPER', 'PDS', 'PRF']
 
-    supervised_document_classification_phraselet_stop_lemmas = ('sein', 'haben')
+    supervised_document_classification_phraselet_stop_lemmas = ['sein', 'haben']
 
-    preferred_phraselet_pos = ('NOUN', 'PROPN')
+    preferred_phraselet_pos = ['NOUN', 'PROPN']
 
-    entity_defined_multiword_pos = ('NOUN', 'PROPN')
+    entity_defined_multiword_pos = ['NOUN', 'PROPN']
 
-    entity_defined_multiword_entity_types = ('PER', 'LOC')
+    entity_defined_multiword_entity_types = ['PER', 'LOC']
 
-    sibling_marker_deps = ('cj', 'app')
+    sibling_marker_deps = ['cj', 'app']
 
-    question_answer_blacklist_deps = ('cj', 'cd', 'punct', 'app', 'punct')
+    question_answer_blacklist_deps = ['cj', 'cd', 'punct', 'app', 'punct']
 
-    question_answer_final_blacklist_deps = ()
+    question_answer_final_blacklist_deps = []
 
     match_implication_dict = {
         'sb': MatchImplication(search_phrase_dependency='sb',

@@ -8,22 +8,22 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
     language_name = 'English'
 
     # The part of speech tags that can refer to nouns
-    noun_pos = ('NOUN', 'PROPN')
+    noun_pos = ['NOUN', 'PROPN']
 
     # The part of speech tags that can refer to predicate heads
-    predicate_head_pos = ('VERB', 'AUX')
+    predicate_head_pos = ['VERB', 'AUX']
 
     # The part of speech tags that require a match in the search sentence when they occur within a
     # search_phrase
-    matchable_pos = ('ADJ', 'ADP', 'ADV', 'NOUN', 'NUM', 'PROPN', 'VERB', 'AUX', 'X', 'INTJ')
+    matchable_pos =['ADJ', 'ADP', 'ADV', 'NOUN', 'NUM', 'PROPN', 'VERB', 'AUX', 'X', 'INTJ']
 
     # The part of speech tags that can refer to the head of an adjectival predicate phrase
     # ("is" in "The dog is tired")
-    adjectival_predicate_head_pos = ('VERB', 'AUX')
+    adjectival_predicate_head_pos = ['VERB', 'AUX']
 
     # The part of speech tags that can refer to the subject of a adjectival predicate
     # ("dog" in "The dog is tired")
-    adjectival_predicate_subject_pos = ('NOUN', 'PROPN', 'PRON')
+    adjectival_predicate_subject_pos = ['NOUN', 'PROPN', 'PRON']
 
     # Dependency label that marks the subject of an adjectival predicate
     adjectival_predicate_subject_dep = 'nsubj'
@@ -50,16 +50,16 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
     holmes_verb_to_preposition_dep = 'prepposs'
 
     # Dependency labels that occur in a conjunction phrase (righthand siblings and conjunctions)
-    conjunction_deps = ('conj', 'appos', 'cc')
+    conjunction_deps = ['conj', 'appos', 'cc']
 
     # Syntactic tags that can mark interrogative pronouns
-    interrogative_pronoun_tags = ('WDT', 'WP', 'WRB')
+    interrogative_pronoun_tags = ['WDT', 'WP', 'WRB']
 
     # Syntactic tags that exclude a token from being the child token within a semantic dependency
-    semantic_dependency_excluded_tags = ('DT')
+    semantic_dependency_excluded_tags = ['DT']
 
     # Generic pronouns
-    generic_pronoun_lemmas = ('something', 'somebody', 'someone')
+    generic_pronoun_lemmas = ['something', 'somebody', 'someone']
 
     # The word for 'or' in this language
     or_lemma = 'or'
@@ -78,7 +78,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
     maximum_word_distance_in_coreference_chain = 300
 
     # Dependency labels that can mark righthand siblings
-    sibling_marker_deps = ('conj', 'appos')
+    sibling_marker_deps = ['conj', 'appos']
 
     # Map from entity labels to words that correspond to their meaning
     entity_labels_to_corresponding_lexemes = {
@@ -560,16 +560,16 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
 class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
 
     # The part of speech tags that can refer to nouns
-    noun_pos = ('NOUN', 'PROPN')
+    noun_pos = ['NOUN', 'PROPN']
 
     # Dependency labels between a head and a preposition
-    preposition_deps = ('prep')
+    preposition_deps = ['prep']
 
     # Parts of speech for which embedding matching is attempted
-    permissible_embedding_pos = ('NOUN', 'PROPN', 'ADJ', 'ADV')
+    permissible_embedding_pos = ['NOUN', 'PROPN', 'ADJ', 'ADV']
 
     # Dependency labels that mark noun kernel elements that are not the head noun
-    noun_kernel_dep = ('nmod', 'compound', 'appos', 'nummod')
+    noun_kernel_dep = ['nmod', 'compound', 'appos', 'nummod']
 
     # Minimum length of a word taking part in an embedding-based match.
     # Necessary because of the proliferation of short nonsense strings in the vocabularies.
@@ -577,39 +577,39 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
 
     # Lemmas that should be suppressed within relation phraselets or as words of
     # single-word phraselets during topic matching.
-    topic_matching_phraselet_stop_lemmas = ('then', 'therefore', 'so')
+    topic_matching_phraselet_stop_lemmas = ['then', 'therefore', 'so']
 
     # Parent lemma / part-of-speech combinations that should lead to phraselets being
     # reverse-matched only during topic matching.
-    topic_matching_reverse_only_parent_lemmas = (
+    topic_matching_reverse_only_parent_lemmas = [
         ('be', 'VERB'), ('be', 'AUX'), ('have', 'VERB'), ('have', 'AUX'), ('do', 'VERB'),
-        ('say', 'VERB'), ('go', 'VERB'), ('get', 'VERB'), ('make', 'VERB'))
+        ('say', 'VERB'), ('go', 'VERB'), ('get', 'VERB'), ('make', 'VERB')]
 
     # Tags of tokens that should be ignored during topic matching (normally pronouns).
-    topic_matching_phraselet_stop_tags = ('PRP', 'PRP$')
+    topic_matching_phraselet_stop_tags = ['PRP', 'PRP$']
 
     # Lemmas that should be suppressed within relation phraselets or as words of
     # single-word phraselets during supervised document classification.
-    supervised_document_classification_phraselet_stop_lemmas = ('be', 'have')
+    supervised_document_classification_phraselet_stop_lemmas = ['be', 'have']
 
     # Parts of speech that are preferred as lemmas within phraselets
-    preferred_phraselet_pos = ('NOUN', 'PROPN')
+    preferred_phraselet_pos = ['NOUN', 'PROPN']
 
     # The part-o'f-speech labels permitted for elements of an entity-defined multiword.
-    entity_defined_multiword_pos = ('NOUN', 'PROPN')
+    entity_defined_multiword_pos = ['NOUN', 'PROPN']
 
     # The entity labels permitted for elements of an entity-defined multiword.
-    entity_defined_multiword_entity_types = ('PERSON', 'ORG', 'GPE', 'WORK_OF_ART')
+    entity_defined_multiword_entity_types = ['PERSON', 'ORG', 'GPE', 'WORK_OF_ART']
 
     # Dependency labels that can mark righthand siblings
-    sibling_marker_deps = ('conj', 'appos')
+    sibling_marker_deps = ['conj', 'appos']
 
     # Dependency labels from a token's subtree that are not included in a question answer
-    question_answer_blacklist_deps = ('conj', 'appos', 'cc', 'punct')
+    question_answer_blacklist_deps = ['conj', 'appos', 'cc', 'punct']
 
     # Dependency labels from a token's subtree that are not included in a question answer if in
     # final position.
-    question_answer_final_blacklist_deps = ('case')
+    question_answer_final_blacklist_deps = ['case']
 
     # Maps from dependency tags as occurring within search phrases to corresponding implication
     # definitions. This is the main source of the asymmetry in matching from search phrases to

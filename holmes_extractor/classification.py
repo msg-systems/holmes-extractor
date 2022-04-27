@@ -11,7 +11,7 @@ from thinc.backends import get_current_ops, Ops
 from thinc.loss import SequenceCategoricalCrossentropy
 from thinc.layers import chain, Relu, Softmax
 from thinc.optimizers import Adam
-from thinc.types import Floats1d, Floats2d
+from thinc.types import Floats2d
 from .errors import (
     WrongModelDeserializationError,
     FewerThanTwoClassificationsError,
@@ -29,7 +29,6 @@ from .parsing import (
     SemanticMatchingHelper,
 )
 from .parsing import PhraseletInfo
-from holmes_extractor import ontology
 
 
 class SupervisedTopicTrainingUtils:
@@ -202,16 +201,16 @@ class SupervisedTopicTrainingUtils:
             this_document_dict: Dict[int, int] = {}
             doc = training_document_labels_to_documents[doc_label]
             document_labels_to_documents = {doc_label: doc}
-            reverse_dict: Dict[str, CorpusWordPosition] = {}
-            semantic_matching_helper.add_to_reverse_dict(
-                reverse_dict, doc, doc_label
-            )
+            reverse_dict: Dict[str, List[CorpusWordPosition]] = {}
+            semantic_matching_helper.add_to_reverse_dict(reverse_dict, doc, doc_label)
             for (
                 label,
                 occurrences,
             ) in self.get_labels_to_classification_frequencies_dict(
                 matches=structural_matcher.match(
-                    word_matching_strategies=semantic_matching_helper.main_word_matching_strategies + semantic_matching_helper.ontology_word_matching_strategies + semantic_matching_helper.embedding_word_matching_strategies,
+                    word_matching_strategies=semantic_matching_helper.main_word_matching_strategies
+                    + semantic_matching_helper.ontology_word_matching_strategies
+                    + semantic_matching_helper.embedding_word_matching_strategies,
                     document_labels_to_documents=document_labels_to_documents,
                     reverse_dict=reverse_dict,
                     search_phrases=phraselet_labels_to_search_phrases.values(),
@@ -297,7 +296,7 @@ class SupervisedTopicTrainingBasis:
         *,
         linguistic_object_factory: LinguisticObjectFactory,
         structural_matcher: StructuralMatcher,
-        classification_ontology: Ontology,
+        classification_ontology: Optional[Ontology],
         overlap_memory_size: int,
         one_hot: bool,
         match_all_words: bool,
@@ -333,7 +332,7 @@ class SupervisedTopicTrainingBasis:
         self.verbose = verbose
 
         self.training_document_labels_to_documents: Dict[str, Doc] = {}
-        self.reverse_dict: Dict[str, CorpusWordPosition] = {}
+        self.reverse_dict: Dict[str, List[CorpusWordPosition]] = {}
         self.training_documents_labels_to_classifications_dict: Dict[str, str] = {}
         self.additional_classification_labels: Set[str] = set()
         self.classification_implication_dict: Dict[str, List[str]] = {}
@@ -380,9 +379,7 @@ class SupervisedTopicTrainingBasis:
         if self.verbose:
             print("Registering document", label)
         self.training_document_labels_to_documents[label] = doc
-        self.semantic_matching_helper.add_to_reverse_dict(
-            self.reverse_dict, doc, label
-        )
+        self.semantic_matching_helper.add_to_reverse_dict(self.reverse_dict, doc, label)
         self.linguistic_object_factory.add_phraselets_to_dict(
             doc,
             phraselet_labels_to_phraselet_infos=self.phraselet_labels_to_phraselet_infos,
@@ -437,7 +434,9 @@ class SupervisedTopicTrainingBasis:
             Dict[str, Dict[str, int]],
             self.utils.get_labels_to_classification_frequencies_dict(  # type:ignore[assignment]
                 matches=self.structural_matcher.match(
-                    word_matching_strategies=self.semantic_matching_helper.main_word_matching_strategies + self.semantic_matching_helper.ontology_word_matching_strategies + self.semantic_matching_helper.embedding_word_matching_strategies,
+                    word_matching_strategies=self.semantic_matching_helper.main_word_matching_strategies
+                    + self.semantic_matching_helper.ontology_word_matching_strategies
+                    + self.semantic_matching_helper.embedding_word_matching_strategies,
                     document_labels_to_documents=self.training_document_labels_to_documents,
                     reverse_dict=self.reverse_dict,
                     search_phrases=search_phrases,
@@ -463,7 +462,10 @@ class SupervisedTopicTrainingBasis:
         if self.classification_ontology is not None:
             for parent in self.classifications:
                 for child in self.classifications:
-                    if self.classification_ontology.matches(parent, [child]) is not None:
+                    if (
+                        self.classification_ontology.matches(parent, [child])
+                        is not None
+                    ):
                         if child in self.classification_implication_dict.keys():
                             self.classification_implication_dict[child].append(parent)
                         else:
@@ -892,9 +894,20 @@ class SupervisedTopicClassifier:
         self.linguistic_object_factory.ontology = model.structural_matching_ontology
         self.semantic_matching_helper = self.structural_matcher.semantic_matching_helper
         if model.structural_matching_ontology is not None:
-            self.linguistic_object_factory.ontology_reverse_derivational_dict = self.semantic_analyzer.get_ontology_reverse_derivational_dict(model.structural_matching_ontology)
-            self.semantic_matching_helper.ontology_word_matching_strategies = [OntologyWordMatchingStrategy(self.semantic_matching_helper, perform_coreference_resolution=self.structural_matcher.perform_coreference_resolution, ontology=model.structural_matching_ontology, analyze_derivational_morphology=model.analyze_derivational_morphology, ontology_reverse_derivational_dict=self.linguistic_object_factory.ontology_reverse_derivational_dict
-        )]
+            self.linguistic_object_factory.ontology_reverse_derivational_dict = (
+                self.semantic_analyzer.get_ontology_reverse_derivational_dict(
+                    model.structural_matching_ontology
+                )
+            )
+            self.semantic_matching_helper.ontology_word_matching_strategies = [
+                OntologyWordMatchingStrategy(
+                    self.semantic_matching_helper,
+                    perform_coreference_resolution=self.structural_matcher.perform_coreference_resolution,
+                    ontology=model.structural_matching_ontology,
+                    analyze_derivational_morphology=model.analyze_derivational_morphology,
+                    ontology_reverse_derivational_dict=self.linguistic_object_factory.ontology_reverse_derivational_dict,
+                )
+            ]
         self.phraselet_labels_to_search_phrases = (
             self.linguistic_object_factory.create_search_phrases_from_phraselet_infos(
                 model.phraselet_infos
@@ -938,16 +951,15 @@ class SupervisedTopicClassifier:
             overall_similarity_threshold=self.overall_similarity_threshold,
             training_document_labels_to_documents={"": doc},
         )
-        print('a')
         if len(occurrence_dicts[0]) == 0:
-            print('b')
             return None
         else:
             return_dict = OrderedDict()
             predictions = self.thinc_model.predict(occurrence_dicts)[0]
-            for i in (-predictions).argsort():
-                return_dict[self.model.classifications[i]] = predictions.item(i)
-            print(return_dict)
+            for i in (-predictions).argsort():  # type:ignore[attr-defined]
+                return_dict[self.model.classifications[i]] = predictions.item( # type:ignore[attr-defined]
+                    i
+                )  
             return return_dict
 
     def serialize_model(self) -> bytes:

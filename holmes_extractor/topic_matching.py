@@ -1,6 +1,6 @@
-from holmes_extractor.word_matching.embedding import EmbeddingWordMatchingStrategy
-from holmes_extractor.word_matching.entity_embedding import EntityEmbeddingWordMatchingStrategy
-from holmes_extractor.word_matching.question import QuestionWordMatchingStrategy
+from .word_matching.embedding import EmbeddingWordMatchingStrategy
+from .word_matching.entity_embedding import EntityEmbeddingWordMatchingStrategy
+from .word_matching.question import QuestionWordMatchingStrategy
 from .parsing import Index, CorpusWordPosition
 
 class TopicMatch:

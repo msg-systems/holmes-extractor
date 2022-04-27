@@ -1,4 +1,4 @@
-from typing import List, Dict, Set, Sequence, Optional
+from typing import List, Dict, Set, Sequence, Optional, Any, ValuesView, Union
 import sys
 from spacy.tokens import Doc, Token
 from .parsing import (
@@ -7,7 +7,7 @@ from .parsing import (
     SearchPhrase,
     SemanticMatchingHelper,
 )
-from holmes_extractor.word_matching.general import WordMatch, WordMatchingStrategy
+from .word_matching.general import WordMatch, WordMatchingStrategy
 
 
 class Match:
@@ -54,7 +54,7 @@ class Match:
         self.from_reverse_only_topic_match_phraselet = (
             from_reverse_only_topic_match_phraselet
         )
-        self.index_within_document: int = None
+        self.index_within_document: Optional[int] = None
         self.overall_similarity_measure = 1.0
 
     @property
@@ -134,9 +134,9 @@ class StructuralMatcher:
         *,
         word_matching_strategies: List[WordMatchingStrategy],
         document_labels_to_documents: Dict[str, Doc],
-        reverse_dict: Dict[str, CorpusWordPosition],
-        search_phrases: List[SearchPhrase],
-        match_depending_on_single_words: bool,
+        reverse_dict: Dict[str, List[CorpusWordPosition]],
+        search_phrases: Union[List[SearchPhrase], ValuesView[SearchPhrase]],
+        match_depending_on_single_words: Optional[bool],
         compare_embeddings_on_root_words: bool,
         compare_embeddings_on_non_root_words: bool,
         reverse_matching_cwps: Optional[Set[CorpusWordPosition]],
@@ -382,7 +382,7 @@ class StructuralMatcher:
         search_phrase: SearchPhrase,
         document: Doc,
         document_token: Token,
-        document_subword_index: int,
+        document_subword_index: Optional[int],
         document_label: str,
         compare_embeddings_on_non_root_words: bool,
         process_initial_question_words: bool,
@@ -393,7 +393,7 @@ class StructuralMatcher:
         # array of sets to guard against endless looping during recursion. Each set
         # corresponds to the search phrase token with its index and contains the Index objects
         # for the document words for which a match to that search phrase token has been attempted.
-        search_phrase_and_document_visited_table = [
+        search_phrase_and_document_visited_table: List[Set[Index]] = [
             set() for token in search_phrase.doc
         ]
         word_match_dicts = self.match_recursively(
@@ -430,7 +430,7 @@ class StructuralMatcher:
                     word_match.document_subword is not None
                     and word_match.document_token.i
                     != word_match.document_subword.containing_token_index
-                    and not self.subword_containing_token_is_within_match(
+                    and not self._subword_containing_token_is_within_match(
                         word_match, word_match_dict.values()
                     )
                 ):
@@ -456,8 +456,8 @@ class StructuralMatcher:
             matches.append(match)
         return matches
 
-    def subword_containing_token_is_within_match(
-        self, word_match: WordMatch, other_word_matches: Sequence[WordMatch]
+    def _subword_containing_token_is_within_match(
+        self, word_match: WordMatch, other_word_matches: ValuesView[WordMatch]
     ) -> bool:
         """Where subwords are involved in conjunction, subwords whose meaning is distributed
         among multiple words are modelled as belonging to each of those words even if they
@@ -483,7 +483,7 @@ class StructuralMatcher:
         search_phrase_token: Token,
         document: Doc,
         document_token: Token,
-        document_subword_index: int,
+        document_subword_index: Optional[int],
         search_phrase_and_document_visited_table: List[Set[Index]],
         is_uncertain: bool,
         structurally_matched_document_token: Token,
@@ -812,7 +812,7 @@ class StructuralMatcher:
 
     def build_match_dictionaries(self, matches: List[Match]) -> List[Dict]:
         """Builds and returns a sorted list of match dictionaries."""
-        match_dicts = []
+        match_dicts: List[Dict[str, Any]] = []
         for match in matches:
             earliest_sentence_index = sys.maxsize
             latest_sentence_index = -1
@@ -826,7 +826,7 @@ class StructuralMatcher:
                 if sentence.start >= earliest_sentence_index
                 and sentence.start <= latest_sentence_index
             )
-            match_dict = {
+            match_dict: Dict[str, Any] = {
                 "search_phrase_label": match.search_phrase_label,
                 "search_phrase_text": match.search_phrase_text,
                 "document": match.document_label,
@@ -837,7 +837,7 @@ class StructuralMatcher:
                 "involves_coreference": match.involves_coreference,
                 "overall_similarity_measure": match.overall_similarity_measure,
             }
-            text_word_matches = []
+            text_word_matches: List[Dict[str, Any]] = []
             for word_match in match.word_matches:
                 text_word_matches.append(
                     {
