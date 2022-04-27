@@ -1,9 +1,9 @@
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, List, Dict
 from spacy.tokens import Token, Doc
 from .general import WordMatch, WordMatchingStrategy
 from ..parsing import (
     MultiwordSpan,
-    ReverseIndexValue,
+    CorpusWordPosition,
     Subword,
     SearchPhrase,
 )
@@ -33,9 +33,7 @@ class DirectWordMatchingStrategy(WordMatchingStrategy):
             for multiword in document_multiwords:
                 for document_representation in multiword.direct_matching_reprs:
                     if search_phrase_representation == document_representation:
-                        search_phrase_display_word = (
-                            search_phrase_token._.holmes.lemma
-                        )
+                        search_phrase_display_word = search_phrase_token._.holmes.lemma
                         return WordMatch(
                             search_phrase_token=search_phrase_token,
                             search_phrase_word=search_phrase_representation,
@@ -69,9 +67,7 @@ class DirectWordMatchingStrategy(WordMatchingStrategy):
                 document_representation
             ) in document_token._.holmes.direct_matching_reprs:
                 if search_phrase_representation == document_representation:
-                    search_phrase_display_word = (
-                        search_phrase_token._.holmes.lemma
-                    )
+                    search_phrase_display_word = search_phrase_token._.holmes.lemma
                     return WordMatch(
                         search_phrase_token=search_phrase_token,
                         search_phrase_word=search_phrase_representation,
@@ -81,7 +77,9 @@ class DirectWordMatchingStrategy(WordMatchingStrategy):
                         document_subword=None,
                         document_word=document_representation,
                         word_match_type=self.WORD_MATCH_TYPE_LABEL,
-                        extracted_word=self.get_extracted_word_for_token(document_token, document_representation),
+                        extracted_word=self.get_extracted_word_for_token(
+                            document_token, document_representation
+                        ),
                         explanation=self._get_explanation(search_phrase_display_word),
                     )
         return None
@@ -99,9 +97,7 @@ class DirectWordMatchingStrategy(WordMatchingStrategy):
         ) in search_phrase_token._.holmes.direct_matching_reprs:
             for document_representation in document_subword.direct_matching_reprs:
                 if search_phrase_representation == document_representation:
-                    search_phrase_display_word = (
-                        search_phrase_token._.holmes.lemma
-                    )
+                    search_phrase_display_word = search_phrase_token._.holmes.lemma
                     return WordMatch(
                         search_phrase_token=search_phrase_token,
                         search_phrase_word=search_phrase_representation,
@@ -123,7 +119,7 @@ class DirectWordMatchingStrategy(WordMatchingStrategy):
 
     def add_reverse_dict_entries(
         self,
-        reverse_dict: Dict[str, ReverseIndexValue],
+        reverse_dict: Dict[str, CorpusWordPosition],
         doc: Doc,
         document_label: str,
     ) -> None:
@@ -131,35 +127,17 @@ class DirectWordMatchingStrategy(WordMatchingStrategy):
             for representation in token._.holmes.direct_matching_reprs:
                 self.add_reverse_dict_entry(
                     reverse_dict,
-                    document_label,
                     representation.lower(),
-                    representation,
+                    document_label,
                     token.i,
                     None,
-                    self.WORD_MATCH_TYPE_LABEL,
                 )
             for subword in token._.holmes.subwords:
                 for representation in subword.direct_matching_reprs:
                     self.add_reverse_dict_entry(
                         reverse_dict,
-                        document_label,
                         representation.lower(),
-                        representation,
+                        document_label,
                         token.i,
                         subword.index,
-                        self.WORD_MATCH_TYPE_LABEL,
                     )
-            entity_defined_multiword = (
-                self.semantic_matching_helper.get_entity_defined_multiword(token)
-            )
-            if entity_defined_multiword is not None:
-                self.add_reverse_dict_entry(
-                    reverse_dict,
-                    document_label,
-                    entity_defined_multiword.text.lower(),
-                    entity_defined_multiword.text,
-                    token.i,
-                    None,
-                    self.WORD_MATCH_TYPE_LABEL,
-                )
-                

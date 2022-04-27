@@ -2,7 +2,7 @@ from typing import Optional, List, Dict
 from spacy.tokens import Token
 from thinc.types import Floats1d
 from .general import WordMatch, WordMatchingStrategy
-from ..parsing import SearchPhrase, MultiwordSpan
+from ..parsing import SearchPhrase, MultiwordSpan, SemanticMatchingHelper
 
 
 class EntityEmbeddingWordMatchingStrategy(WordMatchingStrategy):
@@ -24,10 +24,10 @@ class EntityEmbeddingWordMatchingStrategy(WordMatchingStrategy):
 
     def __init__(
         self,
-        semantic_matching_helper,
-        perform_coreference_resolution,
-        overall_similarity_threshold,
-        initial_question_word_overall_similarity_threshold,
+        semantic_matching_helper: SemanticMatchingHelper,
+        perform_coreference_resolution: bool,
+        overall_similarity_threshold: float,
+        initial_question_word_overall_similarity_threshold: float,
         entity_label_to_vector_dict: Dict[str, Floats1d],
     ):
         self.overall_similarity_threshold = overall_similarity_threshold
@@ -55,8 +55,11 @@ class EntityEmbeddingWordMatchingStrategy(WordMatchingStrategy):
             search_phrase_vector = search_phrase.matchable_non_entity_tokens_to_vectors[
                 search_phrase_token.i
             ]
-            if search_phrase_vector is None or not self.semantic_matching_helper.embedding_matching_permitted(
-                document_token
+            if (
+                search_phrase_vector is None
+                or not self.semantic_matching_helper.embedding_matching_permitted(
+                    document_token
+                )
             ):
                 return None
             for document_multiword in document_multiwords:
@@ -69,8 +72,12 @@ class EntityEmbeddingWordMatchingStrategy(WordMatchingStrategy):
                         search_phrase_token=search_phrase_token,
                         search_phrase_vector=search_phrase_vector,
                         document_token=document_token,
-                        first_document_token=document_token.doc[document_multiword.token_indexes[0]],
-                        last_document_token=document_token.doc[document_multiword.token_indexes[-1]],
+                        first_document_token=document_token.doc[
+                            document_multiword.token_indexes[0]
+                        ],
+                        last_document_token=document_token.doc[
+                            document_multiword.token_indexes[-1]
+                        ],
                     )
                     if potential_word_match is not None:
                         return potential_word_match
@@ -94,8 +101,11 @@ class EntityEmbeddingWordMatchingStrategy(WordMatchingStrategy):
             search_phrase_vector = search_phrase.matchable_non_entity_tokens_to_vectors[
                 search_phrase_token.i
             ]
-            if search_phrase_vector is None or not self.semantic_matching_helper.embedding_matching_permitted(
-                document_token
+            if (
+                search_phrase_vector is None
+                or not self.semantic_matching_helper.embedding_matching_permitted(
+                    document_token
+                )
             ):
                 return None
             if document_token.ent_type_ != "":
@@ -120,9 +130,9 @@ class EntityEmbeddingWordMatchingStrategy(WordMatchingStrategy):
         last_document_token: Token,
     ) -> Optional[WordMatch]:
         if (
-            (search_phrase_token._.holmes.is_initial_question_word or search_phrase_token._.holmes.has_initial_question_word_in_phrase)
-            and self.initial_question_word_overall_similarity_threshold is not None
-        ):
+            search_phrase_token._.holmes.is_initial_question_word
+            or search_phrase_token._.holmes.has_initial_question_word_in_phrase
+        ) and self.initial_question_word_overall_similarity_threshold is not None:
             working_overall_similarity_threshold = (
                 self.initial_question_word_overall_similarity_threshold
             )

@@ -1,8 +1,7 @@
-from pydoc import Doc
 from typing import Dict, Optional, List
-from spacy.tokens import Token
+from spacy.tokens import Token, Doc
 from .general import WordMatch, WordMatchingStrategy
-from ..parsing import MultiwordSpan, ReverseIndexValue, SearchPhrase
+from ..parsing import MultiwordSpan, CorpusWordPosition, SearchPhrase
 
 
 class EntityWordMatchingStrategy(WordMatchingStrategy):
@@ -11,7 +10,9 @@ class EntityWordMatchingStrategy(WordMatchingStrategy):
 
     @staticmethod
     def _get_explanation(search_phrase_display_word: str) -> str:
-        return ''.join(("Has an entity label matching ", search_phrase_display_word.upper(), "."))
+        return "".join(
+            ("Has an entity label matching ", search_phrase_display_word.upper(), ".")
+        )
 
     def match_multiwords(
         self,
@@ -21,12 +22,20 @@ class EntityWordMatchingStrategy(WordMatchingStrategy):
         document_multiwords: List[MultiwordSpan],
     ) -> Optional[WordMatch]:
 
-        entity_placeholder = self.semantic_matching_helper.get_entity_placeholder(search_phrase_token)
+        entity_placeholder = self.semantic_matching_helper.get_entity_placeholder(
+            search_phrase_token
+        )
         if entity_placeholder is None:
             return None
 
         for multiword in document_multiwords:
-            if any(1 for i in multiword.token_indexes if not self._entity_placeholder_matches(entity_placeholder, document_token.doc[i])):
+            if any(
+                1
+                for i in multiword.token_indexes
+                if not self._entity_placeholder_matches(
+                    entity_placeholder, document_token.doc[i]
+                )
+            ):
                 continue
             return WordMatch(
                 search_phrase_token=search_phrase_token,
@@ -48,7 +57,9 @@ class EntityWordMatchingStrategy(WordMatchingStrategy):
         document_token: Token,
     ) -> Optional[WordMatch]:
 
-        entity_placeholder = self.semantic_matching_helper.get_entity_placeholder(search_phrase_token)
+        entity_placeholder = self.semantic_matching_helper.get_entity_placeholder(
+            search_phrase_token
+        )
         if entity_placeholder is None:
             return None
 
@@ -68,7 +79,7 @@ class EntityWordMatchingStrategy(WordMatchingStrategy):
 
     def add_reverse_dict_entries(
         self,
-        reverse_dict: Dict[str, ReverseIndexValue],
+        reverse_dict: Dict[str, CorpusWordPosition],
         doc: Doc,
         document_label: str,
     ) -> None:
@@ -78,26 +89,39 @@ class EntityWordMatchingStrategy(WordMatchingStrategy):
             # otherwise be excluded because the main sibling would normally also match the
             # entity root word.
             if len(token.ent_type_) > 0 and (
-                    token.dep_ == 'ROOT' or token.dep_ in self.semantic_matching_helper.sibling_marker_deps
-                    or token.ent_type_ != token.head.ent_type_):
-                entity_label = ''.join(('ENTITY', token.ent_type_))
+                token.dep_ == "ROOT"
+                or token.dep_ in self.semantic_matching_helper.sibling_marker_deps
+                or token.ent_type_ != token.head.ent_type_
+            ):
+                entity_label = "".join(("ENTITY", token.ent_type_))
                 self.add_reverse_dict_entry(
                     reverse_dict,
+                    entity_label,
                     document_label,
-                    entity_label,
-                    entity_label,
                     token.i,
                     None,
-                    self.WORD_MATCH_TYPE_LABEL,
+                )
+            entity_defined_multiword = (
+                self.semantic_matching_helper.get_entity_defined_multiword(token)
+            )
+            if entity_defined_multiword is not None:
+                self.add_reverse_dict_entry(
+                    reverse_dict,
+                    entity_defined_multiword.text.lower(),
+                    document_label,
+                    token.i,
+                    None,
                 )
 
     def _entity_placeholder_matches(
-            self, entity_placeholder, document_token):
+        self, entity_placeholder: str, document_token: Token
+    ) -> bool:
         return (
-            document_token.ent_type_ == entity_placeholder[6:] and
-            len(document_token._.holmes.lemma.strip()) > 0) or (
-                entity_placeholder == 'ENTITYNOUN' and
-                document_token.pos_ in self.semantic_matching_helper.noun_pos)
-                # len(document_token._.holmes.lemma.strip()) > 0: in German spaCy sometimes
-                # classifies whitespace as entities.
-
+            document_token.ent_type_ == entity_placeholder[6:]
+            and len(document_token._.holmes.lemma.strip()) > 0
+        ) or (
+            entity_placeholder == "ENTITYNOUN"
+            and document_token.pos_ in self.semantic_matching_helper.noun_pos
+        )
+        # len(document_token._.holmes.lemma.strip()) > 0: some German spaCy models sometimes
+        # classifies whitespace as entities.

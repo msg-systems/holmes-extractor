@@ -24,7 +24,6 @@ from .ontology import Ontology
 from .parsing import (
     CorpusWordPosition,
     LinguisticObjectFactory,
-    ReverseIndexValue,
     SearchPhrase,
     SemanticAnalyzer,
     SemanticMatchingHelper,
@@ -203,7 +202,7 @@ class SupervisedTopicTrainingUtils:
             this_document_dict: Dict[int, int] = {}
             doc = training_document_labels_to_documents[doc_label]
             document_labels_to_documents = {doc_label: doc}
-            reverse_dict: Dict[str, ReverseIndexValue] = {}
+            reverse_dict: Dict[str, CorpusWordPosition] = {}
             semantic_matching_helper.add_to_reverse_dict(
                 reverse_dict, doc, doc_label
             )
@@ -334,7 +333,7 @@ class SupervisedTopicTrainingBasis:
         self.verbose = verbose
 
         self.training_document_labels_to_documents: Dict[str, Doc] = {}
-        self.reverse_dict: Dict[str, Tuple[CorpusWordPosition, str, str]] = {}
+        self.reverse_dict: Dict[str, CorpusWordPosition] = {}
         self.training_documents_labels_to_classifications_dict: Dict[str, str] = {}
         self.additional_classification_labels: Set[str] = set()
         self.classification_implication_dict: Dict[str, List[str]] = {}

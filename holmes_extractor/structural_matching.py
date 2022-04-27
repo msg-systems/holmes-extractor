@@ -4,7 +4,6 @@ from spacy.tokens import Doc, Token
 from .parsing import (
     CorpusWordPosition,
     Index,
-    ReverseIndexValue,
     SearchPhrase,
     SemanticMatchingHelper,
 )
@@ -135,7 +134,7 @@ class StructuralMatcher:
         *,
         word_matching_strategies: List[WordMatchingStrategy],
         document_labels_to_documents: Dict[str, Doc],
-        reverse_dict: Dict[str, ReverseIndexValue],
+        reverse_dict: Dict[str, CorpusWordPosition],
         search_phrases: List[SearchPhrase],
         match_depending_on_single_words: bool,
         compare_embeddings_on_root_words: bool,
@@ -234,9 +233,7 @@ class StructuralMatcher:
             )
             if entity_label is not None:
                 if entity_label in reverse_dict.keys():
-                    entity_matching_cwps = [
-                        riv.corpus_word_position for riv in reverse_dict[entity_label]
-                    ]
+                    entity_matching_cwps = reverse_dict[entity_label]
                     if match_specific_indexes:
                         entity_matching_cwps = [
                             cwp
@@ -249,10 +246,7 @@ class StructuralMatcher:
             else:
                 for word_matching_root_token in search_phrase.words_matching_root_token:
                     if word_matching_root_token in reverse_dict.keys():
-                        direct_matching_cwps = [
-                            riv.corpus_word_position
-                            for riv in reverse_dict[word_matching_root_token]
-                        ]
+                        direct_matching_cwps = reverse_dict[word_matching_root_token]
                         if match_specific_indexes:
                             direct_matching_cwps = [
                                 cwp
@@ -286,10 +280,7 @@ class StructuralMatcher:
                 else:
                     working_cwps_to_match_for_cache = set()
                     for document_word in reverse_dict:
-                        corpus_word_positions_to_match = [
-                            riv.corpus_word_position
-                            for riv in reverse_dict[document_word]
-                        ]
+                        corpus_word_positions_to_match = reverse_dict[document_word]
                         if match_specific_indexes:
                             corpus_word_positions_to_match = [
                                 cwp

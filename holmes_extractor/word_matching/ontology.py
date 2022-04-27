@@ -4,8 +4,8 @@ from spacy.tokens import Token, Doc
 from .general import WordMatch, WordMatchingStrategy
 from ..parsing import (
     HolmesDictionary,
+    CorpusWordPosition,
     MultiwordSpan,
-    ReverseIndexValue,
     SemanticMatchingHelper,
     Subword,
     SearchPhrase,
@@ -47,7 +47,7 @@ class OntologyWordMatchingStrategy(WordMatchingStrategy):
         perform_coreference_resolution: bool,
         ontology: Ontology,
         analyze_derivational_morphology: bool,
-        ontology_reverse_derivational_dict: Optional[Dict[str, str]]
+        ontology_reverse_derivational_dict: Optional[Dict[str, str]],
     ):
         self.ontology = ontology
         self.analyze_derivational_morphology = analyze_derivational_morphology
@@ -115,7 +115,9 @@ class OntologyWordMatchingStrategy(WordMatchingStrategy):
                     document_subword=None,
                     document_word=entry.word,
                     word_match_type=self.WORD_MATCH_TYPE_LABEL,
-                    extracted_word=self.get_extracted_word_for_token(document_token, entry.word),
+                    extracted_word=self.get_extracted_word_for_token(
+                        document_token, entry.word
+                    ),
                     depth=entry.depth,
                     explanation=self._get_explanation(
                         search_phrase_display_word, entry.depth
@@ -159,45 +161,55 @@ class OntologyWordMatchingStrategy(WordMatchingStrategy):
         self, search_phrase: SearchPhrase
     ) -> None:
         search_phrase_reprs = search_phrase.root_token._.holmes.direct_matching_reprs[:]
-        if self.analyze_derivational_morphology and search_phrase.root_token._.holmes.derivation_matching_reprs is not None:
-            search_phrase_reprs.extend(search_phrase.root_token._.holmes.derivation_matching_reprs)
+        if (
+            self.analyze_derivational_morphology
+            and search_phrase.root_token._.holmes.derivation_matching_reprs is not None
+        ):
+            search_phrase_reprs.extend(
+                search_phrase.root_token._.holmes.derivation_matching_reprs
+            )
         for word in search_phrase_reprs:
             for entry in self.ontology.get_matching_entries(word):
                 search_phrase.add_word_information(entry.repr)
 
     def add_reverse_dict_entries(
         self,
-        reverse_dict: Dict[str, ReverseIndexValue],
+        reverse_dict: Dict[str, CorpusWordPosition],
         doc: Doc,
         document_label: str,
     ) -> None:
         for token in doc:
-            odw = self.semantic_matching_helper.get_ontology_defined_multiword(token, self.ontology)
+            odw = self.semantic_matching_helper.get_ontology_defined_multiword(
+                token, self.ontology
+            )
             if odw is not None:
                 for representation in odw.direct_matching_reprs:
                     self.add_reverse_dict_entry(
                         reverse_dict,
-                        document_label,
                         representation.lower(),
-                        representation,
+                        document_label,
                         token.i,
                         None,
-                        'direct',
                     )
-                if self.analyze_derivational_morphology and odw.derivation_matching_reprs is not None:
+                if (
+                    self.analyze_derivational_morphology
+                    and odw.derivation_matching_reprs is not None
+                ):
                     for representation in odw.derivation_matching_reprs:
                         self.add_reverse_dict_entry(
                             reverse_dict,
-                            document_label,
                             representation.lower(),
-                            representation,
+                            document_label,
                             token.i,
                             None,
-                            'derivation',
                         )
 
     def _get_reprs(self, repr_bearer: Union[HolmesDictionary, Subword, MultiwordSpan]):
-        if self.analyze_derivational_morphology and repr_bearer.derivation_matching_reprs is not None:
+        if (
+            self.analyze_derivational_morphology
+            and repr_bearer.derivation_matching_reprs is not None
+        ):
+            # because derivational lemmas of ontology terms are matched, there is no need to attempt the direct matching representations
             return repr_bearer.derivation_matching_reprs
         else:
             return repr_bearer.direct_matching_reprs

@@ -200,13 +200,6 @@ class CorpusWordPosition:
     def __str__(self):
         return ':'.join((self.document_label, str(self.index)))
 
-class ReverseIndexValue:
-
-    def __init__(self, corpus_word_position:CorpusWordPosition, document_word:str, match_type: str):
-        self.corpus_word_position = corpus_word_position
-        self.document_word = document_word
-        self.match_type = match_type
-
 class MultiwordSpan:
 
     def __init__(self, text, hyphen_normalized_lemma, lemma, derived_lemma, token_indexes):
@@ -2045,16 +2038,15 @@ class SemanticMatchingHelper(ABC):
                     return cosine_similarity
         return 0.0
 
-    def add_to_reverse_dict(self, reverse_dict: Dict[str, ReverseIndexValue], parsed_document: Doc, document_label: str):
+    def add_to_reverse_dict(self, reverse_dict: Dict[str, CorpusWordPosition], parsed_document: Doc, document_label: str):
         """ Indexes a parsed document. """
         for word_matching_strategy in self.main_word_matching_strategies + self.ontology_word_matching_strategies:
             word_matching_strategy.add_reverse_dict_entries(reverse_dict, parsed_document, document_label)
 
-    def get_reverse_dict_removing_document(self, reverse_dict: Dict[str, ReverseIndexValue], document_label: str) -> Dict[str, ReverseIndexValue]:
+    def get_reverse_dict_removing_document(self, reverse_dict: Dict[str, CorpusWordPosition], document_label: str) -> Dict[str, CorpusWordPosition]:
         new_reverse_dict = {}
         for entry in reverse_dict:
-            new_value = ([riv for riv in reverse_dict[entry] if riv.corpus_word_position.document_label !=
-                document_label])
+            new_value = ([cwp for cwp in reverse_dict[entry] if cwp.document_label != document_label])
             if len(new_value) > 0:
                 new_reverse_dict[entry] = new_value
         return new_reverse_dict
