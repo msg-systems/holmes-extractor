@@ -215,11 +215,11 @@ class MultiwordSpan:
         self.lemma = lemma
         self.derived_lemma = derived_lemma
         self.direct_matching_reprs = [lemma]
-        if hyphen_normalized_lemma != lemma:
+        if hyphen_normalized_lemma != lemma and hyphen_normalized_lemma is not None:
             self.direct_matching_reprs.append(hyphen_normalized_lemma)
         if lemma != text.lower():
             self.direct_matching_reprs.append(text.lower())
-        if derived_lemma != lemma:
+        if derived_lemma != lemma and derived_lemma is not None:
             self.derivation_matching_reprs = [derived_lemma]
         else:
             self.derivation_matching_reprs = None
