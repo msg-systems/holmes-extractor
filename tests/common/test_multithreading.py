@@ -47,7 +47,7 @@ def get_first_key_in_dict(dictionary: OrderedDict) -> str:
         return None
     return list(dictionary.keys())[0]
 
-for i in range(10):
+for i in range(20):
     trainer = sttb.train(
         minimum_occurrences=0,
         cv_threshold=0,
@@ -63,7 +63,7 @@ for i in range(10):
         == "animal"
     ):
         break
-    if i == 10:
+    if i == 19:
         print("Test setup failed.")
         exit(1)
 

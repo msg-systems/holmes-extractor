@@ -248,7 +248,7 @@ class Ontology:
                 for entry, _, _ in self._graph.triples(
                     (
                         None,
-                        self.owl_hyponym_type,
+                        rdflib.term.URIRef(self.owl_hyponym_type),
                         working_entry_url,
                     )  # type:ignore [arg-type]
                 ):
@@ -318,8 +318,8 @@ class Ontology:
                         symmetric,
                     )
                 if is_individual:
-                    for _, _, entry in self._graph.triples(  
-                        ( # type:ignore [arg-type]
+                    for _, _, entry in self._graph.triples(
+                        (  # type:ignore [arg-type]
                             working_entry_url,
                             rdflib.term.URIRef(self.owl_type_link),
                             None,

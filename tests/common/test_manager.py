@@ -1,5 +1,6 @@
 import unittest
 import holmes_extractor as holmes
+from holmes_extractor.errors import NoDocumentError
 
 holmes_manager = holmes.Manager(
     'en_core_web_trf', perform_coreference_resolution=False, number_of_workers=2)
@@ -37,6 +38,27 @@ class ManagerTest(unittest.TestCase):
         holmes_manager.parse_and_register_document(
             document_text="All the time I am testing here, dogs keep on chasing cats.", label='pets')
         self.assertEqual(len(holmes_manager.match()), 1)
+
+    def test_remove_all_documents_with_label(self):
+        self._register_multiple_documents_and_search_phrases()
+        holmes_manager.remove_all_documents()
+        holmes_manager.parse_and_register_document(
+            document_text="All the time I am testing here, dogs keep on chasing cats.", label='pets11')
+        holmes_manager.parse_and_register_document(
+            document_text="All the time I am testing here, dogs keep on chasing cats.", label='pets12')
+        holmes_manager.parse_and_register_document(
+            document_text="All the time I am testing here, dogs keep on chasing cats.", label='pets21')
+        holmes_manager.parse_and_register_document(
+            document_text="All the time I am testing here, dogs keep on chasing cats.", label='pets22')
+        self.assertEqual(len(holmes_manager.match()), 4)
+        holmes_manager.remove_all_documents('pets22')
+        print(holmes_manager.document_labels())
+        self.assertEqual(len(holmes_manager.match()), 3)
+        holmes_manager.remove_all_documents('pets1')
+        self.assertEqual(len(holmes_manager.match()), 1)
+        holmes_manager.remove_all_documents('pets')
+        with self.assertRaises(NoDocumentError) as context: 
+            holmes_manager.match()
 
     def test_remove_document(self):
         self._register_multiple_documents_and_search_phrases()

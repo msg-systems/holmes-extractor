@@ -1277,7 +1277,12 @@ Manager.remove_document(self, label:str) -> None
 ```
 
 ``` {.python}
-Manager.remove_all_documents(self) -> None
+Manager.remove_all_documents(self, labels_starting:str=None) -> None
+
+Parameters:
+
+labels_starting -- a string with which the labels of documents to be removed start,
+    or 'None' if all documents are to be removed.
 ```
 
 ``` {.python}
