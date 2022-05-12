@@ -959,10 +959,9 @@ class SupervisedTopicClassifier:
             predictions = self.thinc_model.predict(occurrence_dicts)[0]
             for i in (-predictions).argsort():  # type:ignore[attr-defined]
                 return_dict[
-                    self.model.classifications[i]
-                ] = predictions.item(  # type:ignore[attr-defined]
-                    i
-                )
+                    self.model.classifications[i.item()]
+                ] = predictions[i].item()
+                    
             return return_dict
 
     def serialize_model(self) -> bytes:
