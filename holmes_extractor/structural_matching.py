@@ -83,7 +83,9 @@ class Match:
     def get_subword_index(self) -> Optional[int]:
         """Returns the subword index of the root token."""
         for word_match in self.word_matches:
-            if word_match.search_phrase_token.dep_ == "ROOT":
+            if word_match.search_phrase_token.dep_ == "ROOT" or (
+                hasattr(word_match, "temp_is_parent") and word_match.temp_is_parent
+            ):
                 if word_match.document_subword is None:
                     return None
                 return word_match.document_subword.index
@@ -422,9 +424,10 @@ class StructuralMatcher:
                 search_phrase.topic_match_phraselet_created_without_matching_tags,
                 search_phrase.reverse_only,
             )
-            search_phrase_tokens = sorted(word_match_dict.keys(), key=lambda t: t.i)
             not_normalized_overall_similarity_measure = 1.0
-            for search_phrase_token in search_phrase_tokens:
+            for search_phrase_token in search_phrase.matchable_tokens:
+                if search_phrase_token not in word_match_dict:
+                    break
                 word_match = word_match_dict[search_phrase_token]
                 if (
                     word_match.document_subword is not None
@@ -445,7 +448,12 @@ class StructuralMatcher:
                 not_normalized_overall_similarity_measure *= (
                     word_match.similarity_measure
                 )
-            if len(match.word_matches) < len(search_phrase_tokens):
+                if search_phrase.topic_match_phraselet:
+                    word_match.temp_is_parent = (
+                        word_match.search_phrase_token.i
+                        == search_phrase.root_token_index
+                    )
+            if len(match.word_matches) < len(search_phrase.matchable_token_indexes):
                 continue
             if not_normalized_overall_similarity_measure < 1.0:
                 match.overall_similarity_measure = round(

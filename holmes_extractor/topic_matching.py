@@ -590,9 +590,7 @@ class TopicMatcher:
     def get_word_match_from_match(self, match, parent):
         ## child if parent==False
         for word_match in match.word_matches:
-            if parent and word_match.search_phrase_token.dep_ == 'ROOT':
-                return word_match
-            if not parent and word_match.search_phrase_token.dep_ != 'ROOT':
+            if parent == word_match.temp_is_parent:
                 return word_match
         raise RuntimeError(''.join(('Word match not found with parent==', str(parent))))
 

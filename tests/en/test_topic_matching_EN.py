@@ -768,6 +768,16 @@ class EnglishTopicMatchingTest(unittest.TestCase):
                            "An adopted child", 14,
                            holmes_manager_coref)
 
+    def test_tough_movement(self):
+        self._check_equals("A leg is hard to stretch", "He stretched his legs.",
+                           34,
+                           holmes_manager_coref)
+
+    def test_tough_movement_control(self):
+        self._check_equals("A leg is hard to fix", "He stretched his legs.",
+                           10,
+                           holmes_manager_coref)
+
     def test_coreference_double_match_on_governed(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.parse_and_register_document(
