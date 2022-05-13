@@ -232,6 +232,13 @@ class Manager:
             phraselet_template.template_doc = self.semantic_analyzer.parse(
                 phraselet_template.template_sentence
             )
+            if (
+                next(phraselet_template.template_doc.sents).root.i
+                == phraselet_template.child_index
+            ):
+                raise RuntimeError(
+                    "Child index of phraselet template may not point to syntactic root."
+                )
         if number_of_workers is None:
             number_of_workers = cpu_count()
         elif number_of_workers <= 0:
