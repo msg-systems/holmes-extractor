@@ -54,7 +54,7 @@ class Match:
         self.from_reverse_only_topic_match_phraselet = (
             from_reverse_only_topic_match_phraselet
         )
-        self.index_within_document: Optional[int] = None
+        self.index_within_document: int = -1
         self.overall_similarity_measure = 1.0
 
     @property
