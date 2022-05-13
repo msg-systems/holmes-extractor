@@ -1,4 +1,4 @@
-from typing import List, Dict, Optional, Tuple
+from typing import List, Dict, Optional, Tuple, Generator, cast, Set
 import math
 import pickle
 import importlib
@@ -7,9 +7,12 @@ from copy import copy
 from functools import total_ordering
 import srsly
 import pkg_resources
-from thinc.api import get_current_ops
-from holmes_extractor.ontology import Ontology
+from spacy.language import Language
+from spacy.vocab import Vocab
 from spacy.tokens import Token, Doc
+from thinc.api import get_current_ops
+from thinc.types import Floats1d
+from holmes_extractor.ontology import Ontology
 from .errors import (
     DocumentTooBigError,
     SearchPhraseContainsNegationError,
@@ -25,7 +28,13 @@ SERIALIZED_DOCUMENT_VERSION = "4.0"
 class SemanticDependency:
     """A labelled semantic dependency between two tokens."""
 
-    def __init__(self, parent_index, child_index, label=None, is_uncertain=False):
+    def __init__(
+        self,
+        parent_index: int,
+        child_index: int,
+        label: str = None,
+        is_uncertain: bool = False,
+    ) -> None:
         """Args:
 
         parent_index -- the index of the parent token within the document.
@@ -57,7 +66,7 @@ class SemanticDependency:
         self.label = label
         self.is_uncertain = is_uncertain
 
-    def parent_token(self, doc):
+    def parent_token(self, doc: Doc) -> Token:
         """Convenience method to return the parent token of this dependency.
 
         doc -- the document containing the token.
@@ -67,7 +76,7 @@ class SemanticDependency:
             index = -1 - index
         return doc[index]
 
-    def child_token(self, doc):
+    def child_token(self, doc: Doc) -> Token:
         """Convenience method to return the child token of this dependency.
 
         doc -- the document containing the token.
@@ -77,14 +86,14 @@ class SemanticDependency:
             index = -1 - index
         return doc[index]
 
-    def __str__(self):
+    def __str__(self) -> str:
         """e.g. *2:nsubj* or *2:nsubj(U)* to represent uncertainty."""
         working_label = str(self.label)
         if self.is_uncertain:
             working_label = "".join((working_label, "(U)"))
         return ":".join((str(self.child_index), working_label))
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         return (
             isinstance(other, SemanticDependency)
             and self.parent_index == other.parent_index
@@ -93,7 +102,7 @@ class SemanticDependency:
             and self.is_uncertain == other.is_uncertain
         )
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(
             (self.parent_index, self.child_index, self.label, self.is_uncertain)
         )
@@ -102,7 +111,7 @@ class SemanticDependency:
 class Mention:
     """Simplified information about a coreference mention with respect to a specific token."""
 
-    def __init__(self, root_index, indexes):
+    def __init__(self, root_index: int, indexes: List[int]) -> None:
         """
         root_index -- the index of the member of *indexes* that forms the syntactic head of any
             coordinated phrase, or *indexes[0]* if *len(indexes) == 1*.
@@ -112,7 +121,7 @@ class Mention:
         self.root_index = root_index
         self.indexes = indexes
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "".join(("[", str(self.root_index), "; ", str(self.indexes), "]"))
 
 
@@ -139,17 +148,17 @@ class Subword:
 
     def __init__(
         self,
-        containing_token_index,
-        index,
-        text,
-        lemma,
-        derived_lemma,
-        vector,
-        char_start_index,
-        dependent_index,
-        dependency_label,
-        governor_index,
-        governing_dependency_label,
+        containing_token_index: int,
+        index: int,
+        text: str,
+        lemma: str,
+        derived_lemma: str,
+        vector: Floats1d,
+        char_start_index: int,
+        dependent_index: int,
+        dependency_label: str,
+        governor_index: int,
+        governing_dependency_label: str,
     ):
         self.containing_token_index = containing_token_index
         self.index = index
@@ -160,7 +169,7 @@ class Subword:
             self.direct_matching_reprs.append(text)
         self.derived_lemma = derived_lemma
         if derived_lemma != lemma:
-            self.derivation_matching_reprs = [derived_lemma]
+            self.derivation_matching_reprs: Optional[List[str]] = [derived_lemma]
         else:
             self.derivation_matching_reprs = None
         self.vector = vector
@@ -171,10 +180,10 @@ class Subword:
         self.governing_dependency_label = governing_dependency_label
 
     @property
-    def is_head(self):
+    def is_head(self) -> bool:
         return self.governor_index is None
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.derived_lemma is not None:
             lemma_string = "".join((self.lemma, "(", self.derived_lemma, ")"))
         else:
@@ -186,21 +195,21 @@ class Subword:
 class Index:
     """The position of a multiword, word or subword within a document."""
 
-    def __init__(self, token_index, subword_index):
+    def __init__(self, token_index: int, subword_index: Optional[int]) -> None:
         self.token_index = token_index
         self.subword_index = subword_index
 
-    def is_subword(self):
+    def is_subword(self) -> bool:
         return self.subword_index is not None
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         return (
             isinstance(other, Index)
             and self.token_index == other.token_index
             and self.subword_index == other.subword_index
         )
 
-    def __lt__(self, other):
+    def __lt__(self, other) -> bool:
         if not isinstance(other, Index):
             raise RuntimeError("Comparison between Index and another type.")
         if self.token_index < other.token_index:
@@ -210,42 +219,47 @@ class Index:
         if (
             self.is_subword()
             and other.is_subword()
-            and self.subword_index < other.subword_index
+            and self.subword_index < other.subword_index  # type:ignore[operator]
         ):
             return True
         return False
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.token_index, self.subword_index))
 
 
 class CorpusWordPosition:
     """A reference to a word or subword within a corpus of one or more documents."""
 
-    def __init__(self, document_label, index):
+    def __init__(self, document_label: str, index: Index) -> None:
         if document_label is None:
             raise RuntimeError("CorpusWordPosition.document_label must have a value.")
         self.document_label = document_label
         self.index = index
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         return (
             isinstance(other, CorpusWordPosition)
             and self.document_label == other.document_label
             and self.index == other.index
         )
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash((self.document_label, self.index))
 
-    def __str__(self):
+    def __str__(self) -> str:
         return ":".join((self.document_label, str(self.index)))
 
 
 class MultiwordSpan:
     def __init__(
-        self, text, hyphen_normalized_lemma, lemma, derived_lemma, token_indexes
-    ):
+        self,
+        text: str,
+        hyphen_normalized_lemma: str,
+        lemma: str,
+        derived_lemma: str,
+        token_indexes: List[int],
+    ) -> None:
         """Args:
 
         text -- the raw text representation of the multiword span
@@ -265,7 +279,7 @@ class MultiwordSpan:
         if lemma != text.lower():
             self.direct_matching_reprs.append(text.lower())
         if derived_lemma != lemma and derived_lemma is not None:
-            self.derivation_matching_reprs = [derived_lemma]
+            self.derivation_matching_reprs: Optional[List[str]] = [derived_lemma]
         else:
             self.derivation_matching_reprs = None
         self.token_indexes = token_indexes
@@ -285,17 +299,19 @@ class MatchImplication:
     def __init__(
         self,
         *,
-        search_phrase_dependency,
-        document_dependencies,
-        reverse_document_dependencies=[]
+        search_phrase_dependency: str,
+        document_dependencies: List[str],
+        reverse_document_dependencies: Optional[List[str]] = None
     ):
         self.search_phrase_dependency = search_phrase_dependency
         self.document_dependencies = document_dependencies
-        self.reverse_document_dependencies = reverse_document_dependencies
+        if reverse_document_dependencies is None:
+            reverse_document_dependencies = []
+        self.reverse_document_dependencies: List[str] = reverse_document_dependencies
 
 
 class HolmesDocumentInfo:
-    def __init__(self, semantic_analyzer):
+    def __init__(self, semantic_analyzer: "SemanticAnalyzer"):
         self.model = semantic_analyzer.model
         self.serialized_document_version = SERIALIZED_DOCUMENT_VERSION
 
@@ -330,21 +346,21 @@ class HolmesDictionary:
         that can be used for derivation matching, consisting of *derived_lema*, *token.text*
         and optionally a hyphen-normalized version of *token.text* and *token.lemma_* if these
         are different from *token.text*; otherwise *None*.
-    multiword_spans -- where relevant, a list of multiword spans, otherwise *None*. Set after initialization.
     vector -- the vector representation of *lemma*, unless *lemma* is a multiword, in which case
         the vector representation of *token.lemma_* is used instead. *None* where there is no
         vector for the lexeme.
+    multiword_spans -- where relevant, a list of multiword spans, otherwise *None*. Set after initialization.
     """
 
     def __init__(
         self,
-        index,
-        lemma,
-        hyphen_normalized_lemma,
-        derived_lemma,
-        direct_matching_reprs,
-        derivation_matching_reprs,
-        vector,
+        index: int,
+        lemma: str,
+        hyphen_normalized_lemma: str,
+        derived_lemma: str,
+        direct_matching_reprs: List[str],
+        derivation_matching_reprs: Optional[List[str]],
+        vector: Floats1d,
     ):
         self.index = index
         self.lemma = lemma
@@ -352,50 +368,52 @@ class HolmesDictionary:
         self.derived_lemma = derived_lemma
         self.direct_matching_reprs = direct_matching_reprs
         self.derivation_matching_reprs = derivation_matching_reprs
-        self.multiword_spans = []
+        self.multiword_spans: List[MultiwordSpan] = []
         self.vector = vector
-        self.children = (
-            []
-        )  # list of *SemanticDependency* objects where this token is the parent.
-        self.parents = (
-            []
-        )  # list of *SemanticDependency* objects where this token is the child.
-        self.righthand_siblings = (
-            []
-        )  # list of tokens to the right of this token that stand in a
+        self.children: List[
+            SemanticDependency
+        ] = []  # list of *SemanticDependency* objects where this token is the parent.
+        self.parents: List[
+            SemanticDependency
+        ] = []  # list of *SemanticDependency* objects where this token is the child.
+        self.righthand_siblings: List[
+            Token
+        ] = []  # list of tokens to the right of this token that stand in a
         # conjunction relationship to this token and that share its semantic parents.
         self.token_or_lefthand_sibling_index = (
             None  # the index of this token's lefthand sibling,
         )
         # or this token's own index if this token has no lefthand sibling.
         self.is_involved_in_or_conjunction = False
-        self.is_negated = None
-        self.is_matchable = None
+        self.is_negated: Optional[bool] = None
+        self.is_matchable: Optional[bool] = None
         self.is_initial_question_word = False
         self.has_initial_question_word_in_phrase = False
-        self.coreference_linked_child_dependencies = (
-            []
-        )  # list of [index, label] specifications of
+        self.coreference_linked_child_dependencies: List[
+            Tuple[Index, str]
+        ] = []  # list of [index, label] specifications of
         # dependencies where this token is the parent, taking any coreference resolution into
         # account. Used in topic matching.
-        self.coreference_linked_parent_dependencies = (
-            []
-        )  # list of [index, label] specifications of
+        self.coreference_linked_parent_dependencies: List[
+            Tuple[Index, str]
+        ] = []  # list of [index, label] specifications of
         # dependencies where this token is the child, taking any coreference resolution into
         # account. Used in topic matching.
-        self.token_and_coreference_chain_indexes = (
-            None  # where no coreference, only the token
-        )
+        self.token_and_coreference_chain_indexes: Optional[
+            List[int]
+        ] = None  # where no coreference, only the token
         # index; where coreference, the token index followed by the indexes of coreferring tokens
-        self.mentions = []
-        self.subwords = []
+        self.mentions: List[int] = []
+        self.subwords: List[int] = []
 
     @property
-    def is_uncertain(self):
+    def is_uncertain(self) -> bool:
         """if *True*, a match involving this token will itself be uncertain."""
         return self.is_involved_in_or_conjunction
 
-    def loop_token_and_righthand_siblings(self, doc):
+    def loop_token_and_righthand_siblings(
+        self, doc: Doc
+    ) -> Generator[Token, None, None]:
         """Convenience generator to loop through this token and any righthand siblings."""
         indexes = [self.index]
         indexes.extend(self.righthand_siblings)
@@ -406,7 +424,7 @@ class HolmesDictionary:
         for index in indexes:
             yield doc[index]
 
-    def get_sibling_indexes(self, doc):
+    def get_sibling_indexes(self, doc: Doc) -> List[Token]:
         """Returns the indexes of this token and any siblings, ordered from left to right."""
         # with truncated nouns in German, the righthand siblings may occasionally occur to the left
         # of the head noun
@@ -415,44 +433,45 @@ class HolmesDictionary:
         indexes.extend(head_sibling._.holmes.righthand_siblings)
         return sorted(indexes)
 
-    def has_dependency_with_child_index(self, index):
+    def has_dependency_with_child_index(self, index: int) -> bool:
         for dependency in self.children:
             if dependency.child_index == index:
                 return True
         return False
 
-    def get_label_of_dependency_with_child_index(self, index):
+    def get_label_of_dependency_with_child_index(self, index: int) -> Optional[str]:
         for dependency in self.children:
             if dependency.child_index == index:
                 return dependency.label
         return None
 
-    def has_dependency_with_label(self, label):
+    def has_dependency_with_label(self, label: str) -> bool:
         for dependency in self.children:
             if dependency.label == label:
                 return True
         return False
 
-    def has_dependency_with_child_index_and_label(self, index, label):
+    def has_dependency_with_child_index_and_label(self, index: int, label: str) -> bool:
         for dependency in self.children:
             if dependency.child_index == index and dependency.label == label:
                 return True
         return False
 
-    def remove_dependency_with_child_index(self, index):
+    def remove_dependency_with_child_index(self, index: int) -> None:
         self.children = [dep for dep in self.children if dep.child_index != index]
 
-    def string_representation_of_children(self):
+    def string_representation_of_children(self) -> str:
         children = sorted(self.children, key=lambda dependency: dependency.child_index)
         return "; ".join(str(child) for child in children)
 
-    def string_representation_of_parents(self):
+    def string_representation_of_parents(self) -> str:
         parents = sorted(self.parents, key=lambda dependency: dependency.parent_index)
         return "; ".join(
-            ":".join((str(parent.parent_index), parent.label)) for parent in parents
+            ":".join((str(parent.parent_index), cast(str, parent.label)))
+            for parent in parents
         )
 
-    def is_involved_in_coreference(self):
+    def is_involved_in_coreference(self) -> bool:
         return len(self.mentions) > 0
 
     @srsly.msgpack_encoders("holmes_dictionary_holder")
@@ -502,17 +521,17 @@ class PhraseletTemplate:
 
     def __init__(
         self,
-        label,
-        template_sentence,
-        parent_index,
-        child_index,
-        dependency_labels,
-        parent_tags,
-        child_tags,
+        label: str,
+        template_sentence: str,
+        parent_index: int,
+        child_index: int,
+        dependency_labels: List[str],
+        parent_tags: List[str],
+        child_tags: List[str],
         *,
-        reverse_only,
-        question,
-        assigned_dependency_label=None
+        reverse_only: bool,
+        question: bool,
+        assigned_dependency_label: Optional[str] = None
     ):
         self.label = label
         self.template_sentence = template_sentence
@@ -525,7 +544,7 @@ class PhraseletTemplate:
         self.question = question
         self.assigned_dependency_label = assigned_dependency_label
 
-    def single_word(self):
+    def single_word(self) -> bool:
         """'True' if this is a template for single-word phraselets, otherwise 'False'."""
         return self.child_index is None
 
@@ -567,27 +586,27 @@ class PhraseletInfo:
 
     def __init__(
         self,
-        label,
-        template_label,
-        parent_lemma,
-        parent_hyphen_normalized_lemma,
-        parent_derived_lemma,
-        parent_pos,
-        parent_ent_type,
-        parent_is_initial_question_word,
-        parent_has_initial_question_word_in_phrase,
-        child_lemma,
-        child_hyphen_normalized_lemma,
-        child_derived_lemma,
-        child_pos,
-        child_ent_type,
-        child_is_initial_question_word,
-        child_has_initial_question_word_in_phrase,
-        created_without_matching_tags,
-        reverse_only_parent_lemma,
-        frequency_factor,
-        parent_frequency_factor,
-        child_frequency_factor,
+        label: str,
+        template_label: str,
+        parent_lemma: str,
+        parent_hyphen_normalized_lemma: str,
+        parent_derived_lemma: str,
+        parent_pos: str,
+        parent_ent_type: str,
+        parent_is_initial_question_word: bool,
+        parent_has_initial_question_word_in_phrase: bool,
+        child_lemma: str,
+        child_hyphen_normalized_lemma: str,
+        child_derived_lemma: str,
+        child_pos: str,
+        child_ent_type: str,
+        child_is_initial_question_word: bool,
+        child_has_initial_question_word_in_phrase: bool,
+        created_without_matching_tags: bool,
+        reverse_only_parent_lemma: bool,
+        frequency_factor: float,
+        parent_frequency_factor: float,
+        child_frequency_factor: float,
     ):
         self.label = label
         self.template_label = template_label
@@ -617,18 +636,20 @@ class PhraseletInfo:
         self.set_parent_reprs()
         self.set_child_reprs()
 
-    def set_parent_reprs(self):
+    def set_parent_reprs(self) -> None:
         self.parent_direct_matching_reprs = [self.parent_lemma]
         if self.parent_lemma != self.parent_hyphen_normalized_lemma:
             self.parent_direct_matching_reprs.append(
                 self.parent_hyphen_normalized_lemma
             )
         if self.parent_lemma != self.parent_derived_lemma:
-            self.parent_derivation_matching_reprs = [self.parent_derived_lemma]
+            self.parent_derivation_matching_reprs: Optional[List[str]] = [
+                self.parent_derived_lemma
+            ]
         else:
             self.parent_derivation_matching_reprs = None
 
-    def set_child_reprs(self):
+    def set_child_reprs(self) -> None:
         if self.child_lemma is not None:
             self.child_direct_matching_reprs = [self.child_lemma]
             if self.child_lemma != self.child_hyphen_normalized_lemma:
@@ -636,14 +657,16 @@ class PhraseletInfo:
                     self.child_hyphen_normalized_lemma
                 )
             if self.child_lemma != self.child_derived_lemma:
-                self.child_derivation_matching_reprs = [self.child_derived_lemma]
+                self.child_derivation_matching_reprs: Optional[List[str]] = [
+                    self.child_derived_lemma
+                ]
             else:
                 self.child_derivation_matching_reprs = None
         else:
             self.child_direct_matching_reprs = None
             self.child_derivation_matching_reprs = None
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         return (
             isinstance(other, PhraseletInfo)
             and self.label == other.label
@@ -676,7 +699,7 @@ class PhraseletInfo:
             and str(self.child_frequency_factor) == str(other.child_frequency_factor)
         )
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return hash(
             (
                 self.label,
@@ -707,17 +730,17 @@ class PhraseletInfo:
 class SearchPhrase:
     def __init__(
         self,
-        doc,
-        matchable_token_indexes,
-        root_token_index,
-        matchable_non_entity_tokens_to_vectors,
-        label,
-        topic_match_phraselet,
-        topic_match_phraselet_created_without_matching_tags,
-        question_phraselet,
-        reverse_only,
-        treat_as_reverse_only_during_initial_relation_matching,
-        has_single_matchable_word,
+        doc: Doc,
+        matchable_token_indexes: List[int],
+        root_token_index: int,
+        matchable_non_entity_tokens_to_vectors: Dict[Token, Floats1d],
+        label: str,
+        topic_match_phraselet: bool,
+        topic_match_phraselet_created_without_matching_tags: bool,
+        question_phraselet: bool,
+        reverse_only: bool,
+        treat_as_reverse_only_during_initial_relation_matching: bool,
+        has_single_matchable_word: bool,
     ):
         """Args:
 
@@ -764,22 +787,24 @@ class SearchPhrase:
         )
 
     @property
-    def matchable_tokens(self):
+    def matchable_tokens(self) -> List[Token]:
         return [self.doc[index] for index in self.matchable_token_indexes]
 
     @property
-    def root_token(self):
+    def root_token(self) -> Token:
         return self.doc[self.root_token_index]
 
-    def add_word_information(self, word: str):
+    def add_word_information(self, word: str) -> None:
         if word not in self.words_matching_root_token:
             self.words_matching_root_token.append(word)
 
-    def pack(self):
+    def pack(self) -> None:
+        """Prepares the search phrase for serialization."""
         self.serialized_doc = self.doc.to_bytes()
         self.doc = None
 
-    def unpack(self, vocab):
+    def unpack(self, vocab: Vocab) -> None:
+        """Restores the search phrase following deserialization."""
         self.doc = Doc(vocab).from_bytes(self.serialized_doc)
         self.serialized_doc = None
 
@@ -789,7 +814,7 @@ class SemanticAnalyzerFactory:
     This class must be added to if additional implementations are added for new languages.
     """
 
-    def semantic_analyzer(self, *, nlp, vectors_nlp):
+    def semantic_analyzer(self, *, nlp: Language, vectors_nlp: Language):
         language = nlp.meta["lang"]
         try:
             language_specific_rules_module = importlib.import_module(
@@ -868,34 +893,36 @@ class SemanticAnalyzer(ABC):
     whose_lemma: str = NotImplemented
 
     @abstractmethod
-    def add_subwords(self, token, subword_cache):
+    def add_subwords(
+        self, token: Token, subword_cache: Dict[str, List[Subword]]
+    ) -> None:
         pass
 
     @abstractmethod
-    def set_negation(self, token):
+    def set_negation(self, token: Token) -> None:
         pass
 
     @abstractmethod
-    def correct_auxiliaries_and_passives(self, token):
+    def correct_auxiliaries_and_passives(self, token: Token) -> None:
         pass
 
     @abstractmethod
-    def perform_language_specific_tasks(self, token):
+    def perform_language_specific_tasks(self, token: Token) -> None:
         pass
 
     @abstractmethod
-    def handle_relative_constructions(self, token):
+    def handle_relative_constructions(self, token: Token) -> None:
         pass
 
     @abstractmethod
-    def holmes_lemma(self, token):
+    def holmes_lemma(self, token: Token) -> str:
         pass
 
     @abstractmethod
-    def language_specific_derived_holmes_lemma(self, token, lemma):
+    def language_specific_derived_holmes_lemma(self, token: Token, lemma: str) -> str:
         pass
 
-    def __init__(self, *, nlp, vectors_nlp):
+    def __init__(self, *, nlp: Language, vectors_nlp: Language) -> None:
         """Args:
 
         nlp -- the spaCy model
@@ -907,14 +934,14 @@ class SemanticAnalyzer(ABC):
         self.derivational_dictionary = self.load_derivational_dictionary()
         self.serialized_document_version = SERIALIZED_DOCUMENT_VERSION
 
-    def load_derivational_dictionary(self):
+    def load_derivational_dictionary(self) -> Dict[str, str]:
         in_package_filename = "".join(
             ("lang/", self.nlp.meta["lang"], "/data/derivation.csv")
         )
         absolute_filename = pkg_resources.resource_filename(
             __name__, in_package_filename
         )
-        dictionary = {}
+        dictionary: Dict[str, str] = {}
         with open(absolute_filename, "r", encoding="utf-8") as file:
             for line in file.readlines():
                 words = [word.strip() for word in line.split(",")]
@@ -924,7 +951,7 @@ class SemanticAnalyzer(ABC):
 
     _maximum_document_size = 1000000
 
-    def spacy_parse(self, text):
+    def spacy_parse(self, text: str) -> Doc:
         """Performs a standard spaCy parse on a string."""
         if len(text) > self._maximum_document_size:
             raise DocumentTooBigError(
@@ -934,15 +961,15 @@ class SemanticAnalyzer(ABC):
             )
         return self.nlp(text, disable=["coreferee", "holmes"])
 
-    def parse(self, text):
+    def parse(self, text: str) -> Doc:
         return self.nlp(text)
 
-    def get_vector(self, lemma):
+    def get_vector(self, lemma: str) -> Floats1d:
         """Returns a vector representation of *lemma*, or *None* if none is available."""
         lexeme = self.vectors_nlp.vocab[lemma]
         return lexeme.vector if lexeme.has_vector and lexeme.vector_norm > 0 else None
 
-    def holmes_parse(self, spacy_doc):
+    def holmes_parse(self, spacy_doc: Doc) -> Doc:
         """Adds the Holmes-specific information to each token within a spaCy document."""
         spacy_doc._.set("holmes_document_info", HolmesDocumentInfo(self))
         for token in spacy_doc:
@@ -988,7 +1015,7 @@ class SemanticAnalyzer(ABC):
             )
         for token in spacy_doc:
             self.copy_any_sibling_info(token)
-        subword_cache = {}
+        subword_cache: Dict[str, List[Subword]] = {}
         for token in spacy_doc:
             self.add_subwords(token, subword_cache)
         for token in spacy_doc:
@@ -1012,7 +1039,7 @@ class SemanticAnalyzer(ABC):
             self.create_convenience_dependencies(token)
         return spacy_doc
 
-    def _lefthand_sibling_recursively(self, token):
+    def _lefthand_sibling_recursively(self, token: Token) -> int:
         """If *token* is a righthand sibling, return the index of the token that has a sibling
         reference to it, otherwise return the index of *token* itself.
         """
@@ -1021,7 +1048,7 @@ class SemanticAnalyzer(ABC):
         else:
             return self._lefthand_sibling_recursively(token.head)
 
-    def debug_structures(self, doc):
+    def debug_structures(self, doc: Doc) -> None:
         for token in doc:
             if token._.holmes.derived_lemma is not None:
                 lemma_string = "".join(
@@ -1064,7 +1091,7 @@ class SemanticAnalyzer(ABC):
                 coreference_string,
             )
 
-    def set_coreference_information(self, token):
+    def set_coreference_information(self, token: Token) -> None:
         token._.holmes.token_and_coreference_chain_indexes = [token.i]
         token._.holmes.most_specific_coreferring_term_index = None
         for chain in token._.coref_chains:
@@ -1102,32 +1129,32 @@ class SemanticAnalyzer(ABC):
                 token._.holmes.most_specific_coreferring_term_index = chain[
                     chain.most_specific_mention_index
                 ][0]
-        working_set = set()
+        working_set: Set[int] = set()
         for mention in (m for m in token._.holmes.mentions if token.i not in m.indexes):
             working_set.update(mention.indexes)
         token._.holmes.token_and_coreference_chain_indexes.extend(sorted(working_set))
 
-    def model_supports_embeddings(self):
+    def model_supports_embeddings(self) -> bool:
         return self.vectors_nlp.meta["vectors"]["vectors"] > 0
 
-    def is_interrogative_pronoun(self, token: Token):
+    def is_interrogative_pronoun(self, token: Token) -> bool:
         return token.tag_ in self.interrogative_pronoun_tags
 
-    def potential_multiword_derived_holmes_lemma(self, lemma):
+    def potential_derived_holmes_lemma(self, lemma: str) -> str:
         return_words = []
         for word in lemma.split():
             derived_word = self.derived_holmes_lemma(None, word)
             return_words.append(derived_word if derived_word is not None else word)
         return " ".join(return_words)
 
-    def derived_holmes_lemma(self, token, lemma):
+    def derived_holmes_lemma(self, token: Token, lemma: str) -> str:
         if lemma in self.derivational_dictionary:
             derived_lemma = self.derivational_dictionary[lemma]
             return derived_lemma
         else:
             return self.language_specific_derived_holmes_lemma(token, lemma)
 
-    def initialize_semantic_dependencies(self, token):
+    def initialize_semantic_dependencies(self, token: Token) -> None:
         for child in (
             child
             for child in token.children
@@ -1138,7 +1165,7 @@ class SemanticAnalyzer(ABC):
                 SemanticDependency(token.i, child.i, child.dep_)
             )
 
-    def set_initial_question_words(self, doc: Doc):
+    def set_initial_question_words(self, doc: Doc) -> None:
         """is_initial_question_word -- True on a token that represents an interrogative pronoun
             within an initial phrase.
         has_initial_question_word_in_phrase -- True on a token within an initial phrase that
@@ -1177,7 +1204,7 @@ class SemanticAnalyzer(ABC):
                 ):
                     token._.holmes.has_initial_question_word_in_phrase = True
 
-    def mark_if_righthand_sibling(self, token):
+    def mark_if_righthand_sibling(self, token: Token) -> None:
         if token.dep_ in self.sibling_marker_deps:  # i.e. is righthand sibling
             working_token = token
             working_or_conjunction_flag = False
@@ -1193,7 +1220,7 @@ class SemanticAnalyzer(ABC):
             if working_or_conjunction_flag:
                 working_token._.holmes.is_involved_in_or_conjunction = True
 
-    def copy_any_sibling_info(self, token):
+    def copy_any_sibling_info(self, token: Token) -> None:
         # Copy the or conjunction flag to righthand siblings
         if token._.holmes.is_involved_in_or_conjunction:
             for righthand_sibling in token._.holmes.righthand_siblings:
@@ -1286,7 +1313,7 @@ class SemanticAnalyzer(ABC):
                         )
                     )
 
-    def normalize_predicative_adjectives(self, token):
+    def normalize_predicative_adjectives(self, token: Token) -> None:
         """Change phrases like *the town is old* and *the man is poor* so their
         semantic structure is equivalent to *the old town* and *the poor man*.
         """
@@ -1327,7 +1354,9 @@ class SemanticAnalyzer(ABC):
                     SemanticDependency(token.i, 0 - (subject_index + 1), None)
                 ]
 
-    def create_additional_preposition_phrase_semantic_dependencies(self, token):
+    def create_additional_preposition_phrase_semantic_dependencies(
+        self, token: Token
+    ) -> None:
         """In structures like 'Somebody needs insurance for a period' it seems to be
         mainly language-dependent whether the preposition phrase is analysed as being
         dependent on the preceding noun or the preceding verb. We add an additional, new
@@ -1402,7 +1431,7 @@ class SemanticAnalyzer(ABC):
                         preceding_noun, self.holmes_noun_to_preposition_dep
                     )
 
-    def set_matchability(self, token):
+    def set_matchability(self, token: Token) -> None:
         """Marks whether this token, if it appears in a search phrase, should require a counterpart
         in a document being matched.
         """
@@ -1416,7 +1445,9 @@ class SemanticAnalyzer(ABC):
             and token._.holmes.lemma not in self.generic_pronoun_lemmas
         )
 
-    def move_information_between_tokens(self, from_token, to_token):
+    def move_information_between_tokens(
+        self, from_token: Token, to_token: Token
+    ) -> None:
         """Moves semantic child and sibling information from one token to another.
 
         Args:
@@ -1471,7 +1502,7 @@ class SemanticAnalyzer(ABC):
                 if token.i != to_token.i:
                     token._.holmes.righthand_siblings.append(to_token.i)
 
-    def create_convenience_dependencies(self, token):
+    def create_convenience_dependencies(self, token: Token) -> None:
         for child_dependency in (
             child_dependency
             for child_dependency in token._.holmes.children
@@ -1498,9 +1529,11 @@ class SemanticAnalyzer(ABC):
                         [token.i, child_dependency.label]
                     )
 
-    def multiword_spans_with_head_token(self, token):
+    def multiword_spans_with_head_token(
+        self, token: Token
+    ) -> Optional[List[MultiwordSpan]]:
         """Returns a list of *MultiwordSpan* objects with *token* at their head if *token* is a noun,
-        otherwise an empty list.
+        otherwise a *None*.
         """
 
         if not token.pos_ in self.noun_pos:
@@ -1552,7 +1585,7 @@ class SemanticAnalyzer(ABC):
             pointer += 1
         return return_list if len(return_list) > 0 else None
 
-    def get_entity_label_to_vector_dict(self):
+    def get_entity_label_to_vector_dict(self) -> Dict[str, List[Floats1d]]:
         return {
             label: self.vectors_nlp.vocab[
                 self.entity_labels_to_corresponding_lexemes[label]
@@ -1561,29 +1594,28 @@ class SemanticAnalyzer(ABC):
         }
 
     @abstractmethod
-    def normalize_hyphens(self, word):
+    def normalize_hyphens(self, word: str) -> str:
         pass
 
-    def update_ontology(self, ontology: Ontology):
-        """During structural matching, a lemma or derived lemma matches any words in the ontology
-        that yield the same word as their derived lemmas. This method generates a dictionary
-        from derived lemmas to ontology words that yield them to facilitate such matching.
-        """
+    def update_ontology(self, ontology: Ontology) -> None:
+        """Update the ontology with derived lemmas retrieved from the spaCy model in use."""
         for entries in ontology.match_dict.values():
             for entry in entries:
-                entry.repr = self.potential_multiword_derived_holmes_lemma(entry.repr)
+                entry.repr = self.potential_derived_holmes_lemma(entry.repr)
         for key in ontology.match_dict.copy():
-            derived_key = self.potential_multiword_derived_holmes_lemma(key)
+            derived_key = self.potential_derived_holmes_lemma(key)
             if derived_key not in ontology.match_dict:
                 ontology.match_dict[derived_key] = ontology.match_dict[key]
         ontology.refresh_words()
 
-    def get_ontology_reverse_derivational_dict(self, ontology):
+    def get_ontology_reverse_derivational_dict(
+        self, ontology: Ontology
+    ) -> Dict[str, List[str]]:
         """During structural matching, a lemma or derived lemma matches any words in the ontology
         that yield the same word as their derived lemmas. This method generates a dictionary
         from derived lemmas to ontology words that yield them to facilitate such matching.
         """
-        ontology_reverse_derivational_dict = {}
+        ontology_reverse_derivational_dict: Dict[str, List[str]] = {}
         for ontology_word in ontology.words:
             derived_lemmas = []
             normalized_ontology_word = self.normalize_hyphens(ontology_word)

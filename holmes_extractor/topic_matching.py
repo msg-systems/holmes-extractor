@@ -80,13 +80,13 @@ class PhraseletWordMatchInfo:
         # The indexes at which the single word phraselet for this word was matched.
 
         self.phraselet_labels_to_parent_match_corpus_words: Dict[
-            CorpusWordPosition, List[str]
+            str, List[CorpusWordPosition]
         ] = {}
         # Dictionary from phraselets with this word as the parent to indexes where the
         # phraselet was matched.
 
         self.phraselet_labels_to_child_match_corpus_words: Dict[
-            CorpusWordPosition, List[str]
+            str, List[CorpusWordPosition]
         ] = {}
         # Dictionary from phraselets with this word as the child to indexes where the
         # phraselet was matched.
