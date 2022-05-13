@@ -1257,10 +1257,6 @@ class HolmesBroker:
         self.set_extensions()
 
     def __call__(self, doc: Doc) -> Doc:
-        if os.getpid() != self.pid:
-            raise MultiprocessingParsingNotSupportedError(
-                "Unfortunately at present parsing cannot be shared between forked processes."
-            )
         try:
             self.semantic_analyzer.holmes_parse(doc)
         except:

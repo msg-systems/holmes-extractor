@@ -5,6 +5,9 @@ from holmes_extractor.errors import NoDocumentError
 holmes_manager = holmes.Manager(
     'en_core_web_trf', perform_coreference_resolution=False, number_of_workers=2)
 
+lg_holmes_manager = holmes.Manager(
+    'en_core_web_lg', perform_coreference_resolution=False, number_of_workers=2)
+
 class ManagerTest(unittest.TestCase):
 
     def _register_multiple_documents_and_search_phrases(self):
@@ -118,3 +121,13 @@ class ManagerTest(unittest.TestCase):
             "testc")), 0)
         self.assertEqual(len(holmes_manager.match(document_text=
             "testd")), 0)
+
+    def test_pipe_with_single_process(self):
+        docs = lg_holmes_manager.nlp.pipe(['document1', 'document2'])
+        self.assertEqual(str(next(docs)), 'document1')
+        
+
+    def test_pipe_with_multiple_processes(self):
+        docs = lg_holmes_manager.nlp.pipe(['document1', 'document2'], n_process=2)
+        self.assertEqual(str(next(docs)), 'document1')
+        self.assertEqual(str(next(docs)), 'document2')
