@@ -360,7 +360,8 @@ class TopicMatcher:
         # Read through the documents measuring the activation based on where
         # in the document structural matches were found
         score_sorted_structural_matches = self.perform_activation_scoring(
-            position_sorted_structural_matches, phraselet_labels_to_frequency_factors
+            position_sorted_structural_matches,
+            cast(Dict[str, float], phraselet_labels_to_frequency_factors),
         )
         self.topic_matches = self.generate_topic_matches(
             score_sorted_structural_matches, position_sorted_structural_matches
@@ -427,7 +428,7 @@ class TopicMatcher:
             else:
                 parent_relation_match_corpus_words = []
             if (
-                phraselet_info.parent_frequency_factor
+                cast(float, phraselet_info.parent_frequency_factor)
                 >= self.embedding_matching_frequency_threshold
                 or child_token._.holmes.has_initial_question_word_in_phrase
             ):
@@ -455,18 +456,16 @@ class TopicMatcher:
                 child_relation_match_corpus_words = []
 
             if (
-                phraselet_info.child_frequency_factor
+                cast(float, phraselet_info.child_frequency_factor)
                 >= self.embedding_matching_frequency_threshold
                 or parent_token._.holmes.has_initial_question_word_in_phrase
             ):
                 set_to_add_to = parent_embedding_retry_corpus_word_positions
-            elif (
-                phraselet_info.child_frequency_factor
-                >= self.relation_matching_frequency_threshold
-                and (
-                    phraselet.reverse_only
-                    or phraselet.treat_as_reverse_only_during_initial_relation_matching
-                )
+            elif cast(
+                float, phraselet_info.child_frequency_factor
+            ) >= self.relation_matching_frequency_threshold and (
+                phraselet.reverse_only
+                or phraselet.treat_as_reverse_only_during_initial_relation_matching
             ):
                 set_to_add_to = parent_direct_retry_corpus_word_positions
             else:

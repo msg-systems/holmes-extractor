@@ -112,7 +112,7 @@ class SupervisedTopicTrainingUtils:
             if self.one_hot:
                 if (
                     "this_document_label" not in locals()
-                ) or this_document_label != match.document_label:  
+                ) or this_document_label != match.document_label:
                     this_document_label = match.document_label
                     search_phrases_added_for_this_document = set()
                 if (
@@ -428,12 +428,12 @@ class SupervisedTopicTrainingBasis:
             print("Matching documents against all phraselets")
         search_phrases = (
             self.linguistic_object_factory.create_search_phrases_from_phraselet_infos(
-                self.phraselet_labels_to_phraselet_infos.values()
+                list(self.phraselet_labels_to_phraselet_infos.values())
             ).values()
         )
         self.labels_to_classification_frequencies = cast(
             Dict[str, Dict[str, int]],
-            self.utils.get_labels_to_classification_frequencies_dict(  
+            self.utils.get_labels_to_classification_frequencies_dict(
                 matches=self.structural_matcher.match(
                     word_matching_strategies=self.semantic_matching_helper.main_word_matching_strategies
                     + self.semantic_matching_helper.ontology_word_matching_strategies
@@ -958,10 +958,10 @@ class SupervisedTopicClassifier:
             return_dict = OrderedDict()
             predictions = self.thinc_model.predict(occurrence_dicts)[0]
             for i in (-predictions).argsort():  # type:ignore[attr-defined]
-                return_dict[
-                    self.model.classifications[i.item()]
-                ] = predictions[i].item()
-                    
+                return_dict[self.model.classifications[i.item()]] = predictions[
+                    i
+                ].item()
+
             return return_dict
 
     def serialize_model(self) -> bytes:

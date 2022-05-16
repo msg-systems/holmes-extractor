@@ -1,4 +1,4 @@
-from typing import List, Dict, Optional, Tuple, Generator, cast, Set
+from typing import List, Dict, Optional, Tuple, Generator, cast, Set, Union
 import math
 import pickle
 import importlib
@@ -155,10 +155,10 @@ class Subword:
         derived_lemma: str,
         vector: Floats1d,
         char_start_index: int,
-        dependent_index: int,
-        dependency_label: str,
-        governor_index: int,
-        governing_dependency_label: str,
+        dependent_index: Optional[int],
+        dependency_label: Optional[str],
+        governor_index: Optional[int],
+        governing_dependency_label: Optional[str],
     ):
         self.containing_token_index = containing_token_index
         self.index = index
@@ -255,9 +255,9 @@ class MultiwordSpan:
     def __init__(
         self,
         text: str,
-        hyphen_normalized_lemma: str,
+        hyphen_normalized_lemma: Optional[str],
         lemma: str,
-        derived_lemma: str,
+        derived_lemma: Optional[str],
         token_indexes: List[int],
     ) -> None:
         """Args:
@@ -524,10 +524,10 @@ class PhraseletTemplate:
         label: str,
         template_sentence: str,
         parent_index: int,
-        child_index: int,
-        dependency_labels: List[str],
+        child_index: Optional[int],
+        dependency_labels: Optional[List[str]],
         parent_tags: List[str],
-        child_tags: List[str],
+        child_tags: Optional[List[str]],
         *,
         reverse_only: bool,
         question: bool,
@@ -543,6 +543,7 @@ class PhraseletTemplate:
         self.reverse_only = reverse_only
         self.question = question
         self.assigned_dependency_label = assigned_dependency_label
+        self.template_doc: Doc
 
     def single_word(self) -> bool:
         """'True' if this is a template for single-word phraselets, otherwise 'False'."""
@@ -595,18 +596,18 @@ class PhraseletInfo:
         parent_ent_type: str,
         parent_is_initial_question_word: bool,
         parent_has_initial_question_word_in_phrase: bool,
-        child_lemma: str,
-        child_hyphen_normalized_lemma: str,
-        child_derived_lemma: str,
-        child_pos: str,
-        child_ent_type: str,
-        child_is_initial_question_word: bool,
-        child_has_initial_question_word_in_phrase: bool,
+        child_lemma: Optional[str],
+        child_hyphen_normalized_lemma: Optional[str],
+        child_derived_lemma: Optional[str],
+        child_pos: Optional[str],
+        child_ent_type: Optional[str],
+        child_is_initial_question_word: Optional[bool],
+        child_has_initial_question_word_in_phrase: Optional[bool],
         created_without_matching_tags: bool,
-        reverse_only_parent_lemma: bool,
-        frequency_factor: float,
-        parent_frequency_factor: float,
-        child_frequency_factor: float,
+        reverse_only_parent_lemma: Optional[bool],
+        frequency_factor: Optional[float],
+        parent_frequency_factor: Optional[float],
+        child_frequency_factor: Optional[float],
     ):
         self.label = label
         self.template_label = template_label
@@ -651,14 +652,14 @@ class PhraseletInfo:
 
     def set_child_reprs(self) -> None:
         if self.child_lemma is not None:
-            self.child_direct_matching_reprs = [self.child_lemma]
+            self.child_direct_matching_reprs: Optional[List[str]] = [self.child_lemma]
             if self.child_lemma != self.child_hyphen_normalized_lemma:
                 self.child_direct_matching_reprs.append(
-                    self.child_hyphen_normalized_lemma
+                    cast(str, self.child_hyphen_normalized_lemma)
                 )
             if self.child_lemma != self.child_derived_lemma:
                 self.child_derivation_matching_reprs: Optional[List[str]] = [
-                    self.child_derived_lemma
+                    cast(str, self.child_derived_lemma)
                 ]
             else:
                 self.child_derivation_matching_reprs = None
@@ -1672,7 +1673,8 @@ class LinguisticObjectFactory:
             words from the same word family. Defaults to *True*.
         perform_coreference_resolution -- *True* if coreference resolution should be performed.
         ontology -- an *Ontology* object, or *None* if no ontology is in use.
-        ontology_reverse_derivational_dict ...
+        ontology_reverse_derivational_dict -- a dictionary from derived lemmas to ontology words
+            that yield them.
         """
         self.semantic_analyzer = semantic_analyzer
         self.semantic_matching_helper = semantic_matching_helper
@@ -1701,7 +1703,7 @@ class LinguisticObjectFactory:
         maximum_corpus_frequency,
         process_initial_question_words
     ):
-        """Creates topic matching phraselets extracted from a matching text.
+        """Creates topic matching phraselets extracted from a text to match against.
 
         Properties:
 
@@ -1729,13 +1731,8 @@ class LinguisticObjectFactory:
         """
         index_to_lemmas_cache = {}
 
-        def get_lemmas_from_index(index):
-            """Returns the lemma and the derived lemma. Phraselets form a special case where
-            the derived lemma is set even if it is identical to the lemma. This is necessary
-            because the lemma may be set to a different value during the lifecycle of the
-            object. The property getter in the SemanticDictionary class ensures that
-            derived_lemma is None is always returned where the two strings are identical.
-            """
+        def get_lemmas_from_index(index: Index) -> Tuple[str, str]:
+            """Returns the strings to use as the lemma and derived lemma for an index within the text."""
             if index in index_to_lemmas_cache:
                 return index_to_lemmas_cache[index]
             token = doc[index.token_index]
@@ -1785,7 +1782,9 @@ class LinguisticObjectFactory:
             index_to_lemmas_cache[index] = lemma, derived_lemma
             return lemma, derived_lemma
 
-        def replace_lemmas_with_most_general_ancestor(lemma, derived_lemma):
+        def replace_lemmas_with_most_general_ancestor(
+            lemma: str, derived_lemma: str
+        ) -> Tuple[str, str]:
             new_derived_lemma = self.ontology.get_most_general_hypernym_ancestor(
                 derived_lemma
             ).lower()
@@ -1794,8 +1793,17 @@ class LinguisticObjectFactory:
             return lemma, derived_lemma
 
         def lemma_replacement_indicated(
-            existing_lemma, existing_pos, new_lemma, new_pos
-        ):
+            existing_lemma: str,
+            existing_pos: str,
+            new_lemma: Optional[str],
+            new_pos: Optional[str],
+        ) -> bool:
+            # The aim is that the same phraselet should be produced from different
+            # grammatical constructions sharing the same underlying semantics. For
+            # consistency, nominal elements are preferred over verbal elements, and
+            # it can be necessary to change lemmas within an existing phraselet if its
+            # meaning is encounteted within the search text with a different POS. Note
+            # that the derived lemmas (which determine the label) are not affected.
             if existing_lemma is None:
                 return False
             if (
@@ -1809,33 +1817,32 @@ class LinguisticObjectFactory:
                 and new_pos not in self.semantic_matching_helper.preferred_phraselet_pos
             ):
                 return False
-            return len(new_lemma) < len(existing_lemma)
+            return len(cast(str, new_lemma)) < len(existing_lemma)
 
         def add_new_phraselet_info(
-            phraselet_label,
-            phraselet_template,
-            created_without_matching_tags,
-            is_reverse_only_parent_lemma,
-            parent_lemma,
-            parent_derived_lemma,
-            parent_pos,
-            parent_ent_type,
-            parent_is_initial_question_word,
-            parent_has_initial_question_word_in_phrase,
-            child_lemma,
-            child_derived_lemma,
-            child_pos,
-            child_ent_type,
-            child_is_initial_question_word,
-            child_has_initial_question_word_in_phrase,
-        ):
+            phraselet_template: PhraseletTemplate,
+            created_without_matching_tags: bool,
+            is_reverse_only_parent_lemma: Optional[bool],
+            parent_lemma: str,
+            parent_derived_lemma: str,
+            parent_pos: str,
+            parent_ent_type: str,
+            parent_is_initial_question_word: bool,
+            parent_has_initial_question_word_in_phrase: bool,
+            child_lemma: Optional[str],
+            child_derived_lemma: Optional[str],
+            child_pos: Optional[str],
+            child_ent_type: Optional[str],
+            child_is_initial_question_word: Optional[bool],
+            child_has_initial_question_word_in_phrase: Optional[bool],
+        ) -> None:
             def get_frequency_factor_for_pole(
-                parent,
-            ):  # pole is 'True' -> parent, 'False' -> child
+                parent: bool,
+            ) -> float:  # pole is 'True' -> parent, 'False' -> child
                 original_word_set = (
                     {parent_lemma, parent_derived_lemma}
                     if parent
-                    else {child_lemma, child_derived_lemma}
+                    else {cast(str, child_lemma), cast(str, child_derived_lemma)}
                 )
                 word_set = original_word_set.copy()
                 if self.ontology is not None:
@@ -1872,6 +1879,15 @@ class LinguisticObjectFactory:
                 )
             else:
                 child_hyphen_normalized_lemma = None
+            phraselet_label = "".join(
+                (
+                    phraselet_template.label,
+                    ": ",
+                    parent_derived_lemma,
+                    "-" if child_derived_lemma is not None else "",
+                    child_derived_lemma if child_derived_lemma is not None else "",
+                )
+            )
             if phraselet_label not in phraselet_labels_to_phraselet_infos:
                 phraselet_labels_to_phraselet_infos[phraselet_label] = PhraseletInfo(
                     phraselet_label,
@@ -1926,7 +1942,10 @@ class LinguisticObjectFactory:
                     existing_phraselet.set_child_reprs()
 
         def process_single_word_phraselet_templates(
-            token, subword_index, checking_tags, token_indexes_to_multiwords
+            token: Token,
+            subword_index: int,
+            checking_tags: bool,
+            token_indexes_to_multiwords: Dict[int, str],
         ):
             for phraselet_template in (
                 phraselet_template
@@ -1934,7 +1953,6 @@ class LinguisticObjectFactory:
                 if phraselet_template.single_word()
                 and (token._.holmes.is_matchable or subword_index is not None)
             ):
-                # see note below for explanation
                 if (
                     not checking_tags or token.tag_ in phraselet_template.parent_tags
                 ) and token.tag_ not in stop_tags:
@@ -1951,9 +1969,6 @@ class LinguisticObjectFactory:
                         ) = replace_lemmas_with_most_general_ancestor(
                             lemma, derived_lemma
                         )
-                    phraselet_label = "".join(
-                        (phraselet_template.label, ": ", derived_lemma)
-                    )
                     if (
                         derived_lemma not in stop_lemmas
                         and derived_lemma != "ENTITYNOUN"
@@ -1961,7 +1976,6 @@ class LinguisticObjectFactory:
                         # ENTITYNOUN has to be excluded as single word although it is still
                         # permitted within relation phraselet templates
                         add_new_phraselet_info(
-                            phraselet_label,
                             phraselet_template,
                             not checking_tags,
                             None,
@@ -1980,8 +1994,8 @@ class LinguisticObjectFactory:
                         )
 
         def add_head_subwords_to_token_list_and_remove_words_with_subword_conjunction(
-            index_list,
-        ):
+            index_list: List[Index],
+        ) -> None:
             # for each token in the list, find out whether it has subwords and if so add the
             # head subword to the list
             for index in index_list.copy():
@@ -2165,15 +2179,6 @@ class LinguisticObjectFactory:
                                     ) = replace_lemmas_with_most_general_ancestor(
                                         child_lemma, child_derived_lemma
                                     )
-                                phraselet_label = "".join(
-                                    (
-                                        phraselet_template.label,
-                                        ": ",
-                                        parent_derived_lemma,
-                                        "-",
-                                        child_derived_lemma,
-                                    )
-                                )
                                 is_reverse_only_parent_lemma = False
                                 if reverse_only_parent_lemmas is not None:
                                     for entry in reverse_only_parent_lemmas:
@@ -2192,7 +2197,6 @@ class LinguisticObjectFactory:
                                     )
                                 ):
                                     add_new_phraselet_info(
-                                        phraselet_label,
                                         phraselet_template,
                                         match_all_words,
                                         is_reverse_only_parent_lemma,
@@ -2265,17 +2269,7 @@ class LinguisticObjectFactory:
                         ) = replace_lemmas_with_most_general_ancestor(
                             child_lemma, child_derived_lemma
                         )
-                    phraselet_label = "".join(
-                        (
-                            phraselet_template.label,
-                            ": ",
-                            parent_derived_lemma,
-                            "-",
-                            child_derived_lemma,
-                        )
-                    )
                     add_new_phraselet_info(
-                        phraselet_label,
                         phraselet_template,
                         match_all_words,
                         False,
@@ -2299,8 +2293,10 @@ class LinguisticObjectFactory:
                 )
 
     def create_search_phrases_from_phraselet_infos(
-        self, phraselet_infos, reverse_matching_frequency_threshold=None
-    ):
+        self,
+        phraselet_infos: List[PhraseletInfo],
+        reverse_matching_frequency_threshold: Optional[float] = None,
+    ) -> Dict[str, SearchPhrase]:
         """Creates search phrases from phraselet info objects, returning a dictionary from
         phraselet labels to the created search phrases.
 
@@ -2310,27 +2306,9 @@ class LinguisticObjectFactory:
             *treat_as_reverse_only_during_initial_relation_matching=True*.
         """
 
-        def create_phraselet_label(phraselet_info):
-            if phraselet_info.child_lemma is not None:
-                return "".join(
-                    (
-                        phraselet_info.template_label,
-                        ": ",
-                        phraselet_info.parent_derived_lemma,
-                        "-",
-                        phraselet_info.child_derived_lemma,
-                    )
-                )
-            else:
-                return "".join(
-                    (
-                        phraselet_info.template_label,
-                        ": ",
-                        phraselet_info.parent_derived_lemma,
-                    )
-                )
-
-        def create_search_phrase_from_phraselet(phraselet_info):
+        def create_search_phrase_from_phraselet(
+            phraselet_info: PhraseletInfo,
+        ) -> SearchPhrase:
             for (
                 phraselet_template
             ) in self.semantic_matching_helper.local_phraselet_templates:
@@ -2398,12 +2376,12 @@ class LinguisticObjectFactory:
                     return self.create_search_phrase(
                         "topic match phraselet",
                         phraselet_doc,
-                        create_phraselet_label(phraselet_info),
+                        phraselet_info.label,
                         phraselet_template,
                         phraselet_info.created_without_matching_tags,
                         (
                             reverse_matching_frequency_threshold is not None
-                            and phraselet_info.parent_frequency_factor
+                            and cast(float, phraselet_info.parent_frequency_factor)
                             < reverse_matching_frequency_threshold
                             and phraselet_info.child_lemma is not None
                             and not phraselet_template.question
@@ -2420,21 +2398,19 @@ class LinguisticObjectFactory:
             )
 
         return {
-            create_phraselet_label(phraselet_info): create_search_phrase_from_phraselet(
-                phraselet_info
-            )
+            phraselet_info.label: create_search_phrase_from_phraselet(phraselet_info)
             for phraselet_info in phraselet_infos
         }
 
     def get_phraselet_labels_to_phraselet_infos(
         self,
         *,
-        text_to_match_doc,
-        words_to_corpus_frequencies,
-        maximum_corpus_frequency,
-        process_initial_question_words
-    ):
-        phraselet_labels_to_phraselet_infos = {}
+        text_to_match_doc: Doc,
+        words_to_corpus_frequencies: Dict[str, int],
+        maximum_corpus_frequency: int,
+        process_initial_question_words: bool
+    ) -> Dict[str, PhraseletInfo]:
+        phraselet_labels_to_phraselet_infos: Dict[str, PhraseletInfo] = {}
         self.add_phraselets_to_dict(
             text_to_match_doc,
             phraselet_labels_to_phraselet_infos=phraselet_labels_to_phraselet_infos,
@@ -2470,20 +2446,20 @@ class LinguisticObjectFactory:
 
     def create_search_phrase(
         self,
-        search_phrase_text,
-        search_phrase_doc,
-        label,
-        phraselet_template,
-        topic_match_phraselet_created_without_matching_tags,
-        treat_as_reverse_only_during_initial_relation_matching,
-        is_reverse_only_parent_lemma,
-        process_initial_question_words,
+        search_phrase_text: str,
+        search_phrase_doc: Doc,
+        label: str,
+        phraselet_template: Optional[PhraseletTemplate],
+        topic_match_phraselet_created_without_matching_tags: bool,
+        treat_as_reverse_only_during_initial_relation_matching: bool,
+        is_reverse_only_parent_lemma: Optional[bool],
+        process_initial_question_words: bool,
         *,
         root_token_index=None
-    ):
+    ) -> SearchPhrase:
         """phraselet_template -- 'None' if this search phrase is not a topic match phraselet"""
 
-        def replace_grammatical_root_token_recursively(token):
+        def replace_grammatical_root_token_recursively(token: Token) -> Token:
             """Where the syntactic root of a search phrase document is a grammatical token or is
             marked as non-matchable, loop through the semantic dependencies to find the
             semantic root.
@@ -2527,7 +2503,7 @@ class LinguisticObjectFactory:
         root_tokens = []
         tokens_to_match = []
         matchable_non_entity_tokens_to_vectors = {}
-        token_indexes_within_multiwords_to_ignore = []
+        token_indexes_within_multiwords_to_ignore: List[int] = []
         if (
             self.ontology is not None
             and self.analyze_derivational_morphology
@@ -2646,7 +2622,7 @@ class LinguisticObjectFactory:
 class SemanticMatchingHelperFactory:
     """Returns the correct *SemanticMatchingHelperFactory* for the language in use."""
 
-    def semantic_matching_helper(self, *, language):
+    def semantic_matching_helper(self, *, language: str) -> "SemanticMatchingHelper":
         language_specific_rules_module = importlib.import_module(
             ".".join((".lang", language, "language_specific_rules")), "holmes_extractor"
         )
@@ -2693,7 +2669,7 @@ class SemanticMatchingHelper(ABC):
 
     question_answer_blacklist_deps: List[str] = NotImplemented
 
-    question_answer_final_blacklist_deps: List[Optional[str]] = NotImplemented
+    question_answer_final_blacklist_deps: List[str] = NotImplemented
 
     match_implication_dict: Dict[str, MatchImplication] = NotImplemented
 
@@ -2711,7 +2687,7 @@ class SemanticMatchingHelper(ABC):
     ) -> bool:
         pass
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.local_phraselet_templates = [copy(t) for t in self.phraselet_templates]
         for key, match_implication in self.match_implication_dict.items():
             assert key == match_implication.search_phrase_dependency
@@ -2738,11 +2714,11 @@ class SemanticMatchingHelper(ABC):
                 )
                 == 0
             )
-        self.main_word_matching_strategies: List["WordMatchingStrategy"] = []
-        self.ontology_word_matching_strategies: List["WordMatchingStrategy"] = []
-        self.embedding_word_matching_strategies: List["WordMatchingStrategy"] = []
+        self.main_word_matching_strategies: List = []
+        self.ontology_word_matching_strategies: List = []
+        self.embedding_word_matching_strategies: List = []
 
-    def get_subtree_list_for_question_answer(self, token: Token):
+    def get_subtree_list_for_question_answer(self, token: Token) -> List[Token]:
         """Returns the part of the subtree of a token that has matched a question word
         that is analysed as answering the question. Essentially, this is all the subtree but
         excluding any areas that are in a conjunction relationship with *token*; these will be
@@ -2765,7 +2741,7 @@ class SemanticMatchingHelper(ABC):
             list_to_return = list_to_return[:-1]
         return list_to_return
 
-    def cosine_similarity(self, vector1, vector2):
+    def cosine_similarity(self, vector1: Floats1d, vector2: Floats1d) -> float:
         ops = get_current_ops()
         return ops.xp.dot(vector1, vector2) / (
             ops.xp.linalg.norm(vector1) * ops.xp.linalg.norm(vector2)
@@ -2806,7 +2782,7 @@ class SemanticMatchingHelper(ABC):
         reverse_dict: Dict[str, List[CorpusWordPosition]],
         parsed_document: Doc,
         document_label: str,
-    ):
+    ) -> None:
         """Indexes a parsed document."""
         for word_matching_strategy in (
             self.main_word_matching_strategies + self.ontology_word_matching_strategies
@@ -2832,10 +2808,10 @@ class SemanticMatchingHelper(ABC):
     def dependency_labels_match(
         self,
         *,
-        search_phrase_dependency_label,
-        document_dependency_label,
+        search_phrase_dependency_label: str,
+        document_dependency_label: str,
         inverse_polarity: bool
-    ):
+    ) -> bool:
         """Determines whether a dependency label in a search phrase matches a dependency label in
         a document being searched.
         inverse_polarity: *True* if the matching dependencies have to point in opposite
@@ -2861,7 +2837,7 @@ class SemanticMatchingHelper(ABC):
                 ].reverse_document_dependencies
             )
 
-    def get_entity_placeholder(self, search_phrase_token):
+    def get_entity_placeholder(self, search_phrase_token: Token) -> Optional[str]:
         if (
             search_phrase_token.text[:6] == "ENTITY"
             and len(search_phrase_token.text) > 6
@@ -2874,7 +2850,7 @@ class SemanticMatchingHelper(ABC):
             return search_phrase_token._.holmes.lemma
         return None
 
-    def embedding_matching_permitted(self, obj):
+    def embedding_matching_permitted(self, obj: Union[Token, Subword]):
         """Embedding matching is suppressed for some parts of speech as well as for very short
         words."""
         if isinstance(obj, Token):
@@ -2891,13 +2867,13 @@ class SemanticMatchingHelper(ABC):
         else:
             raise RuntimeError("'obj' must be either a Token or a Subword")
 
-    def belongs_to_entity_defined_multiword(self, token):
+    def belongs_to_entity_defined_multiword(self, token: Token) -> bool:
         return (
             token.pos_ in self.entity_defined_multiword_pos
             and token.ent_type_ in self.entity_defined_multiword_entity_types
         )
 
-    def get_entity_defined_multiword(self, token):
+    def get_entity_defined_multiword(self, token: Token) -> Optional[MultiwordSpan]:
         """If this token is at the head of a multiword recognized by spaCy named entity processing,
         returns the multiword span, otherwise *None*.
         """
@@ -2912,8 +2888,8 @@ class SemanticMatchingHelper(ABC):
         ):
             return None
         working_ent = token.ent_type_
-        working_texts = []
-        working_indexes = []
+        working_texts: List[str] = []
+        working_indexes: List[int] = []
         for counter in range(token.left_edge.i, token.right_edge.i + 1):
             multiword_token = token.doc[counter]
             if (
@@ -2934,7 +2910,9 @@ class SemanticMatchingHelper(ABC):
         else:
             return None
 
-    def get_ontology_defined_multiword(self, token, ontology):
+    def get_ontology_defined_multiword(
+        self, token: Token, ontology: Ontology
+    ) -> Optional[MultiwordSpan]:
         if token._.holmes.multiword_spans is None:
             return None
         for multiword_span in token._.holmes.multiword_spans:
@@ -2946,7 +2924,7 @@ class SemanticMatchingHelper(ABC):
                     return multiword_span
         return None
 
-    def get_dependent_phrase(self, token, subword):
+    def get_dependent_phrase(self, token: Token, subword: Subword) -> str:
         """Return the dependent phrase of a token, with an optional subword reference. Used in
         building match dictionaries."""
         if subword is not None:

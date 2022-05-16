@@ -838,7 +838,7 @@ class Manager:
             return []
         phraselet_labels_to_search_phrases = (
             self.linguistic_object_factory.create_search_phrases_from_phraselet_infos(
-                phraselet_labels_to_phraselet_infos.values(),
+                list(phraselet_labels_to_phraselet_infos.values()),
                 relation_matching_frequency_threshold,
             )
         )

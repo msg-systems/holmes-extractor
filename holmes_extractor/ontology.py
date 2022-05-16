@@ -204,7 +204,11 @@ class Ontology:
 
         The fragment is retrieved from the URL and underscores are replaced with spaces.
         """
-        entry_word = str(urllib.parse.urlparse(class_id).fragment).replace("_", " ")
+        entry_word = str(
+            urllib.parse.urlparse(class_id).fragment
+        ).replace(  # type:ignore[attr-defined]
+            "_", " "
+        )
         if lower_case:
             entry_word = entry_word.lower()
         return entry_word
