@@ -525,7 +525,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                 else:
                     entry_words.append(possible_subwords[counter].text.capitalize())
             subword_lemmatization_string = " . ".join(entry_words)
-            return self.spacy_parse(subword_lemmatization_string)
+            return self.spacy_parse_for_lemmas(subword_lemmatization_string)
 
         if (
             not (
@@ -989,7 +989,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
             else:
                 working_lemma = token.lemma_.lower()
             # see if the adjective is a participle
-            participle_test_doc = self.spacy_parse(
+            participle_test_doc = self.spacy_parse_for_lemmas(
                 " ".join(("Jemand hat", working_lemma))
             )
             return participle_test_doc[2].lemma_.lower()

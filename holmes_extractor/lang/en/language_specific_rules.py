@@ -484,7 +484,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                     return " ".join([token.lemma_.lower(), child.lemma_.lower()])
         if token.pos_ == "ADJ":
             # see if the adjective is a participle
-            participle_test_doc = self.spacy_parse(
+            participle_test_doc = self.spacy_parse_for_lemmas(
                 " ".join(("Somebody has", token.lemma_.lower()))
             )
             return participle_test_doc[2].lemma_.lower()
@@ -550,7 +550,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
         # singing -> sing
         if (token is None or token.tag_ == "NN") and lemma.endswith("ing"):
             lemmatization_sentence = " ".join(("it is", lemma))
-            lemmatization_doc = self.spacy_parse(lemmatization_sentence)
+            lemmatization_doc = self.spacy_parse_for_lemmas(lemmatization_sentence)
             return lemmatization_doc[2].lemma_.lower()
         return lemma
 

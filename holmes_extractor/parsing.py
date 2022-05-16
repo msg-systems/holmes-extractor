@@ -952,15 +952,16 @@ class SemanticAnalyzer(ABC):
 
     _maximum_document_size = 1000000
 
-    def spacy_parse(self, text: str) -> Doc:
-        """Performs a standard spaCy parse on a string."""
+    def spacy_parse_for_lemmas(self, text: str) -> Doc:
+        """Performs a standard spaCy parse on a string in order to obtain lemmas. The 'parser' and 'ner' components 
+           are disabled as they are not required to perform this task."""
         if len(text) > self._maximum_document_size:
             raise DocumentTooBigError(
                 " ".join(
                     ("size:", str(len(text)), "max:", str(self._maximum_document_size))
                 )
             )
-        return self.nlp(text, disable=["coreferee", "holmes"])
+        return self.nlp(text, disable=["parser", "ner", "coreferee", "holmes"])
 
     def parse(self, text: str) -> Doc:
         return self.nlp(text)
