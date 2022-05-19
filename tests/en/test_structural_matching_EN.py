@@ -828,7 +828,7 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
         self.assertEqual(len(matches), 1)
         self.assertEqual(matches[0]["word_matches"][1]["match_type"], "direct")
 
-    @unittest.skipIf(nlp.meta['version'] == '3.2.0', 'Version fluke')
+    @unittest.skipIf(nocoref_holmes_manager.nlp.meta['version'] == '3.2.0', 'Version fluke')
     def test_hyphenation_3(self):
         matches = self._get_matches(
             nocoref_holmes_manager, "A small hyphenated-multiword"
@@ -836,7 +836,7 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
         self.assertEqual(len(matches), 1)
         self.assertEqual(matches[0]["word_matches"][1]["match_type"], "direct")
 
-    @unittest.skipIf(nlp.meta['version'] == '3.2.0', 'Version fluke')
+    @unittest.skipIf(nocoref_holmes_manager.nlp.meta['version'] == '3.2.0', 'Version fluke')
     def test_hyphenation_4(self):
         matches = self._get_matches(
             nocoref_holmes_manager, "A small hyphenated multiword"
