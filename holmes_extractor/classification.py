@@ -922,7 +922,7 @@ class SupervisedTopicClassifier:
         )
         self.thinc_model.from_dict(model.serialized_thinc_model)
 
-    def parse_and_classify(self, text: str) -> Optional[OrderedDict[str, float]]:
+    def parse_and_classify(self, text: str) -> Optional[OrderedDict]:
         """Returns a list of classification labels; and a corresponding list of probabilities,
             or *None* if the text did not contain any words recognised by the model. ***
 
@@ -932,7 +932,7 @@ class SupervisedTopicClassifier:
         """
         return self.classify(self.semantic_analyzer.parse(text))
 
-    def classify(self, doc: Doc) -> Optional[OrderedDict[str, float]]:
+    def classify(self, doc: Doc) -> Optional[OrderedDict]:
         """Returns a dictionary from classification labels to probabilities
         ordered starting with the most probable, or *None* if the text did
         not contain any words recognised by the model.

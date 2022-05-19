@@ -322,7 +322,7 @@ class Manager:
         return return_values
 
     def register_serialized_documents(
-        self, document_dictionary: dict[str, bytes]
+        self, document_dictionary: Dict[str, bytes]
     ) -> None:
         """Note that this function is the most efficient way of loading documents.
 
@@ -418,7 +418,7 @@ class Manager:
             reply_queue, self.number_of_workers, "remove_all_documents"
         )
 
-    def document_labels(self) -> list[str]:
+    def document_labels(self) -> List[str]:
         """Returns a list of the labels of the currently registered documents."""
         with self.lock:
             unsorted_labels = self.document_labels_to_worker_queues.keys()
@@ -544,7 +544,7 @@ class Manager:
             reply_queue, self.number_of_workers, "remove_all_search_phrases"
         )
 
-    def list_search_phrase_labels(self) -> list[str]:
+    def list_search_phrase_labels(self) -> List[str]:
         with self.lock:
             return sorted(
                 list({search_phrase.label for search_phrase in self.search_phrases})
@@ -552,7 +552,7 @@ class Manager:
 
     def match(
         self, search_phrase_text: str = None, document_text: str = None
-    ) -> list[dict]:
+    ) -> List[Dict]:
         """Matches search phrases to documents and returns the result as match dictionaries.
 
         Parameters:
@@ -692,7 +692,7 @@ class Manager:
         number_of_results: int = 10,
         document_label_filter: str = None,
         tied_result_quotient: float = 0.9
-    ) -> list[dict]:
+    ) -> List[Dict]:
 
         """Returns a list of dictionaries representing the results of a topic match between an
         entered text and the loaded documents.
