@@ -914,23 +914,6 @@ class GermanStructuralMatchingTest(unittest.TestCase):
         self.assertEqual(
             matches[0]['word_matches'][2]['document_subword_containing_token_index'], 0)
 
-    def test_three_subwords_three_word_conjunction_last_elements_two_one(self):
-        matches = self._get_matches(holmes_manager,
-                                    "Informationsbeschaffungs-, Problem- und Interessenmaßnahmen")
-        self.assertEqual(len(matches), 1)
-        self.assertEqual(matches[0]['word_matches'][0]['document_token_index'], 0)
-        self.assertEqual(matches[0]['word_matches'][0]['document_subword_index'], 2)
-        self.assertEqual(
-            matches[0]['word_matches'][0]['document_subword_containing_token_index'], 4)
-        self.assertEqual(matches[0]['word_matches'][1]['document_token_index'], 0)
-        self.assertEqual(matches[0]['word_matches'][1]['document_subword_index'], 1)
-        self.assertEqual(
-            matches[0]['word_matches'][1]['document_subword_containing_token_index'], 0)
-        self.assertEqual(matches[0]['word_matches'][2]['document_token_index'], 0)
-        self.assertEqual(matches[0]['word_matches'][2]['document_subword_index'], 0)
-        self.assertEqual(
-            matches[0]['word_matches'][2]['document_subword_containing_token_index'], 0)
-
     def test_three_subwords_three_word_conjunction(self):
         matches = self._get_matches(holmes_manager,
                                     "Informationsinteressen, -beschaffungs- und Problemmaßnahmen")
@@ -1115,5 +1098,5 @@ class GermanStructuralMatchingTest(unittest.TestCase):
 
     def test_recursion_problem_solved(self):
         matches = self._get_matches(holmes_manager,
-                                    "Ich wohne seit 2010 in München")
+                                    "Ich wohne seit 2010 in Paris")
         self.assertEqual(len(matches), 1)

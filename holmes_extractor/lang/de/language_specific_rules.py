@@ -1,5 +1,8 @@
 from typing import Optional, Dict, List, Tuple
+import importlib
 from string import punctuation
+from wasabi import Printer  # type: ignore[import]
+from spacy.language import Language
 from spacy.tokens import Token, Doc
 from ...parsing import (
     SemanticAnalyzer,
@@ -327,6 +330,20 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
     # Subword solutions that scored higher than this are regarded as probably wrong and so are
     # not recorded.
     maximum_acceptable_subword_score = 8
+
+    def __init__(self, *, nlp: Language, vectors_nlp: Language) -> None:
+        super().__init__(nlp=nlp, vectors_nlp=vectors_nlp)
+        if "EditTreeLemmatizer" in str(type(nlp.get_pipe("lemmatizer"))):  # > spaCy 3.3
+            if importlib.util.find_spec("spacy_lookups_data") is None:
+                msg = Printer()
+                msg.fail(
+                    "To use Holmes with the loaded spaCy model, please install the spacy-lookups-data package with 'pip install spacy-lookups-data'"
+                )
+                raise ImportError("spacy_lookups_data")
+            nlp.remove_pipe("lemmatizer")
+            nlp.add_pipe("lemmatizer", before="ner")
+            lemmatizer = nlp.get_pipe("lemmatizer")
+            lemmatizer.initialize()
 
     def is_oov(self, word: str) -> bool:
         working_word = word.lower()
@@ -836,7 +853,8 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                         # passive construction
                         if (
                             token._.holmes.lemma == "werden"
-                            and child.tag_ not in ("VVINF", "VAINF", "VAFIN", "VAINF")
+                            and child.tag_
+                            not in ("VVINF", "VAINF", "VAFIN", "VAINF", "VVFIN")
                         ) and len(
                             [
                                 c
@@ -1188,6 +1206,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
                         "VAINF",
                         "VAFIN",
                         "VAINF",
+                        "VVFIN",
                     ):
                         target_dependency = "oa"
                     if child_token.i not in visited:
@@ -1500,8 +1519,8 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
         dependencies = [
             dependency
             for dependency in token._.holmes.children
-            if token.pos_ == "VERB"
-            and dependency.label == "oa"
+            if token.pos_ in ("VERB", "AUX")
+            and dependency.label in ("oa", "pd")
             and not dependency.is_uncertain
             and (
                 dependency.child_token(token.doc).i == 0
@@ -1910,7 +1929,7 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
         ),
         PhraseletTemplate(
             "head-WHacc",
-            "wen sahst du?",
+            "wen siehst du?",
             1,
             0,
             ["oa"],
@@ -1921,7 +1940,7 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
         ),
         PhraseletTemplate(
             "head-WHdat",
-            "wem hilfst du?",
+            "wem gibst du es?",
             1,
             0,
             ["da"],

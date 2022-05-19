@@ -97,7 +97,7 @@ class CoreferenceGermanMatchingTest(unittest.TestCase):
     def test_simple_pronoun_coreference_same_sentence_conjunction_pronouns_both_match(self):
         coref_holmes_manager.remove_all_documents()
         coref_holmes_manager.parse_and_register_document(
-            "Ich redete mit Peter Müller und Jana Müller, während er und sie Versicherung brauchten.")
+            "Ich redete mit Peter Müller und Jana Müller, während sie und er Versicherung brauchten.")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 2)
         self._check_word_match(matches[0], 0, 4, 'peter müller')
@@ -181,7 +181,7 @@ class CoreferenceGermanMatchingTest(unittest.TestCase):
     def test_pronoun_coreferent_has_dependency_same_sentence(self):
         coref_holmes_manager.remove_all_documents()
         coref_holmes_manager.parse_and_register_document(
-            "Ich sah ein großes Pferd und es jagte eine Katze.")
+            "Ich sah ein großes Pferd, und dieses jagte eine Katze.")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 1)
         self._check_word_match(matches[0], 0, 3, 'groß')
@@ -190,7 +190,7 @@ class CoreferenceGermanMatchingTest(unittest.TestCase):
     def test_pronoun_coreferents_with_dependency_conjunction_same_sentence_both_match(self):
         coref_holmes_manager.remove_all_documents()
         coref_holmes_manager.parse_and_register_document(
-            "Ich sah ein großes Pferd und ein großes Pferd und sie jagten eine Katze.")
+            "Ich sah ein großes Pferd und ein großes Pferd, und sie jagten eine Katze.")
         matches = coref_holmes_manager.match()
         self.assertEqual(len(matches), 2)
         self._check_word_match(matches[0], 0, 3, 'groß')

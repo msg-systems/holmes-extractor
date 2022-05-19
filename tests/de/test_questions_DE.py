@@ -8,7 +8,7 @@ class GermanInitialQuestionsTest(unittest.TestCase):
 
     def _check_equals(self, text_to_match, document_text, highest_score, answer_start, answer_end,
         word_embedding_match_threshold=0.42, initial_question_word_embedding_match_threshold=0.42,
-        use_frequency_factor=True):
+        use_frequency_factor=True, *, alternative_highest_score=None):
         manager.remove_all_documents()
         manager.parse_and_register_document(document_text)
         topic_matches = manager.topic_match_documents_against(text_to_match,
@@ -22,7 +22,10 @@ class GermanInitialQuestionsTest(unittest.TestCase):
                                                               relation_matching_frequency_threshold=0.0,
                                                               embedding_matching_frequency_threshold=0.0,
                                                               use_frequency_factor=use_frequency_factor)
-        self.assertEqual(int(topic_matches[0]['score']), highest_score)
+        if alternative_highest_score is None:
+            self.assertEqual(int(topic_matches[0]['score']), highest_score)
+        else:
+            self.assertIn(int(topic_matches[0]['score']), (highest_score, alternative_highest_score))
         if answer_start is not None:
             self.assertEqual(topic_matches[0]['answers'][0][0], answer_start)
             self.assertEqual(topic_matches[0]['answers'][0][1], answer_end)
@@ -74,7 +77,7 @@ class GermanInitialQuestionsTest(unittest.TestCase):
         self._check_equals('Wer schaute in die Sonne?', 'Das Gebäude schaute in die Sonne', 70, None, None)
 
     def test_check_wen_positive_case(self):
-        self._check_equals('Wen sah das Gebäude?', 'Das Gebäude sah die Person', 54, 16, 26)
+        self._check_equals('Wen sah das Gebäude?', 'Das Gebäude sah die Person', 54, 16, 26, alternative_highest_score=104)
 
     def test_check_wen_wrong_syntax(self):
         self._check_equals('Wen sah das Gebäude?', 'Das Gebäude sah das Gebäude', 34, None, None)
@@ -83,7 +86,7 @@ class GermanInitialQuestionsTest(unittest.TestCase):
         self._check_equals('Was sah das Gebäude?', 'Das Gebäude sah das Gebäude', 104, 16, 27)
 
     def test_check_wem_positive_case(self):
-        self._check_equals('Wem hilfst du?', 'Ich helfe der Person', 45, 10, 20)
+        self._check_equals('wem gibst du es?', 'Ich gebe es der Person', 45, 12, 22)
 
     def test_check_wo_positive_case(self):
         self._check_equals('Wo wohnst du?', 'Ich wohne in einem Haus', 45, 10, 23)

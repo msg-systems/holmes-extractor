@@ -278,15 +278,11 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                            match_all_words=True)
 
     def test_subwords_with_conjunction_match_all_words(self):
-        self._check_equals("Der König von den Informationsinteressen-, -beschaffungs- und -problemmaßnahmen der Wettersituation",
-                           ['word: wettersituation',
-                            'intcompound: beschaffen-information',
+        self._check_equals("Der König von den Informationsinteressen-, -beschaffungs- und -problemmaßnahmen",
+                            ['intcompound: beschaffen-information',
                             'word: könig',
                             'verb-acc: könig-maßnahm',
                             'intcompound: problem-information',
-                            'verb-acc: maßnahm-wettersituation',
-                            'intcompound: situation-wetter',
-                            'verb-acc: maßnahm-situation',
                             'intcompound: maßnahm-problem',
                             'intcompound: maßnahm-beschaffen',
                             'intcompound: maßnahm-interesse',
@@ -295,22 +291,16 @@ class GermanPhraseletProductionTest(unittest.TestCase):
                             'word: information',
                             'word: interesse',
                             'word: beschaffen',
-                            'word: wetter',
-                            'word: situation',
                             'word: maßnahm'
                             ],
                            match_all_words=True)
 
     def test_subwords_with_conjunction_not_match_all_words(self):
-        self._check_equals("Der König von den Informationsinteressen-, -beschaffungs- und -problemmaßnahmen der Wettersituation",
-                           ['word: wettersituation',
-                            'intcompound: beschaffen-information',
+        self._check_equals("Der König von den Informationsinteressen-, -beschaffungs- und -problemmaßnahmen",
+                           ['intcompound: beschaffen-information',
                             'word: könig',
                             'verb-acc: könig-maßnahm',
                             'intcompound: problem-information',
-                            'verb-acc: maßnahm-wettersituation',
-                            'intcompound: situation-wetter',
-                            'verb-acc: maßnahm-situation',
                             'intcompound: maßnahm-problem',
                             'intcompound: maßnahm-beschaffen',
                             'intcompound: maßnahm-interesse',
