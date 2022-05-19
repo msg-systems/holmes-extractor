@@ -37,17 +37,18 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
 
     def test_basic_matching(self):
         manager.remove_all_documents()
-        manager.parse_and_register_document("Richard and Peter sang a duet.", 'q')
+        manager.parse_and_register_document("Richard Hudson and Peter Hudson sang a duet.", 'q')
         manager.parse_and_register_document("A book sings an elogy", 'n')
+        manager.debug_document("q")
         topic_matches = manager.topic_match_documents_against("Who sings?")
-        self.assertEqual([{'document_label': 'q', 'text': 'Richard and Peter sang a duet.', 'text_to_match': 'Who sings?', 'rank': '1', 'index_within_document': 3, 'subword_index': None, 'start_index': 0, 'end_index': 3, 'sentences_start_index': 0, 'sentences_end_index': 6, 'sentences_character_start_index': 0, 'sentences_character_end_index': 30, 'score': 620.0, 'word_infos': [[0, 7, 'relation', False, 'Matches the question word WHO.'], [12, 17, 'relation', False, 'Matches the question word WHO.'], [18, 22, 'relation', True, 'Matches SING directly.']], 'answers': [[0, 7], [12, 17]]}, {'document_label': 'n', 'text': 'A book sings an elogy', 'text_to_match': 'Who sings?', 'rank': '2', 'index_within_document': 2, 'subword_index': None, 'start_index': 2, 'end_index': 2, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 21, 'score': 20.0, 'word_infos': [[7, 12, 'single', True, 'Matches SING directly.']], 'answers': []}], topic_matches)
+        self.assertEqual([{'document_label': 'q', 'text': 'Richard Hudson and Peter Hudson sang a duet.', 'text_to_match': 'Who sings?', 'rank': '1', 'index_within_document': 5, 'subword_index': None, 'start_index': 0, 'end_index': 5, 'sentences_start_index': 0, 'sentences_end_index': 8, 'sentences_character_start_index': 0, 'sentences_character_end_index': 44, 'score': 620.0, 'word_infos': [[0, 14, 'relation', False, 'Matches the question word WHO.'], [19, 31, 'relation', False, 'Matches the question word WHO.'], [32, 36, 'relation', True, 'Matches SING directly.']], 'answers': [[0, 14], [19, 31]]}, {'document_label': 'n', 'text': 'A book sings an elogy', 'text_to_match': 'Who sings?', 'rank': '2', 'index_within_document': 2, 'subword_index': None, 'start_index': 2, 'end_index': 2, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 21, 'score': 20.0, 'word_infos': [[7, 12, 'single', True, 'Matches SING directly.']], 'answers': []}], topic_matches)
 
     def test_ignore_questions(self):
         manager.remove_all_documents()
-        manager.parse_and_register_document("Richard and Peter sang a duet.", 'q')
+        manager.parse_and_register_document("Richard Hudson and Peter Hudson sang a duet.", 'q')
         manager.parse_and_register_document("A book sings an elogy", 'n')
         topic_matches = manager.topic_match_documents_against("Who sings?", initial_question_word_behaviour='ignore')
-        self.assertEqual([{'document_label': 'q', 'text': 'Richard and Peter sang a duet.', 'text_to_match': 'Who sings?', 'rank': '1=', 'index_within_document': 3, 'subword_index': None, 'start_index': 3, 'end_index': 3, 'sentences_start_index': 0, 'sentences_end_index': 6, 'sentences_character_start_index': 0, 'sentences_character_end_index': 30, 'score': 20.0, 'word_infos': [[18, 22, 'single', True, 'Matches SING directly.']], 'answers': []}, {'document_label': 'n', 'text': 'A book sings an elogy', 'text_to_match': 'Who sings?', 'rank': '1=', 'index_within_document': 2, 'subword_index': None, 'start_index': 2, 'end_index': 2, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 21, 'score': 20.0, 'word_infos': [[7, 12, 'single', True, 'Matches SING directly.']], 'answers': []}], topic_matches)
+        self.assertEqual([{'document_label': 'q', 'text': 'Richard Hudson and Peter Hudson sang a duet.', 'text_to_match': 'Who sings?', 'rank': '1=', 'index_within_document': 5, 'subword_index': None, 'start_index': 5, 'end_index': 5, 'sentences_start_index': 0, 'sentences_end_index': 8, 'sentences_character_start_index': 0, 'sentences_character_end_index': 44, 'score': 20.0, 'word_infos': [[32, 36, 'single', True, 'Matches SING directly.']], 'answers': []}, {'document_label': 'n', 'text': 'A book sings an elogy', 'text_to_match': 'Who sings?', 'rank': '1=', 'index_within_document': 2, 'subword_index': None, 'start_index': 2, 'end_index': 2, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 21, 'score': 20.0, 'word_infos': [[7, 12, 'single', True, 'Matches SING directly.']], 'answers': []}], topic_matches)
 
     def test_exclusive_questions(self):
         manager.remove_all_documents()
@@ -109,7 +110,7 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
         self._check_equals('A child is adopted by its parents', 'The adopted child', 34, None, None)
 
     def test_governed_interrogative_pronoun_with_coreference(self):
-        self._check_equals("Which person came home?", 'I spoke to Richard. He came home', 98, 11, 18)
+        self._check_equals("Which person came home?", 'I spoke to Richard Hudson. He came home', 98, 11, 25)
 
     def test_separate_embedding_threshold_for_question_words_normal_threshold_1(self):
          self._check_equals("Which man came home?", 'The person came home', 52, 0, 10,
@@ -142,8 +143,8 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
     def test_no_relation_frequency_threshold_for_direct_question_words_control(self):
         manager.remove_all_documents()
         manager.parse_and_register_document("Richard came. Come. Come.", 'd')
-        topic_matches = manager.topic_match_documents_against("Richard came?", relation_matching_frequency_threshold=1.0, embedding_matching_frequency_threshold=1.0)
-        self.assertEqual(topic_matches, [{'document_label': 'd', 'text': 'Richard came. Come. Come.', 'text_to_match': 'Richard came?', 'rank': '1', 'index_within_document': 1, 'subword_index': None, 'start_index': 0, 'end_index': 5, 'sentences_start_index': 0, 'sentences_end_index': 6, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 167.43581219046695, 'word_infos': [[0, 7, 'relation', False, 'Matches RICHARD directly.'], [8, 12, 'relation', True, 'Matches COME directly.'], [14, 18, 'single', False, 'Matches COME directly.'], [20, 24, 'single', False, 'Matches COME directly.']], 'answers': []}])
+        topic_matches = manager.topic_match_documents_against("Did Richard come?", relation_matching_frequency_threshold=1.0, embedding_matching_frequency_threshold=1.0)
+        self.assertEqual(topic_matches, [{'document_label': 'd', 'text': 'Richard came. Come. Come.', 'text_to_match': 'Did Richard come?', 'rank': '1', 'index_within_document': 1, 'subword_index': None, 'start_index': 0, 'end_index': 5, 'sentences_start_index': 0, 'sentences_end_index': 6, 'sentences_character_start_index': 0, 'sentences_character_end_index': 25, 'score': 167.43581219046695, 'word_infos': [[0, 7, 'relation', False, 'Matches RICHARD directly.'], [8, 12, 'relation', True, 'Matches COME directly.'], [14, 18, 'single', False, 'Matches COME directly.'], [20, 24, 'single', False, 'Matches COME directly.']], 'answers': []}])
 
     def test_no_relation_frequency_threshold_for_governed_question_words(self):
         manager.remove_all_documents()
@@ -310,7 +311,7 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
         self._check_equals('When did the meeting take place?', 'the meeting took place after dawn', 143, 23, 33)
 
     def test_check_when_wrong_prep(self):
-        self._check_equals('When did the meeting take place?', 'the meeting took place about dawn', 83, None, None)
+        self._check_equals('When did the meeting take place?', 'the meeting took place under dawn', 83, None, None)
 
     def test_check_when_wrong_entity(self):
         self._check_equals('When did the meeting take place?', 'the meeting took place with Richard', 83, None, None)

@@ -1,7 +1,6 @@
 import unittest
 import spacy
 import coreferee
-from coreferee.test_utils import debug_structures
 import holmes_extractor
 nlp = spacy.load('en_core_web_trf')
 nlp.add_pipe('coreferee')
