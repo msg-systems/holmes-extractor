@@ -1414,7 +1414,7 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
             for grandchild_token in (
                 gd.child_token(token.doc)
                 for gd in child_token._.holmes.children
-                if gd.label == "mo" and gd.child_token(token.doc).tag_ == "PROAV"
+                if gd.label in("mo", "op") and gd.child_token(token.doc).tag_ == "PROAV"
             ):
                 relevant_dependencies.extend(
                     [
