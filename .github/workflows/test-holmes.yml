@@ -1,0 +1,70 @@
+name: Holmes Matrix Test
+on: 
+  workflow_dispatch:
+  push:
+
+jobs:
+  test-coreferee:
+    strategy:
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+        python_version: ['3.6', '3.7', '3.8', '3.9', '3.10']
+        spacy_version: ['3.3.0']
+        click_version: ['8.0.1']
+        include:
+          - os: 'ubuntu-latest'
+            python-version: '3.9'
+            spacy_version: '3.2.0'
+            click_version: '8.0.1'
+          - os: 'ubuntu-latest'
+            python-version: '3.9'
+            spacy_version: '3.1.0'
+            click_version: '7.1.2'
+          - os: 'ubuntu-latest'
+            python-version: '3.9'
+            spacy_version: '3.0.0'
+            click_version: '7.1.2'
+    runs-on: ${{ matrix.os }}
+    steps:
+    - name: Checkout repository code
+      uses: actions/checkout@v3
+      with:
+          ref: master
+
+    - name: Initialize Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python_version }}
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install spacy==${{ matrix.spacy_version }} pytest spacy-lookups-data
+        
+        # see https://github.com/explosion/spaCy/issues/10564
+        pip uninstall click -y
+        pip install "click==${{ matrix.click_version }}"
+
+    - name: Install spaCy models
+      run: |
+        python -m spacy download en_core_web_sm
+        python -m spacy download en_core_web_lg
+        python -m spacy download en_core_web_trf
+        python -m spacy download de_core_web_lg
+        python -m spacy download pl_core_web_md
+
+    - name: Install Coreferee
+      run: |
+        pip install coreferee
+        python -m coreferee install en
+        python -m coreferee install de
+        python -m coreferee install pl
+
+    - name: Install Holmes
+      run: |
+        cd ${{ github.workspace }}
+        pip install .
+
+    - name: Test Holmes
+      run: |
+        pytest tests
