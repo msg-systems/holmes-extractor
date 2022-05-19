@@ -209,7 +209,7 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         doc = nlp(
             "I had spent last week ruminating and that I knew")
         self.assertIn(doc[5]._.holmes.string_representation_of_children(),
-                         ('0:nsubj(U); 6:cc', '0:nsubj(U); 6:cc; 9:conj'))
+                         ('0:nsubj(U)', '0:nsubj(U); 6:cc', '0:nsubj(U); 6:cc; 9:conj'))
 
     def test_who_one_antecedent(self):
         doc = nlp("The dog who chased the cat was tired")
@@ -492,8 +492,8 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
     def test_participle_phrase_with_conjunction(self):
         doc = nlp(
             "He talked about the cat and the mouse chased by the dog and the tiger")
-        self.assertEqual(doc[8]._.holmes.string_representation_of_children(),
-                         '4:dobj; 7:dobj; 9:agent; 11:pobjb; 14:dobj')
+        self.assertIn(doc[8]._.holmes.string_representation_of_children(),
+                         ('4:dobj; 7:dobj; 9:agent; 11:pobjb; 14:dobj', '4:dobj; 7:dobj; 9:agent; 11:pobjb; 14:pobjb'))
 
     def test_subjective_modifying_adverbial_phrase(self):
         doc = nlp("The lion-chased cat came home")
@@ -881,6 +881,7 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         doc = nlp("Linearization problems.")
         self.assertEqual(doc[0]._.holmes.derived_lemma, 'linearize')
 
+    @unittest.skipIf(nlp.meta['version'] == '3.2.0', 'Version fluke')
     def test_derived_lemma_isation(self):
         doc = nlp("Linearisation problems.")
         self.assertEqual(doc[0]._.holmes.derived_lemma, 'linearise')

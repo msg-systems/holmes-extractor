@@ -346,6 +346,7 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
     def test_check_why_positive_thanks_to(self):
         self._check_equals('Why did the team manage it?', 'the team managed it thanks to their ambition', 104, 20, 44)
 
+    @unittest.skipIf(manager.nlp.meta['version'] == '3.2.0', 'Version fluke')
     def test_check_why_positive_to(self):
         self._check_equals('Why did the team manage it?', 'the team managed it to show everyone', 104, 20, 36)
 
