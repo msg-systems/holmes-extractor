@@ -1,4 +1,5 @@
-from typing import List, Literal, Set, Dict, Union, Any, Tuple, Optional, cast
+from typing import List, Set, Dict, Union, Any, Tuple, Optional, cast
+from spacy.compat import Literal
 from spacy.tokens import Doc
 from thinc.types import Floats1d
 
