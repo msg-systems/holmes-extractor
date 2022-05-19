@@ -493,7 +493,7 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
         doc = nlp(
             "He talked about the cat and the mouse chased by the dog and the tiger")
         self.assertIn(doc[8]._.holmes.string_representation_of_children(),
-                         ('4:dobj; 7:dobj; 9:agent; 11:pobjb; 14:dobj', '4:dobj; 7:dobj; 9:agent; 11:pobjb; 14:dobj'))
+                         ('4:dobj; 7:dobj; 9:agent; 11:pobjb; 14:dobj', '4:dobj; 7:dobj; 9:agent; 11:pobjb; 14:pobjb'))
 
     def test_subjective_modifying_adverbial_phrase(self):
         doc = nlp("The lion-chased cat came home")
