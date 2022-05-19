@@ -789,7 +789,8 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
         if token.dep_ == "ROOT":
             token._.holmes.is_negated = False
             return
-        self.set_negation(token.head)
+        if token.i != token.head.i:
+            self.set_negation(token.head)
         token._.holmes.is_negated = token.head._.holmes.is_negated
 
     def correct_auxiliaries_and_passives(self, token: Token) -> None:

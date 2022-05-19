@@ -309,6 +309,13 @@
     <owl:NamedIndividual rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#Mimi_Momo">
         <rdf:type rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#cat"/>
     </owl:NamedIndividual>
+
+
+    <!-- http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#Pranaya_Jones -->
+
+    <owl:NamedIndividual rdf:about="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#Pranaya_Jones">
+        <rdf:type rdf:resource="http://www.semanticweb.org/hudsonr/ontologies/2019/0/animals#cat"/>
+    </owl:NamedIndividual>
 </rdf:RDF>
 
 

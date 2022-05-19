@@ -1068,36 +1068,36 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.remove_all_search_phrases()
         holmes_manager_coref.parse_and_register_document(
-            "A big Richard Mimi Momo")
+            "A big Richard Pranaya Jones")
         topic_match_dictionaries = \
             holmes_manager_coref.topic_match_documents_against(
-                "A big Richard Mimi Momo")
+                "A big Richard Pranaya Jones")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'A big Richard Mimi Momo', 'text_to_match': 'A big Richard Mimi Momo', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 23, 'score': 1017.8666666666667, 'word_infos': [[2, 5, 'overlapping_relation', False, 'Matches BIG directly.'], [6, 13, 'overlapping_relation', False, 'Matches RICHARD directly.'], [14, 23, 'overlapping_relation', True, 'Matches MIMI MOMO directly.']], 'answers': []}])
+                         [{'document_label': '', 'text': 'A big Richard Pranaya Jones', 'text_to_match': 'A big Richard Pranaya Jones', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 27, 'score': 1017.8666666666667, 'word_infos': [[2, 5, 'overlapping_relation', False, 'Matches BIG directly.'], [6, 13, 'overlapping_relation', False, 'Matches RICHARD directly.'], [14, 27, 'overlapping_relation', True, 'Matches PRANAYA JONES directly.']], 'answers': []}])
 
     
     def test_adjective_describing_double_multiword_with_topic_match_dictionaries_2(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.remove_all_search_phrases()
         holmes_manager_coref.parse_and_register_document(
-            "A big Richard Mimi Momo")
+            "A big Richard Pranaya Jones")
         topic_match_dictionaries = \
             holmes_manager_coref.topic_match_documents_against(
-                "A big Mimi Momo")
+                "A big Pranaya Jones")
         self.assertEqual(topic_match_dictionaries,
-                          [{'document_label': '', 'text': 'A big Richard Mimi Momo', 'text_to_match': 'A big Mimi Momo', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 23, 'score': 369.2, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [14, 23, 'relation', True, 'Matches MIMI MOMO directly.']], 'answers': []}])
+                          [{'document_label': '', 'text': 'A big Richard Pranaya Jones', 'text_to_match': 'A big Pranaya Jones', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 27, 'score': 369.2, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [14, 27, 'relation', True, 'Matches PRANAYA JONES directly.']], 'answers': []}])
 
     
     def test_adjective_describing_double_multiword_with_topic_match_dictionaries_3(self):
         holmes_manager_coref.remove_all_documents()
         holmes_manager_coref.remove_all_search_phrases()
         holmes_manager_coref.parse_and_register_document(
-            "A big Richard Mimi Momo")
+            "A big Richard Pranaya Jones")
         topic_match_dictionaries = \
             holmes_manager_coref.topic_match_documents_against(
-                "A big Momo")
+                "A big Jones")
         self.assertEqual(topic_match_dictionaries,
-                         [{'document_label': '', 'text': 'A big Richard Mimi Momo', 'text_to_match': 'A big Momo', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 23, 'score': 369.2, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [19, 23, 'relation', True, 'Matches MOMO directly.']], 'answers': []}])
+                         [{'document_label': '', 'text': 'A big Richard Pranaya Jones', 'text_to_match': 'A big Jones', 'rank': '1', 'index_within_document': 4, 'subword_index': None, 'start_index': 1, 'end_index': 4, 'sentences_start_index': 0, 'sentences_end_index': 4, 'sentences_character_start_index': 0, 'sentences_character_end_index': 27, 'score': 369.2, 'word_infos': [[2, 5, 'relation', False, 'Matches BIG directly.'], [22, 27, 'relation', True, 'Matches JONES directly.']], 'answers': []}])
 
     def test_different_match_cutoff_score_low(self):
         holmes_manager_coref.remove_all_documents()

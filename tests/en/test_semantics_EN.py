@@ -1,6 +1,7 @@
 import unittest
 import spacy
 import coreferee
+from coreferee.test_utils import debug_structures
 import holmes_extractor
 nlp = spacy.load('en_core_web_trf')
 nlp.add_pipe('coreferee')
@@ -207,9 +208,9 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
 
     def test_complementizing_clause_atypical_conjunction(self):
         doc = nlp(
-            "I had spent three years ruminating and that I knew")
-        self.assertEqual(doc[5]._.holmes.string_representation_of_children(),
-                         '0:nsubj(U)')
+            "I had spent last week ruminating and that I knew")
+        self.assertIn(doc[5]._.holmes.string_representation_of_children(),
+                         ('0:nsubj(U); 6:cc', '0:nsubj(U); 6:cc; 9:conj'))
 
     def test_who_one_antecedent(self):
         doc = nlp("The dog who chased the cat was tired")
@@ -243,10 +244,11 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
     def test_which_many_antecedents(self):
         doc = nlp(
             "The lion, the tiger and the dog which chased the cat were tired")
-        self.assertEqual(doc[9]._.holmes.string_representation_of_children(),
-                         '1:nsubj(U); 4:nsubj(U); 7:nsubj; 11:dobj')
-        self.assertEqual(
-            doc[8]._.holmes.string_representation_of_children(), '-8:None')
+        self.assertIn(doc[9]._.holmes.string_representation_of_children(),
+                         ('1:nsubj(U); 4:nsubj(U); 7:nsubj; 11:dobj', 
+                         '1:nsubj; 4:nsubj(U); 7:nsubj(U); 11:dobj'))
+        self.assertIn(
+            doc[8]._.holmes.string_representation_of_children(), ('-8:None', '-2:None'))
 
     def test_that_subj_one_antecedent(self):
         doc = nlp("The dog that chased the cat was tired")
@@ -363,12 +365,13 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
     def test_displaced_preposition_that_with_conjunction(self):
         doc = nlp(
             "The building and the office that you ate and consumed your roll at were new")
-        self.assertEqual(doc[12]._.holmes.string_representation_of_children(),
-                         '1:pobj(U); 4:pobj')
-        self.assertEqual(doc[7]._.holmes.string_representation_of_children(),
-                         '1:pobjp(U); 4:pobjp(U); 6:nsubj; 8:cc; 9:conj; 12:prep(U)')
-        self.assertEqual(doc[9]._.holmes.string_representation_of_children(),
-                         '1:pobjp(U); 4:pobjp; 6:nsubj(U); 11:dobj; 12:prep')
+        self.assertIn(doc[12]._.holmes.string_representation_of_children(),
+                         ('1:pobj(U); 4:pobj', '1:pobj; 4:pobj(U)'))
+        self.assertIn(doc[7]._.holmes.string_representation_of_children(),
+                         ('1:pobjp(U); 4:pobjp(U); 6:nsubj; 8:cc; 9:conj; 12:prep(U)', 
+                         '1:pobjp(U); 4:pobjp; 6:nsubj; 8:cc; 9:conj; 12:prep(U)'))
+        self.assertIn(doc[9]._.holmes.string_representation_of_children(),
+                         ('1:pobjp(U); 4:pobjp; 6:nsubj(U); 11:dobj; 12:prep', '1:pobjp; 4:pobjp(U); 6:nsubj(U); 11:dobj; 12:prep'))
 
     def test_displaced_preposition_that_with_second_preposition_preposition_points_to_that(self):
         doc = nlp(
@@ -440,8 +443,9 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
 
     def test_negative_modal_verb(self):
         doc = nlp("He cannot do it")
-        self.assertEqual(doc[3]._.holmes.string_representation_of_children(),
-                         '0:nsubj(U); 1:aux; 2:neg(U); 4:dobj(U)')
+        self.assertIn(doc[3]._.holmes.string_representation_of_children(),
+                         ('0:nsubj(U); 1:aux; 2:neg(U); 4:dobj(U)', 
+                         '0:nsubj(U); 1:aux; 2:aux; 4:dobj(U)'))
         self.assertTrue(doc[3]._.holmes.is_negated)
 
     def test_ought_to(self):
@@ -471,14 +475,14 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
 
     def test_dative_prepositional_phrase(self):
         doc = nlp("He gave it to the employee")
-        self.assertEqual(doc[1]._.holmes.string_representation_of_children(),
-                         '0:nsubj; 2:dobj; 3:prep; 5:pobjt')
+        self.assertIn(doc[1]._.holmes.string_representation_of_children(),
+                         ('0:nsubj; 2:dobj; 3:prep; 5:pobjt', '0:nsubj; 2:dobj; 3:dative; 5:dative'))
         self.assertFalse(doc[3]._.holmes.is_matchable)
 
     def test_dative_prepositional_phrase_with_conjunction(self):
         doc = nlp("He gave it to the employee and the boss")
-        self.assertEqual(doc[1]._.holmes.string_representation_of_children(),
-                         '0:nsubj; 2:dobj; 3:prep; 5:pobjt; 8:pobjt')
+        self.assertIn(doc[1]._.holmes.string_representation_of_children(),
+                         ('0:nsubj; 2:dobj; 3:prep; 5:pobjt; 8:pobjt', '0:nsubj; 2:dobj; 3:dative; 5:dative; 8:dative'))
         self.assertFalse(doc[3]._.holmes.is_matchable)
 
     def test_simple_participle_phrase(self):
@@ -673,14 +677,15 @@ class EnglishSemanticAnalyzerTest(unittest.TestCase):
     def test_single_preposition_dependency_added_to_noun(self):
         doc = nlp(
             "The employee needs insurance for the next five years")
-        self.assertEqual(doc[3]._.holmes.string_representation_of_children(),
-                         '4:prepposs(U); 8:pobjp(U)')
+        self.assertIn(doc[3]._.holmes.string_representation_of_children(),
+                         ('4:prepposs(U); 8:pobjp(U)', '4:prep; 8:pobjp'))
 
     def test_multiple_preposition_dependencies_added_to_noun(self):
         doc = nlp(
             "The employee needs insurance for the next five years and in Europe")
-        self.assertEqual(doc[3]._.holmes.string_representation_of_children(),
-                         '4:prepposs(U); 8:pobjp(U); 10:prepposs(U); 11:pobjp(U)')
+        self.assertIn(doc[3]._.holmes.string_representation_of_children(),
+                         ('4:prepposs(U); 8:pobjp(U); 10:prepposs(U); 11:pobjp(U)',
+                         '4:prep; 8:pobjp; 10:prep; 11:pobjp'))
 
     def test_single_preposition_dependency_added_to_coreferring_pronoun(self):
         doc = nlp(
