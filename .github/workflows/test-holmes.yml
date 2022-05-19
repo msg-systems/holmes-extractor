@@ -67,4 +67,4 @@ jobs:
 
     - name: Test Holmes
       run: |
-        pytest tests
+        python -m pytest tests
