@@ -73,4 +73,10 @@ jobs:
       run: |
         python -m pytest tests/de
         python -m pytest tests/en
-        python -m pytest tests/common
+        python -m pytest tests/common/test_manager.py
+        python -m pytest tests/common/test_cpu_gpu.py
+        python -m pytest tests/common/test_errors.py
+        python -m pytest tests/common/test_ontology.py
+        python -m pytest tests/common/test_serialization.py
+        python -m pytest tests/common/test_word_level_matching.py
+        python -m pytest tests/common/test_multithreading.py
