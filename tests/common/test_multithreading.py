@@ -1,6 +1,7 @@
 import unittest
 import holmes_extractor as holmes
 import os
+import time
 from threading import Thread
 from queue import Queue
 from collections import OrderedDict
@@ -1388,7 +1389,7 @@ class MultithreadingTest(unittest.TestCase):
             t = Thread(target=topic_match_within_thread)
             t.start()
         for i in range(NUMBER_OF_THREADS):
-            output = queue.get(True, 180)
+            output = queue.get(True, 300)
             self.assertEqual(
                 output,
                 [
@@ -1414,7 +1415,7 @@ class MultithreadingTest(unittest.TestCase):
             t.start()
 
         last_number_of_matches = 0
-        for counter in range(500):
+        for counter in range(200):
             matches = [
                 match
                 for match in manager.match()
@@ -1460,7 +1461,10 @@ class MultithreadingTest(unittest.TestCase):
             last_number_of_matches = this_number_of_matches
             if this_number_of_matches == NUMBER_OF_THREADS * NUMBER_OF_THREADS:
                 break
-            self.assertFalse(counter == 499)
+            if counter > 190:
+                time.sleep(10)
+            self.assertFalse(counter == 199)
+
         dictionary, maximum = manager.get_corpus_frequency_information()
         self.assertEqual(dictionary["people"], NUMBER_OF_THREADS)
         self.assertEqual(dictionary["discuss"], NUMBER_OF_THREADS)
