@@ -22,13 +22,13 @@ jobs:
             click_version: '7.1.2'
     runs-on: ${{ matrix.os }}
     steps:
-    
+
     - name: Increase swap file size on Windows
       if: ${{ matrix.os == 'windows-latest' }}
       uses: al-cheb/configure-pagefile-action@v1.2
       with:
-        minimum-size: 16GB
-        maximum-size: 16GB
+        minimum-size: 32GB
+        maximum-size: 32GB
 
     - name: Checkout repository code
       uses: actions/checkout@v3
