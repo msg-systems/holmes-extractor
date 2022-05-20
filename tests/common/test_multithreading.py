@@ -5,7 +5,7 @@ from threading import Thread
 from queue import Queue
 from collections import OrderedDict
 
-NUMBER_OF_THREADS = 50
+NUMBER_OF_THREADS = 20
 
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join((script_directory, "test_ontology.owl")))
@@ -76,7 +76,7 @@ class MultithreadingTest(unittest.TestCase):
             t = Thread(target=method, args=(first_argument, queue))
             t.start()
         for i in range(NUMBER_OF_THREADS):
-            output = queue.get(True, 20)
+            output = queue.get(True, 60)
             if (
                 first_argument == "I saw a foal."
                 and output[0]["sentences_within_document"]
