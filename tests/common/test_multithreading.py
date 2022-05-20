@@ -10,7 +10,8 @@ NUMBER_OF_THREADS = 50
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join((script_directory, "test_ontology.owl")))
 manager = holmes.Manager(
-    "en_core_web_trf", ontology=ontology,
+    "en_core_web_trf",
+    ontology=ontology,
     overall_similarity_threshold=0.90,
     number_of_workers=2,
 )
@@ -42,10 +43,12 @@ sttb.register_additional_classification_label("parrot")
 sttb.register_additional_classification_label("hound")
 sttb.prepare()
 
+
 def get_first_key_in_dict(dictionary: OrderedDict) -> str:
     if dictionary is None or len(dictionary) == 0:
         return None
     return list(dictionary.keys())[0]
+
 
 for i in range(20):
     trainer = sttb.train(
@@ -57,15 +60,14 @@ for i in range(20):
     )
     stc = trainer.classifier()
     if (
-        get_first_key_in_dict(stc.parse_and_classify("You are a robot."))
-        == "computers"
-        and get_first_key_in_dict(stc.parse_and_classify("You are a cat."))
-        == "animal"
+        get_first_key_in_dict(stc.parse_and_classify("You are a robot.")) == "computers"
+        and get_first_key_in_dict(stc.parse_and_classify("You are a cat.")) == "animal"
     ):
         break
     if i == 19:
         print("Test setup failed.")
         exit(1)
+
 
 class MultithreadingTest(unittest.TestCase):
     def _process_threads(self, method, first_argument, expected_output):
@@ -75,12 +77,20 @@ class MultithreadingTest(unittest.TestCase):
             t.start()
         for i in range(NUMBER_OF_THREADS):
             output = queue.get(True, 20)
+            if (
+                first_argument == "I saw a foal."
+                and output[0]["sentences_within_document"]
+                == "I saw a foal"  # The Transformer model does this occasionally
+            ):
+                output[0]["sentences_within_document"] = "I saw a foal."
             if first_argument == "A tiger chases a gnu":
                 self.assertAlmostEqual(
                     float(output[1]["overall_similarity_measure"]), 0.90286449, places=3
                 )
                 self.assertAlmostEqual(
-                    float(output[1]["word_matches"][0]["similarity_measure"]), 0.7359829, places=3
+                    float(output[1]["word_matches"][0]["similarity_measure"]),
+                    0.7359829,
+                    places=3,
                 )
                 output[1]["overall_similarity_measure"] = "0"
                 output[1]["word_matches"][0]["similarity_measure"] = "0"
@@ -112,7 +122,6 @@ class MultithreadingTest(unittest.TestCase):
         for document in documents:
             output.append(get_first_key_in_dict(stc.parse_and_classify(document)))
         queue.put(output)
-
 
     def test_multithreading_matching_against_documents_general(self):
         self._inner_match_against_documents(
@@ -550,7 +559,6 @@ class MultithreadingTest(unittest.TestCase):
             ],
         )
 
-
     def test_multithreading_matching_against_documents_coreference(self):
         self._inner_match_against_documents(
             "A donkey chases",
@@ -764,7 +772,6 @@ class MultithreadingTest(unittest.TestCase):
             ],
         )
 
-
     def test_multithreading_matching_against_documents_ontology_matching(self):
         self._inner_match_against_documents(
             "A horse",
@@ -804,7 +811,6 @@ class MultithreadingTest(unittest.TestCase):
                 }
             ],
         )
-
 
     def test_multithreading_matching_against_search_phrases_general(self):
         self._inner_match_against_search_phrases(
@@ -1314,7 +1320,6 @@ class MultithreadingTest(unittest.TestCase):
             ],
         )
 
-
     def test_multithreading_matching_against_search_phrases_ontology_matching(self):
         self._inner_match_against_search_phrases(
             "I saw a foal.",
@@ -1354,7 +1359,6 @@ class MultithreadingTest(unittest.TestCase):
                 }
             ],
         )
-
 
     def test_multithreading_supervised_document_classification(self):
 
@@ -1511,12 +1515,14 @@ class MultithreadingTest(unittest.TestCase):
                     match["word_matches"][1]["search_phrase_token_index"], 1
                 )
                 self.assertTrue(
-                    match["word_matches"][2]["document_word"] in ("irrelevancy", "irrelevancies") 
+                    match["word_matches"][2]["document_word"]
+                    in ("irrelevancy", "irrelevancies")
                     # occasionally, depending on the initialisation of the transformer,
                     # the wrong lemma is returned
                 )
                 self.assertTrue(
-                    match["word_matches"][2]["search_phrase_word"] in ("irrelevancy", "irrelevancies") 
+                    match["word_matches"][2]["search_phrase_word"]
+                    in ("irrelevancy", "irrelevancies")
                     # occasionally, depending on the initialisation of the transformer,
                     # the wrong lemma is returned
                 )
