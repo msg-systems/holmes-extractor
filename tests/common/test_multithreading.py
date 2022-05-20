@@ -1,12 +1,11 @@
 import unittest
 import holmes_extractor as holmes
 import os
-import time
 from threading import Thread
 from queue import Queue
 from collections import OrderedDict
 
-NUMBER_OF_THREADS = 20
+NUMBER_OF_THREADS = 10
 
 script_directory = os.path.dirname(os.path.realpath(__file__))
 ontology = holmes.Ontology(os.sep.join((script_directory, "test_ontology.owl")))
@@ -1461,8 +1460,6 @@ class MultithreadingTest(unittest.TestCase):
             last_number_of_matches = this_number_of_matches
             if this_number_of_matches == NUMBER_OF_THREADS * NUMBER_OF_THREADS:
                 break
-            if counter > 190:
-                time.sleep(10)
             self.assertFalse(counter == 199)
 
         dictionary, maximum = manager.get_corpus_frequency_information()
@@ -1541,8 +1538,6 @@ class MultithreadingTest(unittest.TestCase):
             last_number_of_matches = this_number_of_matches
             if this_number_of_matches == NUMBER_OF_THREADS * NUMBER_OF_THREADS:
                 break
-            if counter > 190:
-                time.sleep(10)
             self.assertFalse(counter == 199)
         dictionary, maximum = manager.get_corpus_frequency_information()
         self.assertEqual(dictionary["irrelevancy"], NUMBER_OF_THREADS)
