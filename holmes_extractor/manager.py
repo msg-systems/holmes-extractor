@@ -574,26 +574,23 @@ class Manager:
         if document_text is not None:
             serialized_document = self.nlp(document_text).to_bytes()
             with self.lock:
-                worker_queue_number = self.next_worker_queue_number()
-            worker_range = range(worker_queue_number, worker_queue_number + 1)
-            number_of_workers = 1
+                worker_indexes = [self.next_worker_queue_number()]
         else:
             with self.lock:
                 if len(self.document_labels_to_worker_queues) == 0:
                     raise NoDocumentError(
                         "At least one document is required for matching."
                     )
+                worker_indexes = set(self.document_labels_to_worker_queues.values())
             serialized_document = None
-            number_of_workers = self.number_of_workers
-            worker_range = range(number_of_workers)
         reply_queue = self.multiprocessing_manager.Queue()
-        for worker_index in worker_range:
+        for worker_index in worker_indexes:
             self.input_queues[worker_index].put(
                 (self.worker.match, (serialized_document, search_phrase), reply_queue),
                 timeout=TIMEOUT_SECONDS,
             )
         worker_match_dicts_lists = self.handle_response(
-            reply_queue, number_of_workers, "match"
+            reply_queue, len(worker_indexes), "match"
         )
         match_dicts = []
         for worker_match_dicts in worker_match_dicts_lists:
@@ -618,7 +615,8 @@ class Manager:
             if self.word_dictionaries_need_rebuilding:
                 reply_queue = self.multiprocessing_manager.Queue()
                 worker_frequency_dict = {}
-                for worker_index in range(self.number_of_workers):
+                worker_indexes = set(self.document_labels_to_worker_queues.values())
+                for worker_index in worker_indexes:
                     self.input_queues[worker_index].put(
                         (
                             self.worker.get_words_to_corpus_frequencies,
@@ -628,7 +626,7 @@ class Manager:
                         timeout=TIMEOUT_SECONDS,
                     )
                 exception_worker_label = None
-                for _ in range(self.number_of_workers):
+                for _ in range(len(worker_indexes)):
                     worker_label, return_value, return_info = reply_queue.get(
                         timeout=TIMEOUT_SECONDS
                     )
@@ -845,7 +843,8 @@ class Manager:
         for search_phrase in phraselet_labels_to_search_phrases.values():
             search_phrase.pack()
 
-        for worker_index in range(self.number_of_workers):
+        worker_indexes = set(self.document_labels_to_worker_queues.values())
+        for worker_index in worker_indexes:
             self.input_queues[worker_index].put(
                 (
                     self.worker.get_topic_matches,
@@ -879,7 +878,7 @@ class Manager:
                 timeout=TIMEOUT_SECONDS,
             )
         worker_topic_match_dictss = self.handle_response(
-            reply_queue, self.number_of_workers, "match"
+            reply_queue, len(worker_indexes), "match"
         )
         topic_match_dicts = []
         for worker_topic_match_dicts in worker_topic_match_dictss:
