@@ -2619,7 +2619,6 @@ class LinguisticObjectFactory:
                 search_phrase
             )
         search_phrase.words_matching_root_token.sort(key=lambda word: 0 - len(word))
-        print(search_phrase.doc_text, search_phrase.words_matching_root_token)
         # process longer entries first so that multiwords are considered before their constituent parts
         return search_phrase
 

@@ -55,7 +55,7 @@ class HolmesConsoles:
                 word_match["document_phrase"],
                 "'",
                 extracted_word,
-                " -> '",
+                "->'",
                 word_match["search_phrase_word"],
                 "' (",
                 word_match["explanation"][:-1],
