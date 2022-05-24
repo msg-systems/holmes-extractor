@@ -312,7 +312,7 @@ class MatchImplication:
 
 class HolmesDocumentInfo:
     def __init__(self, semantic_analyzer: "SemanticAnalyzer"):
-        self.model = semantic_analyzer.model
+        self.model = semantic_analyzer.get_model_name()
         self.serialized_document_version = SERIALIZED_DOCUMENT_VERSION
 
     @srsly.msgpack_encoders("holmes_document_info_holder")
@@ -1645,6 +1645,15 @@ class SemanticAnalyzer(ABC):
                 ontology_reverse_derivational_dict[derived_ontology_word]
             )
         return ontology_reverse_derivational_dict
+
+    def get_model_name(self) -> str:
+        return (
+            self.nlp.meta["lang"]
+            + "_"
+            + self.nlp.meta["name"]
+            + " v"
+            + self.nlp.meta["version"]
+        )
 
 
 class LinguisticObjectFactory:

@@ -1412,9 +1412,9 @@ single_word_any_tag_score -- the activation score added when a single word is ma
 initial_question_word_answer_score -- the activation score added when a question word is
   matched to an potential answer phrase.
 initial_question_word_behaviour -- 'process' if a question word in the sentence
-  constinuent at the beginning of *text_to_match* is to be matched to document phrases
-  that answer it; 'exclusive' if only topic matches that involve such question words
-  are to be permitted; 'ignore' if question words are to be ignored.
+  constituent at the beginning of *text_to_match* is to be matched to document phrases
+  that answer it and to matching question words; 'exclusive' if only topic matches that 
+  answer questions are to be permitted; 'ignore' if question words are to be ignored.
 different_match_cutoff_score -- the activation threshold under which topic matches are
   separated from one another. Note that the default value will probably be too low if
   *use_frequency_factor* is set to *False*.

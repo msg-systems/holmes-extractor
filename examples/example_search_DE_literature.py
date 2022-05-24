@@ -1,8 +1,11 @@
 import os
 import json
 import urllib.request
+from multiprocessing import cpu_count
+# You will need to install bs4 (python -m pip install bs4)
 from bs4 import BeautifulSoup
 import holmes_extractor as holmes
+# You will need to install falcon (python -m pip install falcon)
 import falcon
 
 if __name__ in ('__main__', 'example_search_DE_literature'):
@@ -45,7 +48,7 @@ if __name__ in ('__main__', 'example_search_DE_literature'):
                 this_document_label = ' - '.join((front_page_label, anchor.contents[0]))
                 document_texts.append(this_document_text)
                 labels.append(this_document_label)
-        parsed_documents = holmes_manager.nlp.pipe(document_texts)
+        parsed_documents = holmes_manager.nlp.pipe(document_texts, n_process=cpu_count())
         for index, parsed_document in enumerate(parsed_documents):
             label = labels[index]
             print('Saving', label)
@@ -97,7 +100,10 @@ if __name__ in ('__main__', 'example_search_DE_literature'):
     # as WSGI application. An example of how to start it - issued from the directory that
     # contains the script - is
 
-    # waitress-serve example_search_DE_literature:application
+    # python -m waitress example_search_DE_literature:application
+
+    # You will need to install waitress (python -m pip install waitress)
+    # Different installation commands will be required for operating systems other than Linux
 
     class RestHandler():
         def on_get(self, req, resp):

@@ -11,6 +11,7 @@ import pkg_resources
 import spacy
 import coreferee
 from spacy import Language
+from spacy.compat import Literal
 from spacy.tokens import Doc, Token
 from wasabi import Printer  # type: ignore[import]
 from thinc.api import Config
@@ -274,7 +275,7 @@ class Manager:
                     self.overall_similarity_threshold,
                     self.entity_label_to_vector_dict,
                     self.nlp.vocab,
-                    model,
+                    self.semantic_analyzer.get_model_name(),
                     SERIALIZED_DOCUMENT_VERSION,
                     input_queue,
                     worker_label,
@@ -686,7 +687,7 @@ class Manager:
         single_word_score: int = 50,
         single_word_any_tag_score: int = 20,
         initial_question_word_answer_score: int = 600,
-        initial_question_word_behaviour: str = "process",
+        initial_question_word_behaviour: Literal["process", "exclusive", "ignore"] = "process",
         different_match_cutoff_score: int = 15,
         overlapping_relation_multiplier: float = 1.5,
         embedding_penalty: float = 0.6,
@@ -725,10 +726,10 @@ class Manager:
             whose tag would not normally allow it to be matched by phraselets.
         initial_question_word_answer_score -- the activation score added when a question word is
             matched to an answering phrase.
-        initial_question_word_behaviour -- 'process' if a question word in the sentence
+       initial_question_word_behaviour -- 'process' if a question word in the sentence
             constituent at the beginning of *text_to_match* is to be matched to document phrases
-            that answer it; 'exclusive' if only topic matches that involve such question words
-            are to be permitted; 'ignore' if question words are to be ignored.
+            that answer it and to matching question words; 'exclusive' if only topic matches that 
+            answer questions are to be permitted; 'ignore' if question words are to be ignored.
         different_match_cutoff_score -- the activation threshold under which topic matches are
             separated from one another. Note that the default value will probably be too low if
             *use_frequency_factor* is set to *False*.
