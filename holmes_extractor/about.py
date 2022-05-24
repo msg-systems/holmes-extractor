@@ -1,2 +1,1 @@
-import importlib.metadata
-__version__ = importlib.metadata.version("holmes_extractor")
+__version__ = "4.0.0"

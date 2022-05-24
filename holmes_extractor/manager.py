@@ -582,7 +582,7 @@ class Manager:
         if document_text is not None:
             serialized_document = self.nlp(document_text).to_bytes()
             with self.lock:
-                worker_indexes = [self.next_worker_queue_number()]
+                worker_indexes = {self.next_worker_queue_number()}
         else:
             with self.lock:
                 if len(self.document_labels_to_worker_queues) == 0:
