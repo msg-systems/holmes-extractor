@@ -373,7 +373,7 @@ There was a big dog and it was chasing a cat.
 I saw a big dog. My cat was afraid of being chased by the dog.
 There was a big dog. His name was Fido. He was chasing my cat.
 A dog appeared. It was chasing a cat. It was very big.
-The cat sneaked back into our lounge because a big dog had been chasing her outside.
+The cat sneaked back into our lounge because a big dog had been chasing her.
 Our big dog was excited because he had been chasing a cat.
 ```
 
