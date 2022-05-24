@@ -388,3 +388,13 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
 
     def test_governing_verb_within_noun_phrase(self):
         self._check_equals('Who did Richard see?', 'The person Richard saw was angry', 34, None, None)
+
+    def test_question_word_is_not_treated_as_answer(self):
+        self._check_equals('Where is the earth?', 'Where is the earth', 65, None, None)
+
+    def test_non_initial_question_word_is_not_treated_as_answer(self):
+        self._check_equals('Where is the earth?', 'And where is the earth', 65, None, None)
+
+    def test_phrasal_verb_problem_solved(self):        
+        self._check_equals("Which boy came in?", "Then the youngest boy came in.", 10, None, None)
+

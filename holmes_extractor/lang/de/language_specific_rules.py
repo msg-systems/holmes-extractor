@@ -1414,7 +1414,8 @@ class LanguageSpecificSemanticAnalyzer(SemanticAnalyzer):
             for grandchild_token in (
                 gd.child_token(token.doc)
                 for gd in child_token._.holmes.children
-                if gd.label in("mo", "op") and gd.child_token(token.doc).tag_ == "PROAV"
+                if gd.label in ("mo", "op")
+                and gd.child_token(token.doc).tag_ == "PROAV"
             ):
                 relevant_dependencies.extend(
                     [
@@ -1576,6 +1577,8 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
     noun_kernel_dep = ["nk", "pnc"]
 
     minimum_embedding_match_word_length = 4
+
+    interrogative_pronoun_tags = ["PWAT", "PWAV", "PWS"]
 
     topic_matching_phraselet_stop_lemmas = ["dann", "danach", "so", "ich", "mein"]
 

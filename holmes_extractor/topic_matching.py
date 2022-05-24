@@ -406,10 +406,8 @@ class TopicMatcher:
         if (
             parent_word in self.words_to_phraselet_word_match_infos
             and (
-                (
-                    not phraselet.reverse_only
-                    and not phraselet.treat_as_reverse_only_during_initial_relation_matching
-                )
+                not phraselet.reverse_only
+                and not phraselet.treat_as_reverse_only_during_initial_relation_matching
             )
             or child_token._.holmes.has_initial_question_word_in_phrase
         ):
@@ -968,6 +966,10 @@ class TopicMatcher:
                     if (
                         word_match.search_phrase_token._.holmes.is_initial_question_word
                         or word_match.search_phrase_token._.holmes.has_initial_question_word_in_phrase
+                    ) and not (
+                        word_match.document_token._.holmes.is_initial_question_word
+                        or word_match.document_token.tag_
+                        in self.semantic_matching_helper.interrogative_pronoun_tags
                     ):
                         this_match_score = self.initial_question_word_answer_score
                 this_match_parent_word_match = self.get_word_match_from_match(
@@ -1330,6 +1332,10 @@ class TopicMatcher:
                     if (
                         word_match.search_phrase_token._.holmes.is_initial_question_word
                         or word_match.search_phrase_token._.holmes.has_initial_question_word_in_phrase
+                    ) and not (
+                        word_match.document_token._.holmes.is_initial_question_word
+                        or word_match.document_token.tag_
+                        in self.semantic_matching_helper.interrogative_pronoun_tags
                     ):
                         if word_match.document_subword is not None:
                             answer_relative_start_index = (

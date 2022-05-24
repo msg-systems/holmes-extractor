@@ -176,3 +176,9 @@ class GermanInitialQuestionsTest(unittest.TestCase):
 
     def test_check_warum_wrong_conjunction(self):
         self._check_equals('Woher machst Du es?', 'Ich mache es, obwohl es nicht stimmt', 5, None, None)
+
+    def test_question_word_is_not_treated_as_answer(self):
+        self._check_equals('Wohin geht der Mann?', 'Wohin geht der Mann', 73, None, None)
+
+    def test_non_initial_question_word_is_not_treated_as_answer(self):
+        self._check_equals('Wohin geht der Mann?', 'Und wohin geht der Mann', 73, None, None)

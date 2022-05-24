@@ -55,7 +55,6 @@ class ManagerTest(unittest.TestCase):
             document_text="All the time I am testing here, dogs keep on chasing cats.", label='pets22')
         self.assertEqual(len(holmes_manager.match()), 4)
         holmes_manager.remove_all_documents('pets22')
-        print(holmes_manager.document_labels())
         self.assertEqual(len(holmes_manager.match()), 3)
         holmes_manager.remove_all_documents('pets1')
         self.assertEqual(len(holmes_manager.match()), 1)

@@ -862,6 +862,9 @@ class LanguageSpecificSemanticMatchingHelper(SemanticMatchingHelper):
     # Dependency labels that can mark righthand siblings
     sibling_marker_deps = ["conj", "appos"]
 
+    # Syntactic tags that can mark interrogative pronouns
+    interrogative_pronoun_tags = ["WDT", "WP", "WRB"]
+
     # Dependency labels from a token's subtree that are not included in a question answer
     question_answer_blacklist_deps = ["conj", "appos", "cc", "punct"]
 

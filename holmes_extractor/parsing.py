@@ -2680,6 +2680,8 @@ class SemanticMatchingHelper(ABC):
 
     preposition_deps: List[str] = NotImplemented
 
+    interrogative_pronoun_tags: List[str] = NotImplemented
+
     question_answer_blacklist_deps: List[str] = NotImplemented
 
     question_answer_final_blacklist_deps: List[str] = NotImplemented
