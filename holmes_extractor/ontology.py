@@ -1,4 +1,6 @@
 from typing import List, Dict, Set, Union, Tuple, Optional
+from holmes_extractor.errors import OntologyObjectSharedBetweenManagersError
+from spacy.compat import Literal
 import urllib
 import rdflib
 
@@ -15,7 +17,7 @@ class Entry:
 
     def __init__(self, word: str, depth: int, is_individual: bool):
         self.word = word
-        self.repr = word.lower()
+        self.reprs = [word.lower()]
         self.depth = depth
         self.is_individual = is_individual
 
@@ -65,6 +67,7 @@ class Ontology:
         owl_hyponym_type: str = "http://www.w3.org/2000/01/rdf-schema#subClassOf",
         symmetric_matching: bool = False,
     ):
+        self.status: int = 0
         self.path = ontology_path
         self._graph = rdflib.Graph()
         if isinstance(self.path, list):
@@ -81,6 +84,7 @@ class Ontology:
         self.symmetric_matching = symmetric_matching
         self.populate_dictionary()
         self.refresh_words()
+        self.status = 1
 
     def populate_dictionary(self) -> None:
         """Generates the dictionary from search phrase words to matching document words."""
@@ -137,7 +141,7 @@ class Ontology:
         if search_phrase_word.lower() in self.match_dict:
             for entry in self.match_dict[search_phrase_word.lower()]:
                 for candidate_word in candidate_words:
-                    if entry.repr == candidate_word.lower():
+                    if candidate_word.lower() in entry.reprs:
                         return entry
         return None
 
@@ -158,10 +162,12 @@ class Ontology:
             self.words.append(key)
             if " " in key:
                 self._multiwords.append(key)
-            for value in self.match_dict[key]:
-                self.words.append(value.repr)
-                if " " in value.repr:
-                    self._multiwords.append(value.repr)
+            for entry in self.match_dict[key]:
+                for repr in entry.reprs:
+                    self.words.append(repr)
+                    if " " in repr:
+                        self._multiwords.append(repr)
+        self.status += 1
 
     def get_most_general_hypernym_ancestor(self, word: str) -> str:
         """Returns the most general hypernym ancestor of 'word', one of the most general ancestors

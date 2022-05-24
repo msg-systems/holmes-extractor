@@ -19,7 +19,7 @@ class OntologyTest(unittest.TestCase):
 
     def _get_words_matching(self, ontology, word):
         entries = ontology.get_matching_entries(word)
-        return {e.repr for e in entries}
+        return {r for e in entries for r in e.reprs}
 
     def test_multiwords(self):
         self.assertTrue(ontology.contains_multiword('gymnastics equipment'))

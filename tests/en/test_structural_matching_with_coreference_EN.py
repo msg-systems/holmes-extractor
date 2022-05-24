@@ -29,9 +29,10 @@ coref_holmes_manager.register_search_phrase("Hermione breaks")
 coref_holmes_manager.register_search_phrase("Somebody attempts to explain")
 coref_holmes_manager.register_search_phrase("An adopted boy")
 coref_holmes_manager.register_search_phrase("A running boy")
+ontology2 = holmes.Ontology(os.sep.join((script_directory, "test_ontology.owl")))
 no_coref_holmes_manager = holmes.Manager(
     model="en_core_web_trf",
-    ontology=ontology,
+    ontology=ontology2,
     perform_coreference_resolution=False,
     number_of_workers=1,
 )

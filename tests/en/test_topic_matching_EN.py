@@ -10,7 +10,6 @@ holmes_manager_coref = holmes.Manager(model='en_core_web_trf',
                                       perform_coreference_resolution=True,
                                       ontology=ontology,
                                       number_of_workers=2)
-ontology_for_sm_tests = holmes.Ontology(os.sep.join((script_directory, 'test_ontology.owl')))
 
 
 
@@ -1154,6 +1153,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     
     def test_one_worker_frequency_factor(self):
+        ontology_for_sm_tests = holmes.Ontology(os.sep.join((script_directory, 'test_ontology.owl')))
         m = holmes.Manager('en_core_web_sm', ontology=ontology_for_sm_tests,
             number_of_workers=1)
         m.parse_and_register_document("I saw a dog. It was chasing a cat", 'specific')
@@ -1175,6 +1175,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     
     def test_two_workers_frequency_factor_control(self):
+        ontology_for_sm_tests = holmes.Ontology(os.sep.join((script_directory, 'test_ontology.owl')))
         m = holmes.Manager('en_core_web_sm', ontology=ontology_for_sm_tests, number_of_workers=2)
         m.parse_and_register_document("I saw a dog. It was chasing a cat", 'specific')
         m.parse_and_register_document("The dog chased the animal", 'exact')
@@ -1195,6 +1196,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     
     def test_number_of_results(self):
+        ontology_for_sm_tests = holmes.Ontology(os.sep.join((script_directory, 'test_ontology.owl')))
         m = holmes.Manager('en_core_web_sm', ontology=ontology_for_sm_tests,
             number_of_workers=2)
         m.parse_and_register_document("I saw a dog. It was chasing a cat", 'specific')
@@ -1216,6 +1218,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     
     def test_multithreading_filtering_with_topic_match_dictionaries(self):
+        ontology_for_sm_tests = holmes.Ontology(os.sep.join((script_directory, 'test_ontology.owl')))
         m = holmes.Manager('en_core_web_sm', number_of_workers=2,
                                           ontology=ontology_for_sm_tests)
 
@@ -1247,6 +1250,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     
     def test_different_match_cutoff_score_high_2(self):
+        ontology_for_sm_tests = holmes.Ontology(os.sep.join((script_directory, 'test_ontology.owl')))
         m = holmes.Manager('en_core_web_sm', number_of_workers=2,
                                           ontology=ontology_for_sm_tests)
         m.parse_and_register_document("A dog then and then and then and then and then a dog")
@@ -1258,6 +1262,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
 
     
     def test_different_match_cutoff_score_control_2(self):
+        ontology_for_sm_tests = holmes.Ontology(os.sep.join((script_directory, 'test_ontology.owl')))
         m = holmes.Manager('en_core_web_sm', number_of_workers=2,
                                           ontology=ontology_for_sm_tests)
         m.parse_and_register_document("A dog then and then and then and then and then a dog")

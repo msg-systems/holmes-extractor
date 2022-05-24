@@ -170,7 +170,8 @@ class OntologyWordMatchingStrategy(WordMatchingStrategy):
             )
         for word in search_phrase_reprs:
             for entry in self.ontology.get_matching_entries(word):
-                search_phrase.add_word_information(entry.repr)
+                for repr in entry.reprs:
+                    search_phrase.add_word_information(repr)
 
     def add_reverse_dict_entries(
         self,
@@ -204,12 +205,13 @@ class OntologyWordMatchingStrategy(WordMatchingStrategy):
                             None,
                         )
 
-    def _get_reprs(self, repr_bearer: Union[HolmesDictionary, Subword, MultiwordSpan]) -> List[str]:
+    def _get_reprs(
+        self, repr_bearer: Union[HolmesDictionary, Subword, MultiwordSpan]
+    ) -> List[str]:
+        reprs = repr_bearer.direct_matching_reprs
         if (
             self.analyze_derivational_morphology
             and repr_bearer.derivation_matching_reprs is not None
         ):
-            # because derivational lemmas of ontology terms are matched, there is no need to attempt the direct matching representations
-            return repr_bearer.derivation_matching_reprs
-        else:
-            return repr_bearer.direct_matching_reprs
+            reprs.extend(repr_bearer.derivation_matching_reprs)
+        return reprs

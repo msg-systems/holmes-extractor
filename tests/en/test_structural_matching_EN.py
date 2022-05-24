@@ -58,9 +58,13 @@ nocoref_holmes_manager.register_search_phrase("Someone adopts a girl")
 nocoref_holmes_manager.register_search_phrase("An running boy")
 nocoref_holmes_manager.register_search_phrase("A girl is running")
 nocoref_holmes_manager.register_search_phrase("A son is excited")
+nocoref_holmes_manager.register_search_phrase("A pussy meows")
 
+ontology2 = holmes.Ontology(
+    os.sep.join((script_directory, "test_ontology.owl")), symmetric_matching=True
+)
 holmes_manager_with_variable_search_phrases = holmes.Manager(
-    model="en_core_web_trf", ontology=ontology, perform_coreference_resolution=False, number_of_workers=1
+    model="en_core_web_trf", ontology=ontology2, perform_coreference_resolution=False, number_of_workers=1
 )
 holmes_manager_with_embeddings = holmes.Manager(
     model="en_core_web_trf",
@@ -1068,5 +1072,11 @@ class EnglishStructuralMatchingTest(unittest.TestCase):
     def test_predicative_adjective_in_relative_clause(self):
         matches = self._get_matches(
             nocoref_holmes_manager, "He saw his son, who was excited."
+        )
+        self.assertEqual(len(matches), 1)
+
+    def test_ontology_matching_both_entries_synonyms_of_third_entry(self):
+        matches = self._get_matches(
+            nocoref_holmes_manager, "The cat creature meowed."
         )
         self.assertEqual(len(matches), 1)

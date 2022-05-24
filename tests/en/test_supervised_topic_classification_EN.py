@@ -14,10 +14,11 @@ holmes_manager = holmes.Manager(
 no_ontology_holmes_manager = holmes.Manager(
     "en_core_web_trf", perform_coreference_resolution=True, number_of_workers=1
 )
+ontology2 = holmes.Ontology(os.sep.join((script_directory, "test_ontology.owl")))
 no_coref_holmes_manager = holmes.Manager(
     "en_core_web_trf",
     perform_coreference_resolution=False,
-    ontology=ontology,
+    ontology=ontology2,
     number_of_workers=1,
 )
 

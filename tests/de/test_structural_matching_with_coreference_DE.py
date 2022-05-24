@@ -22,7 +22,9 @@ coref_holmes_manager.register_search_phrase("Jemand liebt einen Elefanten")
 coref_holmes_manager.register_search_phrase("Jemand folgt einem Elefanten der Vergangenheit")
 coref_holmes_manager.register_search_phrase("Ein verkaufter Urlaub")
 coref_holmes_manager.register_search_phrase("Eine große Firma hat Probleme")
-nocoref_holmes_manager = holmes.Manager(model='de_core_news_lg', ontology=ontology,
+ontology2 = holmes.Ontology(os.sep.join(
+    (script_directory, 'test_ontology.owl')))
+nocoref_holmes_manager = holmes.Manager(model='de_core_news_lg', ontology=ontology2,
                                         perform_coreference_resolution=False,
                                         number_of_workers=1)
 nocoref_holmes_manager.register_search_phrase("Ein Hund jagt eine Katze")

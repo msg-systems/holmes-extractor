@@ -953,8 +953,8 @@ class SemanticAnalyzer(ABC):
     _maximum_document_size = 1000000
 
     def spacy_parse_for_lemmas(self, text: str) -> Doc:
-        """Performs a standard spaCy parse on a string in order to obtain lemmas. The 'parser' and 'ner' components 
-           are disabled as they are not required to perform this task."""
+        """Performs a standard spaCy parse on a string in order to obtain lemmas. The 'parser' and 'ner' components
+        are disabled as they are not required to perform this task."""
         if len(text) > self._maximum_document_size:
             raise DocumentTooBigError(
                 " ".join(
@@ -1603,7 +1603,10 @@ class SemanticAnalyzer(ABC):
         """Update the ontology with derived lemmas retrieved from the spaCy model in use."""
         for entries in ontology.match_dict.values():
             for entry in entries:
-                entry.repr = self.potential_derived_holmes_lemma(entry.repr)
+                assert len(entry.reprs) == 1
+                derived_repr = self.potential_derived_holmes_lemma(entry.reprs[0])
+                if derived_repr != entry.reprs[0]:
+                    entry.reprs.append(derived_repr)
         for key in ontology.match_dict.copy():
             derived_key = self.potential_derived_holmes_lemma(key)
             if derived_key not in ontology.match_dict:
@@ -1849,7 +1852,7 @@ class LinguisticObjectFactory:
                 if self.ontology is not None:
                     for word in original_word_set:
                         for entry in self.ontology.get_matching_entries(word):
-                            word_set.add(entry.repr)
+                            word_set.update(entry.reprs)
                 frequencies = []
                 for word in word_set:
                     if word in words_to_corpus_frequencies:
@@ -2616,6 +2619,7 @@ class LinguisticObjectFactory:
                 search_phrase
             )
         search_phrase.words_matching_root_token.sort(key=lambda word: 0 - len(word))
+        print(search_phrase.doc_text, search_phrase.words_matching_root_token)
         # process longer entries first so that multiwords are considered before their constituent parts
         return search_phrase
 

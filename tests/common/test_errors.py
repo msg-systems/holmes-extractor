@@ -1,3 +1,4 @@
+import os
 import unittest
 import holmes_extractor as holmes
 from holmes_extractor.errors import *
@@ -7,6 +8,9 @@ nocoref_holmes_manager = holmes.Manager('en_core_web_trf', analyze_derivational_
 coref_holmes_manager = holmes.Manager(
     'en_core_web_trf', perform_coreference_resolution=True, number_of_workers=1)
 german_holmes_manager = holmes.Manager('de_core_news_lg', number_of_workers=1)
+script_directory = os.path.dirname(os.path.realpath(__file__))
+ontology = holmes.Ontology(os.sep.join(
+    (script_directory, 'test_ontology.owl')))
 
 
 class ErrorsTest(unittest.TestCase):
@@ -258,3 +262,8 @@ class ErrorsTest(unittest.TestCase):
             m.parse_and_register_document("a")
             coref_holmes_manager.topic_match_documents_against("b",
                 initial_question_word_behaviour='r')
+
+    def test_ontology_shared_between_managers(self):
+        with self.assertRaises(OntologyObjectSharedBetweenManagersError) as context:
+            holmes.Manager("en_core_web_sm", ontology=ontology)
+            holmes.Manager("en_core_web_sm", ontology=ontology)

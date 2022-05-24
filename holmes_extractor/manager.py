@@ -12,6 +12,7 @@ import spacy
 import coreferee
 from spacy import Language
 from spacy.tokens import Doc, Token
+from wasabi import Printer  # type: ignore[import]
 from thinc.api import Config
 from .errors import *
 from .structural_matching import StructuralMatcher
@@ -176,6 +177,12 @@ class Manager:
         )
         if ontology is not None:
             if analyze_derivational_morphology:
+                if ontology.status == 2:
+                    msg = Printer()
+                    msg.fail(
+                        "Since Holmes v4.0, Ontology instances may no longer be shared between Manager instances. Please instantiate a separate Ontology instance for each Manager instance."
+                    )
+                    raise OntologyObjectSharedBetweenManagersError("status == 2")
                 self.semantic_analyzer.update_ontology(ontology)
             self.semantic_matching_helper.ontology_word_matching_strategies.append(
                 OntologyWordMatchingStrategy(
@@ -279,7 +286,7 @@ class Manager:
         self.lock = Lock()
 
     def next_worker_queue_number(self) -> int:
-        """ Must be called with 'self.lock'."""
+        """Must be called with 'self.lock'."""
         self.next_worker_to_use += 1
         if self.next_worker_to_use == self.number_of_workers:
             self.next_worker_to_use = 0

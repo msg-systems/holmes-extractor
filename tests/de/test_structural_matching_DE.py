@@ -49,6 +49,7 @@ holmes_manager.register_search_phrase("Wortohnebindestrichnichtinontologie")
 holmes_manager.register_search_phrase("Information eines Messers")
 holmes_manager.register_search_phrase("Eine verkaufte Reise")
 holmes_manager.register_search_phrase("Jemand wohnt in einem ENTITYLOC")
+holmes_manager.register_search_phrase("Jemand benötigt ein Auto")
 holmes_manager_with_variable_search_phrases = holmes.Manager(
     model='de_core_news_lg', number_of_workers=2)
 holmes_manager_with_embeddings = holmes.Manager(model='de_core_news_lg',
@@ -1102,4 +1103,9 @@ class GermanStructuralMatchingTest(unittest.TestCase):
     def test_recursion_problem_solved(self):
         matches = self._get_matches(holmes_manager,
                                     "Ich wohne seit 2010 in Paris")
+        self.assertEqual(len(matches), 1)
+
+    def test_ontology_update_problem_solved(self):
+        matches = self._get_matches(holmes_manager,
+                                    "Jemand braucht ein Auto")
         self.assertEqual(len(matches), 1)
