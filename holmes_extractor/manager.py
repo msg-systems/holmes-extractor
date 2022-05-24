@@ -279,6 +279,7 @@ class Manager:
         self.lock = Lock()
 
     def next_worker_queue_number(self) -> int:
+        """ Must be called with 'self.lock'."""
         self.next_worker_to_use += 1
         if self.next_worker_to_use == self.number_of_workers:
             self.next_worker_to_use = 0
