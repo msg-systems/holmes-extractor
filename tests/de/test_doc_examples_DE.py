@@ -19,7 +19,7 @@ class EnglishDocumentationExamplesTest(unittest.TestCase):
         "Dass der große Hund die Katze jagte, war ein Problem",
         "Es gab einen großen Hund, der eine Katze jagte",
         "Die Katzenjagd durch den großen Hund",
-        "Es gab einen großen Hund und er jagte eine Katze",
+        "Es gab einmal einen großen Hund, und er jagte eine Katze",
         "Es gab einen großen Hund. Er hieß Fido. Er jagte meine Katze",
         "Es erschien ein Hund. Er jagte eine Katze. Er war sehr groß.",
         "Die Katze schlich sich in unser Wohnzimmer zurück, weil ein großer Hund sie draußen gejagt hatte",
