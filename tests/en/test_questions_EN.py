@@ -396,5 +396,5 @@ class EnglishInitialQuestionsTest(unittest.TestCase):
         self._check_equals('Where is the earth?', 'And where is the earth', 65, None, None)
 
     def test_phrasal_verb_problem_solved(self):        
-        self._check_equals("Which boy came in?", "Then the youngest boy came in.", 10, None, None)
+        self._check_equals("Which boy came in?", "Then the youngest boy came in.", 14, 5, 21)
 

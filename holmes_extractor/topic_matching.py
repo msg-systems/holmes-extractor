@@ -403,9 +403,8 @@ class TopicMatcher:
             token for token in phraselet.matchable_tokens if token.i != parent_token.i
         ][0]
         child_word = child_token._.holmes.derived_lemma
-        if (
-            parent_word in self.words_to_phraselet_word_match_infos
-            and (
+        if parent_word in self.words_to_phraselet_word_match_infos and (
+            (
                 not phraselet.reverse_only
                 and not phraselet.treat_as_reverse_only_during_initial_relation_matching
             )
