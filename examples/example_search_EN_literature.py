@@ -2,8 +2,10 @@ import os
 import re
 import json
 import urllib.request
+# You will need to install bs4 (python -m pip install bs4)
 from bs4 import BeautifulSoup
 import holmes_extractor as holmes
+# You will need to install falcon (python -m pip install falcon)
 import falcon
 
 if __name__ in ('__main__', 'example_search_EN_literature'):
@@ -19,7 +21,7 @@ if __name__ in ('__main__', 'example_search_EN_literature'):
 
     # Start the Holmes manager with the English model
     holmes_manager = holmes.Manager(
-        model='en_core_web_trf')
+        model='en_core_web_trf', ontology=ontology)
 
     def extract_chapters_from_book(book_uri, title):
         """ Download and save the chapters from a book."""
@@ -98,13 +100,15 @@ if __name__ in ('__main__', 'example_search_EN_literature'):
         load_documents_from_working_directory()
 
     #Comment following line in to activate interactive console
-    #holmes_manager.start_topic_matching_search_mode_console(only_one_result_per_document=True)
+    #holmes_manager.start_topic_matching_search_mode_console()
 
     # The following code starts a RESTful Http service to perform topic searches. It is deployed as
     # as WSGI application. An example of how to start it - issued from the directory that
     # contains the script - is
 
-    # waitress-serve example_search_DE_literature:application
+    # python -m waitress example_search_EN_literature:application
+
+    # You will need to install waitress (python -m pip install waitress)
 
     class RestHandler():
         def on_get(self, req, resp):

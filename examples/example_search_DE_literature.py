@@ -101,9 +101,8 @@ if __name__ in ('__main__', 'example_search_DE_literature'):
     # contains the script - is
 
     # python -m waitress example_search_DE_literature:application
-
+    
     # You will need to install waitress (python -m pip install waitress)
-    # Different installation commands will be required for operating systems other than Linux
 
     class RestHandler():
         def on_get(self, req, resp):
