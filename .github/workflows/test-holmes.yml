@@ -42,7 +42,7 @@ jobs:
         
     - name: Install dependencies
       run: |
-        python -m pip install --upgrade pip
+        python -m pip install --upgrade pip setuptools wheel
         pip install spacy==${{ matrix.spacy_version }} pytest spacy-lookups-data
         
         # see https://github.com/explosion/spaCy/issues/10564
