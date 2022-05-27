@@ -1,6 +1,6 @@
 Holmes
 ======
-Author: <a href="mailto:richard.hudson@msg.group">Richard Paul Hudson, msg systems ag</a>
+Author: <a href="mailto:richard.hudson@explosion.ai">Richard Paul Hudson, Explosion AI</a>
 
 -   [1. Introduction](#introduction)
     -   [1.1 The basic idea](#the-basic-idea)
@@ -151,7 +151,7 @@ cases can be put to use out of the box without any training and that the supervi
 typically requires relatively little training data, which is a great advantage because pre-labelled training data is
 not available for many real-world problems.
 
-Holmes has a long and complex history and we are now able to publish it under the MIT license thanks to the goodwill and openness of several companies. I, Richard Hudson, wrote the versions up to 3.0.0 while working at [msg systems](https://www.msg.group/en), a large international software consultancy based near Munich. In late 2021, I changed employers and now work for [Explosion](https://explosion.ai/), the creators of [spaCy](https://explosion.ai/software#spacy) and [Prodigy](https://explosion.ai/software#prodigy). Elements of the software are covered by a [US patent](https://patents.google.com/patent/US8155946B2/en) that I myself wrote in the early 2000s while working at a startup called Definiens that has since been acquired by [AstraZeneca](https://www.astrazeneca.com/). With kind permission of both AstraZeneca and msg systems, I am now maintaining Holmes at Explosion and can offer it for the first time under a non-restrictive license.
+Holmes has a long and complex history and we are now able to publish it under the MIT license thanks to the goodwill and openness of several companies. I, Richard Hudson, wrote the versions up to 3.0.0 while working at [msg systems](https://www.msg.group/en), a large international software consultancy based near Munich. In late 2021, I changed employers and now work for [Explosion](https://explosion.ai/), the creators of [spaCy](https://spacy.io/) and [Prodigy](https://prodi.gy/). Elements of the software are covered by a [US patent](https://patents.google.com/patent/US8155946B2/en) that I myself wrote in the early 2000s while working at a startup called Definiens that has since been acquired by [AstraZeneca](https://www.astrazeneca.com/). With kind permission of both AstraZeneca and msg systems, I am now maintaining Holmes at Explosion and can offer it for the first time under a non-restrictive license.
 
 <a id="installation"></a>
 #### 1.2 Installation
@@ -758,7 +758,7 @@ of search phrase root words, it is controlled separately from embedding-based ma
 using the `embedding_based_matching_on_root_words` parameter, which is set when instantiating the
 [Manager](#manager) class. You are advised to keep this setting switched off (value `False`) for most use cases.
 
-Neither the `overall_similarity_threshold` nor the `embedding_based_matching_on_root_words` parameter has any effect on the [topic matching](#topic_matching) use case. Here word-level embedding similarity thresholds are set using the `word_embedding_match_threshold` and  `initial_question_word_embedding_match_threshold` parameters when calling the [`topic_match_documents_against` function on the Manager class](#manager-topic-match-function).
+Neither the `overall_similarity_threshold` nor the `embedding_based_matching_on_root_words` parameter has any effect on the [topic matching](#topic-matching) use case. Here word-level embedding similarity thresholds are set using the `word_embedding_match_threshold` and  `initial_question_word_embedding_match_threshold` parameters when calling the [`topic_match_documents_against` function on the Manager class](#manager-topic-match-function).
 
 <a id="named-entity-embedding-based-matching"></a>
 #### 2.6 Named-entity-embedding-based matching (`word_match.type=='entity_embedding'`)
@@ -1526,7 +1526,7 @@ Terminates the worker processes.
 
 `manager.nlp` is the underlying spaCy [Language](https://spacy.io/api/language/) object on which both Coreferee and Holmes have been registered as custom pipeline components. The most efficient way of parsing documents for use with Holmes is to call [`manager.nlp.pipe()`](https://spacy.io/api/language/#pipe). This yields an iterable of documents that can then be loaded into Holmes via [`manager.register_serialized_documents()`](#manager-register-serialized-documents-function).
 
-The [`pipe()` method](https://spacy.io/api/language#pipe) has an argument `n_process()` that specifies the number of processors to use. With `_lg`, `_md` and `_sm` spaCy models, there are [some situations](https://github.com/explosion/spaCy/discussions/8402#multiprocessing) where it can make sense to specify a value other than 1 (the default). Note however that with transformer spaCy models (`_trf`) values other than 1 are not supported.
+The [`pipe()` method](https://spacy.io/api/language#pipe) has an argument `n_process` that specifies the number of processors to use. With `_lg`, `_md` and `_sm` spaCy models, there are [some situations](https://github.com/explosion/spaCy/discussions/8402#multiprocessing) where it can make sense to specify a value other than 1 (the default). Note however that with transformer spaCy models (`_trf`) values other than 1 are not supported.
 
 <a id="ontology"></a>
 #### 6.3 `Ontology`
@@ -1979,10 +1979,7 @@ are ordered by decreasing probabilility.
 <a id="development-and-testing-guidelines"></a>
 #### 8.2 Development and testing guidelines
 
-Holmes code adheres broadly to the
-[PEP-8](https://www.python.org/dev/peps/pep-0008/) standard. Because of
-the complexity of some of the code, Holmes adheres to a 100-character
-rather than an 80-character line width as permitted as an option there.
+Holmes code is formatted with [black](https://black.readthedocs.io/en/stable/).
 
 The complexity of what Holmes does makes development impossible without
 a robust set of over 1350 regression tests. These can be executed individually
