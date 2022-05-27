@@ -1,6 +1,6 @@
 Holmes
 ======
-Author: <a href="mailto:richard.hudson@explosion.ai">Richard Paul Hudson, Explosion AI</a>
+Author: <a href="mailto:richard@explosion.ai">Richard Paul Hudson, Explosion AI</a>
 
 -   [1. Introduction](#introduction)
     -   [1.1 The basic idea](#the-basic-idea)
@@ -99,8 +99,8 @@ Author: <a href="mailto:richard.hudson@explosion.ai">Richard Paul Hudson, Explos
 <a id="the-basic-idea"></a>
 #### 1.1 The basic idea
 
-**Holmes** is a Python 3 library (v3.6—3.10) running on top of
-[spaCy](https://spacy.io/) (versions 3.1—3.3) that supports a number of use cases
+**Holmes** is a Python 3 library (v3.6—v3.10) running on top of
+[spaCy](https://spacy.io/) (v3.1—v3.3) that supports a number of use cases
 involving information extraction from English and German texts. In all use cases, the information
 extraction is based on analysing the semantic relationships expressed by the component parts of
 each sentence:
@@ -151,7 +151,8 @@ cases can be put to use out of the box without any training and that the supervi
 typically requires relatively little training data, which is a great advantage because pre-labelled training data is
 not available for many real-world problems.
 
-Holmes has a long and complex history and we are now able to publish it under the MIT license thanks to the goodwill and openness of several companies. I, Richard Hudson, wrote the versions up to 3.0.0 while working at [msg systems](https://www.msg.group/en), a large international software consultancy based near Munich. In late 2021, I changed employers and now work for [Explosion](https://explosion.ai/), the creators of [spaCy](https://spacy.io/) and [Prodigy](https://prodi.gy/). Elements of the software are covered by a [US patent](https://patents.google.com/patent/US8155946B2/en) that I myself wrote in the early 2000s while working at a startup called Definiens that has since been acquired by [AstraZeneca](https://www.astrazeneca.com/). With kind permission of both AstraZeneca and msg systems, I am now maintaining Holmes at Explosion and can offer it for the first time under a non-restrictive license.
+Holmes has a long and complex history and we are now able to publish it under the MIT license thanks to the goodwill and openness of several companies. I, Richard Hudson, wrote the versions up to 3.0.0 while working at [msg systems](https://www.msg.group/en), a large international software consultancy based near Munich. In late 2021, I changed employers and now work for [Explosion](https://explosion.ai/), the creators of [spaCy](https://spacy.io/) and [Prodigy](https://prodi.gy/). Elements of the Holmes library are covered by a [US patent](https://patents.google.com/patent/US8155946B2/en) that I myself wrote in the early 2000s while working at a startup called Definiens that has since been acquired by [AstraZeneca](https://www.astrazeneca.com/). With the kind permission of both AstraZeneca and msg systems, I am now maintaining Holmes at Explosion and can offer it for the first time under a permissive license: anyone can now use Holmes under the terms of the MIT
+license without having to worry about the patent.
 
 <a id="installation"></a>
 #### 1.2 Installation
@@ -228,7 +229,7 @@ python3 -m coreferee install en
 
 *Linux/German:*
 ```
-pip3 install spacy-lookups data # (from spaCy 3.3 onwards)
+pip3 install spacy-lookups-data # (from spaCy 3.3 onwards)
 python3 -m spacy download de_core_news_lg
 python3 -m coreferee install de
 ```
@@ -242,7 +243,7 @@ python -m coreferee install en
 
 *Windows/German:*
 ```
-pip install spacy-lookups data # (from spaCy 3.3 onwards)
+pip install spacy-lookups-data # (from spaCy 3.3 onwards)
 python -m spacy download de_core_news_lg
 python -m coreferee install de
 ```
@@ -273,7 +274,7 @@ microservice. See [here](https://github.com/explosion/holmes-extractor/blob/mast
 <a id="resource-requirements"></a>
 ##### 1.2.5 Resource requirements
 
-Because Holmes performs complex, intelligent analysis, it is inevitable that it requires more hardware resources than more traditional search frameworks. The use cases that involve loading documents — [structural extraction](#structural-extraction) and [topic matching](#topic-matching) — are most immediately applicable to large but not massive corpora (e.g. all the documents belonging to a certain organisation, all the patents on a certain topic, all the books by a certain author). For cost reasons, Holmes would not be an appropriate tool with which to analyse the content of the entire Internet!
+Because Holmes performs complex, intelligent analysis, it is inevitable that it requires more hardware resources than more traditional search frameworks. The use cases that involve loading documents — [structural extraction](#structural-extraction) and [topic matching](#topic-matching) — are most immediately applicable to large but not massive corpora (e.g. all the documents belonging to a certain organisation, all the patents on a certain topic, all the books by a certain author). For cost reasons, Holmes would not be an appropriate tool with which to analyse the content of the entire internet!
 
 That said, Holmes is both vertically and horizontally scalable. With sufficient hardware, both these use cases can be applied to an essentially unlimited number of documents by running Holmes on multiple machines, processing a different set of documents on each one and conflating the results. Note that this strategy is already employed to distribute matching amongst multiple cores on a single machine: the [Manager](#manager) class starts a number of worker processes and distributes registered documents between them.
 
@@ -507,7 +508,7 @@ For more examples, please see [section 5](#use-cases-and-examples).
 ### 2. Word-level matching strategies
 
 The following strategies are implemented with 
-[one module per strategy](https://github.com/explosion/holmes-extractor/tree/master/holmes_extractor/word_matching). 
+[one Python module per strategy](https://github.com/explosion/holmes-extractor/tree/master/holmes_extractor/word_matching). 
 Although the standard library does not support adding bespoke strategies via the [Manager](#manager)
 class, it would be relatively easy for anyone with Python programming skills to
 change the code to enable this.
@@ -772,7 +773,7 @@ Initial-question-word matching is only active during [topic matching](#topic-mat
 
 Initial-question-word matching is switched on and off using the `initial_question_word_behaviour` parameter when calling the [`topic_match_documents_against` function on the Manager class](#manager-topic-match-function). It is only likely to be useful when topic matching is being performed in an interactive setting where the user enters short query phrases, as opposed to when it is being used to find documents on a similar topic to an pre-existing query document: initial question words are only processed at the beginning of the first sentence of the query phrase or query document.
 
-If a query phrase consists of a complex question with several elements dependent on the main verb, a finding in a searched document is only strictly an 'answer' if contains matches to all these elements. Because recall is typically more important than precision when performing topic matching with interactive query phrases, however, Holmes will match an initial question word to a searched-document phrase wherever they correspond semantically (e.g. wherever *when* corresponds to a temporal adverbial phrase) and each depend on verbs that themselves match at the word level. One possible strategy to filter out 'incomplete answers' would be to calculate the maximum possible score for a query phrase and reject topic matches that score below a threshold scaled to this maximum.
+Linguistically speaking, if a query phrase consists of a complex question with several elements dependent on the main verb, a finding in a searched document is only an 'answer' if contains matches to all these elements. Because recall is typically more important than precision when performing topic matching with interactive query phrases, however, Holmes will match an initial question word to a searched-document phrase wherever they correspond semantically (e.g. wherever *when* corresponds to a temporal adverbial phrase) and each depend on verbs that themselves match at the word level. One possible strategy to filter out 'incomplete answers' would be to calculate the maximum possible score for a query phrase and reject topic matches that score below a threshold scaled to this maximum.
 
 <a id="coreference-resolution"></a>
 ### 3. Coreference resolution
@@ -787,7 +788,7 @@ Coreferee also detects situations where a noun refers back to a named entity:
 
 We discussed *AstraZeneca*. *The company* had given us permission to publish this library under the MIT license.
 
-If this example were to match the search phrase ***A company makes a profit***, the
+If this example were to match the search phrase ***A company gives permission to publish something***, the
 coreference information that the company under discussion is AstraZeneca is clearly
 relevant and worth extracting in addition to the word(s) directly matched to the search
 phrase. Such information is captured in the [word_match.extracted_word](#dictionary) field.
@@ -991,14 +992,15 @@ Questions should be re-phrased as statements, in this case
 ##### 4.3.4 Compound words (relates to German only)
 
 ***Informationsextraktion*** (German)  
-***Eine Zeltfeier*** (German)
+***Ein Stadtmittetreffen*** (German)
 
 The internal structure of German compound words is analysed within searched documents as well as
 within query phrases in the [topic matching](#topic-matching) use case, but not within search
-phrases. Compound words should be reexpressed using multiple words, which in any case enables the relationship between the elements to be expressed less ambiguously. Compound words can often but not always  be reexpressed as genitive phrases:
+phrases. In search phrases, compound words should be reexpressed as genitive constructions even in cases
+where this does not strictly capture their meaning:
 
 ***Extraktion der Information*** (German)  
-***Eine Feier in einem Zelt*** (German)
+***Ein Treffen der Stadtmitte*** (German)
 
 <a id="structures-to-be-used-with-caution-in-search-phrases"></a>
 #### 4.4 Structures to be used with caution in search phrases
@@ -1245,7 +1247,7 @@ verbose -- a boolean value specifying whether multiprocessing messages should be
 ```
 
 ``` {.python}
-Manager.register_serialized_document(self, serialized_document:bytes, label:str) -> None
+Manager.register_serialized_document(self, serialized_document:bytes, label:str="") -> None
 
 Parameters:
 
@@ -1284,18 +1286,18 @@ Manager.remove_all_documents(self, labels_starting:str=None) -> None
 
 Parameters:
 
-labels_starting -- a string with which the labels of documents to be removed start,
+labels_starting -- a string starting the labels of documents to be removed,
     or 'None' if all documents are to be removed.
 ```
 
 ``` {.python}
-Manager.document_labels(self) -> List[str]
+Manager.list_document_labels(self) -> List[str]
 
 Returns a list of the labels of the currently registered documents.
 ```
 
 ``` {.python}
-Manager.serialize_document(self, label:str) -> bytes
+Manager.serialize_document(self, label:str) -> Optional[bytes]
 
 Returns a serialized representation of a Holmes document that can be
   persisted to a file. If 'label' is not the label of a registered document,
@@ -1307,7 +1309,7 @@ label -- the label of the document to be serialized.
 ```
 
 ``` {.python}
-Manager.get_document(self, label:str='') -> Doc
+Manager.get_document(self, label:str='') -> Optional[Doc]
 
 Returns a Holmes document. If *label* is not the label of a registered document, *None*
   is returned instead.
@@ -1318,7 +1320,7 @@ label -- the label of the document to be serialized.
 ```
 
 ``` {.python}
-Manager.debug_document(self, label:str='') -> Doc
+Manager.debug_document(self, label:str='') -> None
 
 Outputs a debug representation for a loaded document.
 
@@ -1353,7 +1355,7 @@ Manager.list_search_phrase_labels(self) -> List[str]
 
 <a id="manager-match-function"></a>
 ``` {.python}
-Manager.match(self, search_phrase_text:str=None, document_text:str=None) -> list[dict]
+Manager.match(self, search_phrase_text:str=None, document_text:str=None) -> List[Dict]
 
 Matches search phrases to documents and returns the result as match dictionaries.
 
@@ -1398,8 +1400,8 @@ Properties:
 text_to_match -- the text to match against the loaded documents.
 use_frequency_factor -- *True* if scores should be multiplied by a factor between 0 and 1
   expressing how rare the words matching each phraselet are in the corpus. Note that,
-  even if set to *False*, the factors are still calculated as they are required for
-  determining which relation and embedding matches should be attempted.
+  even if this parameter is set to *False*, the factors are still calculated as they are 
+  required for determining which relation and embedding matches should be attempted.
 maximum_activation_distance -- the number of words it takes for a previous phraselet
   activation to reduce to zero when the library is reading through a document.
 word_embedding_match_threshold -- the cosine similarity above which two words match where
@@ -1409,9 +1411,9 @@ initial_question_word_embedding_match_threshold -- the cosine similarity above w
 relation_score -- the activation score added when a normal two-word relation is matched.
 reverse_only_relation_score -- the activation score added when a two-word relation
   is matched using a search phrase that can only be reverse-matched.
-single_word_score -- the activation score added when a normal single word is matched.
+single_word_score -- the activation score added when a single noun is matched.
 single_word_any_tag_score -- the activation score added when a single word is matched
-  whose tag would not normally allow it to be matched by phraselets.
+  that is not a noun.
 initial_question_word_answer_score -- the activation score added when a question word is
   matched to an potential answer phrase.
 initial_question_word_behaviour -- 'process' if a question word in the sentence
@@ -1578,8 +1580,8 @@ Holder object for training documents and their classifications from which one or
 [SupervisedTopicModelTrainer](#supervised-topic-model-trainer) objects can be derived. This class is NOT threadsafe.
 
 ``` {.python}
-SupervisedTopicTrainingBasis.parse_and_register_training_document(self, text, classification,
-  label=None)
+SupervisedTopicTrainingBasis.parse_and_register_training_document(self, text:str, classification:str,
+  label:Optional[str]=None) -> None
 
 Parses and registers a document to use for training.
 
@@ -1592,7 +1594,8 @@ label -- a label with which to identify the document in verbose training output,
 ```
 
 ``` {.python}
-SupervisedTopicTrainingBasis.register_training_document(self, doc, classification, label=None)
+SupervisedTopicTrainingBasis.register_training_document(self, doc:Doc, classification:str, 
+  label:Optional[str]=None) -> None
 
 Registers a pre-parsed document to use for training.
 
@@ -1605,7 +1608,7 @@ label -- a label with which to identify the document in verbose training output,
 ```
 
 ``` {.python}
-SupervisedTopicTrainingBasis.register_additional_classification_label(self, label)
+SupervisedTopicTrainingBasis.register_additional_classification_label(self, label:str) -> None
 
 Register an additional classification label which no training document possesses explicitly
   but that should be assigned to documents whose explicit labels are related to the
@@ -1613,7 +1616,7 @@ Register an additional classification label which no training document possesses
 ```
 
 ``` {.python}
-SupervisedTopicTrainingBasis.prepare()
+SupervisedTopicTrainingBasis.prepare(self) -> None
 
 Matches the phraselets derived from the training documents against the training
   documents to generate frequencies that also include combined labels, and examines the
@@ -1626,10 +1629,19 @@ Matches the phraselets derived from the training documents against the training
 
 <a id="supervised-topic-training-basis-train"></a>
 ``` {.python}
-SupervisedTopicTrainingBasis.train(self, *, minimum_occurrences=4, cv_threshold=1.0,  
-  mlp_activation='relu', mlp_solver='adam', mlp_learning_rate='constant',
-  mlp_learning_rate_init=0.001, mlp_max_iter=200, mlp_shuffle=True, mlp_random_state=42,
-  hidden_layer_sizes=None):
+SupervisedTopicTrainingBasis.train(
+        self,
+        *,
+        minimum_occurrences: int = 4,
+        cv_threshold: float = 1.0,
+        learning_rate: float = 0.001,
+        batch_size: int = 5,
+        max_epochs: int = 200,
+        convergence_threshold: float = 0.0001,
+        hidden_layer_sizes: Optional[List[int]] = None,
+        shuffle: bool = True,
+        normalize: bool = True
+    ) -> SupervisedTopicModelTrainer:
 
 Trains a model based on the prepared state.
 
@@ -1646,7 +1658,7 @@ batch_size -- the number of documents in each training batch.
 max_epochs -- the maximum number of training epochs.
 convergence_threshold -- the threshold below which loss measurements after consecutive
   epochs are regarded as equivalent. Training stops before 'max_epochs' is reached
-  when equivalent results are achieved after four consecutive epochs.
+  if equivalent results are achieved after four consecutive epochs.
 hidden_layer_sizes -- a list containing the number of neurons in each hidden layer, or
   'None' if the topology should be determined automatically.
 shuffle -- 'True' if documents should be shuffled during batching.
@@ -1663,7 +1675,7 @@ been retained to facilitate testability.
 This class is NOT threadsafe.
 
 ``` {.python}
-SupervisedTopicModelTrainer.classifier()
+SupervisedTopicModelTrainer.classifier(self)
 
 Returns a supervised topic classifier which contains no explicit references to the training data and that
 can be serialized.
@@ -1675,7 +1687,7 @@ can be serialized.
 `Manager.deserialize_supervised_topic_classifier()`))
 
 ``` {.python}
-SupervisedTopicClassifier.parse_and_classify(self, text)
+SupervisedTopicClassifier.def parse_and_classify(self, text: str) -> Optional[OrderedDict]:
 
 Returns a dictionary from classification labels to probabilities
   ordered starting with the most probable, or *None* if the text did
@@ -1687,7 +1699,7 @@ text -- the text to parse and classify.
 ```
 
 ``` {.python}
-SupervisedTopicClassifier.classify(self, doc)
+SupervisedTopicClassifier.classify(self, doc: Doc) -> Optional[OrderedDict]:
 
 Returns a dictionary from classification labels to probabilities
   ordered starting with the most probable, or *None* if the text did
@@ -1746,7 +1758,8 @@ word_matches -- an array of dictionaries with the properties:
     contributes to a word is not overtly realised within that word.
   document_word -- the string that matched from the document.
   document_phrase -- the phrase headed by the word that matched from the document.
-  match_type -- 'direct', 'derivation', 'entity', 'embedding', 'ontology' or 'entity_embedding'.
+  match_type -- 'direct', 'derivation', 'entity', 'embedding', 'ontology', 'entity_embedding'
+    or 'question'.
   negated -- 'True' if this word match is negated.
   uncertain -- 'True' if this word match is uncertain.
   similarity_measure -- for types 'embedding' and 'entity_embedding', the similarity between the
@@ -1772,7 +1785,7 @@ Properties:
 document_label -- the label of the document.
 text -- the document text that was matched.
 text_to_match -- the search text.
-rank -- a string representation of the scoring rank which can have the form '2=' in case of a tie.
+rank -- a string representation of the scoring rank which can have the form e.g. '2=' in case of a tie.
 index_within_document -- the index of the document token where the activation peaked.
 subword_index -- the index of the subword within the document token where the activation peaked, or
   'None' if the activation did not peak at a specific subword.
@@ -1888,19 +1901,19 @@ Topic matching involves the following steps:
 1. The query document or query phrase is parsed and a number of **phraselets**
 are derived from it. Single-word phraselets are extracted for every word (or subword in German) with its own meaning within the query phrase apart from a handful of stop words defined within the semantic matching helper (`SemanticMatchingHelper.topic_matching_phraselet_stop_lemmas`), which are
 consistently ignored throughout the whole process.
-2. Two-word or **relation** phraselets are extracted wherever certain grammatical structures
+2. Two-word or **relation** phraselets are extracted from the query document or query phrase wherever certain grammatical structures
 are found. The structures that trigger two-word phraselets differ from language to language
 but typically include verb-subject, verb-object and noun-adjective pairs as well as verb-noun and noun-noun relations spanning prepositions. Each relation phraselet
 has a parent (governor) word or subword and a child (governed) word or subword. The relevant
 phraselet structures for a given language are defined in `SemanticMatchingHelper.phraselet_templates`.
 3. Both types of phraselet are assigned a **frequency factor** expressing how common or rare its word or words are in the corpus. Frequency factors are determined using a logarithmic calculation and range from 0.0 (very common) to 1.0 (very rare). Each word within a relation phraselet is also assigned its own frequency factor.
-4. Phraselet templates where the parent word belongs to a closed word class, e.g. prepositions, can be defined as 'reverse_only'. This signals that matching with derived templates should only be attempted starting from the child word rather than from the parent word as normal. Phraselets are also defined as reverse-only when the parent word is one of a handful of words defined within the semantic matching helper (`SemanticMatchingHelper.topic_matching_reverse_only_parent_lemmas`) or when the frequency factor for the parent word is below the threshold for relation matching ( `relation_matching_frequency_threshold`, default: 0.25).  These measures are necessary because matching on e.g. a parent preposition would lead to a large number of
+4. Phraselet templates where the parent word belongs to a closed word class, e.g. prepositions, can be defined as 'reverse_only'. This signals that matching with derived phraselets should only be attempted starting from the child word rather than from the parent word as normal. Phraselets are also defined as reverse-only when the parent word is one of a handful of words defined within the semantic matching helper (`SemanticMatchingHelper.topic_matching_reverse_only_parent_lemmas`) or when the frequency factor for the parent word is below the threshold for relation matching ( `relation_matching_frequency_threshold`, default: 0.25).  These measures are necessary because matching on e.g. a parent preposition would lead to a large number of
 potential matches that would take a lot of resources to investigate: it is better to start
 investigation from the less frequent word within a given relation.
 5. All single-word phraselets are matched against the document corpus.
 6. Normal [structural matching](#how-it-works-structural-matching) is used to match against the document corpus all relation phraselets
 that are not set to reverse-matching.
-7. Reverse matching starts at all words in the corpus that match a relation phraselet child word. Every word governing one of these words is a potential match for the corresponding relation phraselet parent word, so structural matching is attempted starting at all these parent words. Reverse matching is only attempted for reverse-only relation phraselets where the child word's frequency factor is above the threshold for relation matching ( `relation_matching_frequency_threshold`, default: 0.25).
+7. Reverse matching starts at all words in the corpus that match a relation phraselet child word. Every word governing one of these words is a potential match for the corresponding relation phraselet parent word, so structural matching is attempted starting at all these parent words. Reverse matching is only attempted for relation phraselets where the child word's frequency factor is above the threshold for relation matching ( `relation_matching_frequency_threshold`, default: 0.25).
 8. If either the parent or the child word of a relation template has a frequency factor above a configurable threshold (`embedding_matching_frequency_threshold`, default: 0.5), matching at all of those words where the relation template has not already been
 matched is retried using embeddings at the other word within the relation. A pair of words is then regarded as matching when their mutual cosine similarity is above `initial_question_word_embedding_match_threshold` (default: 0.7) in situations where the document word has an initial question word in its phrase or `word_embedding_match_threshold` (default: 0.8) in all other situations.
 9. The set of structural matches collected up to this point is filtered to cover cases where the same
@@ -1912,19 +1925,19 @@ is determined for each word in each document.
 
   - Activation is tracked separately for each phraselet. Each time
   a match for a phraselet is encountered, the activation for that phraselet is set to the score returned by
-  the match, unless the existing activation is already greater than that score. If the parameter `use_frequency_factor` is set to `True` (the default), each score are scaled by the frequency factor of its phraselet, meaning that words that occur less frequently in the corpus give rise to higher scores.
-  - For as long as the activation score for a phraselet has a value above zero, it is reduced by 1 divided by a
-  configurable number (`maximum_activation_distance`; default: 75) as each new word is read.
-  - The score returned by a match depends on whether the match was produced by a single-word noun phraselet that matched an entire word (`single_word_score`; default: 50), another type of single-word phraselet or a noun phraselet that matched a subword (`single_word_any_tag_score`; default: 20),
+  the match, unless the existing activation is already greater than that score. If the parameter `use_frequency_factor` is set to `True` (the default), each score is scaled by the frequency factor of its phraselet, meaning that words that occur less frequently in the corpus give rise to higher scores.
+  - For as long as the activation score for a phraselet has a value above zero, 1 divided by a
+  configurable number (`maximum_activation_distance`; default: 75) of its value is subtracted from it as each new word is read.
+  - The score returned by a match depends on whether the match was produced by a single-word noun phraselet that matched an entire word (`single_word_score`; default: 50), a non-noun single-word phraselet or a noun phraselet that matched a subword (`single_word_any_tag_score`; default: 20),
   a relation phraselet produced by a reverse-only template (`reverse_only_relation_score`; default: 200),
   any other (normally matched) relation phraselet (`relation_score`; default: 300), or a relation
   phraselet involving an initial question word (`initial_question_word_answer_score`; default: 600).
   - Where a match involves embedding-based matching, the resulting inexactitude is
   captured by multiplying the potential new activation score with the value of the
-  similarity measure that was returned for the match multiplied by a penalty value (`embedding_penalty`; default: 0.6').
+  similarity measure that was returned for the match multiplied by a penalty value (`embedding_penalty`; default: 0.6).
   - Where a match involves ontology-based matching, the resulting inexactitude is captured
   by multiplying the potential new activation score by a penalty value (`ontology_penalty`;
-  default: 0.9') once more often than the difference in depth between the two ontology entries,
+  default: 0.9) once more often than the difference in depth between the two ontology entries,
   i.e. once for a synonym, twice for a child, three times for a grandchild and so on.
   - When the same word was involved in matches against more than one two-word phraselets, this
   implies that a structure involving three or more words has been matched. The activation score returned by
@@ -1982,7 +1995,7 @@ are ordered by decreasing probabilility.
 Holmes code is formatted with [black](https://black.readthedocs.io/en/stable/).
 
 The complexity of what Holmes does makes development impossible without
-a robust set of over 1350 regression tests. These can be executed individually
+a robust set of over 1400 regression tests. These can be executed individually
 with `unittest` or all at once by running the
 [pytest](https://docs.pytest.org/en/latest/) utility from the Holmes
 source code root directory. (Note that the Python 3 command on Linux
@@ -2103,3 +2116,4 @@ that only documents whose labels begin with a certain string should be searched.
 - With the exception of [rdflib](https://github.com/RDFLib/rdflib), all direct dependencies are now from within the Explosion stack, making
 installation much faster and more trouble-free.
 - Holmes now supports a wide range of Python (3.6—3.10) and spaCy (3.1—3.3) versions.
+- A new [demo website](https://demo.holmes.prod.demos.explosion.services/) has been developed by <a href="mailto:edward@explosion.ai">Edward Schmuhl</a> based on Streamlit.

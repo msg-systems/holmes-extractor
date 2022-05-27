@@ -45,7 +45,7 @@ class HolmesConsoles:
         """Returns a user-readable representation of a word match."""
         if word_match["document_word"] != word_match["extracted_word"]:
             extracted_word = "".join(
-                ("(refers to '", word_match["extracted_word"], "')")
+                ("(refers to ", word_match["extracted_word"].upper(), ")")
             )
         else:
             extracted_word = ""
@@ -87,7 +87,7 @@ class HolmesConsoles:
             print("Reverse dependency matching is OFF")
 
     def print_document_info(self):
-        document_labels = self.holmes.document_labels()
+        document_labels = self.holmes.list_document_labels()
         if len(document_labels) == 0:
             raise RuntimeError("No documents registered.")
         document_labels_string = "; ".join(

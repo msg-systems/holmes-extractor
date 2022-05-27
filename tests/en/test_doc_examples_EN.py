@@ -4,6 +4,7 @@ import holmes_extractor as holmes
 holmes_manager = holmes.Manager(model="en_core_web_lg", number_of_workers=1)
 holmes_manager.register_search_phrase("A big dog chases a cat")
 holmes_manager.register_search_phrase("An ENTITYPERSON goes into town")
+holmes_manager.register_search_phrase("A company gives permission to publish something")
 
 
 class EnglishDocumentationExamplesTest(unittest.TestCase):
@@ -245,3 +246,10 @@ class EnglishDocumentationExamplesTest(unittest.TestCase):
                 },
             ],
         )
+
+    def test_extracted_word_example(self):
+        matches = holmes_manager.match(
+            document_text="We discussed AstraZeneca. The company had given us permission to publish this library under the MIT license."
+        )
+        self.assertEqual(len(matches), 1)
+        self.assertEqual(matches[0]["word_matches"][0]["extracted_word"], "astrazeneca")

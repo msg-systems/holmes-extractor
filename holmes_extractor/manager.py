@@ -405,7 +405,7 @@ class Manager:
         """
         Parameters:
 
-        labels_starting -- a string with which the labels of documents to be removed start,
+        labels_starting -- a string starting the labels of documents to be removed,
         or *None* if all documents are to be removed.
         """
         if labels_starting is None:
@@ -427,7 +427,7 @@ class Manager:
             reply_queue, self.number_of_workers, "remove_all_documents"
         )
 
-    def document_labels(self) -> List[str]:
+    def list_document_labels(self) -> List[str]:
         """Returns a list of the labels of the currently registered documents."""
         with self.lock:
             unsorted_labels = self.document_labels_to_worker_queues.keys()
@@ -709,8 +709,8 @@ class Manager:
         text_to_match -- the text to match against the loaded documents.
         use_frequency_factor -- *True* if scores should be multiplied by a factor between 0 and 1
             expressing how rare the words matching each phraselet are in the corpus. Note that,
-            even if set to *False*, the factors are still calculated as they are required for
-            determining which relation and embedding matches should be attempted.
+            even if this parameter is set to *False*, the factors are still calculated as they 
+            are required for determining which relation and embedding matches should be attempted.
         maximum_activation_distance -- the number of words it takes for a previous phraselet
             activation to reduce to zero when the library is reading through a document.
         word_embedding_match_threshold -- the cosine similarity above which two words match where
@@ -721,12 +721,12 @@ class Manager:
             relation is matched.
         reverse_only_relation_score -- the activation score added when a two-word relation
                 is matched using a search phrase that can only be reverse-matched.
-        single_word_score -- the activation score added when a normal single word is matched.
+        single_word_score -- the activation score added when a single noun is matched.
         single_word_any_tag_score -- the activation score added when a single word is matched
-            whose tag would not normally allow it to be matched by phraselets.
+            that is not a noun.
         initial_question_word_answer_score -- the activation score added when a question word is
             matched to an answering phrase.
-       initial_question_word_behaviour -- 'process' if a question word in the sentence
+        initial_question_word_behaviour -- 'process' if a question word in the sentence
             constituent at the beginning of *text_to_match* is to be matched to document phrases
             that answer it and to matching question words; 'exclusive' if only topic matches that 
             answer questions are to be permitted; 'ignore' if question words are to be ignored.

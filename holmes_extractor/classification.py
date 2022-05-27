@@ -500,7 +500,7 @@ class SupervisedTopicTrainingBasis:
         max_epochs -- the maximum number of training epochs.
         convergence_threshold -- the threshold below which loss measurements after consecutive
             epochs are regarded as equivalent. Training stops before *max_epochs* is reached
-            when equivalent results are achieved after four consecutive epochs.
+            if equivalent results are achieved after four consecutive epochs.
         hidden_layer_sizes -- a list containing the number of neurons in each hidden layer, or
             'None' if the topology should be determined automatically.
         shuffle -- *True* if documents should be shuffled during batching.

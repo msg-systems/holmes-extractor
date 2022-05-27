@@ -1,5 +1,5 @@
-**Holmes** is a Python 3 library (v3.6—3.10) running on top of
-[spaCy](https://spacy.io/) (versions 3.1—3.3) that supports a number of use cases
+**Holmes** is a Python 3 library (v3.6—v3.10) running on top of
+[spaCy](https://spacy.io/) (v3.1—v3.3) that supports a number of use cases
 involving information extraction from English and German texts. In all use cases, the information
 extraction is based on analysing the semantic relationships expressed by the component parts of
 each sentence:
@@ -50,6 +50,7 @@ cases can be put to use out of the box without any training and that the supervi
 typically requires relatively little training data, which is a great advantage because pre-labelled training data is
 not available for many real-world problems.
 
-Holmes has a long and complex history and we are now able to publish it under the MIT license thanks to the goodwill and openness of several companies. I, Richard Hudson, wrote the versions up to 3.0.0 while working at [msg systems](https://www.msg.group/en), a large international software consultancy based near Munich. In late 2021, I changed employers and now work for [Explosion](https://explosion.ai/), the creators of [spaCy](https://explosion.ai/software#spacy) and [Prodigy](https://explosion.ai/software#prodigy). Elements of the software are covered by a [US patent](https://patents.google.com/patent/US8155946B2/en) that I myself wrote in the early 2000s while working at a startup called Definiens that has since been acquired by [AstraZeneca](https://www.astrazeneca.com/). With kind permission of both AstraZeneca and msg systems, I am now maintaining Holmes at Explosion and can offer it for the first time under a non-restrictive license.
+Holmes has a long and complex history and we are now able to publish it under the MIT license thanks to the goodwill and openness of several companies. I, Richard Hudson, wrote the versions up to 3.0.0 while working at [msg systems](https://www.msg.group/en), a large international software consultancy based near Munich. In late 2021, I changed employers and now work for [Explosion](https://explosion.ai/), the creators of [spaCy](https://spacy.io/) and [Prodigy](https://prodi.gy/). Elements of the Holmes library are covered by a [US patent](https://patents.google.com/patent/US8155946B2/en) that I myself wrote in the early 2000s while working at a startup called Definiens that has since been acquired by [AstraZeneca](https://www.astrazeneca.com/). With the kind permission of both AstraZeneca and msg systems, I am now maintaining Holmes at Explosion and can offer it for the first time under a permissive license: anyone can now use Holmes under the terms of the MIT
+license without having to worry about the patent.
 
 For more information, please see the [main documentation on Github](https://github.com/explosion/holmes-extractor).

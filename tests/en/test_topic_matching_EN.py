@@ -1160,7 +1160,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         m.parse_and_register_document("The dog chased the animal", 'exact')
         m.parse_and_register_document("The cat chased the dog", 'specific-reversed')
         m.parse_and_register_document("The animal chased the dog", 'exact-reversed')
-        self.assertEqual(m.document_labels(), ['exact', 'exact-reversed', 'specific',
+        self.assertEqual(m.list_document_labels(), ['exact', 'exact-reversed', 'specific',
                                                'specific-reversed'])
         self.assertEqual(m.topic_match_documents_against(
             "A dog chases an animal",
@@ -1181,7 +1181,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         m.parse_and_register_document("The dog chased the animal", 'exact')
         m.parse_and_register_document("The cat chased the dog", 'specific-reversed')
         m.parse_and_register_document("The animal chased the dog", 'exact-reversed')
-        self.assertEqual(m.document_labels(), ['exact', 'exact-reversed', 'specific',
+        self.assertEqual(m.list_document_labels(), ['exact', 'exact-reversed', 'specific',
                                                'specific-reversed'])
         self.assertEqual(m.topic_match_documents_against(
             "A dog chases an animal",
@@ -1203,7 +1203,7 @@ class EnglishTopicMatchingTest(unittest.TestCase):
         m.parse_and_register_document("The dog chased the animal", 'exact')
         m.parse_and_register_document("The cat chased the dog", 'specific-reversed')
         m.parse_and_register_document("The animal chased the dog", 'exact-reversed')
-        self.assertEqual(m.document_labels(), ['exact', 'exact-reversed', 'specific',
+        self.assertEqual(m.list_document_labels(), ['exact', 'exact-reversed', 'specific',
                                                'specific-reversed'])
         self.assertEqual(m.topic_match_documents_against(
             "A dog chases an animal", number_of_results=3, use_frequency_factor=True,
