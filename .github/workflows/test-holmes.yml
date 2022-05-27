@@ -13,11 +13,11 @@ jobs:
         click_version: ['8.0.1']
         include:
           - os: 'ubuntu-latest'
-            python-version: '3.9'
+            python_version: '3.9'
             spacy_version: '3.2.4'
             click_version: '8.0.1'
           - os: 'ubuntu-latest'
-            python-version: '3.9'
+            python_version: '3.9'
             spacy_version: '3.1.6'
             click_version: '7.1.2'
     runs-on: ${{ matrix.os }}
