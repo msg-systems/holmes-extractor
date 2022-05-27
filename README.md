@@ -506,8 +506,9 @@ For more examples, please see [section 5](#use-cases-and-examples).
 <a id="word-level-matching-strategies"></a>
 ### 2. Word-level matching strategies
 
-The following strategies are implemented with [one module per strategy](). Although
-the standard library does not support adding bespoke strategies via the [Manager](#manager)
+The following strategies are implemented with 
+[one module per strategy](https://github.com/explosion/holmes-extractor/tree/master/holmes_extractor/word_matching). 
+Although the standard library does not support adding bespoke strategies via the [Manager](#manager)
 class, it would be relatively easy for anyone with Python programming skills to
 change the code to enable this.
 
