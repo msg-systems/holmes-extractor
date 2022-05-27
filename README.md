@@ -91,6 +91,7 @@ Author: <a href="mailto:richard.hudson@msg.group">Richard Paul Hudson, msg syste
         -   [8.4.3 Version 2.2.0](#version-220)
         -   [8.4.4 Version 2.2.1](#version-221)
         -   [8.4.5 Version 3.0.0](#version-300)
+        -   [8.4.6 Version 4.0.0](#version-400)
 
 <a id="introduction"></a>
 ### 1. Introduction
@@ -267,7 +268,7 @@ The `en_core_web_trf` model requires sufficiently more resources than the other 
 
 The best way of integrating Holmes into a non-Python environment is to
 wrap it as a RESTful HTTP service and to deploy it as a
-microservice. See [here](https://github.com/msg-systems/holmes-extractor/blob/master/examples/example_search_EN_literature.py) for an example.
+microservice. See [here](https://github.com/explosion/holmes-extractor/blob/master/examples/example_search_EN_literature.py) for an example.
 
 <a id="resource-requirements"></a>
 ##### 1.2.5 Resource requirements
@@ -593,7 +594,7 @@ subtype of something), *synonyms* (something means the same as
 something) and *named individuals* (something is a specific instance of
 something). The three relationship types are exemplified in Figure 1:
 
-![Figure 1](https://github.com/msg-systems/holmes-extractor/blob/master/docs/ontology_example.png)
+![Figure 1](https://github.com/explosion/holmes-extractor/blob/master/docs/ontology_example.png)
 
 Ontologies are defined to Holmes using the [OWL ontology
 standard](https://www.w3.org/OWL/) serialized using
@@ -775,7 +776,7 @@ If a query phrase consists of a complex question with several elements dependent
 <a id="coreference-resolution"></a>
 ### 3. Coreference resolution
 
-Before Holmes analyses a searched document or query document, coreference resolution is performed using the [Coreferee](https://github.com/msg-systems/coreferee)
+Before Holmes analyses a searched document or query document, coreference resolution is performed using the [Coreferee](https://github.com/explosion/coreferee)
 library running on top of spaCy.  This means that situations are recognised where pronouns and nouns that are located near one another within a text refer to the same entities. The information from one mention can then be applied to the analysis of further mentions:
 
 I saw a *big dog*. *It* was chasing a cat.   
@@ -1825,7 +1826,7 @@ versions from 4.0.0 onwards are licensed under the MIT license.
 The word-level matching and the high-level operation of structural
 matching between search-phrase and document subgraphs both work more or
 less as one would expect. What is perhaps more in need of further
-comment is the semantic analysis code subsumed in the [parsing.py](https://github.com/msg-systems/holmes-extractor/blob/master/holmes_extractor/parsing.py)
+comment is the semantic analysis code subsumed in the [parsing.py](https://github.com/explosion/holmes-extractor/blob/master/holmes_extractor/parsing.py)
 script as well as in the `language_specific_rules.py` script for each
 language.
 
@@ -2078,7 +2079,7 @@ same stem.
 that only documents whose labels begin with a certain string should be searched.
 -  Error handling and reporting have been improved for the MultiprocessingManager.
 -  Numerous minor improvements and bugfixes.
--  The [demo website](http://holmes-demo.xt.msg.team/) has been updated to reflect the changes.
+-  The [demo website](https://demo.holmes.prod.demos.explosion.services/) has been updated to reflect the changes.
 
 <a id="version-221"></a>
 ##### 8.4.4 Version 2.2.1
@@ -2089,12 +2090,12 @@ that only documents whose labels begin with a certain string should be searched.
 <a id="version-300"></a>
 ##### 8.4.5 Version 3.0.0
 
--  Moved to [coreferee](https://github.com/msg-systems/coreferee) as the source of coreference information, meaning that coreference resolution is now active for German as well as English; all documents can be serialized; and the latest spaCy version can be supported.
+-  Moved to [coreferee](https://github.com/explosion/coreferee) as the source of coreference information, meaning that coreference resolution is now active for German as well as English; all documents can be serialized; and the latest spaCy version can be supported.
 -  The corpus frequencies of words are now taken into account when scoring topic matches.
 -  Reverse dependencies are now taken into account, so that e.g. *a man dies* can match *the dead man* although the dependencies in the two phrases point in opposite directions.
 -  Merged the pre-existing `Manager` and `MultiprocessingManager` classes into a single `Manager` class, with a redesigned public interface, that uses worker threads for everything except supervised document classification.
 -  Added support for [initial question words](#initial-question-word-matching).
--  The [demo website](http://holmes-demo.xt.msg.team/) has been updated to reflect the changes.
+-  The [demo website](https://demo.holmes.prod.demos.explosion.services/) has been updated to reflect the changes.
 
 <a id="version-400"></a>
 ##### 8.4.6 Version 4.0.0
