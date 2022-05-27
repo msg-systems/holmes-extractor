@@ -39,8 +39,10 @@ class Ontology:
     This class is designed for small ontologies that have been constructed by hand
     for specific use cases.
 
-    Note that Holmes is not designed to support changes to a loaded ontology via direct
-    calls to the methods of this class.
+    Holmes is not designed to support changes to a loaded ontology via direct
+    calls to the methods of this class. It is also not permitted to share a single instance
+    of this class between multiple Manager instances: instead, a separate Ontology instance
+    pointing to the same path should be created for each Manager.
 
     Matching is case-insensitive.
 

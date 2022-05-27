@@ -531,7 +531,12 @@ class SupervisedTopicTrainingBasis:
 
 
 class SupervisedTopicModelTrainer:
-    """Worker object used to train and generate models. This class is *NOT* threadsafe."""
+    """Worker object used to train and generate models. This object could be removed from the public interface
+    (`SupervisedTopicTrainingBasis.train()` could return a `SupervisedTopicClassifier` directly) but has
+    been retained to facilitate testability.
+
+    This class is NOT threadsafe.
+    """
 
     def __init__(
         self,
@@ -923,8 +928,9 @@ class SupervisedTopicClassifier:
         self.thinc_model.from_dict(model.serialized_thinc_model)
 
     def parse_and_classify(self, text: str) -> Optional[OrderedDict]:
-        """Returns a list of classification labels; and a corresponding list of probabilities,
-            or *None* if the text did not contain any words recognised by the model. ***
+        """Returns a dictionary from classification labels to probabilities
+        ordered starting with the most probable, or *None* if the text did
+        not contain any words recognised by the model.
 
         Parameter:
 

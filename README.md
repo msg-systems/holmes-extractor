@@ -98,8 +98,8 @@ Author: <a href="mailto:richard.hudson@msg.group">Richard Paul Hudson, msg syste
 <a id="the-basic-idea"></a>
 #### 1.1 The basic idea
 
-**Holmes** is a Python 3 library (tested with version 3.9.5) running on top of
-[spaCy](https://spacy.io/) (tested with version 3.1.2) that supports a number of use cases
+**Holmes** is a Python 3 library (v3.6—3.10) running on top of
+[spaCy](https://spacy.io/) (versions 3.1—3.3) that supports a number of use cases
 involving information extraction from English and German texts. In all use cases, the information
 extraction is based on analysing the semantic relationships expressed by the component parts of
 each sentence:
@@ -123,7 +123,7 @@ the most relevant passages within the documents. Because there is no strict requ
 word with its own meaning in the query document match a specific word or words in the searched documents, more matches are found
 than in the structural extraction use case, but the matches do not contain structured information that can be
 used in subsequent processing. The topic matching use case is demonstrated by [a website allowing searches within
-the Harry Potter corpus (for English) and around 350 traditional stories (for German)](http://holmes-demo.xt.msg.team/).
+the Harry Potter corpus (for English) and around 350 traditional stories (for German)](https://demo.holmes.prod.demos.explosion.services/).
 
 - The [supervised document classification](#supervised-document-classification) use case uses training data to
 learn a classifier that assigns one or more **classification labels** to new documents based on what they are about.
@@ -149,6 +149,8 @@ learning, the essentially rule-based nature of Holmes means that the chatbot, st
 cases can be put to use out of the box without any training and that the supervised document classification use case
 typically requires relatively little training data, which is a great advantage because pre-labelled training data is
 not available for many real-world problems.
+
+Holmes has a long and complex history and we are now able to publish it under the MIT license thanks to the goodwill and openness of several companies. I, Richard Hudson, wrote the versions up to 3.0.0 while working at [msg systems](https://www.msg.group/en), a large international software consultancy based near Munich. In late 2021, I changed employers and now work for [Explosion](https://explosion.ai/), the creators of [spaCy](https://explosion.ai/software#spacy) and [Prodigy](https://explosion.ai/software#prodigy). Elements of the software are covered by a [US patent](https://patents.google.com/patent/US8155946B2/en) that I myself wrote in the early 2000s while working at a startup called Definiens that has since been acquired by [AstraZeneca](https://www.astrazeneca.com/). With kind permission of both AstraZeneca and msg systems, I am now maintaining Holmes at Explosion and can offer it for the first time under a non-restrictive license.
 
 <a id="installation"></a>
 #### 1.2 Installation
@@ -189,18 +191,10 @@ pip3 install --upgrade holmes-extractor
 pip install --upgrade holmes-extractor
 ```
 
-Note that if you are upgrading to a new Holmes version that uses a different major or minor version
-of Python from the pre-existing version, you will need to upgrade Python and then follow the instructions for installing Holmes from scratch.
-
-If you are working on some versions of Windows and have not used Python before,
-several of Holmes' dependencies may require you to download Visual Studio and then
-rerun the installation. During the Visual Studio install, it is imperative to select
-the **Desktop Development with C++** option, which is not checked by default.
-
 If you wish to use the examples and tests, clone the source code using
 
 ```
-git clone https://github.com/msg-systems/holmes-extractor
+git clone https://github.com/explosion/holmes-extractor
 ```
 
 If you wish to experiment with changing the source code, you can
@@ -233,6 +227,7 @@ python3 -m coreferee install en
 
 *Linux/German:*
 ```
+pip3 install spacy-lookups data # (from spaCy 3.3 onwards)
 python3 -m spacy download de_core_news_lg
 python3 -m coreferee install de
 ```
@@ -246,6 +241,7 @@ python -m coreferee install en
 
 *Windows/German:*
 ```
+pip install spacy-lookups data # (from spaCy 3.3 onwards)
 python -m spacy download de_core_news_lg
 python -m coreferee install de
 ```
@@ -280,7 +276,7 @@ Because Holmes performs complex, intelligent analysis, it is inevitable that it 
 
 That said, Holmes is both vertically and horizontally scalable. With sufficient hardware, both these use cases can be applied to an essentially unlimited number of documents by running Holmes on multiple machines, processing a different set of documents on each one and conflating the results. Note that this strategy is already employed to distribute matching amongst multiple cores on a single machine: the [Manager](#manager) class starts a number of worker processes and distributes registered documents between them.
 
-Holmes holds loaded documents in memory, which ties in with its intended use with large but not massive corpora. The performance of document loading, [structural extraction](#structural-extraction) and [topic matching](#topic-matching) all degrade heavily if the operating system has to swaps memory pages to secondary storage, because Holmes can require memory from a variety of pages to be addressed when processing a single sentence. This means it is important to supply enough RAM on each machine to hold all loaded documents.
+Holmes holds loaded documents in memory, which ties in with its intended use with large but not massive corpora. The performance of document loading, [structural extraction](#structural-extraction) and [topic matching](#topic-matching) all degrade heavily if the operating system has to swap memory pages to secondary storage, because Holmes can require memory from a variety of pages to be addressed when processing a single sentence. This means it is important to supply enough RAM on each machine to hold all loaded documents.
 
 Please note the [above comments](#installing-the-spacy-and-coreferee-models) about the relative resource requirements of the different models.
 
@@ -508,6 +504,11 @@ For more examples, please see [section 5](#use-cases-and-examples).
 
 <a id="word-level-matching-strategies"></a>
 ### 2. Word-level matching strategies
+
+The following strategies are implemented with [one module per strategy](). Although
+the standard library does not support adding bespoke strategies via the [Manager](#manager)
+class, it would be relatively easy for anyone with Python programming skills to
+change the code to enable this.
 
 <a id="direct-matching"></a>
 #### 2.1 Direct matching (`word_match.type=='direct'`)
@@ -774,7 +775,7 @@ If a query phrase consists of a complex question with several elements dependent
 <a id="coreference-resolution"></a>
 ### 3. Coreference resolution
 
-Before Holmes analyses a searched document or query document, coreference resolution is performed using the [coreferee](https://github.com/msg-systems/coreferee)
+Before Holmes analyses a searched document or query document, coreference resolution is performed using the [Coreferee](https://github.com/msg-systems/coreferee)
 library running on top of spaCy.  This means that situations are recognised where pronouns and nouns that are located near one another within a text refer to the same entities. The information from one mention can then be applied to the analysis of further mentions:
 
 I saw a *big dog*. *It* was chasing a cat.   
@@ -782,10 +783,10 @@ I saw a *big dog*. *The dog* was chasing a cat.
 
 Coreferee also detects situations where a noun refers back to a named entity:
 
-We discussed *msg systems*. *The company* had made a profit.
+We discussed *AstraZeneca*. *The company* had given us permission to publish this library under the MIT license.
 
 If this example were to match the search phrase ***A company makes a profit***, the
-coreference information that the company under discussion is msg systems is clearly
+coreference information that the company under discussion is AstraZeneca is clearly
 relevant and worth extracting in addition to the word(s) directly matched to the search
 phrase. Such information is captured in the [word_match.extracted_word](#dictionary) field.
 
@@ -1137,8 +1138,8 @@ restrictions on the grammatical structures permissible within the query document
 
 The Holmes source code ships with three examples demonstrating the topic matching use case with an English literature
 corpus, a German literature corpus and a German legal corpus respectively. The two literature examples are hosted at
-the [Holmes demonstration website](http://holmes-demo.xt.msg.team), although users are encouraged to run [the scripts](https://github.com/msg-systems/holmes-extractor/blob/master/examples/)
-locally as well to get a feel for how they work. The German law example starts a simple interactive console and its [script](https://github.com/msg-systems/holmes-extractor/blob/master/examples/example_search_DE_law.py) contains some example queries as comments.
+the [Holmes demonstration website](https://demo.holmes.prod.demos.explosion.services/), although users are encouraged to run [the scripts](https://github.com/explosion/holmes-extractor/blob/master/examples/)
+locally as well to get a feel for how they work. The German law example starts a simple interactive console and its [script](https://github.com/explosion/holmes-extractor/blob/master/examples/example_search_DE_law.py) contains some example queries as comments.
 
 Topic matching uses a variety of strategies to find text passages that are relevant to the query. These include
 resource-hungry procedures like investigating semantic relationships and comparing embeddings. Because applying these
@@ -1175,7 +1176,7 @@ are not preselected as having the new classification label are then passed to th
 classifier in the normal way. When enough documents exemplifying the new classification have accumulated in the system,
 the model can be retrained and the preselection search phrases removed.
 
-Holmes ships with an example [script](https://github.com/msg-systems/holmes-extractor/blob/master/examples/example_supervised_topic_model_EN.py) demonstrating supervised document classification for English with the
+Holmes ships with an example [script](https://github.com/explosion/holmes-extractor/blob/master/examples/example_supervised_topic_model_EN.py) demonstrating supervised document classification for English with the
 [BBC Documents dataset](http://mlg.ucd.ie/datasets/bbc.html). The script downloads the documents (for
 this operation and for this operation alone, you will need to be online) and places them in a working directory.
 When training is complete, the script saves the model to the working directory. If the model file is found
@@ -1253,7 +1254,7 @@ label -- a label for the document which must be unique. Defaults to the empty st
 
 <a id="manager-register-serialized-documents-function"></a>
 ``` {.python}
-Manager.register_serialized_documents(self, document_dictionary:dict[str, Doc]) -> None
+Manager.register_serialized_documents(self, document_dictionary:dict[str, bytes]) -> None
 
 Note that this function is the most efficient way of loading documents.
 
@@ -1286,7 +1287,7 @@ labels_starting -- a string with which the labels of documents to be removed sta
 ```
 
 ``` {.python}
-Manager.document_labels(self) -> list[str]
+Manager.document_labels(self) -> List[str]
 
 Returns a list of the labels of the currently registered documents.
 ```
@@ -1345,7 +1346,7 @@ Manager.remove_all_search_phrases(self) -> None
 ```
 
 ```
-Manager.list_search_phrase_labels(self) -> list[str]
+Manager.list_search_phrase_labels(self) -> List[str]
 ```
 
 <a id="manager-match-function"></a>
@@ -1356,9 +1357,9 @@ Matches search phrases to documents and returns the result as match dictionaries
 
 Parameters:
 
-search_phrase_text -- a text from which to generate a search phrase, or *None* if the
+search_phrase_text -- a text from which to generate a search phrase, or 'None' if the
     preloaded search phrases should be used for matching.
-document_text -- a text from which to generate a document, or *None* if the preloaded
+document_text -- a text from which to generate a document, or 'None' if the preloaded
     documents should be used for matching.
 ```
 
@@ -1385,7 +1386,7 @@ topic_match_documents_against(self, text_to_match:str, *,
     only_one_result_per_document:bool=False,
     number_of_results:int=10,
     document_label_filter:str=None,
-    tied_result_quotient:float=0.9) -> list[dict]:
+    tied_result_quotient:float=0.9) -> List[Dict]:
 
 Returns a list of dictionaries representing the results of a topic match between an entered text
 and the loaded documents.
@@ -1468,7 +1469,7 @@ verbose -- if 'True', information about training progress is outputted to the co
 
 ``` {.python}
 Manager.deserialize_supervised_topic_classifier(self,
-  serialized_model:str, verbose:bool=False) -> SupervisedTopicClassifier:
+  serialized_model:bytes, verbose:bool=False) -> SupervisedTopicClassifier:
 
 Returns a classifier for the supervised document classification use case
 that will use a supplied pre-trained model.
@@ -1521,7 +1522,9 @@ Terminates the worker processes.
 <a id="manager.nlp"></a>
 #### 6.2 `manager.nlp`
 
-`manager.nlp` is the underlying spaCy [Language](https://spacy.io/api/language/) object on which both Coreferee and Holmes have been registered as custom pipeline components. The most efficient way of parsing documents for use with Holmes is to call [`manager.nlp.pipe()`](https://spacy.io/api/language/#pipe). This yields an iterable of documents that can then be loaded into Holmes via [`manager.register_serialized_documents()`](#manager-register-serialized-documents-function)
+`manager.nlp` is the underlying spaCy [Language](https://spacy.io/api/language/) object on which both Coreferee and Holmes have been registered as custom pipeline components. The most efficient way of parsing documents for use with Holmes is to call [`manager.nlp.pipe()`](https://spacy.io/api/language/#pipe). This yields an iterable of documents that can then be loaded into Holmes via [`manager.register_serialized_documents()`](#manager-register-serialized-documents-function).
+
+The [`pipe()` method](https://spacy.io/api/language#pipe) has an argument `n_process()` that specifies the number of processors to use. With `_lg`, `_md` and `_sm` spaCy models, there are [some situations](https://github.com/explosion/spaCy/discussions/8402#multiprocessing) where it can make sense to specify a value other than 1 (the default). Note however that with transformer spaCy models (`_trf`) values other than 1 are not supported.
 
 <a id="ontology"></a>
 #### 6.3 `Ontology`
@@ -1546,6 +1549,11 @@ This class is designed for small ontologies that have been constructed
 by hand for specific use cases. Where the aim is to model a large number
 of semantic relationships, word embeddings are likely to offer
 better results.
+
+Holmes is not designed to support changes to a loaded ontology via direct
+calls to the methods of this class. It is also not permitted to share a single instance
+of this class between multiple Manager instances: instead, a separate Ontology instance
+pointing to the same path should be created for each Manager.
 
 Matching is case-insensitive.
 
@@ -1631,9 +1639,16 @@ minimum_occurrences -- the minimum number of times a word or relationship has to
 cv_threshold -- the minimum coefficient of variation with which a word or relationship has
   to occur across the explicit classification labels for the phraselet to be
   accepted into the final model.
-mlp_* -- see https://scikit-learn.org/stable/modules/generated/sklearn.neural_network.MLPClassifier.html.
-hidden_layer_sizes -- a list where each entry is the size of a hidden layer, or 'None'
-  if the topology should be determined automatically.
+learning_rate -- the learning rate for the Adam optimizer.
+batch_size -- the number of documents in each training batch.
+max_epochs -- the maximum number of training epochs.
+convergence_threshold -- the threshold below which loss measurements after consecutive
+  epochs are regarded as equivalent. Training stops before 'max_epochs' is reached
+  when equivalent results are achieved after four consecutive epochs.
+hidden_layer_sizes -- a list containing the number of neurons in each hidden layer, or
+  'None' if the topology should be determined automatically.
+shuffle -- 'True' if documents should be shuffled during batching.
+normalize -- 'True' if normalization should be applied to the loss function.
 ```
 
 <a id="supervised-topic-model-trainer"></a>
@@ -1642,6 +1657,8 @@ hidden_layer_sizes -- a list where each entry is the size of a hidden layer, or 
 Worker object used to train and generate models. This object could be removed from the public interface
 (`SupervisedTopicTrainingBasis.train()` could return a `SupervisedTopicClassifier` directly) but has
 been retained to facilitate testability.
+
+This class is NOT threadsafe.
 
 ``` {.python}
 SupervisedTopicModelTrainer.classifier()
@@ -1658,9 +1675,9 @@ can be serialized.
 ``` {.python}
 SupervisedTopicClassifier.parse_and_classify(self, text)
 
-Returns a list containing zero, one or many document classifications. Where more
-than one classification is returned, the labels are ordered by decreasing
-probability.
+Returns a dictionary from classification labels to probabilities
+  ordered starting with the most probable, or *None* if the text did
+  not contain any words recognised by the model.
 
 Parameters:
 
@@ -1670,9 +1687,10 @@ text -- the text to parse and classify.
 ``` {.python}
 SupervisedTopicClassifier.classify(self, doc)
 
-Returns a list containing zero, one or many document classifications. Where more
-than one classification is returned, the labels are ordered by decreasing
-probability.
+Returns a dictionary from classification labels to probabilities
+  ordered starting with the most probable, or *None* if the text did
+  not contain any words recognised by the model.
+
 
 Parameters:
 
@@ -1791,25 +1809,9 @@ answers -- an array of arrays with the semantics:
 <a id="a-note-on-the-license"></a>
 ### 7 A note on the license
 
-Holmes encompasses several concepts that build on work that the author, Richard
-Paul Hudson, carried out as a young graduate and for which his former
-employer, [Definiens], has since been granted a
-[U.S. patent](https://patents.google.com/patent/US8155946B2/en).
-Definiens has kindly permitted the author to publish Holmes under the GNU General Public
-License ("GPL"). As long as you abide by the terms of the GPL, this means you can
-use the library without worrying about the patent, even if your activities take place
-in the United States of America.
-
-The GPL is often misunderstood to be a license for non-commercial use. In reality, it
-certainly does permit commercial use as well in various scenarios, especially if you
-are building bespoke software in an enterprise context: consult the very
-comprehensive [GPL FAQ](https://www.gnu.org/licenses/gpl-faq.html) to determine whether
-it is suitable for your needs.
-
-If you wish to use Holmes in a way that is not permitted by
-the GPL, please <a href="mailto:richard.hudson@msg.group">get in touch with the author</a> and
-we can try and find a solution which will obviously need to involve Definiens as well if whatever
-you are proposing involves the USA in any way.
+Earlier versions of Holmes could only be published under a restrictive license because of patent issues. As explained in the
+[introduction](#introduction), this is no longer the case thanks to the generosity of [AstraZeneca](https://www.astrazeneca.com/):
+versions from 4.0.0 onwards are licensed under the MIT license.
 
 <a id="information-for-developers"></a>
 ### 8 Information for developers
@@ -1991,9 +1993,9 @@ The `pytest` variant will only work on machines with sufficient memory resources
 reduce this problem, the tests are distributed across three subdirectories, so that
 `pytest` can be run three times, once from each subdirectory:
 
--   [en](https://github.com/msg-systems/holmes-extractor/blob/master/tests/en): tests relating to English
--   [de](https://github.com/msg-systems/holmes-extractor/blob/master/tests/de): tests relating to German
--   [common](https://github.com/msg-systems/holmes-extractor/blob/master/tests/common): language-independent tests
+-   [en](https://github.com/explosion/holmes-extractor/blob/master/tests/en): tests relating to English
+-   [de](https://github.com/explosion/holmes-extractor/blob/master/tests/de): tests relating to German
+-   [common](https://github.com/explosion/holmes-extractor/blob/master/tests/common): language-independent tests
 
 <a id="areas-for-further-development"></a>
 #### 8.3 Areas for further development
@@ -2093,3 +2095,12 @@ that only documents whose labels begin with a certain string should be searched.
 -  Merged the pre-existing `Manager` and `MultiprocessingManager` classes into a single `Manager` class, with a redesigned public interface, that uses worker threads for everything except supervised document classification.
 -  Added support for [initial question words](#initial-question-word-matching).
 -  The [demo website](http://holmes-demo.xt.msg.team/) has been updated to reflect the changes.
+
+<a id="version-400"></a>
+##### 8.4.6 Version 4.0.0
+
+- The license has been changed from GPL3 to MIT.
+- The word matching code has been refactored and now uses the Strategy pattern, making it easy to add additional word-matching strategies.
+- With the exception of [rdflib](https://github.com/RDFLib/rdflib), all direct dependencies are now from within the Explosion stack, making
+installation much faster and more trouble-free.
+- Holmes now supports a wide range of Python (3.6—3.10) and spaCy (3.1—3.3) versions.

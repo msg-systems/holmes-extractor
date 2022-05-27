@@ -286,14 +286,14 @@ class Manager:
             this_worker.start()
         self.lock = Lock()
 
-    def next_worker_queue_number(self) -> int:
+    def _next_worker_queue_number(self) -> int:
         """Must be called with 'self.lock'."""
         self.next_worker_to_use += 1
         if self.next_worker_to_use == self.number_of_workers:
             self.next_worker_to_use = 0
         return self.next_worker_to_use
 
-    def handle_response(
+    def _handle_response(
         self, reply_queue, number_of_messages: int, method_name: str
     ) -> List[Any]:
         return_values = []
@@ -345,7 +345,7 @@ class Manager:
                 if label in self.document_labels_to_worker_queues:
                     raise DuplicateDocumentError(label)
                 else:
-                    worker_queue_number = self.next_worker_queue_number()
+                    worker_queue_number = self._next_worker_queue_number()
                     self.document_labels_to_worker_queues[label] = worker_queue_number
                     self.word_dictionaries_need_rebuilding = True
                     self.input_queues[worker_queue_number].put(
@@ -356,7 +356,7 @@ class Manager:
                         ),
                         timeout=TIMEOUT_SECONDS,
                     )
-        self.handle_response(
+        self._handle_response(
             reply_queue, len(document_dictionary), "register_serialized_documents"
         )
 
@@ -399,7 +399,7 @@ class Manager:
                 self.word_dictionaries_need_rebuilding = True
             else:
                 return
-        self.handle_response(reply_queue, 1, "remove_document")
+        self._handle_response(reply_queue, 1, "remove_document")
 
     def remove_all_documents(self, labels_starting: str = None) -> None:
         """
@@ -423,7 +423,7 @@ class Manager:
                 for key, value in self.document_labels_to_worker_queues.items()
                 if not key.startswith(labels_starting)
             }
-        self.handle_response(
+        self._handle_response(
             reply_queue, self.number_of_workers, "remove_all_documents"
         )
 
@@ -451,7 +451,7 @@ class Manager:
                 )
             else:
                 return None
-        return self.handle_response(reply_queue, 1, "serialize_document")[0]
+        return self._handle_response(reply_queue, 1, "serialize_document")[0]
 
     def get_document(self, label: str = "") -> Optional[Doc]:
         """Returns a Holmes document. If *label* is not the label of a registered document, *None*
@@ -514,7 +514,7 @@ class Manager:
                     timeout=TIMEOUT_SECONDS,
                 )
             self.search_phrases.append(search_phrase)
-        self.handle_response(
+        self._handle_response(
             reply_queue, self.number_of_workers, "register_search_phrase"
         )
         return search_phrase
@@ -536,7 +536,7 @@ class Manager:
                 for search_phrase in self.search_phrases
                 if search_phrase.label != label
             ]
-        self.handle_response(
+        self._handle_response(
             reply_queue, self.number_of_workers, "remove_all_search_phrases_with_label"
         )
 
@@ -549,7 +549,7 @@ class Manager:
                     timeout=TIMEOUT_SECONDS,
                 )
             self.search_phrases = []
-        self.handle_response(
+        self._handle_response(
             reply_queue, self.number_of_workers, "remove_all_search_phrases"
         )
 
@@ -583,7 +583,7 @@ class Manager:
         if document_text is not None:
             serialized_document = self.nlp(document_text).to_bytes()
             with self.lock:
-                worker_indexes = {self.next_worker_queue_number()}
+                worker_indexes = {self._next_worker_queue_number()}
         else:
             with self.lock:
                 if len(self.document_labels_to_worker_queues) == 0:
@@ -598,7 +598,7 @@ class Manager:
                 (self.worker.match, (serialized_document, search_phrase), reply_queue),
                 timeout=TIMEOUT_SECONDS,
             )
-        worker_match_dicts_lists = self.handle_response(
+        worker_match_dicts_lists = self._handle_response(
             reply_queue, len(worker_indexes), "match"
         )
         match_dicts = []
@@ -886,7 +886,7 @@ class Manager:
                 ),
                 timeout=TIMEOUT_SECONDS,
             )
-        worker_topic_match_dictss = self.handle_response(
+        worker_topic_match_dictss = self._handle_response(
             reply_queue, len(worker_indexes), "match"
         )
         topic_match_dicts = []

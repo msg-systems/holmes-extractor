@@ -13,6 +13,10 @@ from ..parsing import (
 
 
 class OntologyWordMatchingStrategy(WordMatchingStrategy):
+    """
+    The patent US8155946 associated with this code has been made available under the MIT licence, 
+    with kind permission from AstraZeneca.
+    """
 
     WORD_MATCH_TYPE_LABEL = "ontology"
 
