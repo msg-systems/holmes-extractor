@@ -71,8 +71,22 @@ jobs:
 
     - name: Test Holmes
       run: |
-        python -m pytest tests/de
-        python -m pytest tests/en
+        python -m pytest tests/de/test_doc_examples_DE.py
+        python -m pytest tests/de/test_phraselet_production_DE.py
+        python -m pytest tests/de/test_questions_DE.py
+        python -m pytest tests/de/test_semantics_DE.py
+        python -m pytest tests/de/test_structural_matching_DE.py
+        python -m pytest tests/de/test_structural_matching_with_coreference_DE.py
+        python -m pytest tests/de/test_supervised_topic_classification_DE.py
+        python -m pytest tests/de/test_topic_matching_DE.py
+        python -m pytest tests/en/test_doc_examples_EN.py
+        python -m pytest tests/en/test_phraselet_production_EN.py
+        python -m pytest tests/en/test_questions_EN.py
+        python -m pytest tests/en/test_semantics_EN.py
+        python -m pytest tests/en/test_structural_matching_EN.py
+        python -m pytest tests/en/test_structural_matching_with_coreference_EN.py
+        python -m pytest tests/en/test_supervised_topic_classification_EN.py
+        python -m pytest tests/en/test_topic_matching_EN.py
         python -m pytest tests/common/test_manager.py
         python -m pytest tests/common/test_cpu_gpu.py
         python -m pytest tests/common/test_errors.py
