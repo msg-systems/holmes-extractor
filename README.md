@@ -1721,7 +1721,7 @@ Returns a serialized model that can be reloaded using
 ```
 
 <a id="dictionary"></a>
-#### 6.7 Dictionary returned from `Manager.match_returning_dictionaries()`)
+#### 6.7 Dictionary returned from `Manager.match()`)
 
 ``` {.python}
 A text-only representation of a match between a search phrase and a
@@ -1777,7 +1777,7 @@ word_matches -- an array of dictionaries with the properties:
 ```
 
 <a id="topic-match-dictionary"></a>
-#### 6.8 Dictionary returned from `Manager.topic_match_documents_returning_dictionaries_against()`
+#### 6.8 Dictionary returned from `Manager.topic_match_documents_against()`
 
 ``` {.python}
 A text-only representation of a topic match between a search text and a document.
