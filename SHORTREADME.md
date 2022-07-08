@@ -23,7 +23,7 @@ the most relevant passages within the documents. Because there is no strict requ
 word with its own meaning in the query document match a specific word or words in the searched documents, more matches are found
 than in the structural extraction use case, but the matches do not contain structured information that can be
 used in subsequent processing. The topic matching use case is demonstrated by [a website allowing searches within
-the Harry Potter corpus (for English) and around 350 traditional stories (for German)](https://demo.holmes.prod.demos.explosion.services/).
+six Charles Dickens novels (for English) and around 350 traditional stories (for German)](https://holmes-demo.explosion.services/).
 
 - The [supervised document classification](#supervised-document-classification) use case uses training data to
 learn a classifier that assigns one or more **classification labels** to new documents based on what they are about.
