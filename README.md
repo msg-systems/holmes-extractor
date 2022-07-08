@@ -1142,10 +1142,9 @@ token is not supported. However, an important difference from
 search phrases is that the topic matching use case places no
 restrictions on the grammatical structures permissible within the query document.
 
-The Holmes source code ships with three examples demonstrating the topic matching use case with an English literature
-corpus, a German literature corpus and a German legal corpus respectively. Two literature examples are also hosted at
-the [Holmes demonstration website](https://holmes-demo.explosion.services/), although users are encouraged to run [the local scripts](https://github.com/explosion/holmes-extractor/blob/master/examples/)
-as well to get a feel for how they work. The German law example starts a simple interactive console and its [script](https://github.com/explosion/holmes-extractor/blob/master/examples/example_search_DE_law.py) contains some example queries as comments.
+In addition to the [Holmes demonstration website](https://holmes-demo.explosion.services/), the Holmes source code ships with [three examples]((https://github.com/explosion/holmes-extractor/blob/master/examples/) demonstrating the topic matching use case with an English literature
+corpus, a German literature corpus and a German legal corpus respectively. Users are encouraged to run these
+to get a feel for how they work.
 
 Topic matching uses a variety of strategies to find text passages that are relevant to the query. These include
 resource-hungry procedures like investigating semantic relationships and comparing embeddings. Because applying these
