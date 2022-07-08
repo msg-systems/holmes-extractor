@@ -1142,7 +1142,7 @@ token is not supported. However, an important difference from
 search phrases is that the topic matching use case places no
 restrictions on the grammatical structures permissible within the query document.
 
-In addition to the [Holmes demonstration website](https://holmes-demo.explosion.services/), the Holmes source code ships with [three examples]((https://github.com/explosion/holmes-extractor/blob/master/examples/) demonstrating the topic matching use case with an English literature
+In addition to the [Holmes demonstration website](https://holmes-demo.explosion.services/), the Holmes source code ships with [three examples](https://github.com/explosion/holmes-extractor/blob/master/examples/) demonstrating the topic matching use case with an English literature
 corpus, a German literature corpus and a German legal corpus respectively. Users are encouraged to run these
 to get a feel for how they work.
 
